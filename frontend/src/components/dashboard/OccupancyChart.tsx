@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useOccupancyData } from "@/hooks/usePayments";
 import type { OccupancyDataPoint } from "@/types";
 
 interface OccupancyChartProps {
@@ -19,7 +20,10 @@ interface OccupancyChartProps {
   loading?: boolean;
 }
 
-export function OccupancyChart({ data, loading }: OccupancyChartProps) {
+export function OccupancyChart({ data: dataProp, loading: loadingProp }: OccupancyChartProps) {
+  const { data: fetchedData, isLoading: fetchLoading } = useOccupancyData();
+  const data = dataProp ?? fetchedData;
+  const loading = loadingProp ?? fetchLoading;
   return (
     <Card>
       <CardHeader className="pb-2">

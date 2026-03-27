@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/utils/formatters";
+import { useRevenueData } from "@/hooks/usePayments";
 import type { RevenueDataPoint } from "@/types";
 
 interface RevenueChartProps {
@@ -20,9 +21,12 @@ interface RevenueChartProps {
   loading?: boolean;
 }
 
-const currencyFormatter = (value: number) => formatCurrency(value, "GBP");
+const currencyFormatter = (value: number) => formatCurrency(value, "UGX");
 
-export function RevenueChart({ data, loading }: RevenueChartProps) {
+export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueChartProps) {
+  const { data: fetchedData, isLoading: fetchLoading } = useRevenueData();
+  const data = dataProp ?? fetchedData;
+  const loading = loadingProp ?? fetchLoading;
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -37,7 +41,7 @@ export function RevenueChart({ data, loading }: RevenueChartProps) {
             <BarChart data={data} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-              <YAxis tickFormatter={(v) => `£${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12 }} />
+              <YAxis tickFormatter={(v) => `${(v / 1_000_000).toFixed(1)}M`} tick={{ fontSize: 12 }} />
               <Tooltip
                 formatter={currencyFormatter}
                 contentStyle={{

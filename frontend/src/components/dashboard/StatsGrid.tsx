@@ -7,13 +7,13 @@ import {
   AlertCircle,
   Banknote,
   Clock,
-  CheckCircle,
   Wrench,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatPercentage } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
+import { useDashboardStats } from "@/hooks/usePayments";
 import type { DashboardStats } from "@/types";
 
 interface StatCardProps {
@@ -60,7 +60,11 @@ interface StatsGridProps {
   loading?: boolean;
 }
 
-export function StatsGrid({ stats, loading }: StatsGridProps) {
+export function StatsGrid({ stats: statsProp, loading: loadingProp }: StatsGridProps) {
+  const { data: fetchedStats, isLoading: fetchLoading } = useDashboardStats();
+  const stats = statsProp ?? fetchedStats;
+  const loading = loadingProp ?? fetchLoading;
+
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
