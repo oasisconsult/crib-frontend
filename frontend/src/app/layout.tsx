@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient } from "@/lib/queryClient";
 import { ToastProvider } from "@/components/providers/ToastProvider";
 import { MSWProvider } from "@/components/providers/MSWProvider";
@@ -30,9 +29,6 @@ export default function RootLayout({
               {children}
               <ToastProvider />
             </ThemeProvider>
-            {process.env.NODE_ENV === "development" && (
-              <ReactQueryDevtools initialIsOpen={false} />
-            )}
           </QueryClientProvider>
         </MSWProvider>
       </body>
