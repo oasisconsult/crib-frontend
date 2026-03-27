@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { FileText, CreditCard, UserCheck, ClipboardList, Bell, Wrench } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatRelative } from "@/utils/formatters";
@@ -24,20 +25,31 @@ const ACTIVITY_ICONS: Record<ActivityType, { icon: React.ComponentType<{ classNa
   maintenance: { icon: Wrench, bg: "bg-orange-100 dark:bg-orange-900/30", color: "text-orange-600" },
 };
 
-// Sample activity data
-const SAMPLE_ACTIVITIES: ActivityItem[] = [
-  { id: "a1", type: "payment", title: "Rent received", description: "Sarah Mitchell — Flat 1A — £1,500", timestamp: new Date(Date.now() - 2 * 3600000).toISOString() },
-  { id: "a2", type: "onboarding", title: "Onboarding submitted", description: "Priya Sharma completed their profile", timestamp: new Date(Date.now() - 5 * 3600000).toISOString() },
-  { id: "a3", type: "lease", title: "Lease sent for signature", description: "Room 1 — Riverside HMO", timestamp: new Date(Date.now() - 24 * 3600000).toISOString() },
-  { id: "a4", type: "inspection", title: "Inspection scheduled", description: "Flat 1A — 10 Apr 2025, 10:00–12:00", timestamp: new Date(Date.now() - 2 * 24 * 3600000).toISOString() },
-  { id: "a5", type: "maintenance", title: "Maintenance reported", description: "Boiler issue — Flat 2B", timestamp: new Date(Date.now() - 3 * 24 * 3600000).toISOString() },
-];
+function buildSampleActivities(now: number): ActivityItem[] {
+  return [
+    { id: "a1", type: "payment", title: "Rent received", description: "Sarah Mitchell — Flat 1A — £1,500", timestamp: new Date(now - 2 * 3600000).toISOString() },
+    { id: "a2", type: "onboarding", title: "Onboarding submitted", description: "Priya Sharma completed their profile", timestamp: new Date(now - 5 * 3600000).toISOString() },
+    { id: "a3", type: "lease", title: "Lease sent for signature", description: "Room 1 — Riverside HMO", timestamp: new Date(now - 24 * 3600000).toISOString() },
+    { id: "a4", type: "inspection", title: "Inspection scheduled", description: "Flat 1A — 10 Apr 2025, 10:00–12:00", timestamp: new Date(now - 2 * 24 * 3600000).toISOString() },
+    { id: "a5", type: "maintenance", title: "Maintenance reported", description: "Boiler issue — Flat 2B", timestamp: new Date(now - 3 * 24 * 3600000).toISOString() },
+  ];
+}
 
 interface ActivityTimelineProps {
   activities?: ActivityItem[];
 }
 
-export function ActivityTimeline({ activities = SAMPLE_ACTIVITIES }: ActivityTimelineProps) {
+export function ActivityTimeline({ activities: activitiesProp }: ActivityTimelineProps) {
+  const [sampleActivities, setSampleActivities] = useState<ActivityItem[]>([]);
+
+  useEffect(() => {
+    if (!activitiesProp) {
+      setSampleActivities(buildSampleActivities(Date.now()));
+    }
+  }, [activitiesProp]);
+
+  const activities = activitiesProp ?? sampleActivities;
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -58,7 +70,11 @@ export function ActivityTimeline({ activities = SAMPLE_ACTIVITIES }: ActivityTim
                 <div className="flex-1 min-w-0 pb-1">
                   <p className="text-sm font-medium leading-tight">{item.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
-                  <time className="text-xs text-muted-foreground/70 mt-1 block" dateTime={item.timestamp}>
+                  <time
+                    className="text-xs text-muted-foreground/70 mt-1 block"
+                    dateTime={item.timestamp}
+                    suppressHydrationWarning
+                  >
                     {formatRelative(item.timestamp)}
                   </time>
                 </div>
