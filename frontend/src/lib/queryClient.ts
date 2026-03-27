@@ -1,0 +1,92 @@
+import { QueryClient } from "@tanstack/react-query";
+
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 2, // 2 minutes
+      gcTime: 1000 * 60 * 10, // 10 minutes
+      retry: (failureCount, error: unknown) => {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        // Don't retry on auth errors or not found
+        if (status === 401 || status === 403 || status === 404) return false;
+        return failureCount < 2;
+      },
+      refetchOnWindowFocus: process.env.NODE_ENV === "production",
+    },
+    mutations: {
+      retry: 0,
+    },
+  },
+});
+
+// Query key factories for consistent cache invalidation
+export const queryKeys = {
+  // Dashboard
+  dashboard: {
+    stats: () => ["dashboard", "stats"] as const,
+    occupancy: (months: number) => ["dashboard", "occupancy", months] as const,
+    revenue: (months: number) => ["dashboard", "revenue", months] as const,
+    cashFlow: (months: number) => ["dashboard", "cashflow", months] as const,
+  },
+  // Properties
+  properties: {
+    all: () => ["properties"] as const,
+    list: (params?: object) => ["properties", "list", params] as const,
+    detail: (id: string) => ["properties", id] as const,
+    units: (propertyId: string, params?: object) =>
+      ["properties", propertyId, "units", params] as const,
+    rules: (propertyId: string) =>
+      ["properties", propertyId, "rules"] as const,
+  },
+  // Tenants
+  tenants: {
+    all: () => ["tenants"] as const,
+    list: (params?: object) => ["tenants", "list", params] as const,
+    detail: (id: string) => ["tenants", id] as const,
+    documents: (tenantId: string) =>
+      ["tenants", tenantId, "documents"] as const,
+    onboarding: (token: string) =>
+      ["tenants", "onboarding", token] as const,
+  },
+  // Leases
+  leases: {
+    all: () => ["leases"] as const,
+    list: (params?: object) => ["leases", "list", params] as const,
+    detail: (id: string) => ["leases", id] as const,
+    audit: (id: string) => ["leases", id, "audit"] as const,
+  },
+  // Payments
+  payments: {
+    all: () => ["payments"] as const,
+    list: (params?: object) => ["payments", "list", params] as const,
+    detail: (id: string) => ["payments", id] as const,
+    ledger: (tenantId: string) => ["payments", "ledger", tenantId] as const,
+    rentSchedule: (leaseId: string) =>
+      ["payments", "rent-schedule", leaseId] as const,
+    lateFees: (params?: object) =>
+      ["payments", "late-fees", params] as const,
+    deposits: (leaseId: string) =>
+      ["payments", "deposits", leaseId] as const,
+  },
+  // Inspections
+  inspections: {
+    all: () => ["inspections"] as const,
+    list: (params?: object) => ["inspections", "list", params] as const,
+    detail: (id: string) => ["inspections", id] as const,
+  },
+  // Maintenance
+  maintenance: {
+    all: () => ["maintenance"] as const,
+    list: (params?: object) => ["maintenance", "list", params] as const,
+    detail: (id: string) => ["maintenance", id] as const,
+  },
+  // Notifications
+  notifications: {
+    all: () => ["notifications"] as const,
+    list: (params?: object) =>
+      ["notifications", "list", params] as const,
+    templates: () => ["notifications", "templates"] as const,
+    template: (id: string) => ["notifications", "templates", id] as const,
+    stats: () => ["notifications", "stats"] as const,
+  },
+} as const;
