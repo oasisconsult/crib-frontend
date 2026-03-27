@@ -116,7 +116,7 @@ export default function PropertiesPage() {
                   <div className="space-y-0.5 col-span-2">
                     <p className="text-xs text-muted-foreground">Monthly Revenue</p>
                     <p className="font-semibold text-base">
-                      {formatCurrency(property.monthlyRevenue, "KES")}
+                      {formatCurrency(property.monthlyRevenue, "UGX")}
                     </p>
                   </div>
                 </div>

@@ -4,18 +4,18 @@ import { parsePhoneNumber, CountryCode } from "libphonenumber-js";
 // ─── Currency ─────────────────────────────────────────────────────────────────
 export function formatCurrency(
   amount: number,
-  currency = "GBP",
-  locale = "en-GB",
+  currency = "UGX",
+  locale = "en-UG",
 ): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 0,
   }).format(amount);
 }
 
-export function formatCurrencyCompact(amount: number, currency = "GBP"): string {
+export function formatCurrencyCompact(amount: number, currency = "UGX"): string {
   if (amount >= 1_000_000) {
     return `${formatCurrency(amount / 1_000_000, currency)}M`;
   }

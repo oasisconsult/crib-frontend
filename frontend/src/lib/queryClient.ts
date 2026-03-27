@@ -1,16 +1,20 @@
 import { QueryClient } from "@tanstack/react-query";
 
+const isMock = process.env.NEXT_PUBLIC_MOCK_API === "true";
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 2, // 2 minutes
       gcTime: 1000 * 60 * 10, // 10 minutes
-      retry: (failureCount, error: unknown) => {
+      // In mock mode requests are instant — no point retrying.
+      // In production, retry once on transient errors but never on 4xx.
+      retry: isMock ? false : (failureCount, error: unknown) => {
         const status = (error as { response?: { status?: number } })?.response?.status;
-        // Don't retry on auth errors or not found
         if (status === 401 || status === 403 || status === 404) return false;
-        return failureCount < 2;
+        return failureCount < 1;
       },
+      retryDelay: 0,
       refetchOnWindowFocus: process.env.NODE_ENV === "production",
     },
     mutations: {

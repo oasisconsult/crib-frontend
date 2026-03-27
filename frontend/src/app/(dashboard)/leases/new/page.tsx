@@ -19,7 +19,7 @@ const schema = z.object({
   startDate: z.string().min(1, "Start date required"),
   endDate: z.string().min(1, "End date required"),
   monthlyRent: z.coerce.number().positive("Must be positive"),
-  currency: z.string().default("KES"),
+  currency: z.string().default("UGX"),
   depositAmount: z.coerce.number().min(0),
 });
 
@@ -186,10 +186,10 @@ export default function NewLeasePage() {
               <select
                 id="currency"
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                defaultValue="KES"
+                defaultValue="UGX"
                 {...register("currency")}
               >
-                {["KES", "USD", "EUR", "GBP", "NGN", "ZAR", "GHS"].map((c) => (
+                {["UGX", "USD", "EUR", "GBP"].map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>

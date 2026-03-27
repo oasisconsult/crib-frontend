@@ -112,14 +112,14 @@ export default function PropertyDetailPage({ params }: Props) {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Monthly Revenue</span>
               <span className="font-semibold">
-                {formatCurrency(property.monthlyRevenue, "KES")}
+                {formatCurrency(property.monthlyRevenue, "UGX")}
               </span>
             </div>
             <Separator />
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Expected Monthly</span>
               <span className="font-semibold">
-                {formatCurrency(property.monthlyRevenue, "KES")}
+                {formatCurrency(property.monthlyRevenue, "UGX")}
               </span>
             </div>
             <Separator />

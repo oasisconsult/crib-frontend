@@ -21,10 +21,10 @@ export default function AnalyticsPage() {
   const { data: cashFlow } = useCashFlowData();
 
   const kpis = [
-    { label: "Total Revenue (MTD)", value: formatCurrency(stats?.monthlyRevenue ?? 0, "KES"), change: "+12%" },
+    { label: "Total Revenue (MTD)", value: formatCurrency(stats?.monthlyRevenue ?? 0, "UGX"), change: "+12%" },
     { label: "Collection Rate", value: `${stats?.collectionRate ?? 0}%`, change: "+3%" },
     { label: "Occupancy Rate", value: `${stats?.occupancyRate ?? 0}%`, change: "+1.5%" },
-    { label: "Overdue Amount", value: formatCurrency(stats?.overdueAmount ?? 0, "KES"), change: "-8%", negative: true },
+    { label: "Overdue Amount", value: formatCurrency(stats?.overdueAmount ?? 0, "UGX"), change: "-8%", negative: true },
     { label: "Active Tenants", value: stats?.activeTenants ?? 0, change: "+2" },
     { label: "Open Maintenance", value: stats?.openMaintenanceIssues ?? 0, change: "-1" },
   ];
@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
-                  formatter={(value: number) => [formatCurrency(value, "KES"), ""]}
+                  formatter={(value: number) => [formatCurrency(value, "UGX"), ""]}
                   contentStyle={{ fontSize: 12 }}
                 />
                 <Legend />

@@ -80,21 +80,21 @@ export default function PaymentsPage() {
         {[
           {
             label: "Expected",
-            value: formatCurrency((stats?.monthlyRevenue ?? 0) / (stats?.collectionRate ?? 100) * 100, "KES"),
+            value: formatCurrency((stats?.monthlyRevenue ?? 0) / (stats?.collectionRate ?? 100) * 100, "UGX"),
             icon: TrendingUp,
             color: "text-blue-600",
             bg: "bg-blue-50 dark:bg-blue-950/30",
           },
           {
             label: "Collected",
-            value: formatCurrency(stats?.monthlyRevenue ?? 0, "KES"),
+            value: formatCurrency(stats?.monthlyRevenue ?? 0, "UGX"),
             icon: CheckCircle2,
             color: "text-emerald-600",
             bg: "bg-emerald-50 dark:bg-emerald-950/30",
           },
           {
             label: "Overdue",
-            value: formatCurrency(stats?.overdueAmount ?? 0, "KES"),
+            value: formatCurrency(stats?.overdueAmount ?? 0, "UGX"),
             icon: AlertTriangle,
             color: "text-red-600",
             bg: "bg-red-50 dark:bg-red-950/30",
