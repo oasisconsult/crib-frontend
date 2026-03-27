@@ -22,8 +22,8 @@ const mockRentSchedules = mockLeases
     unitId: l.unitId,
     periodStart: "2026-03-01",
     periodEnd: "2026-03-31",
-    dueDate: `2026-03-0${(l as any).startDate?.split("-")[2] ?? "1"}`,
-    amount: l.monthlyRent,
+    dueDate: `2026-03-01`,
+    amount: (l as any).terms?.monthlyRent ?? 0,
     currency: "UGX",
     generatedAt: "2026-02-20T00:00:00Z",
   }));
