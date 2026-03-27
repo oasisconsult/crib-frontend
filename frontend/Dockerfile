@@ -1,15 +1,15 @@
-# ─── Base ─────────────────────────────────────────────────────────────────────
+# ─── Base ─────────────────────────────────────────────────────────────
 FROM node:20-alpine AS base
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# ─── Dependencies ─────────────────────────────────────────────────────────────
+# ─── Dependencies ─────────────────────────────────────────────────────
 FROM base AS deps
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json package-lock.json ./
+RUN npm install    # use install instead of ci for dev
 
-# ─── Development ──────────────────────────────────────────────────────────────
+# ─── Development ─────────────────────────────────────────────────────
 FROM base AS development
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -17,13 +17,13 @@ EXPOSE 3000
 ENV PORT=3000
 CMD ["npm", "run", "dev"]
 
-# ─── Builder ──────────────────────────────────────────────────────────────────
+# ─── Builder ─────────────────────────────────────────────────────────
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# ─── Production ───────────────────────────────────────────────────────────────
+# ─── Production ──────────────────────────────────────────────────────
 FROM base AS production
 ENV NODE_ENV=production
 
