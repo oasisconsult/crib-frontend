@@ -74,6 +74,14 @@ export function useDeleteProperty() {
 }
 
 // Units
+export function useUnit(propertyId: string, unitId: string) {
+  return useQuery({
+    queryKey: [...queryKeys.properties.units(propertyId), unitId],
+    queryFn: () => propertiesApi.getUnit(propertyId, unitId),
+    enabled: !!propertyId && !!unitId,
+  });
+}
+
 export function useUnits(propertyId: string, params?: QueryParams) {
   return useQuery({
     queryKey: queryKeys.properties.units(propertyId, params),
