@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   async rewrites() {
+    // Skip proxy in mock mode — MSW handles all /api/v1/* in the browser.
+    // Avoids ENOTFOUND errors when the backend container isn't running.
+    if (process.env.NEXT_PUBLIC_MOCK_API === "true") return [];
+
     const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8000";
     return [
       {

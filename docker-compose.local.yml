@@ -21,7 +21,9 @@ services:
       - .env.local
     environment:
       NODE_ENV: development
-      BACKEND_URL: "http://backend:8000"
+      # BACKEND_URL is only needed when the backend service is running.
+      # Override here (or in .env.local) when connecting to a real backend.
+      # Leave unset when NEXT_PUBLIC_MOCK_API=true — the rewrite is skipped entirely.
     # depends_on:
     # - backend
     networks:
