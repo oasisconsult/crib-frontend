@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import { mockInspections, mockMaintenance } from "../data";
 import { paginate } from "./properties";
 
-const BASE = "/api/v1";
+const BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
 const INSPECTION_EVENT_STATE_MAP: Record<string, string> = {
   SCHEDULE: "scheduled",

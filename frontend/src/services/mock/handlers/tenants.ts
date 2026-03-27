@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import { mockTenants } from "../data";
 import { paginate } from "./properties";
 
-const BASE = "/api/v1";
+const BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
 export const tenantHandlers = [
   // ─── List ────────────────────────────────────────────────────────────────────

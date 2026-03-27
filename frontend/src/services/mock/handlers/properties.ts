@@ -1,7 +1,8 @@
 import { http, HttpResponse } from "msw";
 import { mockProperties, mockUnits } from "../data";
 
-const BASE = "/api/v1";
+// Match whatever origin axios is configured to use so MSW intercepts correctly.
+const BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
 function paginate<T>(items: T[], params: URLSearchParams) {
   const page = parseInt(params.get("page") ?? "1");

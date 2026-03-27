@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import { mockLeases } from "../data";
 import { paginate } from "./properties";
 
-const BASE = "/api/v1";
+const BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
 const EVENT_STATE_MAP: Record<string, string> = {
   LEASE_SENT: "pending",

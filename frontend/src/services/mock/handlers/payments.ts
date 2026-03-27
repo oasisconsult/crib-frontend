@@ -9,7 +9,7 @@ import {
 } from "../data";
 import { paginate } from "./properties";
 
-const BASE = "/api/v1";
+const BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
 // Derived mock rent schedules from leases – one entry per active lease
 const mockRentSchedules = mockLeases
