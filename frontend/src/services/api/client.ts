@@ -1,6 +1,8 @@
 import axios, { type AxiosInstance, type AxiosError } from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Empty string = same-origin, routed through Next.js rewrites proxy → no CORS.
+// Set NEXT_PUBLIC_API_URL only if you need to bypass the proxy (e.g. SSR direct call).
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 function createApiClient(): AxiosInstance {
   const client = axios.create({

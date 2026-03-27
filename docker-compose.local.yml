@@ -21,6 +21,7 @@ services:
       - .env.local
     environment:
       NODE_ENV: development
+      BACKEND_URL: "http://backend:8000"
     # depends_on:
     # - backend
     networks:
