@@ -150,10 +150,3 @@ export function Sidebar() {
   );
 }
 
-// Re-export Tooltip to avoid circular dep issue
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
