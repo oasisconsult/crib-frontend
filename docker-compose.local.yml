@@ -1,7 +1,6 @@
-# version: "3.9"
+version: "3.9"
 # ─── Local development (single developer machine) ─────────────────────────────
 # Usage: docker compose -f docker-compose.local.yml --env-file .env.local up
-
 services:
   frontend:
     build:
@@ -12,7 +11,7 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      # - /app/node_modules
       - /app/.next
 
     env_file:
