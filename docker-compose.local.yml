@@ -11,8 +11,11 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend:/app
-      - /app/node_modules
+      - /app/node_modules   # anonymous volume keeps container's node_modules
       - /app/.next
+    # If Docker build fails due to network issues, run:
+    #   cd frontend && npm install && cd ..
+    # then rebuild — node_modules will be copied into the image layer
 
     env_file:
       - .env.local

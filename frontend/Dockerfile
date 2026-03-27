@@ -7,7 +7,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # ─── Dependencies ─────────────────────────────────────────────────────
 FROM base AS deps
 COPY package.json package-lock.json ./
-RUN npm install    # use install instead of ci for dev
+# Use --prefer-offline and retry to handle flaky network in Docker
+RUN npm install --prefer-offline --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000 --fetch-retries=5
 
 # ─── Development ─────────────────────────────────────────────────────
 FROM base AS development
