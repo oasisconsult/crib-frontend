@@ -71,6 +71,24 @@ async def make_property(db: AsyncSession, org: Organisation, **kwargs) -> Proper
     return prop
 
 
+async def make_tenant(db: AsyncSession, org: Organisation, **kwargs):
+    from app.models.tenant import OnboardingState, Tenant, TenantStatus
+    tenant = Tenant(
+        organisation_id=org.id,
+        first_name=kwargs.get("first_name", "Test"),
+        last_name=kwargs.get("last_name", "Tenant"),
+        email=kwargs.get("email", f"tenant-{uuid.uuid4().hex[:6]}@test.local"),
+        phone=kwargs.get("phone", "+256700000001"),
+        status=kwargs.get("status", TenantStatus.inactive),
+        onboarding_state=kwargs.get("onboarding_state", OnboardingState.invited),
+        onboarding_token=kwargs.get("onboarding_token", None),
+        tags=kwargs.get("tags", []),
+    )
+    db.add(tenant)
+    await db.flush()
+    return tenant
+
+
 async def make_unit(db: AsyncSession, prop: Property, **kwargs) -> Unit:
     unit = Unit(
         property_id=prop.id,

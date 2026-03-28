@@ -1,0 +1,201 @@
+"""
+Tenants REST API — 16 endpoints.
+
+Route order matters: /invite, /onboarding/:token must be registered before /:id
+to prevent FastAPI matching those path segments as UUID tenant IDs.
+
+Endpoints:
+  POST   /tenants/invite
+  GET    /tenants/onboarding/{token}
+  POST   /tenants/onboarding/{token}/submit
+  GET    /tenants
+  GET    /tenants/{id}
+  PUT    /tenants/{id}
+  DELETE /tenants/{id}
+  PATCH  /tenants/{id}/approve
+  PATCH  /tenants/{id}/reject
+  GET    /tenants/{id}/documents
+  POST   /tenants/{id}/documents
+  PATCH  /tenants/{id}/documents/{doc_id}/verify
+  DELETE /tenants/{id}/documents/{doc_id}
+  POST   /tenants/{id}/anonymise
+"""
+
+import uuid
+
+from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import CurrentUser, get_current_user, require_org_access
+from app.core.database import get_db
+from app.schemas.tenant import (
+    OnboardingResponse,
+    TenantDocumentCreate,
+    TenantDocumentOut,
+    TenantInviteCreate,
+    TenantInviteOut,
+    TenantOnboardingSubmit,
+    TenantOut,
+    TenantUpdate,
+)
+from app.services import tenant_service as svc
+
+router = APIRouter(prefix="/tenants", tags=["tenants"])
+
+_read  = Depends(require_org_access(allow_tenant_own=True))
+_write = Depends(require_org_access(allow_tenant_own=False))
+
+
+# ── Invite ────────────────────────────────────────────────────────────────────
+
+@router.post("/invite", response_model=TenantInviteOut, status_code=status.HTTP_201_CREATED)
+async def invite_tenant(
+    body: TenantInviteCreate,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.invite_tenant(body, current_user.org_id, db)
+
+
+# ── Onboarding (public — no auth required) ────────────────────────────────────
+
+@router.get("/onboarding/{token}", response_model=OnboardingResponse)
+async def get_onboarding(token: str, db: AsyncSession = Depends(get_db)):
+    result = await svc.get_onboarding_by_token(token, db)
+    return result
+
+
+@router.post("/onboarding/{token}/submit", response_model=TenantOut)
+async def submit_onboarding(
+    token: str,
+    body: TenantOnboardingSubmit,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.submit_onboarding(token, body, db)
+
+
+# ── Tenant CRUD ───────────────────────────────────────────────────────────────
+
+@router.get("", response_model=dict)
+async def list_tenants(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
+    search: str | None = Query(None),
+    onboarding_state: str | None = Query(None, alias="onboardingState"),
+    tenant_status: str | None = Query(None, alias="status"),
+    current_user: CurrentUser = _read,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.list_tenants(
+        current_user.org_id, db, page, page_size, search, onboarding_state, tenant_status
+    )
+
+
+@router.get("/{tenant_id}", response_model=TenantOut)
+async def get_tenant(
+    tenant_id: uuid.UUID,
+    current_user: CurrentUser = _read,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.get_tenant(tenant_id, current_user.org_id, db)
+
+
+@router.put("/{tenant_id}", response_model=TenantOut)
+async def update_tenant(
+    tenant_id: uuid.UUID,
+    body: TenantUpdate,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.update_tenant(tenant_id, body, current_user.org_id, db)
+
+
+@router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_tenant(
+    tenant_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    await svc.delete_tenant(tenant_id, current_user.org_id, db)
+
+
+# ── Approve / Reject ──────────────────────────────────────────────────────────
+
+@router.patch("/{tenant_id}/approve", response_model=TenantOut)
+async def approve_tenant(
+    tenant_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.approve_tenant(tenant_id, current_user.org_id, db)
+
+
+class RejectBody(BaseModel):
+    reason: str = "Application did not meet requirements."
+
+
+@router.patch("/{tenant_id}/reject", response_model=TenantOut)
+async def reject_tenant(
+    tenant_id: uuid.UUID,
+    body: RejectBody,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.reject_tenant(tenant_id, body.reason, current_user.org_id, db)
+
+
+# ── Documents ─────────────────────────────────────────────────────────────────
+
+@router.get("/{tenant_id}/documents", response_model=list[TenantDocumentOut])
+async def list_documents(
+    tenant_id: uuid.UUID,
+    current_user: CurrentUser = _read,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.list_documents(tenant_id, current_user.org_id, db)
+
+
+@router.post(
+    "/{tenant_id}/documents",
+    response_model=TenantDocumentOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_document(
+    tenant_id: uuid.UUID,
+    body: TenantDocumentCreate,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.upload_document(tenant_id, body, current_user.org_id, db)
+
+
+@router.patch("/{tenant_id}/documents/{document_id}/verify", response_model=TenantDocumentOut)
+async def verify_document(
+    tenant_id: uuid.UUID,
+    document_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.verify_document(tenant_id, document_id, current_user.org_id, db)
+
+
+@router.delete("/{tenant_id}/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    tenant_id: uuid.UUID,
+    document_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    await svc.delete_document(tenant_id, document_id, current_user.org_id, db)
+
+
+# ── GDPR ──────────────────────────────────────────────────────────────────────
+
+@router.post("/{tenant_id}/anonymise", status_code=status.HTTP_204_NO_CONTENT)
+async def anonymise_tenant(
+    tenant_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    await svc.anonymise_tenant(tenant_id, current_user.org_id, db)

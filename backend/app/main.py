@@ -91,12 +91,13 @@ def create_app() -> FastAPI:
         )
 
     # ── Routers ───────────────────────────────────────────────────────────────
-    from app.api.v1 import health, me, organisations, properties
+    from app.api.v1 import health, me, organisations, properties, tenants
 
     application.include_router(health.router)
     application.include_router(me.router, prefix=settings.api_prefix)
     application.include_router(organisations.router, prefix=settings.api_prefix)
     application.include_router(properties.router, prefix=settings.api_prefix)
+    application.include_router(tenants.router, prefix=settings.api_prefix)
 
     return application
 

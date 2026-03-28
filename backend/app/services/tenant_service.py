@@ -1,0 +1,464 @@
+"""
+Business logic for Tenants, TenantDocuments, and TenantInvites.
+
+Key design decisions:
+  - Invite flow: invite creates a Tenant row in state=invited + TenantInvite with a
+    secure token. The tenant follows the link, submits details → state=submitted.
+    Manager approves → state=approved → activated (when lease goes active).
+  - GDPR anonymise: replaces all PII with anonymised values, marks anonymised_at.
+    Does NOT delete the row — audit trail is preserved.
+  - All tenant queries are org-scoped: tenant.organisation_id == caller's org_id.
+"""
+
+from __future__ import annotations
+
+import secrets
+import uuid
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from fastapi import HTTPException, status
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.core.state_machine import onboarding_sm
+from app.models.tenant import (
+    IdDocumentType,
+    InviteStatus,
+    OnboardingState,
+    Tenant,
+    TenantDocument,
+    TenantInvite,
+    TenantStatus,
+)
+from app.schemas.tenant import (
+    TenantDocumentCreate,
+    TenantDocumentOut,
+    TenantInviteCreate,
+    TenantInviteOut,
+    TenantOnboardingSubmit,
+    TenantOut,
+    TenantUpdate,
+)
+
+INVITE_EXPIRY_HOURS = 72
+
+
+# ── Serialisers ───────────────────────────────────────────────────────────────
+
+def _doc_out(doc: TenantDocument) -> TenantDocumentOut:
+    return TenantDocumentOut(
+        id=str(doc.id),
+        tenant_id=str(doc.tenant_id),
+        type=doc.type.value,
+        name=doc.name,
+        url=doc.url,
+        mime_type=doc.mime_type,
+        size_bytes=doc.size_bytes,
+        verified=doc.verified,
+        uploaded_at=doc.uploaded_at.isoformat(),
+        expires_at=doc.expires_at.isoformat() if doc.expires_at else None,
+    )
+
+
+def _invite_out(invite: TenantInvite) -> TenantInviteOut:
+    return TenantInviteOut(
+        id=str(invite.id),
+        landlord_id=str(invite.organisation_id),
+        property_id=str(invite.property_id) if invite.property_id else None,
+        unit_id=str(invite.unit_id) if invite.unit_id else None,
+        email=invite.email,
+        name=invite.name,
+        token=invite.token,
+        status=invite.status.value,
+        sent_at=invite.sent_at.isoformat(),
+        expires_at=invite.expires_at.isoformat(),
+    )
+
+
+def _tenant_out(tenant: Tenant) -> TenantOut:
+    return TenantOut(
+        id=str(tenant.id),
+        user_id=tenant.logto_user_id,
+        landlord_id=str(tenant.organisation_id),
+        first_name=tenant.first_name,
+        last_name=tenant.last_name,
+        email=tenant.email,
+        phone=tenant.phone,
+        date_of_birth=tenant.date_of_birth,
+        nationality=tenant.nationality,
+        status=tenant.status.value,
+        onboarding_state=tenant.onboarding_state.value,
+        onboarding_token=tenant.onboarding_token,
+        onboarding_completed_at=(
+            tenant.onboarding_completed_at.isoformat()
+            if tenant.onboarding_completed_at else None
+        ),
+        rejection_reason=tenant.rejection_reason,
+        current_property_id=str(tenant.current_property_id) if tenant.current_property_id else None,
+        current_unit_id=str(tenant.current_unit_id) if tenant.current_unit_id else None,
+        current_lease_id=str(tenant.current_lease_id) if tenant.current_lease_id else None,
+        emergency_contact=tenant.emergency_contact,
+        notes=tenant.notes,
+        tags=tenant.tags or [],
+        gdpr_consent_at=tenant.gdpr_consent_at.isoformat() if tenant.gdpr_consent_at else None,
+        data_retention_until=(
+            tenant.data_retention_until.isoformat()
+            if tenant.data_retention_until else None
+        ),
+        documents=[_doc_out(d) for d in (tenant.documents or [])],
+        created_at=tenant.created_at.isoformat(),
+        updated_at=tenant.updated_at.isoformat(),
+    )
+
+
+# ── Internal helpers ──────────────────────────────────────────────────────────
+
+async def _get_tenant(
+    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> Tenant:
+    result = await db.execute(
+        select(Tenant)
+        .options(selectinload(Tenant.documents))
+        .where(Tenant.id == tenant_id, Tenant.organisation_id == org_id)
+    )
+    tenant = result.scalar_one_or_none()
+    if not tenant:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
+    return tenant
+
+
+# ── Tenant CRUD ───────────────────────────────────────────────────────────────
+
+async def list_tenants(
+    org_id: uuid.UUID,
+    db: AsyncSession,
+    page: int = 1,
+    page_size: int = 20,
+    search: str | None = None,
+    onboarding_state: str | None = None,
+    tenant_status: str | None = None,
+) -> dict:
+    q = (
+        select(Tenant)
+        .options(selectinload(Tenant.documents))
+        .where(Tenant.organisation_id == org_id)
+    )
+    if search:
+        term = f"%{search}%"
+        q = q.where(
+            Tenant.first_name.ilike(term)
+            | Tenant.last_name.ilike(term)
+            | Tenant.email.ilike(term)
+        )
+    if onboarding_state:
+        q = q.where(Tenant.onboarding_state == onboarding_state)
+    if tenant_status:
+        q = q.where(Tenant.status == tenant_status)
+
+    total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
+    q = q.order_by(Tenant.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(q)
+    tenants = result.scalars().all()
+
+    return {
+        "data": [_tenant_out(t) for t in tenants],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "hasNext": (page * page_size) < total,
+    }
+
+
+async def get_tenant(
+    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> TenantOut:
+    tenant = await _get_tenant(tenant_id, org_id, db)
+    return _tenant_out(tenant)
+
+
+async def update_tenant(
+    tenant_id: uuid.UUID, body: TenantUpdate, org_id: uuid.UUID, db: AsyncSession
+) -> TenantOut:
+    tenant = await _get_tenant(tenant_id, org_id, db)
+    data = body.model_dump(exclude_none=True)
+    if "emergency_contact" in data and body.emergency_contact:
+        data["emergency_contact"] = body.emergency_contact.model_dump(by_alias=True)
+    for key, val in data.items():
+        setattr(tenant, key, val)
+    await db.flush()
+    return _tenant_out(tenant)
+
+
+async def delete_tenant(
+    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> None:
+    tenant = await _get_tenant(tenant_id, org_id, db)
+    await db.delete(tenant)
+    await db.flush()
+
+
+# ── Invite flow ───────────────────────────────────────────────────────────────
+
+async def invite_tenant(
+    body: TenantInviteCreate, org_id: uuid.UUID, db: AsyncSession
+) -> TenantInviteOut:
+    now = datetime.now(timezone.utc)
+    token = secrets.token_urlsafe(48)
+
+    # Parse optional UUIDs
+    prop_id = uuid.UUID(body.property_id) if body.property_id else None
+    unit_id = uuid.UUID(body.unit_id) if body.unit_id else None
+
+    # Split name into first/last (best-effort)
+    parts = body.name.strip().split(" ", 1)
+    first_name = parts[0]
+    last_name = parts[1] if len(parts) > 1 else ""
+
+    tenant = Tenant(
+        organisation_id=org_id,
+        first_name=first_name,
+        last_name=last_name,
+        email=body.email,
+        status=TenantStatus.inactive,
+        onboarding_state=OnboardingState.invited,
+        onboarding_token=token,
+        current_property_id=prop_id,
+        current_unit_id=unit_id,
+        tags=[],
+    )
+    db.add(tenant)
+    await db.flush()
+
+    invite = TenantInvite(
+        tenant_id=tenant.id,
+        organisation_id=org_id,
+        property_id=prop_id,
+        unit_id=unit_id,
+        email=body.email,
+        name=body.name,
+        token=token,
+        status=InviteStatus.pending,
+        sent_at=now,
+        expires_at=now + timedelta(hours=INVITE_EXPIRY_HOURS),
+    )
+    db.add(invite)
+    await db.flush()
+
+    # TODO Sprint 8: queue notification to send invite email/SMS
+
+    return _invite_out(invite)
+
+
+async def get_onboarding_by_token(token: str, db: AsyncSession) -> dict:
+    result = await db.execute(
+        select(TenantInvite).where(TenantInvite.token == token)
+    )
+    invite = result.scalar_one_or_none()
+    if not invite:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired token")
+
+    now = datetime.now(timezone.utc)
+    if invite.expires_at.replace(tzinfo=timezone.utc) < now:
+        invite.status = InviteStatus.expired
+        await db.flush()
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invite token has expired")
+
+    tenant_result = await db.execute(
+        select(Tenant)
+        .options(selectinload(Tenant.documents))
+        .where(Tenant.id == invite.tenant_id)
+    )
+    tenant = tenant_result.scalar_one()
+
+    # Transition to started if still in invited state
+    if tenant.onboarding_state == OnboardingState.invited:
+        tenant.onboarding_state = onboarding_sm.transition(
+            tenant.onboarding_state, "ONBOARDING_STARTED"
+        )
+        await db.flush()
+
+    return {"tenant": _tenant_out(tenant), "invite": _invite_out(invite)}
+
+
+async def submit_onboarding(
+    token: str, body: TenantOnboardingSubmit, db: AsyncSession
+) -> TenantOut:
+    result = await db.execute(
+        select(TenantInvite).where(TenantInvite.token == token)
+    )
+    invite = result.scalar_one_or_none()
+    if not invite:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid token")
+
+    tenant_result = await db.execute(
+        select(Tenant)
+        .options(selectinload(Tenant.documents))
+        .where(Tenant.id == invite.tenant_id)
+    )
+    tenant = tenant_result.scalar_one()
+
+    # Update personal details
+    tenant.first_name = body.first_name
+    tenant.last_name = body.last_name
+    tenant.email = body.email
+    tenant.phone = body.phone
+    tenant.date_of_birth = body.date_of_birth
+    tenant.nationality = body.nationality
+    if body.emergency_contact:
+        tenant.emergency_contact = body.emergency_contact.model_dump(by_alias=True)
+
+    # GDPR consent
+    if body.gdpr_consent:
+        tenant.gdpr_consent_at = datetime.now(timezone.utc)
+        # Retain data for 7 years from consent
+        tenant.data_retention_until = datetime.now(timezone.utc).replace(
+            year=datetime.now(timezone.utc).year + 7
+        )
+
+    # Advance state machine
+    tenant.onboarding_state = onboarding_sm.transition_or_422(
+        tenant.onboarding_state, "ONBOARDING_COMPLETED"
+    )
+    tenant.onboarding_completed_at = datetime.now(timezone.utc)
+    invite.status = InviteStatus.accepted
+    await db.flush()
+
+    return _tenant_out(tenant)
+
+
+# ── Approve / Reject ──────────────────────────────────────────────────────────
+
+async def approve_tenant(
+    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> TenantOut:
+    tenant = await _get_tenant(tenant_id, org_id, db)
+    tenant.onboarding_state = onboarding_sm.transition_or_422(
+        tenant.onboarding_state, "TENANT_APPROVED"
+    )
+    tenant.status = TenantStatus.active
+    await db.flush()
+    return _tenant_out(tenant)
+
+
+async def reject_tenant(
+    tenant_id: uuid.UUID, reason: str, org_id: uuid.UUID, db: AsyncSession
+) -> TenantOut:
+    tenant = await _get_tenant(tenant_id, org_id, db)
+    tenant.onboarding_state = onboarding_sm.transition_or_422(
+        tenant.onboarding_state, "TENANT_REJECTED"
+    )
+    tenant.rejection_reason = reason
+    await db.flush()
+    return _tenant_out(tenant)
+
+
+# ── Documents ─────────────────────────────────────────────────────────────────
+
+async def list_documents(
+    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> list[TenantDocumentOut]:
+    await _get_tenant(tenant_id, org_id, db)  # ownership check
+    result = await db.execute(
+        select(TenantDocument)
+        .where(TenantDocument.tenant_id == tenant_id)
+        .order_by(TenantDocument.uploaded_at.desc())
+    )
+    return [_doc_out(d) for d in result.scalars().all()]
+
+
+async def upload_document(
+    tenant_id: uuid.UUID, body: TenantDocumentCreate,
+    org_id: uuid.UUID, db: AsyncSession
+) -> TenantDocumentOut:
+    await _get_tenant(tenant_id, org_id, db)
+
+    expires_at = None
+    if body.expires_at:
+        from dateutil.parser import parse as parse_dt
+        expires_at = parse_dt(body.expires_at).replace(tzinfo=timezone.utc)
+
+    doc = TenantDocument(
+        tenant_id=tenant_id,
+        type=body.type,
+        name=body.name,
+        url=body.url,
+        mime_type=body.mime_type,
+        size_bytes=body.size_bytes,
+        verified=False,
+        uploaded_at=datetime.now(timezone.utc),
+        expires_at=expires_at,
+    )
+    db.add(doc)
+    await db.flush()
+    return _doc_out(doc)
+
+
+async def verify_document(
+    tenant_id: uuid.UUID, document_id: uuid.UUID,
+    org_id: uuid.UUID, db: AsyncSession
+) -> TenantDocumentOut:
+    await _get_tenant(tenant_id, org_id, db)
+    result = await db.execute(
+        select(TenantDocument).where(
+            TenantDocument.id == document_id,
+            TenantDocument.tenant_id == tenant_id,
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    doc.verified = not doc.verified
+    await db.flush()
+    return _doc_out(doc)
+
+
+async def delete_document(
+    tenant_id: uuid.UUID, document_id: uuid.UUID,
+    org_id: uuid.UUID, db: AsyncSession
+) -> None:
+    await _get_tenant(tenant_id, org_id, db)
+    result = await db.execute(
+        select(TenantDocument).where(
+            TenantDocument.id == document_id,
+            TenantDocument.tenant_id == tenant_id,
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+    await db.delete(doc)
+    await db.flush()
+
+
+# ── GDPR anonymisation ────────────────────────────────────────────────────────
+
+async def anonymise_tenant(
+    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> None:
+    """
+    GDPR right to erasure — replaces all PII with anonymised placeholders.
+    The row is retained for audit/financial history; all identifying data is wiped.
+    """
+    tenant = await _get_tenant(tenant_id, org_id, db)
+
+    anon_id = str(tenant.id)[:8]
+    tenant.first_name = "Anonymised"
+    tenant.last_name = anon_id
+    tenant.email = f"anonymised-{anon_id}@deleted.invalid"
+    tenant.phone = None
+    tenant.date_of_birth = None
+    tenant.nationality = None
+    tenant.emergency_contact = None
+    tenant.notes = None
+    tenant.logto_user_id = None
+    tenant.onboarding_token = None
+    tenant.anonymised_at = datetime.now(timezone.utc)
+    tenant.status = TenantStatus.inactive
+
+    # Delete all documents (PII files)
+    for doc in tenant.documents:
+        await db.delete(doc)
+
+    await db.flush()
