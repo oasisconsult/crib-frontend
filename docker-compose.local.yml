@@ -124,6 +124,27 @@ services:
     networks:
       - crib-local
 
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info", "-Q", "default,notifications,payments"]
+    volumes:
+      - ./backend:/app
+    env_file:
+      - .env.local
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+      MINIO_ENDPOINT: "minio:9000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - crib-local
+
   minio:
     image: minio/minio:latest
     ports:
