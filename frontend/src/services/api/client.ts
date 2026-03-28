@@ -13,13 +13,20 @@ function createApiClient(): AxiosInstance {
     },
   });
 
-  // ─── Request interceptor: attach access token ────────────────────────────
+  // ─── Request interceptor: attach access token / dev user ────────────────
   client.interceptors.request.use(
     (config) => {
       if (typeof window !== "undefined") {
         const token = sessionStorage.getItem("crib:access_token");
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+        }
+        // In mock mode, tell the MSW handler which dev user is active
+        if (process.env.NEXT_PUBLIC_MOCK_API === "true") {
+          const devUserId = localStorage.getItem("crib:dev_user_id");
+          if (devUserId) {
+            config.headers["X-Dev-User-Id"] = devUserId;
+          }
         }
       }
       return config;
