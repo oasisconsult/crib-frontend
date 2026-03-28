@@ -9,7 +9,6 @@ Strategy:
     (no permanent state between tests)
 """
 
-import asyncio
 from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -30,13 +29,6 @@ TEST_DATABASE_URL = settings.database_url.replace(
     f"/{settings.database_url.rsplit('/', 1)[-1]}",
     "/crib_test",
 )
-
-
-# ── Event loop ────────────────────────────────────────────────────────────────
-
-@pytest.fixture(scope="session")
-def event_loop_policy():
-    return asyncio.DefaultEventLoopPolicy()
 
 
 # ── Database ──────────────────────────────────────────────────────────────────
@@ -60,6 +52,10 @@ async def test_engine():
             "DO $$ BEGIN CREATE TYPE property_status_enum AS ENUM ('active','inactive','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE unit_type_enum AS ENUM ('single','double','studio','ensuite','shared'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE unit_status_enum AS ENUM ('available','occupied','reserved','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE tenant_status_enum AS ENUM ('active','inactive','blacklisted'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE onboarding_state_enum AS ENUM ('invited','started','submitted','approved','activated','rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE id_document_type_enum AS ENUM ('passport','national_id','driving_licence','residence_permit','proof_of_income','reference_letter','bank_statement','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE invite_status_enum AS ENUM ('pending','accepted','expired'); EXCEPTION WHEN duplicate_object THEN null; END $$",
         ]:
             await conn.execute(sa.text(stmt))
 
