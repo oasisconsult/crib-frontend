@@ -1,4 +1,4 @@
-export type UserRole = "superadmin" | "landlord" | "tenant";
+export type UserRole = "superadmin" | "landlord" | "manager" | "tenant";
 
 export type UserStatus = "active" | "inactive" | "suspended";
 

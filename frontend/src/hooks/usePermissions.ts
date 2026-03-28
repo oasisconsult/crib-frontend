@@ -15,6 +15,7 @@ export function usePermissions() {
     canAny: (permissions: Parameters<typeof hasAnyPermission>[1]) =>
       hasAnyPermission(role, permissions),
     isLandlord: role === "landlord" || role === "superadmin",
+    isManager: role === "manager",
     isSuperAdmin: role === "superadmin",
     isTenant: role === "tenant",
   };

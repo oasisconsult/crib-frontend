@@ -66,6 +66,13 @@ export const tenantHandlers = [
     return HttpResponse.json({ ...tenant, ...body, updatedAt: new Date().toISOString() });
   }),
 
+  http.patch(`${BASE}/tenants/:id`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const tenant = mockTenants.find((t) => t.id === params.id);
+    if (!tenant) return HttpResponse.json({ code: "NOT_FOUND", message: "Tenant not found" }, { status: 404 });
+    return HttpResponse.json({ ...tenant, ...body, updatedAt: new Date().toISOString() });
+  }),
+
   http.delete(`${BASE}/tenants/:id`, () => new HttpResponse(null, { status: 204 })),
 
   // ─── Approve / Reject ────────────────────────────────────────────────────
