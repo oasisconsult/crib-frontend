@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -12,9 +13,11 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-# NullPool used in test environments; regular pool in prod
+# Parse via make_url so special characters in the password are handled correctly
+_db_url = make_url(settings.database_url)
+
 engine = create_async_engine(
-    settings.database_url,
+    _db_url,
     pool_size=settings.db_pool_size,
     max_overflow=settings.db_max_overflow,
     echo=settings.db_echo,

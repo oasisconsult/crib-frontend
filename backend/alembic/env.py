@@ -13,14 +13,17 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from sqlalchemy.engine.url import make_url
+
 from app.core.config import get_settings
 
 # This is the Alembic Config object
 config = context.config
 settings = get_settings()
 
-# Override sqlalchemy.url with the real DATABASE_URL
-config.set_main_option("sqlalchemy.url", settings.database_url)
+# Use make_url so special characters in the password are properly encoded
+_db_url = make_url(settings.database_url)
+config.set_main_option("sqlalchemy.url", _db_url.render_as_string(hide_password=False))
 
 # Set up Python logging from alembic.ini
 if config.config_file_name is not None:
