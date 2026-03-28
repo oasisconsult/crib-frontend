@@ -13,6 +13,27 @@ export function usePayments(params?: QueryParams) {
   });
 }
 
+export function usePayment(id: string) {
+  return useQuery({
+    queryKey: queryKeys.payments.detail(id),
+    queryFn: () => paymentsApi.get(id),
+    enabled: !!id,
+  });
+}
+
+export function useReconcilePayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => paymentsApi.reconcile(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: queryKeys.payments.detail(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.payments.all() });
+      toast.success("Payment reconciled");
+    },
+    onError: () => toast.error("Failed to reconcile payment"),
+  });
+}
+
 export function useRentSchedule(leaseId: string) {
   return useQuery({
     queryKey: queryKeys.payments.rentSchedule(leaseId),

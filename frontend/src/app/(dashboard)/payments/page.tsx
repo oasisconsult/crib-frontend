@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { CreditCard, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,6 +52,7 @@ const COLUMNS: Column<Payment>[] = [
 ];
 
 export default function PaymentsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
   const { data, isLoading } = usePayments();
@@ -143,6 +145,7 @@ export default function PaymentsPage() {
               columns={COLUMNS}
               loading={isLoading}
               rowKey={(p) => p.id}
+              onRowClick={(p) => router.push(`/payments/${p.id}`)}
               emptyTitle="No payments found"
               emptyDescription="Payments will appear here once leases are active"
             />
