@@ -1,0 +1,51 @@
+# ─── Python / Backend ─────────────────────────────────────────────────────────
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/**/*.pyd
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/htmlcov/
+backend/.coverage
+backend/coverage.xml
+backend/*.egg-info/
+backend/dist/
+backend/build/
+
+# ─── Environment files ────────────────────────────────────────────────────────
+.env.local
+.env.development
+.env.production
+.env.staging
+backend/.env
+# Keep .env.example and .env.test committed (no secrets, just templates)
+
+# ─── Node / Frontend ──────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo/
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Editor ───────────────────────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# ─── Docker volumes / local data ──────────────────────────────────────────────
+postgres_data/
+redis_data/
+minio_data/
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.log
+*.pid
