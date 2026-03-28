@@ -41,6 +41,12 @@ const PROPERTY_TYPES = [
   { value: "villa",      label: "Villa"             },
 ];
 
+const PROPERTY_STATUSES = [
+  { value: "active",      label: "Active",      description: "Open and accepting tenants" },
+  { value: "inactive",    label: "Inactive",    description: "Temporarily unlisted" },
+  { value: "maintenance", label: "Maintenance", description: "Under renovation or repairs" },
+];
+
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "single",  label: "Single"  },
   { value: "double",  label: "Double"  },
@@ -255,9 +261,10 @@ export default function NewPropertyPage() {
 
   // ── Step 1 state ──────────────────────────────────────────────────────────
   const [step, setStep] = useState<1 | 2>(1);
-  const [propName, setPropName]   = useState("");
-  const [propType, setPropType]   = useState("flat");
-  const [line1,    setLine1]      = useState("");
+  const [propName,   setPropName]   = useState("");
+  const [propType,   setPropType]   = useState("flat");
+  const [propStatus, setPropStatus] = useState("active");
+  const [line1,      setLine1]      = useState("");
   const [city,     setCity]       = useState("Kampala");
   const [region,   setRegion]     = useState("Central Region");
 
@@ -322,7 +329,7 @@ export default function NewPropertyPage() {
       {
         name: propName,
         type: propType as "flat",
-        status: "active",
+        status: propStatus as "active",
         address: { line1, city, state: region, postcode: "00256", country: "Uganda" },
         rules: DEFAULT_RULES,
         landlordId: "landlord-1",
@@ -399,16 +406,32 @@ export default function NewPropertyPage() {
                   placeholder="e.g. Kololo Heights Apartments"
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="ptype">Property Type *</Label>
-                <Select value={propType} onValueChange={setPropType}>
-                  <SelectTrigger id="ptype"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {PROPERTY_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="ptype">Property Type *</Label>
+                  <Select value={propType} onValueChange={setPropType}>
+                    <SelectTrigger id="ptype"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PROPERTY_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="pstatus">Status</Label>
+                  <Select value={propStatus} onValueChange={setPropStatus}>
+                    <SelectTrigger id="pstatus"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PROPERTY_STATUSES.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {PROPERTY_STATUSES.find((s) => s.value === propStatus)?.description}
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -31,6 +31,9 @@ export const inspectionsApi = {
   createMaintenance: (data: Omit<MaintenanceIssue, "id" | "createdAt" | "updatedAt" | "state">) =>
     apiPost<MaintenanceIssue>("/maintenance", data),
 
+  updateMaintenance: (id: string, data: Partial<MaintenanceIssue>) =>
+    apiPut<MaintenanceIssue>(`/maintenance/${id}`, data),
+
   transitionMaintenance: (id: string, event: MaintenanceEvent, payload?: object) =>
     apiPost<MaintenanceIssue>(`/maintenance/${id}/transition`, { event, ...payload }),
 };

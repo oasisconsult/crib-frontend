@@ -39,8 +39,12 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 function IssueCard({ issue }: { issue: MaintenanceIssue }) {
+  const router = useRouter();
   return (
-    <div className="flex items-start gap-3 rounded-lg border p-4 hover:bg-muted/30 transition-colors">
+    <div
+      className="flex items-start gap-3 rounded-lg border p-4 hover:bg-muted/30 transition-colors cursor-pointer"
+      onClick={() => router.push(`/maintenance/${issue.id}`)}
+    >
       <div className={cn(
         "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
         issue.priority === "urgent" || issue.priority === "high"

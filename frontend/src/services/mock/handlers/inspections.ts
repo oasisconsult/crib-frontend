@@ -99,6 +99,13 @@ export const inspectionHandlers = [
     return HttpResponse.json(newIssue, { status: 201 });
   }),
 
+  http.put(`${BASE}/maintenance/:id`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const issue = mockMaintenance.find((m) => m.id === params.id);
+    if (!issue) return HttpResponse.json({ code: "NOT_FOUND", message: "Maintenance issue not found" }, { status: 404 });
+    return HttpResponse.json({ ...issue, ...body, updatedAt: new Date().toISOString() });
+  }),
+
   http.post(`${BASE}/maintenance/:id/transition`, async ({ params, request }) => {
     const body = await request.json() as { event: string };
     const issue = mockMaintenance.find((m) => m.id === params.id);

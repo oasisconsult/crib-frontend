@@ -148,6 +148,27 @@ export function useUpdateUnitRules() {
   });
 }
 
+export function useUpdateUnit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      propertyId,
+      unitId,
+      data,
+    }: {
+      propertyId: string;
+      unitId: string;
+      data: Partial<Unit>;
+    }) => propertiesApi.updateUnit(propertyId, unitId, data),
+    onSuccess: (_, { propertyId, unitId }) => {
+      qc.invalidateQueries({ queryKey: [...queryKeys.properties.units(propertyId), unitId] });
+      qc.invalidateQueries({ queryKey: queryKeys.properties.units(propertyId) });
+      toast.success("Unit updated");
+    },
+    onError: () => toast.error("Failed to update unit"),
+  });
+}
+
 export function useBulkUpdateUnits() {
   const qc = useQueryClient();
   return useMutation({
