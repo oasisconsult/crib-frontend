@@ -187,6 +187,91 @@ function EditForm({
   );
 }
 
+// ── Tenant notes (internal, staff-only) ──────────────────────────────────────
+
+function TenantNotesSection({ tenant }: { tenant: Tenant }) {
+  const { mutate: update, isPending } = useUpdateTenant();
+  const [notes, setNotes] = useState<string[]>(
+    tenant.notes ? tenant.notes.split("\n---\n").filter(Boolean) : [],
+  );
+  const [draft, setDraft] = useState("");
+
+  function addNote() {
+    const text = draft.trim();
+    if (!text) return;
+    const ts = new Date().toLocaleString("en-UG", { dateStyle: "medium", timeStyle: "short" });
+    const entry = `[${ts}] ${text}`;
+    const next = [...notes, entry];
+    setNotes(next);
+    setDraft("");
+    update({ id: tenant.id, data: { notes: next.join("\n---\n") } });
+  }
+
+  function removeNote(i: number) {
+    const next = notes.filter((_, idx) => idx !== i);
+    setNotes(next);
+    update({ id: tenant.id, data: { notes: next.join("\n---\n") } });
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <StickyNote className="h-4 w-4" />
+          Internal Notes
+          <span className="text-xs font-normal text-muted-foreground">— visible to staff only</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {notes.length > 0 && (
+          <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+            {notes.map((note, i) => {
+              const match = note.match(/^\[(.+?)\] (.+)$/s);
+              const ts   = match?.[1] ?? "";
+              const text = match?.[2] ?? note;
+              return (
+                <div key={i} className="group flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    {ts && <p className="text-[11px] text-muted-foreground mb-0.5">{ts}</p>}
+                    <p className="text-sm leading-snug whitespace-pre-wrap">{text}</p>
+                  </div>
+                  <button
+                    onClick={() => removeNote(i)}
+                    className="hidden group-hover:block shrink-0 text-muted-foreground hover:text-destructive transition-colors mt-0.5"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addNote();
+            }}
+            placeholder="Add a note… (⌘Enter to save)"
+            rows={2}
+            className="resize-none text-sm flex-1"
+          />
+          <Button
+            size="sm"
+            className="self-end"
+            disabled={!draft.trim() || isPending}
+            onClick={addNote}
+          >
+            {isPending ? <Save className="h-3.5 w-3.5 animate-pulse" /> : <Save className="h-3.5 w-3.5" />}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TenantDetailPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
@@ -222,7 +307,7 @@ export default function TenantDetailPage({ params }: Props) {
         <div className="flex items-center gap-2">
           <Badge
             variant={
-              tenant.onboardingState === "completed" || tenant.onboardingState === "activated"
+              tenant.onboardingState === "approved" || tenant.onboardingState === "activated"
                 ? "success"
                 : tenant.onboardingState === "rejected"
                   ? "destructive"
@@ -326,19 +411,7 @@ export default function TenantDetailPage({ params }: Props) {
             )}
 
             {/* Notes (visible to landlord/manager/superadmin only) */}
-            {canEdit && tenant.notes && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <StickyNote className="h-4 w-4" />
-                    Notes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{tenant.notes}</p>
-                </CardContent>
-              </Card>
-            )}
+            {canEdit && <TenantNotesSection tenant={tenant} />}
 
             {/* Documents */}
             <TenantDocumentsSection tenantId={id} />

@@ -14,6 +14,10 @@ import {
   MapPin,
   Tag,
   Wifi,
+  Camera,
+  ImageIcon,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -301,6 +305,107 @@ function EditForm({
   );
 }
 
+// ── Photo gallery ─────────────────────────────────────────────────────────────
+
+function PropertyPhotos({
+  property,
+  canEdit,
+}: {
+  property: Property;
+  canEdit: boolean;
+}) {
+  const { mutate: update } = useUpdateProperty();
+  const [photos, setPhotos] = useState<string[]>(property.images ?? []);
+  const [uploading, setUploading] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
+  function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    setUploading(true);
+    const urls = files.map((f) => URL.createObjectURL(f));
+    const next = [...photos, ...urls];
+    setPhotos(next);
+    update(
+      { id: property.id, data: { images: next } },
+      { onSuccess: () => setUploading(false), onError: () => setUploading(false) },
+    );
+    e.target.value = "";
+  }
+
+  function remove(url: string) {
+    const next = photos.filter((p) => p !== url);
+    setPhotos(next);
+    update({ id: property.id, data: { images: next } });
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Camera className="h-4 w-4" />
+            Photos
+            {photos.length > 0 && (
+              <span className="text-xs font-normal text-muted-foreground">({photos.length})</span>
+            )}
+          </CardTitle>
+          {canEdit && (
+            <label className="cursor-pointer">
+              <input type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} disabled={uploading} />
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors">
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                {uploading ? "Saving…" : "Add Photos"}
+              </span>
+            </label>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {photos.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
+            <ImageIcon className="h-8 w-8 opacity-30" />
+            <p className="text-sm">No photos uploaded yet</p>
+            {canEdit && (
+              <label className="cursor-pointer text-xs text-primary underline-offset-2 hover:underline">
+                <input type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} />
+                Upload the first photo
+              </label>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+            {photos.map((url, i) => (
+              <div key={url} className="group relative aspect-square rounded-lg overflow-hidden border bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover cursor-pointer" onClick={() => setLightbox(url)} />
+                {canEdit && (
+                  <button
+                    onClick={() => remove(url)}
+                    className="absolute top-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+
+      {lightbox && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setLightbox(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightbox} alt="Full size" className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+          <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export default function PropertyDetailPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
@@ -489,6 +594,9 @@ export default function PropertyDetailPage({ params }: Props) {
               </CardContent>
             </Card>
           )}
+
+          {/* ── Photos ────────────────────────────── */}
+          <PropertyPhotos property={property} canEdit={canEdit} />
 
           {/* ── Quick actions ─────────────────────── */}
           <div className="flex gap-2 flex-wrap">

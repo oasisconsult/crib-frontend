@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   FileText, Calendar, CreditCard, User, Building2,
-  Send, CheckCircle, XCircle, AlertTriangle, Download,
+  Send, CheckCircle, XCircle, AlertTriangle, Download, Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import { LeaseWorkflowStepper } from "./WorkflowStepper";
 import { TerminateModal } from "./TerminateModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease } from "@/hooks/useLeases";
+import { leasesApi } from "@/services/api/leases";
+import { toast } from "@/store/useUIStore";
 import { canTransition, LEASE_TRANSITIONS } from "@/types/states";
 import type { Lease } from "@/types";
 
@@ -27,7 +29,22 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [pendingEvent, setPendingEvent] = useState<string | null>(null);
+  const [documentUrl, setDocumentUrl] = useState<string | undefined>(lease.documentUrl);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const { mutate: transition, isPending } = useTransitionLease();
+
+  async function handleGeneratePdf() {
+    setGeneratingPdf(true);
+    try {
+      const { url } = await leasesApi.generateDocument(lease.id);
+      setDocumentUrl(url);
+      toast.success("Document generated");
+    } catch {
+      toast.error("Failed to generate document");
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }
 
   const handleTransition = (event: string) => {
     setPendingEvent(event);
@@ -102,12 +119,19 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                 Terminate
               </Button>
             )}
-            {lease.documentUrl && (
+            {documentUrl ? (
               <Button size="sm" variant="outline" asChild>
-                <a href={lease.documentUrl} download>
+                <a href={documentUrl} target="_blank" rel="noreferrer" download>
                   <Download className="h-3.5 w-3.5" />
                   Download PDF
                 </a>
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" disabled={generatingPdf} onClick={handleGeneratePdf}>
+                {generatingPdf
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <FileText className="h-3.5 w-3.5" />}
+                {generatingPdf ? "Generating…" : "Generate PDF"}
               </Button>
             )}
           </div>

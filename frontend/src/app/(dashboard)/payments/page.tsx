@@ -2,14 +2,17 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CreditCard, TrendingUp, AlertTriangle, CheckCircle2, Download, Loader2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayments, useDashboardStats } from "@/hooks/usePayments";
+import { paymentsApi } from "@/services/api/payments";
+import { toast } from "@/store/useUIStore";
 import type { Payment } from "@/types";
 
 const COLUMNS: Column<Payment>[] = [
@@ -24,10 +27,12 @@ const COLUMNS: Column<Payment>[] = [
     render: (p) => <StatusBadge state={p.state} domain="payment" />,
   },
   {
-    key: "type",
+    key: "category",
     header: "Type",
     render: (p) => (
-      <span className="text-sm capitalize">{p.type.replace(/_/g, " ")}</span>
+      <span className="text-sm capitalize">
+        {((p as any).type ?? p.category ?? "").replace(/_/g, " ")}
+      </span>
     ),
   },
   {
@@ -55,34 +60,86 @@ export default function PaymentsPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
+  const [exporting, setExporting] = useState(false);
   const { data, isLoading } = usePayments();
   const { data: stats } = useDashboardStats();
 
-  const payments = (data?.data ?? []).filter((p) => {
+  const allPayments = data?.data ?? [];
+
+  const payments = allPayments.filter((p) => {
+    const state = p.state as string;
     const tabMatch =
       tab === "all" ||
-      (tab === "pending" && ["pending", "overdue"].includes(p.state)) ||
-      (tab === "paid" && p.state === "paid") ||
-      (tab === "overdue" && p.state === "overdue");
+      (tab === "pending" && ["pending", "initiated"].includes(state)) ||
+      (tab === "completed" && ["completed", "reconciled"].includes(state)) ||
+      (tab === "overdue" && state === "overdue") ||
+      (tab === "failed" && state === "failed");
     const searchMatch =
       !search || p.reference.toLowerCase().includes(search.toLowerCase());
     return tabMatch && searchMatch;
   });
 
+  async function handleExport(format: "csv" | "pdf") {
+    setExporting(true);
+    try {
+      const blob = await paymentsApi.exportPayments(undefined, format);
+      const url = URL.createObjectURL(blob as Blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payments-export.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported as ${format.toUpperCase()}`);
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Payments</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Rent collection, deposits, and payment tracking
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Payments</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Rent collection, deposits, and payment tracking
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={exporting}
+            onClick={() => handleExport("csv")}
+          >
+            {exporting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
+            Export CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={exporting}
+            onClick={() => handleExport("pdf")}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           {
             label: "Expected",
-            value: formatCurrency((stats?.monthlyRevenue ?? 0) / (stats?.collectionRate ?? 100) * 100, "UGX"),
+            value: formatCurrency(
+              (stats?.monthlyRevenue ?? 0) / ((stats?.collectionRate ?? 100) / 100),
+              "UGX",
+            ),
             icon: TrendingUp,
             color: "text-blue-600",
             bg: "bg-blue-50 dark:bg-blue-950/30",
@@ -121,24 +178,23 @@ export default function PaymentsPage() {
         ))}
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <FilterBar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder="Search by reference..."
-          className="flex-1"
-        />
-      </div>
+      <FilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search by reference..."
+        className="max-w-sm"
+      />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="paid">Paid</TabsTrigger>
+          <TabsTrigger value="completed">Completed</TabsTrigger>
           <TabsTrigger value="overdue">Overdue</TabsTrigger>
+          <TabsTrigger value="failed">Failed</TabsTrigger>
         </TabsList>
 
-        {["all", "pending", "paid", "overdue"].map((t) => (
+        {["all", "pending", "completed", "overdue", "failed"].map((t) => (
           <TabsContent key={t} value={t} className="mt-3">
             <DataTable
               data={payments}
