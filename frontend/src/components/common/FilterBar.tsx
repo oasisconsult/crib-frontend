@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, X, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ export interface FilterChip {
 interface FilterBarProps {
   search?: string;
   onSearchChange?: (value: string) => void;
+  debounceMs?: number;
   placeholder?: string;
   activeFilters?: FilterChip[];
   onRemoveFilter?: (key: string) => void;
@@ -28,6 +29,7 @@ interface FilterBarProps {
 export function FilterBar({
   search = "",
   onSearchChange,
+  debounceMs = 300,
   placeholder = "Search...",
   activeFilters = [],
   onRemoveFilter,
@@ -36,6 +38,18 @@ export function FilterBar({
   className,
 }: FilterBarProps) {
   const [showFilters, setShowFilters] = useState(false);
+  // Local value updates immediately for responsive UI; callback fires after debounce.
+  const [localSearch, setLocalSearch] = useState(search);
+
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
+  useEffect(() => {
+    if (!onSearchChange) return;
+    const id = setTimeout(() => onSearchChange(localSearch), debounceMs);
+    return () => clearTimeout(id);
+  }, [localSearch, debounceMs, onSearchChange]);
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -46,15 +60,15 @@ export function FilterBar({
             <Input
               leftIcon={<Search className="h-4 w-4" />}
               placeholder={placeholder}
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
               className="pl-9"
               aria-label={placeholder}
             />
-            {search && (
+            {localSearch && (
               <button
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => onSearchChange("")}
+                onClick={() => { setLocalSearch(""); onSearchChange(""); }}
                 aria-label="Clear search"
               >
                 <X className="h-3.5 w-3.5" />

@@ -59,8 +59,10 @@ export async function GET(request: NextRequest) {
     const role: string =
       payload?.roles?.[0] ?? payload?.["urn:logto:scope:roles"]?.[0] ?? "landlord";
 
+    // httpOnly: true — middleware runs server-side and can read httpOnly cookies.
+    // This prevents client JS from reading/forging the role cookie via XSS.
     response.cookies.set("user_role", role, {
-      httpOnly: false, // readable by middleware
+      httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: tokens.expires_in,

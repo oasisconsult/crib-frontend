@@ -8,6 +8,7 @@ import { queryClient } from "@/lib/queryClient";
 import { ToastProvider } from "@/components/providers/ToastProvider";
 import { MSWProvider } from "@/components/providers/MSWProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { CookieConsentBanner } from "@/components/common/CookieConsentBanner";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -28,6 +29,7 @@ export default function RootLayout({
             <ThemeProvider>
               {children}
               <ToastProvider />
+              <CookieConsentBanner />
             </ThemeProvider>
           </QueryClientProvider>
         </MSWProvider>
