@@ -16,6 +16,8 @@ import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.datastructures import MutableHeaders
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.core.config import get_settings
 from app.core.logging import configure_logging
@@ -25,6 +27,36 @@ settings = get_settings()
 configure_logging(debug=settings.debug)
 
 log = structlog.get_logger(__name__)
+
+
+# ── Pure-ASGI request-ID middleware (avoids BaseHTTPMiddleware task leak) ─────
+
+class RequestIdMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        import uuid
+
+        headers = dict(scope.get("headers", []))
+        request_id = (
+            headers.get(b"x-request-id", b"").decode() or str(uuid.uuid4())
+        )
+        structlog.contextvars.clear_contextvars()
+        structlog.contextvars.bind_contextvars(request_id=request_id)
+
+        async def send_with_id(message: dict) -> None:
+            if message["type"] == "http.response.start":
+                raw = list(message.get("headers", []))
+                raw.append((b"x-request-id", request_id.encode()))
+                message = {**message, "headers": raw}
+            await send(message)
+
+        await self.app(scope, receive, send_with_id)
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
@@ -71,15 +103,7 @@ def create_app() -> FastAPI:
     )
 
     # ── Request ID middleware ─────────────────────────────────────────────────
-    @application.middleware("http")
-    async def request_id_middleware(request: Request, call_next):
-        import uuid
-        request_id = request.headers.get("X-Request-Id", str(uuid.uuid4()))
-        structlog.contextvars.clear_contextvars()
-        structlog.contextvars.bind_contextvars(request_id=request_id)
-        response = await call_next(request)
-        response.headers["X-Request-Id"] = request_id
-        return response
+    application.add_middleware(RequestIdMiddleware)
 
     # ── Exception handlers ────────────────────────────────────────────────────
     @application.exception_handler(Exception)

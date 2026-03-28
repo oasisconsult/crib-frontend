@@ -16,7 +16,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.config import get_settings
 from app.core.database import get_db
@@ -38,7 +39,7 @@ async def test_engine():
     """Create all tables once per test session, drop them at the end."""
     import sqlalchemy as sa
 
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True, poolclass=NullPool)
 
     # Ensure pgcrypto and all enum types are available, then create tables
     async with engine.begin() as conn:
@@ -83,15 +84,17 @@ async def db_session(test_engine) -> AsyncGenerator[AsyncSession, None]:
     """
     Each test gets its own transaction that is rolled back.
     This keeps tests isolated without recreating the schema.
+    Uses AsyncSession directly (not async_sessionmaker) to avoid an implicit
+    session.begin() conflicting with the connection-level BEGIN we issue here.
     """
     async with test_engine.connect() as conn:
         await conn.begin()
-        session_factory = async_sessionmaker(
-            bind=conn, class_=AsyncSession, expire_on_commit=False, autoflush=False
-        )
-        async with session_factory() as session:
+        session = AsyncSession(bind=conn, expire_on_commit=False, autoflush=False)
+        try:
             yield session
-        await conn.rollback()
+        finally:
+            await session.close()
+            await conn.rollback()
 
 
 # ── Redis mock ────────────────────────────────────────────────────────────────
