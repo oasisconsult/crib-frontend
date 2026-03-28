@@ -67,6 +67,19 @@ export const propertyHandlers = [
     return HttpResponse.json(unit);
   }),
 
+  // Batch-create units for a property
+  http.post(`${BASE}/properties/:propertyId/units/batch`, async ({ params, request }) => {
+    const body = await request.json() as { units: Record<string, unknown>[] };
+    const created = (body.units ?? []).map((u, i) => ({
+      ...u,
+      id: `unit-${Date.now()}-${i}`,
+      propertyId: params.propertyId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
   http.post(`${BASE}/properties/:propertyId/units`, async ({ params, request }) => {
     const body = await request.json() as Record<string, unknown>;
     const newUnit = {

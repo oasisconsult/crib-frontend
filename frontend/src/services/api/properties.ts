@@ -41,4 +41,7 @@ export const propertiesApi = {
 
   updateUnitRules: (propertyId: string, unitId: string, rules: PropertyRules | null) =>
     apiPatch<Unit>(`/properties/${propertyId}/units/${unitId}/rules`, { rules }),
+
+  bulkCreateUnits: (propertyId: string, units: Omit<Unit, "id" | "propertyId" | "createdAt" | "updatedAt">[]) =>
+    apiPost<Unit[]>(`/properties/${propertyId}/units/batch`, { units }),
 };
