@@ -34,13 +34,13 @@ def upgrade() -> None:
     op.add_column("tenants", sa.Column("nationality", sa.String(100), nullable=True))
     op.add_column("tenants", sa.Column(
         "status",
-        sa.Enum("active", "inactive", "blacklisted", name="tenant_status_enum", create_type=False),
+        postgresql.ENUM("active", "inactive", "blacklisted", name="tenant_status_enum", create_type=False),
         nullable=False, server_default="inactive",
     ))
     op.add_column("tenants", sa.Column(
         "onboarding_state",
-        sa.Enum("invited", "started", "submitted", "approved", "activated", "rejected",
-                name="onboarding_state_enum", create_type=False),
+        postgresql.ENUM("invited", "started", "submitted", "approved", "activated", "rejected",
+                        name="onboarding_state_enum", create_type=False),
         nullable=False, server_default="invited",
     ))
     op.add_column("tenants", sa.Column("onboarding_token", sa.String(128), nullable=True))
@@ -74,9 +74,9 @@ def upgrade() -> None:
         sa.Column("tenant_id", postgresql.UUID(as_uuid=True),
                   sa.ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False),
         sa.Column("type",
-                  sa.Enum("passport", "national_id", "driving_licence", "residence_permit",
-                          "proof_of_income", "reference_letter", "bank_statement", "other",
-                          name="id_document_type_enum", create_type=False),
+                  postgresql.ENUM("passport", "national_id", "driving_licence", "residence_permit",
+                                  "proof_of_income", "reference_letter", "bank_statement", "other",
+                                  name="id_document_type_enum", create_type=False),
                   nullable=False),
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("url", sa.String(1024), nullable=False),
@@ -109,8 +109,8 @@ def upgrade() -> None:
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("token", sa.String(128), unique=True, nullable=False),
         sa.Column("status",
-                  sa.Enum("pending", "accepted", "expired",
-                          name="invite_status_enum", create_type=False),
+                  postgresql.ENUM("pending", "accepted", "expired",
+                                  name="invite_status_enum", create_type=False),
                   nullable=False, server_default="pending"),
         sa.Column("sent_at", sa.DateTime(timezone=True), nullable=False,
                   server_default=sa.text("now()")),
