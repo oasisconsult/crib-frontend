@@ -69,6 +69,8 @@ export interface Unit {
   currentLeaseId?: string;
   lastInspectionDate?: string;
   notes?: string;
+  // Per-unit rule overrides; when absent the property-level rules apply
+  rules?: PropertyRules;
   createdAt: string;
   updatedAt: string;
 }

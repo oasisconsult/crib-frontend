@@ -39,10 +39,14 @@ const rulesSchema = z.object({
 interface RulesBuilderProps {
   propertyId: string;
   initialRules: PropertyRules;
+  /** Override the default save action (e.g. for per-unit rules). */
+  onSave?: (rules: PropertyRules) => void;
+  isSaving?: boolean;
 }
 
-export function RulesBuilder({ propertyId, initialRules }: RulesBuilderProps) {
-  const { mutate: saveRules, isPending } = useUpdatePropertyRules();
+export function RulesBuilder({ propertyId, initialRules, onSave, isSaving }: RulesBuilderProps) {
+  const { mutate: saveRules, isPending: savingProperty } = useUpdatePropertyRules();
+  const isPending = isSaving ?? savingProperty;
 
   const defaultValues = schemaToDefaultValues(DEFAULT_RULE_SCHEMA, initialRules) as PropertyRules;
 
@@ -56,7 +60,11 @@ export function RulesBuilder({ propertyId, initialRules }: RulesBuilderProps) {
   const conflicts = detectRuleConflicts(values as Record<string, unknown>);
 
   const onSubmit = (data: PropertyRules) => {
-    saveRules({ id: propertyId, rules: data });
+    if (onSave) {
+      onSave(data);
+    } else {
+      saveRules({ id: propertyId, rules: data });
+    }
   };
 
   return (

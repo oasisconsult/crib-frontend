@@ -38,4 +38,7 @@ export const propertiesApi = {
 
   bulkUpdateUnits: (propertyId: string, unitIds: string[], data: Partial<Unit>) =>
     apiPatch<Unit[]>(`/properties/${propertyId}/units/bulk`, { unitIds, ...data }),
+
+  updateUnitRules: (propertyId: string, unitId: string, rules: PropertyRules | null) =>
+    apiPatch<Unit>(`/properties/${propertyId}/units/${unitId}/rules`, { rules }),
 };

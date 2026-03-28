@@ -88,6 +88,15 @@ export const propertyHandlers = [
 
   http.delete(`${BASE}/properties/:propertyId/units/:unitId`, () => new HttpResponse(null, { status: 204 })),
 
+  // Per-unit rules override
+  http.patch(`${BASE}/properties/:propertyId/units/:unitId/rules`, async ({ params, request }) => {
+    const body = await request.json() as { rules: Record<string, unknown> | null };
+    const unit = mockUnits.find((u) => u.propertyId === params.propertyId && u.id === params.unitId);
+    if (!unit) return HttpResponse.json({ code: "NOT_FOUND", message: "Unit not found" }, { status: 404 });
+    // rules: null means reset to property defaults (remove override)
+    return HttpResponse.json({ ...unit, rules: body.rules ?? undefined, updatedAt: new Date().toISOString() });
+  }),
+
   http.patch(`${BASE}/properties/:propertyId/units/bulk`, async ({ request }) => {
     const body = await request.json() as Record<string, unknown>;
     return HttpResponse.json([body]);

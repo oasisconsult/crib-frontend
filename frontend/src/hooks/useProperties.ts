@@ -108,6 +108,27 @@ export function useCreateUnit() {
   });
 }
 
+export function useUpdateUnitRules() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      propertyId,
+      unitId,
+      rules,
+    }: {
+      propertyId: string;
+      unitId: string;
+      rules: import("@/types").PropertyRules | null; // null = reset to property defaults
+    }) => propertiesApi.updateUnitRules(propertyId, unitId, rules),
+    onSuccess: (_, { propertyId, unitId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.properties.units(propertyId) });
+      qc.invalidateQueries({ queryKey: [...queryKeys.properties.units(propertyId), unitId] });
+      toast.success("Unit rules saved");
+    },
+    onError: () => toast.error("Failed to save unit rules"),
+  });
+}
+
 export function useBulkUpdateUnits() {
   const qc = useQueryClient();
   return useMutation({
