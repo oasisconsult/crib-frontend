@@ -6,9 +6,15 @@ const BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
 const INSPECTION_EVENT_STATE_MAP: Record<string, string> = {
   SCHEDULE: "scheduled",
+  INSPECTION_CREATED: "scheduled",
   START: "in_progress",
+  INSPECTION_STARTED: "in_progress",
   COMPLETE: "completed",
+  INSPECTION_COMPLETED: "completed",
+  INSPECTION_APPROVED: "approved",
+  INSPECTION_FAILED: "failed",
   CANCEL: "cancelled",
+  INSPECTION_CANCELLED: "cancelled",
 };
 
 const MAINTENANCE_EVENT_STATE_MAP: Record<string, string> = {
