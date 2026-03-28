@@ -45,5 +45,5 @@ shell-db:
 
 ## Run the backend test suite (creates crib_test DB if needed)
 test-backend:
-	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-crib} -d $${POSTGRES_DB:-crib_local} -c "CREATE DATABASE crib_test" 2>/dev/null || true
+	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-crib} -d postgres -c "CREATE DATABASE crib_test" 2>/dev/null || true
 	$(COMPOSE) exec backend pytest -v
