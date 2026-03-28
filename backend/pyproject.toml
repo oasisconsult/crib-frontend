@@ -21,7 +21,7 @@ dependencies = [
     "alembic==1.14.0",
 
     # Validation / settings
-    "pydantic==2.10.3",
+    "pydantic[email]==2.10.3",
     "pydantic-settings==2.7.0",
 
     # Auth — Logto / OIDC

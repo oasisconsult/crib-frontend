@@ -23,7 +23,7 @@ RUN pip install --no-cache-dir pip-tools \
         "sqlalchemy[asyncio]==2.0.36" \
         asyncpg==0.30.0 \
         alembic==1.14.0 \
-        pydantic==2.10.3 \
+        "pydantic[email]==2.10.3" \
         pydantic-settings==2.7.0 \
         "python-jose[cryptography]==3.3.0" \
         httpx==0.28.1 \
