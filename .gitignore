@@ -17,12 +17,13 @@ backend/dist/
 backend/build/
 
 # ─── Environment files ────────────────────────────────────────────────────────
+.env
 .env.local
 .env.development
 .env.production
 .env.staging
 backend/.env
-# Keep .env.example and .env.test committed (no secrets, just templates)
+# Keep .env.example, .env.test, and secure_settings.md committed (no secrets)
 
 # ─── Node / Frontend ──────────────────────────────────────────────────────────
 frontend/node_modules/
