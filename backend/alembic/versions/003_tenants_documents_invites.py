@@ -19,10 +19,10 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     # ── New enum types ─────────────────────────────────────────────────────────
-    op.execute("CREATE TYPE tenant_status_enum AS ENUM ('active', 'inactive', 'blacklisted')")
-    op.execute("CREATE TYPE onboarding_state_enum AS ENUM ('invited', 'started', 'submitted', 'approved', 'activated', 'rejected')")
-    op.execute("CREATE TYPE id_document_type_enum AS ENUM ('passport', 'national_id', 'driving_licence', 'residence_permit', 'proof_of_income', 'reference_letter', 'bank_statement', 'other')")
-    op.execute("CREATE TYPE invite_status_enum AS ENUM ('pending', 'accepted', 'expired')")
+    op.execute("DO $$ BEGIN CREATE TYPE tenant_status_enum AS ENUM ('active', 'inactive', 'blacklisted'); EXCEPTION WHEN duplicate_object THEN null; END $$")
+    op.execute("DO $$ BEGIN CREATE TYPE onboarding_state_enum AS ENUM ('invited', 'started', 'submitted', 'approved', 'activated', 'rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$")
+    op.execute("DO $$ BEGIN CREATE TYPE id_document_type_enum AS ENUM ('passport', 'national_id', 'driving_licence', 'residence_permit', 'proof_of_income', 'reference_letter', 'bank_statement', 'other'); EXCEPTION WHEN duplicate_object THEN null; END $$")
+    op.execute("DO $$ BEGIN CREATE TYPE invite_status_enum AS ENUM ('pending', 'accepted', 'expired'); EXCEPTION WHEN duplicate_object THEN null; END $$")
 
     # ── Expand tenants table (was a stub with only id + org_id + timestamps) ──
     op.add_column("tenants", sa.Column("logto_user_id", sa.String(100), nullable=True))

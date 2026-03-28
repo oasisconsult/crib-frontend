@@ -22,10 +22,10 @@ def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
 
     # ── plan_enum ─────────────────────────────────────────────────────────────
-    op.execute("CREATE TYPE plan_enum AS ENUM ('starter', 'growth', 'enterprise')")
+    op.execute("DO $$ BEGIN CREATE TYPE plan_enum AS ENUM ('starter', 'growth', 'enterprise'); EXCEPTION WHEN duplicate_object THEN null; END $$")
 
     # ── role_enum ─────────────────────────────────────────────────────────────
-    op.execute("CREATE TYPE role_enum AS ENUM ('owner', 'manager', 'tenant', 'maintenance')")
+    op.execute("DO $$ BEGIN CREATE TYPE role_enum AS ENUM ('owner', 'manager', 'tenant', 'maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$")
 
     # ── organisations ─────────────────────────────────────────────────────────
     op.create_table(

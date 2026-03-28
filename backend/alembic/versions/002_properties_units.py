@@ -18,10 +18,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("CREATE TYPE property_type_enum AS ENUM ('flat', 'house', 'hostel', 'commercial', 'villa')")
-    op.execute("CREATE TYPE property_status_enum AS ENUM ('active', 'inactive', 'maintenance')")
-    op.execute("CREATE TYPE unit_type_enum AS ENUM ('single', 'double', 'studio', 'ensuite', 'shared')")
-    op.execute("CREATE TYPE unit_status_enum AS ENUM ('available', 'occupied', 'reserved', 'maintenance')")
+    op.execute("DO $$ BEGIN CREATE TYPE property_type_enum AS ENUM ('flat', 'house', 'hostel', 'commercial', 'villa'); EXCEPTION WHEN duplicate_object THEN null; END $$")
+    op.execute("DO $$ BEGIN CREATE TYPE property_status_enum AS ENUM ('active', 'inactive', 'maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$")
+    op.execute("DO $$ BEGIN CREATE TYPE unit_type_enum AS ENUM ('single', 'double', 'studio', 'ensuite', 'shared'); EXCEPTION WHEN duplicate_object THEN null; END $$")
+    op.execute("DO $$ BEGIN CREATE TYPE unit_status_enum AS ENUM ('available', 'occupied', 'reserved', 'maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$")
 
     # ── properties ────────────────────────────────────────────────────────────
     op.create_table(
