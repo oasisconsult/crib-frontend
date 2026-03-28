@@ -18,6 +18,7 @@ export interface LeaseTerm {
   monthlyRent: number;
   depositAmount: number;
   currency: string;
+  paymentDueDay?: number; // day of month rent is due (1–28)
   noticePeriodDays: number;
   gracePeriodDays: number;
   lateFeeType: "flat" | "percentage";
