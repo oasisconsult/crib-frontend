@@ -30,6 +30,7 @@ if config.config_file_name is not None:
 from app.models.base import Base  # noqa: E402  (must be after Base imports)
 from app.models.organisation import Organisation  # noqa: F401
 from app.models.profile import Profile  # noqa: F401
+from app.models.property import Property, Unit  # noqa: F401
 
 target_metadata = Base.metadata
 

@@ -44,15 +44,35 @@ def event_loop_policy():
 @pytest_asyncio.fixture(scope="session")
 async def test_engine():
     """Create all tables once per test session, drop them at the end."""
+    import sqlalchemy as sa
+
     engine = create_async_engine(TEST_DATABASE_URL, echo=False, future=True)
 
-    # Ensure pgcrypto is available before creating tables
+    # Ensure pgcrypto and all enum types are available, then create tables
     async with engine.begin() as conn:
-        await conn.execute(
-            __import__("sqlalchemy").text("CREATE EXTENSION IF NOT EXISTS pgcrypto")
-        )
+        await conn.execute(sa.text("CREATE EXTENSION IF NOT EXISTS pgcrypto"))
+
+        # Create enum types idempotently (SQLAlchemy won't create them if they exist)
+        for stmt in [
+            "DO $$ BEGIN CREATE TYPE plan_enum AS ENUM ('starter','growth','enterprise'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE role_enum AS ENUM ('owner','manager','tenant','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE property_type_enum AS ENUM ('flat','house','hostel','commercial','villa'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE property_status_enum AS ENUM ('active','inactive','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE unit_type_enum AS ENUM ('single','double','studio','ensuite','shared'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE unit_status_enum AS ENUM ('available','occupied','reserved','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+        ]:
+            await conn.execute(sa.text(stmt))
+
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+
+        # Create updated_at trigger function (used by models, not in metadata)
+        await conn.execute(sa.text("""
+            CREATE OR REPLACE FUNCTION update_updated_at_column()
+            RETURNS TRIGGER AS $$
+            BEGIN NEW.updated_at = now(); RETURN NEW; END;
+            $$ language 'plpgsql'
+        """))
 
     yield engine
 
@@ -91,7 +111,7 @@ def mock_redis():
     async def fake_get(key: str):
         return fake_store.get(key)
 
-    async def fake_setex(key: str, ttl: int, value: str):
+    async def fake_setex(key: str, _ttl: int, value: str):
         fake_store[key] = value
 
     async def fake_ping():
