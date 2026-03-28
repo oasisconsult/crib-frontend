@@ -1,7 +1,53 @@
+"use client";
+
+import { Building2, LogOut } from "lucide-react";
+import { AuthInitializer } from "@/components/providers/AuthInitializer";
+import { useAppStore } from "@/store/useAppStore";
+
+function PortalNav() {
+  const user = useAppStore((s) => s.user);
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="max-w-4xl mx-auto flex h-14 items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <Building2 className="h-4 w-4" />
+          </div>
+          <span className="font-bold tracking-tight">Crib</span>
+          <span className="text-muted-foreground/50 text-sm">·</span>
+          <span className="text-sm text-muted-foreground">Tenant Portal</span>
+        </div>
+        {user && (
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-sm font-medium leading-none">{user.name}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
+            </div>
+            <a
+              href="/login"
+              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sign out</span>
+            </a>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
 export default function PortalLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <div className="min-h-screen bg-muted/30">
+      <AuthInitializer />
+      <PortalNav />
+      <main>{children}</main>
+    </div>
+  );
 }

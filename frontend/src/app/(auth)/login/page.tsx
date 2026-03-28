@@ -183,7 +183,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col lg:flex-row">
 
       {/* ── LEFT — Sign-in form ───────────────────────────────── */}
-      <div className="flex flex-1 flex-col items-center justify-center p-8 lg:p-12 bg-background lg:max-w-[480px]">
+      <div className="flex flex-1 flex-col items-center justify-center p-8 lg:p-12 bg-background lg:w-1/2 lg:flex-none">
         <div className="w-full max-w-sm">
 
           {/* Logo */}

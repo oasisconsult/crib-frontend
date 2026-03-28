@@ -4,6 +4,9 @@ import { paginate } from "./properties";
 
 const BASE = `${process.env.NEXT_PUBLIC_API_URL ?? ""}/api/v1`;
 
+// Runtime in-memory store so newly submitted requests persist within a session
+const runtimeMaintenance: typeof mockMaintenance = [];
+
 const INSPECTION_EVENT_STATE_MAP: Record<string, string> = {
   SCHEDULE: "scheduled",
   INSPECTION_CREATED: "scheduled",
@@ -84,11 +87,17 @@ export const inspectionHandlers = [
   // ─── Maintenance ─────────────────────────────────────────────────────────────
   http.get(`${BASE}/maintenance`, ({ request }) => {
     const url = new URL(request.url);
-    return HttpResponse.json(paginate(mockMaintenance, url.searchParams));
+    const allIssues = [...mockMaintenance, ...runtimeMaintenance];
+    const reportedBy = url.searchParams.get("reportedBy");
+    const filtered = reportedBy
+      ? allIssues.filter((m) => (m as any).reportedBy === reportedBy)
+      : allIssues;
+    return HttpResponse.json(paginate(filtered, url.searchParams));
   }),
 
   http.get(`${BASE}/maintenance/:id`, ({ params }) => {
-    const issue = mockMaintenance.find((m) => m.id === params.id);
+    const allIssues = [...mockMaintenance, ...runtimeMaintenance];
+    const issue = allIssues.find((m) => m.id === params.id);
     if (!issue) return HttpResponse.json({ code: "NOT_FOUND", message: "Maintenance issue not found" }, { status: 404 });
     return HttpResponse.json(issue);
   }),
@@ -102,19 +111,22 @@ export const inspectionHandlers = [
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+    runtimeMaintenance.push(newIssue as any);
     return HttpResponse.json(newIssue, { status: 201 });
   }),
 
   http.put(`${BASE}/maintenance/:id`, async ({ params, request }) => {
     const body = await request.json() as Record<string, unknown>;
-    const issue = mockMaintenance.find((m) => m.id === params.id);
+    const allIssues = [...mockMaintenance, ...runtimeMaintenance];
+    const issue = allIssues.find((m) => m.id === params.id);
     if (!issue) return HttpResponse.json({ code: "NOT_FOUND", message: "Maintenance issue not found" }, { status: 404 });
     return HttpResponse.json({ ...issue, ...body, updatedAt: new Date().toISOString() });
   }),
 
   http.post(`${BASE}/maintenance/:id/transition`, async ({ params, request }) => {
     const body = await request.json() as { event: string };
-    const issue = mockMaintenance.find((m) => m.id === params.id);
+    const allIssues = [...mockMaintenance, ...runtimeMaintenance];
+    const issue = allIssues.find((m) => m.id === params.id);
     if (!issue) return HttpResponse.json({ code: "NOT_FOUND", message: "Maintenance issue not found" }, { status: 404 });
     const newState = MAINTENANCE_EVENT_STATE_MAP[body.event] ?? issue.state;
     return HttpResponse.json({ ...issue, state: newState, updatedAt: new Date().toISOString() });

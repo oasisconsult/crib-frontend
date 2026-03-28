@@ -1,144 +1,765 @@
 "use client";
 
 import { useState } from "react";
-import { Home, CreditCard, FileText, MessageSquare, Bell } from "lucide-react";
+import {
+  Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
+  AlertCircle, ChevronRight, Plus, X, Loader2, Download,
+  Phone, Building2, Banknote, CreditCard as CardIcon,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { usePayments } from "@/hooks/usePayments";
-import { useLeases } from "@/hooks/useLeases";
+import { usePayments, useRecordPayment } from "@/hooks/usePayments";
+import { useLeases, useSignLease } from "@/hooks/useLeases";
+import { useMaintenanceIssues, useCreateMaintenanceIssue } from "@/hooks/useInspections";
+import { useAppStore } from "@/store/useAppStore";
+import { cn } from "@/utils/cn";
+import type { Payment } from "@/types";
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-base font-semibold text-foreground mb-3">{children}</h2>;
+}
+
+// ─── Pay Rent Dialog ─────────────────────────────────────────────────────────
+
+const PAYMENT_METHODS = [
+  { id: "mtn_momo",    label: "MTN Mobile Money", icon: Phone,     color: "text-yellow-600" },
+  { id: "airtel_money",label: "Airtel Money",      icon: Phone,     color: "text-red-500" },
+  { id: "bank_transfer",label: "Bank Transfer",    icon: Building2, color: "text-blue-600" },
+  { id: "cash",        label: "Cash",              icon: Banknote,  color: "text-emerald-600" },
+  { id: "card",        label: "Card",              icon: CardIcon,  color: "text-violet-600" },
+];
+
+interface PayDialogProps {
+  lease: { id: string; tenantId: string; landlordId: string; propertyId: string; unitId: string; terms: { monthlyRent: number; currency: string } };
+  onClose: () => void;
+}
+
+function PayDialog({ lease, onClose }: PayDialogProps) {
+  const [method, setMethod] = useState<string | null>(null);
+  const [ref, setRef] = useState("");
+  const { mutate, isPending, isSuccess } = useRecordPayment();
+
+  function handlePay() {
+    if (!method) return;
+    mutate({
+      category: "rent",
+      method: method as Payment["method"],
+      tenantId: lease.tenantId,
+      landlordId: lease.landlordId,
+      leaseId: lease.id,
+      propertyId: lease.propertyId,
+      unitId: lease.unitId,
+      amount: lease.terms.monthlyRent,
+      currency: lease.terms.currency,
+      dueDate: new Date().toISOString().slice(0, 10),
+      reference: ref || `PAY-${Date.now()}`,
+      externalReference: ref || undefined,
+    } as Omit<Payment, "id" | "createdAt" | "updatedAt" | "state">);
+  }
+
+  if (isSuccess) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40">
+          <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+        </div>
+        <div className="text-center">
+          <p className="font-semibold text-foreground">Payment submitted!</p>
+          <p className="text-sm text-muted-foreground mt-1">Your payment is being processed.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-foreground">Pay Rent</h3>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="rounded-lg bg-muted/50 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">Amount due</span>
+        <span className="text-lg font-bold">{formatCurrency(lease.terms.monthlyRent, lease.terms.currency)}</span>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Payment method</p>
+        <div className="grid grid-cols-1 gap-2">
+          {PAYMENT_METHODS.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => setMethod(m.id)}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all",
+                method === m.id
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/40 hover:bg-muted/40",
+              )}
+            >
+              <m.icon className={cn("h-4 w-4", m.color)} />
+              <span className="text-sm font-medium">{m.label}</span>
+              {method === m.id && <CheckCircle2 className="h-3.5 w-3.5 text-primary ml-auto" />}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Transaction reference <span className="font-normal normal-case">(optional)</span>
+        </label>
+        <input
+          type="text"
+          value={ref}
+          onChange={(e) => setRef(e.target.value)}
+          placeholder="e.g. MTN transaction ID"
+          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+
+      <Button className="w-full" disabled={!method || isPending} onClick={handlePay}>
+        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+        {isPending ? "Submitting…" : "Submit Payment"}
+      </Button>
+    </div>
+  );
+}
+
+// ─── Payment Detail Sheet ─────────────────────────────────────────────────────
+
+function PaymentDetailSheet({ payment, onClose }: { payment: Payment; onClose: () => void }) {
+  const rows: [string, string][] = [
+    ["Reference", payment.reference],
+    ["Category", payment.category],
+    ["Method", payment.method ?? "—"],
+    ["Amount", formatCurrency(payment.amount, payment.currency)],
+    ["Due date", formatDate(payment.dueDate)],
+    ["Paid at", payment.paidAt ? formatDate(payment.paidAt) : "—"],
+    ["Status", payment.state],
+    ["External ref", payment.externalReference ?? "—"],
+    ["Notes", payment.notes ?? "—"],
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-foreground">Payment Details</h3>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <dl className="divide-y divide-border">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex justify-between py-2 text-sm">
+            <dt className="text-muted-foreground">{label}</dt>
+            <dd className="font-medium font-mono text-foreground max-w-[55%] text-right break-all">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+// ─── Maintenance Request Dialog ──────────────────────────────────────────────
+
+const MAINTENANCE_CATEGORIES = [
+  "plumbing", "electrical", "hvac", "structural", "appliance", "pest_control", "cleaning", "security", "other",
+];
+
+const PRIORITIES = ["low", "medium", "high", "urgent"] as const;
+
+interface MaintenanceDialogProps {
+  userId: string;
+  leaseId: string;
+  propertyId: string;
+  unitId: string;
+  onClose: () => void;
+}
+
+function MaintenanceDialog({ userId, leaseId, propertyId, unitId, onClose }: MaintenanceDialogProps) {
+  const [category, setCategory] = useState("plumbing");
+  const [priority, setPriority] = useState<typeof PRIORITIES[number]>("medium");
+  const [description, setDescription] = useState("");
+  const { mutate, isPending, isSuccess } = useCreateMaintenanceIssue();
+
+  function handleSubmit() {
+    if (!description.trim()) return;
+    mutate({
+      category,
+      priority,
+      description,
+      reportedBy: userId,
+      leaseId,
+      propertyId,
+      unitId,
+      title: `${category.replace(/_/g, " ")} issue`,
+    } as any);
+  }
+
+  if (isSuccess) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40">
+          <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+        </div>
+        <div className="text-center">
+          <p className="font-semibold text-foreground">Request submitted!</p>
+          <p className="text-sm text-muted-foreground mt-1">Your landlord has been notified.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-foreground">New Maintenance Request</h3>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        >
+          {MAINTENANCE_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{c.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Priority</p>
+        <div className="grid grid-cols-4 gap-2">
+          {PRIORITIES.map((p) => (
+            <button
+              key={p}
+              onClick={() => setPriority(p)}
+              className={cn(
+                "rounded-md border py-1.5 text-xs font-medium capitalize transition-all",
+                priority === p
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border hover:border-primary/40",
+              )}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Describe the issue in detail…"
+          rows={4}
+          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+        />
+      </div>
+
+      <Button className="w-full" disabled={!description.trim() || isPending} onClick={handleSubmit}>
+        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+        {isPending ? "Submitting…" : "Submit Request"}
+      </Button>
+    </div>
+  );
+}
+
+// ─── Sign Lease Dialog ────────────────────────────────────────────────────────
+
+interface SignLeaseDialogProps {
+  leaseId: string;
+  onClose: () => void;
+}
+
+function SignLeaseDialog({ leaseId, onClose }: SignLeaseDialogProps) {
+  const [name, setName] = useState("");
+  const [agreed, setAgreed] = useState(false);
+  const { mutate, isPending, isSuccess } = useSignLease();
+
+  function handleSign() {
+    if (!name.trim() || !agreed) return;
+    mutate({ id: leaseId, party: "tenant", signatureDataUrl: `typed:${name}` });
+  }
+
+  if (isSuccess) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40">
+          <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+        </div>
+        <div className="text-center">
+          <p className="font-semibold text-foreground">Lease signed!</p>
+          <p className="text-sm text-muted-foreground mt-1">Your signature has been recorded.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-semibold text-foreground">Sign Lease Agreement</h3>
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
+        By signing, you confirm that you have read and agree to all terms and conditions of this lease agreement.
+      </div>
+
+      <div>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Type your full name to sign
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Your full legal name"
+          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-medium"
+        />
+        {name && (
+          <p className="mt-2 font-serif text-xl text-muted-foreground italic px-1">{name}</p>
+        )}
+      </div>
+
+      <label className="flex items-start gap-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e) => setAgreed(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+        />
+        <span className="text-sm text-muted-foreground leading-snug">
+          I have read and agree to all terms and conditions in this lease agreement.
+        </span>
+      </label>
+
+      <Button className="w-full" disabled={!name.trim() || !agreed || isPending} onClick={handleSign}>
+        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+        {isPending ? "Signing…" : "Sign Lease"}
+      </Button>
+    </div>
+  );
+}
+
+// ─── Dialog wrapper ───────────────────────────────────────────────────────────
+
+function DialogOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto bg-background rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+type Dialog = "pay" | "maintenance" | "sign" | null;
 
 export default function TenantPortalPage() {
   const [tab, setTab] = useState("overview");
-  const { data: leases } = useLeases();
-  const { data: payments } = usePayments();
+  const [dialog, setDialog] = useState<Dialog>(null);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
-  const myLease = leases?.data?.[0];
-  const recentPayments = (payments?.data ?? []).slice(0, 5);
+  const user = useAppStore((s) => s.user);
+
+  const { data: leasesData, isLoading: leasesLoading } = useLeases();
+  const { data: paymentsData } = usePayments();
+  const { data: maintenanceData } = useMaintenanceIssues();
+
+  // Resolve tenant's data
+  const allLeases = leasesData?.data ?? [];
+  const allPayments = paymentsData?.data ?? [];
+  const allMaintenance = maintenanceData?.data ?? [];
+
+  const userId = user?.id ?? "";
+
+  // Filter to this tenant's data (by tenantId or reportedBy)
+  const myLease = allLeases.find((l) => l.tenantId === userId) ?? allLeases[0];
+  const myPayments = allPayments.filter((p) => p.tenantId === userId);
+  const myMaintenance = allMaintenance.filter((m) => (m as any).reportedBy === userId);
+  const openRequests = myMaintenance.filter((m) => !["resolved", "closed"].includes(m.state));
+
+  const nextPaymentDate = myLease?.terms
+    ? (() => {
+        const today = new Date();
+        const next = new Date(today.getFullYear(), today.getMonth() + (today.getDate() > 1 ? 1 : 0), 1);
+        return next.toLocaleDateString("en-UG", { month: "long", day: "numeric", year: "numeric" });
+      })()
+    : "—";
+
+  const tenantSig = myLease?.signatures?.find((s: any) => s.party === "tenant");
+  const landlordSig = myLease?.signatures?.find((s: any) => s.party === "landlord");
+  const needsTenantSignature = tenantSig?.status !== "signed";
+
+  function closeDialog() {
+    setDialog(null);
+    setSelectedPayment(null);
+  }
 
   return (
-    <div className="min-h-screen bg-muted/30 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Home className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight">Tenant Portal</h1>
-            <p className="text-sm text-muted-foreground">Manage your tenancy</p>
-          </div>
-        </div>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="max-w-4xl mx-auto space-y-5">
 
         {/* Current Lease Banner */}
         {myLease && (
           <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="pt-4">
-              <div className="flex items-start justify-between gap-4">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Current Lease</p>
-                  <p className="font-mono font-medium">{myLease.reference}</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {formatDate(myLease.terms.startDate)} — {formatDate(myLease.terms.endDate)}
+                  <p className="font-mono font-semibold">{myLease.reference}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {formatDate(myLease.terms.startDate)}
+                    {myLease.terms.endDate ? ` — ${formatDate(myLease.terms.endDate)}` : " · Ongoing"}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Monthly Rent</p>
-                  <p className="text-xl font-bold">
-                    {formatCurrency(myLease.terms.monthlyRent, myLease.terms.currency)}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">Monthly Rent</p>
+                    <p className="text-xl font-bold">
+                      {formatCurrency(myLease.terms.monthlyRent, myLease.terms.currency)}
+                    </p>
+                  </div>
+                  <StatusBadge state={myLease.state} domain="lease" />
                 </div>
-                <StatusBadge state={myLease.state} domain="lease" />
               </div>
             </CardContent>
           </Card>
         )}
 
+        {leasesLoading && !myLease && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading your tenancy…
+          </div>
+        )}
+
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
-            <TabsTrigger value="overview">
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="overview" className="gap-1.5">
               <Home className="h-3.5 w-3.5" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="payments">
+            <TabsTrigger value="payments" className="gap-1.5">
               <CreditCard className="h-3.5 w-3.5" />
               Payments
+              {myPayments.some((p) => p.state === "overdue") && (
+                <span className="ml-1 flex h-2 w-2 rounded-full bg-destructive" />
+              )}
             </TabsTrigger>
-            <TabsTrigger value="documents">
+            <TabsTrigger value="lease" className="gap-1.5">
               <FileText className="h-3.5 w-3.5" />
-              Documents
+              Lease
             </TabsTrigger>
-            <TabsTrigger value="requests">
-              <MessageSquare className="h-3.5 w-3.5" />
-              Requests
+            <TabsTrigger value="maintenance" className="gap-1.5">
+              <Wrench className="h-3.5 w-3.5" />
+              Maintenance
+              {openRequests.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
+                  {openRequests.length}
+                </Badge>
+              )}
             </TabsTrigger>
           </TabsList>
 
+          {/* ── Overview ────────────────────────────────────────────── */}
           <TabsContent value="overview" className="mt-4 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {[
-                { label: "Rent Status", value: "Up to date", color: "text-emerald-600" },
-                { label: "Next Payment", value: "Apr 1, 2025", color: "text-foreground" },
-                { label: "Open Requests", value: "0", color: "text-foreground" },
+                {
+                  label: "Rent Status",
+                  value: myPayments.some((p) => p.state === "overdue") ? "Overdue" : "Up to date",
+                  color: myPayments.some((p) => p.state === "overdue") ? "text-destructive" : "text-emerald-600",
+                  icon: myPayments.some((p) => p.state === "overdue") ? AlertCircle : CheckCircle2,
+                },
+                { label: "Next Payment", value: nextPaymentDate, color: "text-foreground", icon: Clock },
+                { label: "Open Requests", value: String(openRequests.length), color: "text-foreground", icon: Wrench },
               ].map((s) => (
                 <Card key={s.label}>
-                  <CardContent className="pt-4">
-                    <p className="text-xs text-muted-foreground">{s.label}</p>
-                    <p className={`text-lg font-bold mt-0.5 ${s.color}`}>{s.value}</p>
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <s.icon className={cn("h-4 w-4", s.color)} />
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                    </div>
+                    <p className={cn("text-lg font-bold", s.color)}>{s.value}</p>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {[
-                  { label: "Pay Rent", icon: CreditCard, onClick: () => setTab("payments") },
-                  { label: "Submit Request", icon: MessageSquare, onClick: () => setTab("requests") },
-                  { label: "View Documents", icon: FileText, onClick: () => setTab("documents") },
-                  { label: "Notifications", icon: Bell, onClick: () => {} },
+                  { label: "Pay Rent", icon: CreditCard, action: () => setDialog("pay"), color: "text-primary", disabled: !myLease },
+                  { label: "Maintenance Request", icon: Wrench, action: () => setDialog("maintenance"), color: "text-amber-600", disabled: !myLease },
+                  { label: "View Lease", icon: FileText, action: () => setTab("lease"), color: "text-violet-600", disabled: !myLease },
                 ].map((a) => (
                   <button
                     key={a.label}
-                    onClick={a.onClick}
-                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-border hover:bg-muted/50 hover:border-primary/30 transition-all text-sm"
+                    onClick={a.action}
+                    disabled={a.disabled}
+                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-border hover:bg-muted/50 hover:border-primary/30 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <a.icon className="h-5 w-5 text-primary" />
-                    {a.label}
+                    <a.icon className={cn("h-5 w-5", a.color)} />
+                    <span className="text-center leading-tight">{a.label}</span>
                   </button>
                 ))}
               </CardContent>
             </Card>
+
+            {/* Recent payment */}
+            {myPayments.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Last Payment</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {(() => {
+                    const last = myPayments[0];
+                    return (
+                      <button
+                        className="w-full flex items-center justify-between py-1 text-sm hover:text-primary transition-colors"
+                        onClick={() => { setSelectedPayment(last); }}
+                      >
+                        <div className="text-left">
+                          <p className="font-mono font-medium">{last.reference}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(last.dueDate)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge state={last.state} domain="payment" />
+                          <span className="font-medium">{formatCurrency(last.amount, last.currency)}</span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </button>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            )}
           </TabsContent>
 
-          <TabsContent value="payments" className="mt-4">
+          {/* ── Payments ─────────────────────────────────────────────── */}
+          <TabsContent value="payments" className="mt-4 space-y-4">
+            {myLease && (
+              <div className="flex items-center justify-between">
+                <SectionHeading>Payment History</SectionHeading>
+                <Button size="sm" onClick={() => setDialog("pay")}>
+                  <CreditCard className="h-3.5 w-3.5" />
+                  Pay Rent
+                </Button>
+              </div>
+            )}
             <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Payment History</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {recentPayments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No payment history yet.</p>
+              <CardContent className="pt-4">
+                {myPayments.length === 0 ? (
+                  <div className="text-center py-8">
+                    <CreditCard className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No payment history yet.</p>
+                    {myLease && (
+                      <Button variant="outline" size="sm" className="mt-3" onClick={() => setDialog("pay")}>
+                        Make first payment
+                      </Button>
+                    )}
+                  </div>
                 ) : (
-                  <div className="space-y-2">
-                    {recentPayments.map((p) => (
-                      <div
+                  <div className="space-y-0 divide-y divide-border/50">
+                    {myPayments.map((p) => (
+                      <button
                         key={p.id}
-                        className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
+                        className="w-full flex items-center justify-between py-3 text-left hover:bg-muted/30 rounded px-2 -mx-2 transition-colors group"
+                        onClick={() => setSelectedPayment(p)}
                       >
                         <div>
                           <p className="text-sm font-medium font-mono">{p.reference}</p>
                           <p className="text-xs text-muted-foreground">{formatDate(p.dueDate)}</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-medium">{formatCurrency(p.amount, p.currency)}</p>
+                        <div className="flex items-center gap-2">
                           <StatusBadge state={p.state} domain="payment" />
+                          <span className="text-sm font-medium">{formatCurrency(p.amount, p.currency)}</span>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ── Lease ────────────────────────────────────────────────── */}
+          <TabsContent value="lease" className="mt-4 space-y-4">
+            {!myLease ? (
+              <Card>
+                <CardContent className="pt-6 text-center py-12">
+                  <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No lease found for your account.</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">Lease Terms</CardTitle>
+                      <StatusBadge state={myLease.state} domain="lease" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
+                      {[
+                        ["Reference", myLease.reference],
+                        ["Type", myLease.type?.replace(/_/g, " ")],
+                        ["Start date", formatDate(myLease.terms.startDate)],
+                        ["End date", myLease.terms.endDate ? formatDate(myLease.terms.endDate) : "—"],
+                        ["Monthly rent", formatCurrency(myLease.terms.monthlyRent, myLease.terms.currency)],
+                        ["Security deposit", formatCurrency(myLease.terms.depositAmount, myLease.terms.currency)],
+                        ["Notice period", `${myLease.terms.noticePeriodDays} days`],
+                        ["Grace period", `${myLease.terms.gracePeriodDays} days`],
+                      ].map(([label, value]) => (
+                        <div key={label as string}>
+                          <dt className="text-xs text-muted-foreground">{label}</dt>
+                          <dd className="text-sm font-medium capitalize">{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Signatures</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {[
+                      { party: "Tenant", sig: tenantSig },
+                      { party: "Landlord", sig: landlordSig },
+                    ].map(({ party, sig }) => (
+                      <div key={party} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                        <div>
+                          <p className="text-sm font-medium">{party}</p>
+                          {sig?.name && <p className="text-xs text-muted-foreground">{sig.name}</p>}
+                        </div>
+                        {sig?.status === "signed" ? (
+                          <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Signed {sig.signedAt ? formatDate(sig.signedAt) : ""}
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                            <Clock className="h-3.5 w-3.5" />
+                            Pending signature
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                    {needsTenantSignature && (
+                      <Button className="w-full mt-2" onClick={() => setDialog("sign")}>
+                        <FileText className="h-4 w-4" />
+                        Sign Lease Agreement
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-4 pb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Lease Document</p>
+                        <p className="text-xs text-muted-foreground">PDF format</p>
+                      </div>
+                      <Button variant="outline" size="sm">
+                        <Download className="h-3.5 w-3.5" />
+                        Download PDF
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </TabsContent>
+
+          {/* ── Maintenance ──────────────────────────────────────────── */}
+          <TabsContent value="maintenance" className="mt-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <SectionHeading>Maintenance Requests</SectionHeading>
+              <Button size="sm" disabled={!myLease} onClick={() => setDialog("maintenance")}>
+                <Plus className="h-3.5 w-3.5" />
+                New Request
+              </Button>
+            </div>
+
+            <Card>
+              <CardContent className="pt-4">
+                {myMaintenance.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Wrench className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No maintenance requests yet.</p>
+                    {myLease && (
+                      <Button variant="outline" size="sm" className="mt-3" onClick={() => setDialog("maintenance")}>
+                        Submit a request
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-0 divide-y divide-border/50">
+                    {myMaintenance.map((m) => (
+                      <div key={m.id} className="py-3 flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium capitalize">
+                            {(m as any).title ?? (m as any).category?.replace(/_/g, " ") ?? "Issue"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {(m as any).description ?? ""}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground/60 mt-1">
+                            {formatDate(m.createdAt)}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <StatusBadge state={m.state} domain="maintenance" />
+                          {(m as any).priority && (
+                            <span className={cn(
+                              "text-[10px] rounded-full px-1.5 py-0.5 font-medium capitalize",
+                              (m as any).priority === "urgent" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" :
+                              (m as any).priority === "high" ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
+                              "bg-muted text-muted-foreground",
+                            )}>
+                              {(m as any).priority}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -147,42 +768,39 @@ export default function TenantPortalPage() {
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="documents" className="mt-4">
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Your lease documents and agreements will appear here.
-                </p>
-                {myLease && (
-                  <div className="flex justify-center">
-                    <Button variant="outline" size="sm">
-                      <FileText className="h-4 w-4" />
-                      Download Lease Agreement
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="requests" className="mt-4">
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Submit maintenance requests or contact your landlord.
-                </p>
-                <div className="flex justify-center">
-                  <Button size="sm">
-                    <MessageSquare className="h-4 w-4" />
-                    New Maintenance Request
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
+
+      {/* ── Dialogs ───────────────────────────────────────────────── */}
+      {dialog === "pay" && myLease && (
+        <DialogOverlay onClose={closeDialog}>
+          <PayDialog lease={myLease as any} onClose={closeDialog} />
+        </DialogOverlay>
+      )}
+
+      {dialog === "maintenance" && myLease && (
+        <DialogOverlay onClose={closeDialog}>
+          <MaintenanceDialog
+            userId={userId}
+            leaseId={myLease.id}
+            propertyId={myLease.propertyId}
+            unitId={myLease.unitId}
+            onClose={closeDialog}
+          />
+        </DialogOverlay>
+      )}
+
+      {dialog === "sign" && myLease && (
+        <DialogOverlay onClose={closeDialog}>
+          <SignLeaseDialog leaseId={myLease.id} onClose={closeDialog} />
+        </DialogOverlay>
+      )}
+
+      {selectedPayment && (
+        <DialogOverlay onClose={closeDialog}>
+          <PaymentDetailSheet payment={selectedPayment} onClose={closeDialog} />
+        </DialogOverlay>
+      )}
     </div>
   );
 }
