@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { tenantsApi } from "@/services/api/tenants";
 import { toast } from "@/store/useUIStore";
-import type { Tenant, QueryParams } from "@/types";
+import type { Tenant, TenantDocument, QueryParams } from "@/types";
 
 export function useTenants(params?: QueryParams) {
   return useQuery({
@@ -73,6 +73,51 @@ export function useApproveOnboarding() {
       toast.success("Tenant approved and activated");
     },
     onError: () => toast.error("Failed to approve tenant"),
+  });
+}
+
+export function useUploadTenantDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      tenantId,
+      data,
+    }: {
+      tenantId: string;
+      data: Pick<TenantDocument, "type" | "name" | "url" | "mimeType" | "sizeBytes"> & {
+        expiresAt?: string;
+      };
+    }) => tenantsApi.uploadDocument(tenantId, data),
+    onSuccess: (_, { tenantId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.documents(tenantId) });
+      toast.success("Document uploaded");
+    },
+    onError: () => toast.error("Failed to upload document"),
+  });
+}
+
+export function useVerifyTenantDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tenantId, documentId }: { tenantId: string; documentId: string }) =>
+      tenantsApi.verifyDocument(tenantId, documentId),
+    onSuccess: (_, { tenantId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.documents(tenantId) });
+    },
+    onError: () => toast.error("Failed to update verification"),
+  });
+}
+
+export function useDeleteTenantDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tenantId, documentId }: { tenantId: string; documentId: string }) =>
+      tenantsApi.deleteDocument(tenantId, documentId),
+    onSuccess: (_, { tenantId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.documents(tenantId) });
+      toast.success("Document deleted");
+    },
+    onError: () => toast.error("Failed to delete document"),
   });
 }
 

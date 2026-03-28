@@ -7,7 +7,6 @@ import {
   Mail,
   Phone,
   Shield,
-  FileText,
   Edit,
   X,
   Save,
@@ -31,9 +30,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OnboardingProgress } from "@/components/tenants/OnboardingProgress";
+import { TenantDocumentsSection } from "@/components/tenants/TenantDocumentsSection";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatDate, getInitials } from "@/utils/formatters";
-import { useTenant, useTenantDocuments, useUpdateTenant } from "@/hooks/useTenants";
+import { useTenant, useUpdateTenant } from "@/hooks/useTenants";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Tenant, TenantStatus } from "@/types";
 
@@ -191,7 +191,6 @@ export default function TenantDetailPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
   const { data: tenant, isLoading } = useTenant(id);
-  const { data: documents } = useTenantDocuments(id);
   const { can } = usePermissions();
   const canEdit = can("tenants:write");
 
@@ -342,38 +341,7 @@ export default function TenantDetailPage({ params }: Props) {
             )}
 
             {/* Documents */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Documents ({documents?.length ?? 0})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!documents || documents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {documents.map((doc) => (
-                      <div key={doc.id} className="flex items-center justify-between text-sm py-1.5">
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span>{doc.name}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {doc.type.replace(/_/g, " ")}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(doc.uploadedAt)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <TenantDocumentsSection tenantId={id} />
           </div>
 
           {/* ── Sidebar ─────────────────────────────── */}

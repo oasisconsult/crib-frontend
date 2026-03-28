@@ -38,6 +38,16 @@ export const tenantsApi = {
   getDocuments: (tenantId: string) =>
     apiGet<TenantDocument[]>(`/tenants/${tenantId}/documents`),
 
+  uploadDocument: (
+    tenantId: string,
+    data: Pick<TenantDocument, "type" | "name" | "url" | "mimeType" | "sizeBytes"> & {
+      expiresAt?: string;
+    },
+  ) => apiPost<TenantDocument>(`/tenants/${tenantId}/documents`, data),
+
+  verifyDocument: (tenantId: string, documentId: string) =>
+    apiPatch<TenantDocument>(`/tenants/${tenantId}/documents/${documentId}/verify`, {}),
+
   deleteDocument: (tenantId: string, documentId: string) =>
     apiDelete<void>(`/tenants/${tenantId}/documents/${documentId}`),
 
