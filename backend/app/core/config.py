@@ -47,12 +47,12 @@ class Settings(BaseSettings):
     redis_ttl_seconds: int = 300  # default cache TTL
 
     # ── Logto (OIDC) ─────────────────────────────────────────────────────────
-    logto_endpoint: AnyHttpUrl  # http://localhost:3001
-    logto_app_id: str
-    logto_app_secret: str
+    logto_endpoint: AnyHttpUrl = "http://localhost:3001/"  # type: ignore[assignment]
+    logto_app_id: str = ""
+    logto_app_secret: str = ""
     logto_api_resource: str = "https://crib.app/api"  # the API resource identifier in Logto
-    logto_admin_endpoint: AnyHttpUrl  # http://localhost:3002 (Management API)
-    logto_m2m_app_id: str = ""       # Machine-to-Machine app for Management API calls
+    logto_admin_endpoint: AnyHttpUrl = "http://localhost:3002/"  # type: ignore[assignment]
+    logto_m2m_app_id: str = ""
     logto_m2m_app_secret: str = ""
 
     # ── MinIO ─────────────────────────────────────────────────────────────────
@@ -88,6 +88,17 @@ class Settings(BaseSettings):
     # WhatsApp (Meta Cloud API)
     whatsapp_api_key: str = ""
     whatsapp_phone_id: str = ""
+
+    @field_validator("logto_app_id", mode="after")
+    @classmethod
+    def warn_logto_not_configured(cls, v: str, info) -> str:
+        # Validated after all fields are set — warn in dev, raise in prod
+        env = info.data.get("environment", "development")
+        if not v and env != Environment.development:
+            raise ValueError(
+                "LOGTO_APP_ID is required in non-development environments"
+            )
+        return v
 
     @property
     def is_dev(self) -> bool:
