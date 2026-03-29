@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
   // The login page stores it in sessionStorage (client-side), so we read it from
   // a cookie that the login page sets via a small API route instead.
   const codeVerifier = request.cookies.get("pkce_verifier")?.value;
+  console.log("[auth/callback] cookies present:", [...request.cookies.getAll().map(c => c.name)]);
   if (!codeVerifier) {
     console.error("[auth/callback] Missing PKCE verifier cookie");
     return NextResponse.redirect(new URL("/login?error=missing_verifier", appUrl));
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
   }
 
   const tokens = await tokenRes.json();
+  console.log("[auth/callback] token keys:", Object.keys(tokens), "has access_token:", !!tokens.access_token);
 
   // Determine redirect target from state
   let redirect = "/";

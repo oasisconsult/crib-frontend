@@ -177,12 +177,10 @@ export default function LoginPage() {
     const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
       .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
-    // Store verifier server-side as httpOnly cookie so the callback route can read it
-    await fetch("/api/auth/pkce", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ verifier }),
-    });
+    // Store verifier in a cookie so the server-side callback can read it.
+    // Setting via document.cookie is synchronous and guaranteed to be present
+    // before window.location.href navigates away (fetch Set-Cookie can race).
+    document.cookie = `pkce_verifier=${verifier}; SameSite=Lax; Path=/; Max-Age=300`;
 
     const logtoUrl = new URL(`${process.env.NEXT_PUBLIC_LOGTO_ENDPOINT}/oidc/auth`);
     logtoUrl.searchParams.set("client_id", process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "");
