@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # ── Security ─────────────────────────────────────────────────────────────
     secret_key: str = Field(min_length=32)
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:8001", "http://localhost:3010", "http://localhost:3001"]  # comma-separated or list  
 
     @field_validator("cors_origins", mode="before")
     @classmethod
