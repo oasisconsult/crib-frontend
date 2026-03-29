@@ -15,11 +15,33 @@ export function AuthInitializer() {
 
   useEffect(() => {
     if (user) return; // already loaded
-    apiGet<User>("/users/me")
-      .then(setUser)
-      .catch(() => {
-        // Not authenticated or backend unavailable — leave user as null
-      });
+
+    const init = async () => {
+      // In real Logto mode the access token lives in an httpOnly cookie.
+      // Hydrate sessionStorage so the axios client can attach it as Bearer auth.
+      if (
+        process.env.NEXT_PUBLIC_MOCK_API !== "true" &&
+        !sessionStorage.getItem("crib:access_token")
+      ) {
+        try {
+          const res = await fetch("/api/auth/token");
+          if (res.ok) {
+            const { token } = await res.json();
+            sessionStorage.setItem("crib:access_token", token);
+          }
+        } catch {
+          // ignore — if no session the /users/me call will 401 and axios handles it
+        }
+      }
+
+      apiGet<User>("/users/me")
+        .then(setUser)
+        .catch(() => {
+          // Not authenticated or backend unavailable — leave user as null
+        });
+    };
+
+    init();
   }, [setUser, user]);
 
   return null;
