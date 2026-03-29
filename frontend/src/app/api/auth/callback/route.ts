@@ -9,8 +9,12 @@ export async function GET(request: NextRequest) {
   // not the container-internal port Next.js listens on.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010";
 
-  if (!code) {
-    return NextResponse.redirect(new URL("/login?error=no_code", appUrl));
+  // Logto may redirect back with an error instead of a code
+  const logtoError = searchParams.get("error");
+  if (logtoError || !code) {
+    const msg = logtoError ?? "no_code";
+    console.error("[auth/callback] Logto error:", msg, searchParams.get("error_description"));
+    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, appUrl));
   }
 
   // Exchange code for tokens at Logto token endpoint
@@ -23,13 +27,15 @@ export async function GET(request: NextRequest) {
         grant_type: "authorization_code",
         code,
         redirect_uri: `${appUrl}/api/auth/callback`,
-        client_id: process.env.LOGTO_APP_ID ?? "",
+        client_id: process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "",
         client_secret: process.env.LOGTO_APP_SECRET ?? "",
       }),
     },
   );
 
   if (!tokenRes.ok) {
+    const body = await tokenRes.text();
+    console.error("[auth/callback] Token exchange failed:", tokenRes.status, body);
     return NextResponse.redirect(
       new URL("/login?error=token_exchange", appUrl),
     );
