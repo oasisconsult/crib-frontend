@@ -188,7 +188,7 @@ export default function LoginPage() {
     logtoUrl.searchParams.set("client_id", process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "");
     logtoUrl.searchParams.set("redirect_uri", `${window.location.origin}/api/auth/callback`);
     logtoUrl.searchParams.set("response_type", "code");
-    logtoUrl.searchParams.set("scope", "openid profile email phone roles offline_access");
+    logtoUrl.searchParams.set("scope", "openid profile email offline_access");
     logtoUrl.searchParams.set("state", btoa(JSON.stringify({ redirect })));
     logtoUrl.searchParams.set("code_challenge", challenge);
     logtoUrl.searchParams.set("code_challenge_method", "S256");
