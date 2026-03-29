@@ -5,8 +5,12 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
 
+  // Use the public app URL so redirects go to the correct host:port,
+  // not the container-internal port Next.js listens on.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010";
+
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=no_code", request.url));
+    return NextResponse.redirect(new URL("/login?error=no_code", appUrl));
   }
 
   // Exchange code for tokens at Logto token endpoint
@@ -18,7 +22,7 @@ export async function GET(request: NextRequest) {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+        redirect_uri: `${appUrl}/api/auth/callback`,
         client_id: process.env.LOGTO_APP_ID ?? "",
         client_secret: process.env.LOGTO_APP_SECRET ?? "",
       }),
@@ -27,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   if (!tokenRes.ok) {
     return NextResponse.redirect(
-      new URL("/login?error=token_exchange", request.url),
+      new URL("/login?error=token_exchange", appUrl),
     );
   }
 
@@ -40,7 +44,7 @@ export async function GET(request: NextRequest) {
     redirect = parsed.redirect ?? "/";
   } catch {}
 
-  const response = NextResponse.redirect(new URL(redirect, request.url));
+  const response = NextResponse.redirect(new URL(redirect, appUrl));
 
   // Set httpOnly session cookie (access token)
   response.cookies.set("logto_session", tokens.access_token, {
