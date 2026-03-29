@@ -84,19 +84,17 @@ services:
   logto:
     image: svhd/logto:latest
     ports:
-      - "3011:3001"
-      - "3012:3002"
+      - "3001:3001"
+      - "3002:3002"
     env_file:
       - .env.local
     environment:
       DB_URL: "postgresql://${LOGTO_POSTGRES_USER:-logto}:${LOGTO_POSTGRES_PASSWORD}@logto-postgres:5432/${LOGTO_POSTGRES_DB:-logto}"
       # MUST be browser-accessible URLs — Logto uses these for CORS and the OIDC
       # discovery document. Never use Docker-internal hostnames here.
-      ENDPOINT: "http://localhost:3011"
-      ADMIN_ENDPOINT: "http://localhost:3012"
+      ENDPOINT: "http://localhost:3001"
+      ADMIN_ENDPOINT: "http://localhost:3002"
       TRUST_PROXY_HEADER: "1"
-      # Allow the admin UI (3012) to call the core API (3011) cross-origin
-      CORS_ALLOWED_ORIGINS: "http://localhost:3012,http://localhost:3011,http://localhost:3010"
     depends_on:
       logto-postgres:
         condition: service_healthy
