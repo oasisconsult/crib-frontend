@@ -17,7 +17,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, appUrl));
   }
 
-  // Exchange code for tokens at Logto token endpoint
+  // Retrieve PKCE verifier stored in a cookie (set by the login page server action)
+  // The login page stores it in sessionStorage (client-side), so we read it from
+  // a cookie that the login page sets via a small API route instead.
+  const codeVerifier = request.cookies.get("pkce_verifier")?.value;
+  if (!codeVerifier) {
+    console.error("[auth/callback] Missing PKCE verifier cookie");
+    return NextResponse.redirect(new URL("/login?error=missing_verifier", appUrl));
+  }
+
+  // Exchange code for tokens using PKCE (SPA — no client secret)
   const tokenRes = await fetch(
     `${process.env.LOGTO_ENDPOINT}/oidc/token`,
     {
@@ -28,7 +37,7 @@ export async function GET(request: NextRequest) {
         code,
         redirect_uri: `${appUrl}/api/auth/callback`,
         client_id: process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "",
-        client_secret: process.env.LOGTO_APP_SECRET ?? "",
+        code_verifier: codeVerifier,
       }),
     },
   );
@@ -51,6 +60,9 @@ export async function GET(request: NextRequest) {
   } catch {}
 
   const response = NextResponse.redirect(new URL(redirect, appUrl));
+
+  // Clear the one-time PKCE verifier cookie
+  response.cookies.delete("pkce_verifier");
 
   // Set httpOnly session cookie (access token)
   response.cookies.set("logto_session", tokens.access_token, {
