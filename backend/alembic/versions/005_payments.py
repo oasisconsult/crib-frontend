@@ -174,7 +174,7 @@ def upgrade() -> None:
                   nullable=False, unique=True),  # one deposit per lease
         sa.Column("amount_held", sa.Numeric(12, 2), nullable=False),
         sa.Column("amount_returned", sa.Numeric(12, 2), nullable=False, server_default="0"),
-        sa.Column("deductions", postgresql.JSONB(), nullable=False, server_default="'[]'"),
+        sa.Column("deductions", postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'")),
         sa.Column("status", postgresql.ENUM(
             "held", "partially_returned", "fully_returned", "forfeited",
             name="deposit_status_enum", create_type=False,
