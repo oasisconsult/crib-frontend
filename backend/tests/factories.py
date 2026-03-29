@@ -118,6 +118,68 @@ async def make_lease(db: AsyncSession, org: Organisation, unit: Unit, tenant, **
     return lease
 
 
+async def make_rent_schedule(db: AsyncSession, org: Organisation, lease, **kwargs):
+    from datetime import date
+
+    from app.models.payment import RentSchedule, RentScheduleStatus
+    sched = RentSchedule(
+        organisation_id=org.id,
+        lease_id=lease.id,
+        period_start=kwargs.get("period_start", date(2026, 1, 1)),
+        period_end=kwargs.get("period_end", date(2026, 1, 31)),
+        due_date=kwargs.get("due_date", date(2026, 1, 1)),
+        amount_due=kwargs.get("amount_due", 500_000),
+        amount_paid=kwargs.get("amount_paid", 0),
+        late_fee_applied=kwargs.get("late_fee_applied", 0),
+        status=kwargs.get("status", RentScheduleStatus.pending),
+        paid_at=kwargs.get("paid_at", None),
+        notes=kwargs.get("notes", None),
+    )
+    db.add(sched)
+    await db.flush()
+    return sched
+
+
+async def make_payment(db: AsyncSession, org: Organisation, lease, schedule=None, **kwargs):
+    from datetime import datetime, timezone
+
+    from app.models.payment import Payment, PaymentStatus
+    payment = Payment(
+        organisation_id=org.id,
+        lease_id=lease.id,
+        rent_schedule_id=schedule.id if schedule else None,
+        amount=kwargs.get("amount", 500_000),
+        currency=kwargs.get("currency", "UGX"),
+        category=kwargs.get("category", "rent"),
+        method=kwargs.get("method", "cash"),
+        reference=kwargs.get("reference", None),
+        idempotency_key=kwargs.get("idempotency_key", None),
+        status=kwargs.get("status", PaymentStatus.pending),
+        paid_at=kwargs.get("paid_at", datetime.now(timezone.utc)),
+        notes=kwargs.get("notes", None),
+    )
+    db.add(payment)
+    await db.flush()
+    return payment
+
+
+async def make_deposit(db: AsyncSession, org: Organisation, lease, **kwargs):
+    from app.models.payment import Deposit, DepositStatus
+    deposit = Deposit(
+        organisation_id=org.id,
+        lease_id=lease.id,
+        amount_held=kwargs.get("amount_held", 500_000),
+        amount_returned=kwargs.get("amount_returned", 0),
+        deductions=kwargs.get("deductions", []),
+        status=kwargs.get("status", DepositStatus.held),
+        returned_at=kwargs.get("returned_at", None),
+        notes=kwargs.get("notes", None),
+    )
+    db.add(deposit)
+    await db.flush()
+    return deposit
+
+
 async def make_unit(db: AsyncSession, prop: Property, **kwargs) -> Unit:
     unit = Unit(
         property_id=prop.id,

@@ -306,6 +306,11 @@ async def activate_lease(
     tenant.current_unit_id = unit.id
     tenant.current_property_id = unit.property_id
 
+    # ── Payment side-effects ───────────────────────────────────────────────────
+    from app.services.payment_service import create_deposit_record, generate_rent_schedules
+    await generate_rent_schedules(lease, db)
+    await create_deposit_record(lease, db)
+
     await db.flush()
     await db.refresh(lease, attribute_names=["status", "signed_at", "updated_at"])
     return _lease_out(lease)

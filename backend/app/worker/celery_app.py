@@ -45,6 +45,18 @@ celery_app.conf.update(
     task_default_retry_delay=60,
     task_max_retries=3,
 
-    # Beat schedule will be added here in Sprint 6
-    beat_schedule={},
+    beat_schedule={
+        "mark-overdue-schedules-daily": {
+            "task": "app.worker.tasks.payments.mark_overdue_schedules",
+            "schedule": 86400,  # every 24 hours
+        },
+        "apply-late-fees-daily": {
+            "task": "app.worker.tasks.payments.apply_late_fees_task",
+            "schedule": 86400,
+        },
+        "send-rent-reminders-daily": {
+            "task": "app.worker.tasks.payments.send_rent_reminders",
+            "schedule": 86400,
+        },
+    },
 )

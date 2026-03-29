@@ -58,6 +58,11 @@ async def test_engine():
             "DO $$ BEGIN CREATE TYPE id_document_type_enum AS ENUM ('passport','national_id','driving_licence','residence_permit','proof_of_income','reference_letter','bank_statement','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE invite_status_enum AS ENUM ('pending','accepted','expired'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE lease_status_enum AS ENUM ('draft','active','expired','terminated'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE rent_schedule_status_enum AS ENUM ('pending','paid','overdue','waived'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE payment_category_enum AS ENUM ('rent','deposit','late_fee','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE payment_method_enum AS ENUM ('cash','bank_transfer','mobile_money_mtn','mobile_money_airtel','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE payment_status_enum AS ENUM ('pending','confirmed','failed','refunded'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE deposit_status_enum AS ENUM ('held','partially_returned','fully_returned','forfeited'); EXCEPTION WHEN duplicate_object THEN null; END $$",
         ]:
             await conn.execute(sa.text(stmt))
 
