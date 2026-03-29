@@ -190,3 +190,7 @@ For lease agreements I'll use Jinja2 + WeasyPrint. Should the PDF match the Crib
 I'll implement real JWKS validation either way, but if Logto isn't running yet I'll add a DEV_BYPASS_JWT=true env flag that accepts any bearer token and returns a mock user — similar to how the frontend has NEXT_PUBLIC_MOCK_API=true.
 
 Ready to start coding the moment you confirm (or override) these 5 questions. I'll begin with Sprint 1 (scaffolding) since that's independent of the answers, and can begin that now while you respond if you'd like.
+
+
+Rules:
+1- organisation is current operator, organisation own the record but landlord has view permission for the properties that belong to them. 2. one lanlord has one agency managing properties but can have another property managed by another agency, e.g properties in Kampala can be managed by a different agency and properties in Entebbe managed by another agency, 3-agency need a separate login/org in Logto, 4-agency just recording payments on the landlord's behalf. but if landlord is managing their own properties then landlord records

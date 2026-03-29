@@ -1,4 +1,4 @@
-version: "3.9"
+# version: "3.9"
 # ─── Production environment ────────────────────────────────────────────────────
 # Usage: docker compose --env-file .env.production up -d
 
@@ -74,7 +74,16 @@ services:
     image: redis:7-alpine
     env_file:
       - .env.production
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    command:
+      [
+        "redis-server",
+        "--requirepass",
+        "${REDIS_PASSWORD}",
+        "--maxmemory",
+        "256mb",
+        "--maxmemory-policy",
+        "allkeys-lru",
+      ]
     volumes:
       - redis_prod_data:/data
     healthcheck:
@@ -97,7 +106,12 @@ services:
     depends_on:
       logto-postgres:
         condition: service_healthy
-    entrypoint: ["sh", "-c", "npx @logto/cli db seed -- --db-url $$DB_URL || true && npm start"]
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "npx @logto/cli db seed -- --db-url $$DB_URL || true && npm start",
+      ]
     restart: unless-stopped
     networks:
       - crib-prod
@@ -125,7 +139,17 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info", "-Q", "default,notifications,payments", "--concurrency=4"]
+    command:
+      [
+        "celery",
+        "-A",
+        "app.worker.celery_app",
+        "worker",
+        "--loglevel=info",
+        "-Q",
+        "default,notifications,payments",
+        "--concurrency=4",
+      ]
     env_file:
       - .env.production
     environment:
