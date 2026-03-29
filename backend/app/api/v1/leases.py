@@ -1,0 +1,138 @@
+"""
+Leases REST API — 9 endpoints.
+
+  POST   /leases                  create a draft lease         [manager/owner]
+  GET    /leases                  list leases (filterable)     [manager/owner/tenant-own]
+  GET    /leases/{id}             get a single lease           [manager/owner/tenant-own]
+  PUT    /leases/{id}             update a draft lease         [manager/owner]
+  DELETE /leases/{id}             delete a draft lease         [manager/owner]
+  PATCH  /leases/{id}/activate    draft → active               [manager/owner]
+  PATCH  /leases/{id}/terminate   active → terminated          [manager/owner]
+  PATCH  /leases/{id}/expire      active → expired             [manager/owner]
+  POST   /leases/{id}/renew       create renewal draft         [manager/owner]
+"""
+
+import uuid
+
+from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import CurrentUser, require_org_access
+from app.core.database import get_db
+from app.schemas.lease import (
+    LeaseActivate,
+    LeaseCreate,
+    LeaseOut,
+    LeaseRenewRequest,
+    LeaseTerminate,
+    LeaseUpdate,
+)
+from app.services import lease_service as svc
+
+router = APIRouter(prefix="/leases", tags=["leases"])
+
+_read  = Depends(require_org_access(allow_tenant_own=True))
+_write = Depends(require_org_access(allow_tenant_own=False))
+
+
+# ── CRUD ───────────────────────────────────────────────────────────────────────
+
+@router.post("", response_model=LeaseOut, status_code=status.HTTP_201_CREATED)
+async def create_lease(
+    body: LeaseCreate,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.create_lease(body, current_user.org_id, db)
+
+
+@router.get("", response_model=dict)
+async def list_leases(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
+    status_filter: str | None = Query(None, alias="status"),
+    unit_id: str | None = Query(None, alias="unitId"),
+    tenant_id: str | None = Query(None, alias="tenantId"),
+    property_id: str | None = Query(None, alias="propertyId"),
+    current_user: CurrentUser = _read,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.list_leases(
+        current_user.org_id,
+        db,
+        status_filter=status_filter,
+        unit_id=unit_id,
+        tenant_id=tenant_id,
+        property_id=property_id,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/{lease_id}", response_model=LeaseOut)
+async def get_lease(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _read,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.get_lease(lease_id, current_user.org_id, db)
+
+
+@router.put("/{lease_id}", response_model=LeaseOut)
+async def update_lease(
+    lease_id: uuid.UUID,
+    body: LeaseUpdate,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.update_lease(lease_id, body, current_user.org_id, db)
+
+
+@router.delete("/{lease_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_lease(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    await svc.delete_lease(lease_id, current_user.org_id, db)
+
+
+# ── Lifecycle transitions ──────────────────────────────────────────────────────
+
+@router.patch("/{lease_id}/activate", response_model=LeaseOut)
+async def activate_lease(
+    lease_id: uuid.UUID,
+    body: LeaseActivate = LeaseActivate(),  # noqa: B008
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.activate_lease(lease_id, body, current_user.org_id, db)
+
+
+@router.patch("/{lease_id}/terminate", response_model=LeaseOut)
+async def terminate_lease(
+    lease_id: uuid.UUID,
+    body: LeaseTerminate,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.terminate_lease(lease_id, body, current_user.org_id, db)
+
+
+@router.patch("/{lease_id}/expire", response_model=LeaseOut)
+async def expire_lease(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.expire_lease(lease_id, current_user.org_id, db)
+
+
+@router.post("/{lease_id}/renew", response_model=LeaseOut, status_code=status.HTTP_201_CREATED)
+async def renew_lease(
+    lease_id: uuid.UUID,
+    body: LeaseRenewRequest,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.renew_lease(lease_id, body, current_user.org_id, db)

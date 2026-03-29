@@ -89,6 +89,35 @@ async def make_tenant(db: AsyncSession, org: Organisation, **kwargs):
     return tenant
 
 
+async def make_lease(db: AsyncSession, org: Organisation, unit: Unit, tenant, **kwargs):
+    from datetime import date
+
+    from app.models.lease import Lease, LeaseStatus
+    lease = Lease(
+        organisation_id=org.id,
+        property_id=unit.property_id,
+        unit_id=unit.id,
+        tenant_id=tenant.id,
+        status=kwargs.get("status", LeaseStatus.draft),
+        start_date=kwargs.get("start_date", date(2026, 1, 1)),
+        end_date=kwargs.get("end_date", date(2026, 12, 31)),
+        monthly_rent=kwargs.get("monthly_rent", 500_000),
+        currency=kwargs.get("currency", "UGX"),
+        deposit_amount=kwargs.get("deposit_amount", None),
+        deposit_paid=kwargs.get("deposit_paid", False),
+        rent_day_of_month=kwargs.get("rent_day_of_month", 1),
+        grace_period_days=kwargs.get("grace_period_days", 5),
+        late_fee_type=kwargs.get("late_fee_type", "flat"),
+        late_fee_value=kwargs.get("late_fee_value", 0),
+        notice_period_days=kwargs.get("notice_period_days", 30),
+        renewal_of_lease_id=kwargs.get("renewal_of_lease_id", None),
+        notes=kwargs.get("notes", None),
+    )
+    db.add(lease)
+    await db.flush()
+    return lease
+
+
 async def make_unit(db: AsyncSession, prop: Property, **kwargs) -> Unit:
     unit = Unit(
         property_id=prop.id,
