@@ -63,6 +63,12 @@ async def test_engine():
             "DO $$ BEGIN CREATE TYPE payment_method_enum AS ENUM ('cash','bank_transfer','mobile_money_mtn','mobile_money_airtel','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE payment_status_enum AS ENUM ('pending','confirmed','failed','refunded'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE deposit_status_enum AS ENUM ('held','partially_returned','fully_returned','forfeited'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE inspection_type_enum AS ENUM ('move_in','move_out','routine','maintenance','complaint'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE inspection_state_enum AS ENUM ('scheduled','in_progress','completed','approved','failed','cancelled'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE maintenance_reporter_enum AS ENUM ('tenant','landlord','inspector'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE maintenance_category_enum AS ENUM ('plumbing','electrical','structural','appliance','pest','security','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE maintenance_priority_enum AS ENUM ('low','medium','high','urgent'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE maintenance_state_enum AS ENUM ('reported','assigned','in_progress','resolved','closed','cancelled'); EXCEPTION WHEN duplicate_object THEN null; END $$",
         ]:
             await conn.execute(sa.text(stmt))
 

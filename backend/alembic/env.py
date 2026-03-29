@@ -34,6 +34,9 @@ from app.models.organisation import Organisation  # noqa: F401
 from app.models.profile import Profile  # noqa: F401
 from app.models.property import Property, Unit  # noqa: F401
 from app.models.tenant import Tenant, TenantDocument, TenantInvite  # noqa: F401
+from app.models.lease import Lease  # noqa: F401
+from app.models.payment import Deposit, LateFee, Payment, RentSchedule  # noqa: F401
+from app.models.inspection import Inspection, MaintenanceIssue  # noqa: F401
 
 target_metadata = Base.metadata
 

@@ -180,6 +180,58 @@ async def make_deposit(db: AsyncSession, org: Organisation, lease, **kwargs):
     return deposit
 
 
+async def make_inspection(db: AsyncSession, org: Organisation, prop: Property, **kwargs):
+    from datetime import date
+
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+    inspection = Inspection(
+        organisation_id=org.id,
+        property_id=prop.id,
+        unit_id=kwargs.get("unit_id", None),
+        lease_id=kwargs.get("lease_id", None),
+        tenant_id=kwargs.get("tenant_id", None),
+        inspector_id=kwargs.get("inspector_id", None),
+        inspector_name=kwargs.get("inspector_name", "Test Inspector"),
+        type=kwargs.get("type", InspectionType.routine),
+        state=kwargs.get("state", InspectionState.scheduled),
+        scheduled_date=kwargs.get("scheduled_date", date(2026, 4, 15)),
+        scheduled_time_slot=kwargs.get("scheduled_time_slot", "09:00-11:00"),
+        checklist=kwargs.get("checklist", []),
+        photo_urls=kwargs.get("photo_urls", []),
+        video_urls=kwargs.get("video_urls", []),
+        maintenance_issue_ids=kwargs.get("maintenance_issue_ids", []),
+    )
+    db.add(inspection)
+    await db.flush()
+    return inspection
+
+
+async def make_maintenance_issue(db: AsyncSession, org: Organisation, prop: Property, **kwargs):
+    from datetime import datetime, timezone
+
+    from app.models.inspection import MaintenanceIssue, MaintenanceState
+    issue = MaintenanceIssue(
+        organisation_id=org.id,
+        property_id=prop.id,
+        unit_id=kwargs.get("unit_id", None),
+        lease_id=kwargs.get("lease_id", None),
+        inspection_id=kwargs.get("inspection_id", None),
+        reported_by=kwargs.get("reported_by", "landlord"),
+        reported_by_id=kwargs.get("reported_by_id", "dev_owner1"),
+        title=kwargs.get("title", "Leaking pipe"),
+        description=kwargs.get("description", "Pipe under kitchen sink is leaking"),
+        category=kwargs.get("category", "plumbing"),
+        priority=kwargs.get("priority", "medium"),
+        state=kwargs.get("state", MaintenanceState.reported),
+        currency=kwargs.get("currency", "UGX"),
+        reported_at=kwargs.get("reported_at", datetime.now(timezone.utc)),
+        photo_urls=kwargs.get("photo_urls", []),
+    )
+    db.add(issue)
+    await db.flush()
+    return issue
+
+
 async def make_unit(db: AsyncSession, prop: Property, **kwargs) -> Unit:
     unit = Unit(
         property_id=prop.id,
