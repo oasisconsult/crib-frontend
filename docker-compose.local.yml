@@ -35,8 +35,8 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-crib}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-crib_dev}"
-      REDIS_URL: "redis://:${REDIS_PASSWORD:-change-me}@redis:6379/0"
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
       MINIO_ENDPOINT: "minio:9000"
       # Docker-internal Logto URLs — backend reaches Logto via the Docker network.
       # These override whatever LOGTO_* values are in .env.local.
@@ -72,9 +72,9 @@ services:
     #   - "6380:6379"
     env_file:
       - .env.local
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-change-me}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-change-me}", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -89,7 +89,7 @@ services:
     env_file:
       - .env.local
     environment:
-      DB_URL: "postgresql://${LOGTO_POSTGRES_USER:-logto}:${LOGTO_POSTGRES_PASSWORD:-change-me}@logto-postgres:5432/${LOGTO_POSTGRES_DB:-logto}"
+      DB_URL: "postgresql://${LOGTO_POSTGRES_USER:-logto}:${LOGTO_POSTGRES_PASSWORD}@logto-postgres:5432/${LOGTO_POSTGRES_DB:-logto}"
       # MUST be browser-accessible URLs — Logto uses these for CORS and the OIDC
       # discovery document. Never use Docker-internal hostnames here.
       ENDPOINT: "http://localhost:3011"
@@ -112,9 +112,9 @@ services:
     env_file:
       - .env.local
     environment:
-      POSTGRES_USER: "${LOGTO_POSTGRES_USER:-logto}"
-      POSTGRES_PASSWORD: "${LOGTO_POSTGRES_PASSWORD:-change-me}"
-      POSTGRES_DB: "${LOGTO_POSTGRES_DB:-logto}"
+      POSTGRES_USER: "${LOGTO_POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${LOGTO_POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${LOGTO_POSTGRES_DB}"
     volumes:
       - logto_local_data:/var/lib/postgresql/data
     healthcheck:
@@ -144,8 +144,8 @@ services:
     env_file:
       - .env.local
     environment:
-      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-crib}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-crib_dev}"
-      REDIS_URL: "redis://:${REDIS_PASSWORD:-change-me}@redis:6379/0"
+      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
       MINIO_ENDPOINT: "minio:9000"
       LOGTO_ENDPOINT: "http://logto:3001/"
       LOGTO_ADMIN_ENDPOINT: "http://logto:3002/"
@@ -166,7 +166,7 @@ services:
       - .env.local
     environment:
       MINIO_ROOT_USER: "${MINIO_ACCESS_KEY:-minioadmin}"
-      MINIO_ROOT_PASSWORD: "${MINIO_SECRET_KEY:-change-me}"
+      MINIO_ROOT_PASSWORD: "${MINIO_SECRET_KEY:-minioadmin}"
     volumes:
       - minio_local_data:/data
     command: server /data --console-address ":9001"
