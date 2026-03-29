@@ -77,7 +77,7 @@ async def make_tenant(db: AsyncSession, org: Organisation, **kwargs):
         organisation_id=org.id,
         first_name=kwargs.get("first_name", "Test"),
         last_name=kwargs.get("last_name", "Tenant"),
-        email=kwargs.get("email", f"tenant-{uuid.uuid4().hex[:6]}@test.local"),
+        email=kwargs.get("email", f"tenant-{uuid.uuid4().hex[:6]}@example.com"),
         phone=kwargs.get("phone", "+256700000001"),
         status=kwargs.get("status", TenantStatus.inactive),
         onboarding_state=kwargs.get("onboarding_state", OnboardingState.invited),

@@ -120,6 +120,11 @@ async def decode_token(token: str) -> TokenClaims:
             detail=f"Invalid token: {exc}",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Authentication service unavailable",
+        ) from exc
 
     return TokenClaims(
         sub=payload["sub"],

@@ -417,6 +417,7 @@ async def verify_document(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     doc.verified = not doc.verified
     await db.flush()
+    await db.refresh(doc, attribute_names=["type", "verified", "updated_at"])
     return _doc_out(doc)
 
 

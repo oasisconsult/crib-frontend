@@ -49,7 +49,7 @@ async def prop(db_session, org):
 @pytest.fixture
 async def tenant(db_session, org):
     return await make_tenant(db_session, org, first_name="Alice", last_name="Nakato",
-                             email="alice@test.local")
+                             email="alice@example.com")
 
 
 @pytest.fixture
@@ -57,7 +57,7 @@ async def submitted_tenant(db_session, org):
     return await make_tenant(
         db_session, org,
         first_name="Bob", last_name="Ssemwanga",
-        email="bob@test.local",
+        email="bob@example.com",
         onboarding_state=OnboardingState.submitted,
     )
 
@@ -73,7 +73,7 @@ async def test_list_tenants_empty(client: AsyncClient, org):
 
 @pytest.mark.asyncio
 async def test_list_tenants_returns_own_org(client: AsyncClient, tenant, other_org, db_session):
-    other = await make_tenant(db_session, other_org, email="other@test.local")
+    other = await make_tenant(db_session, other_org, email="other@example.com")
     resp = await client.get("/api/v1/tenants", headers=auth_headers("manager-1"))
     ids = [t["id"] for t in resp.json()["data"]]
     assert str(tenant.id) in ids
@@ -82,8 +82,8 @@ async def test_list_tenants_returns_own_org(client: AsyncClient, tenant, other_o
 
 @pytest.mark.asyncio
 async def test_list_tenants_search(client: AsyncClient, db_session, org):
-    await make_tenant(db_session, org, first_name="Zara", email="zara@test.local")
-    await make_tenant(db_session, org, first_name="Mark", email="mark@test.local")
+    await make_tenant(db_session, org, first_name="Zara", email="zara@example.com")
+    await make_tenant(db_session, org, first_name="Mark", email="mark@example.com")
     resp = await client.get("/api/v1/tenants?search=Zara", headers=auth_headers("manager-1"))
     names = [t["firstName"] for t in resp.json()["data"]]
     assert "Zara" in names
@@ -108,17 +108,17 @@ async def test_invite_creates_tenant_and_invite(client: AsyncClient, org, prop, 
     resp = await client.post(
         "/api/v1/tenants/invite",
         headers=auth_headers("manager-1"),
-        json={"email": "new@test.local", "name": "New Tenant", "propertyId": str(prop.id)},
+        json={"email": "new@example.com", "name": "New Tenant", "propertyId": str(prop.id)},
     )
     assert resp.status_code == 201
     body = resp.json()
-    assert body["email"] == "new@test.local"
+    assert body["email"] == "new@example.com"
     assert body["status"] == "pending"
     assert "token" in body
 
     # Tenant row was created
     result = await db_session.execute(
-        select(Tenant).where(Tenant.email == "new@test.local")
+        select(Tenant).where(Tenant.email == "new@example.com")
     )
     t = result.scalar_one_or_none()
     assert t is not None
@@ -170,7 +170,7 @@ async def test_submit_onboarding(client: AsyncClient, db_session, org):
         f"/api/v1/tenants/onboarding/{token}/submit",
         json={
             "firstName": "Alice", "lastName": "Nakato",
-            "email": "alice@test.local", "phone": "+256700111222",
+            "email": "alice@example.com", "phone": "+256700111222",
             "gdprConsent": True,
         },
     )
@@ -350,7 +350,7 @@ async def test_anonymise_row_still_exists(client: AsyncClient, tenant, db_sessio
 
 @pytest.mark.asyncio
 async def test_cross_org_tenant_returns_404(client: AsyncClient, org, other_org, db_session):
-    other = await make_tenant(db_session, other_org, email="cross@test.local")
+    other = await make_tenant(db_session, other_org, email="cross@example.com")
     resp = await client.get(
         f"/api/v1/tenants/{other.id}", headers=auth_headers("manager-1")
     )

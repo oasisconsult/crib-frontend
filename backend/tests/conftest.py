@@ -106,7 +106,14 @@ def mock_redis():
     Replace the Redis client with an async mock for all tests.
     Tests that specifically test Redis behaviour can override this fixture.
     """
-    fake_store: dict[str, Any] = {}
+    import json as _json
+    from app.core.security import JWKS_CACHE_KEY
+
+    # Pre-populate an empty JWKS so _fetch_jwks is never called during tests.
+    # Malformed tokens will fail jwt.decode() (JWTError → 401) without needing Logto.
+    fake_store: dict[str, Any] = {
+        JWKS_CACHE_KEY: _json.dumps({"keys": []}),
+    }
 
     async def fake_get(key: str):
         return fake_store.get(key)
