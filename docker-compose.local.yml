@@ -95,6 +95,8 @@ services:
       ENDPOINT: "http://localhost:3011"
       ADMIN_ENDPOINT: "http://localhost:3012"
       TRUST_PROXY_HEADER: "1"
+      # Allow the admin UI (3012) to call the core API (3011) cross-origin
+      CORS_ALLOWED_ORIGINS: "http://localhost:3012,http://localhost:3011,http://localhost:3010"
     depends_on:
       logto-postgres:
         condition: service_healthy
