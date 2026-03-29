@@ -57,6 +57,7 @@ async def test_engine():
             "DO $$ BEGIN CREATE TYPE onboarding_state_enum AS ENUM ('invited','started','submitted','approved','activated','rejected'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE id_document_type_enum AS ENUM ('passport','national_id','driving_licence','residence_permit','proof_of_income','reference_letter','bank_statement','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE invite_status_enum AS ENUM ('pending','accepted','expired'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE lease_status_enum AS ENUM ('draft','active','expired','terminated'); EXCEPTION WHEN duplicate_object THEN null; END $$",
         ]:
             await conn.execute(sa.text(stmt))
 
@@ -122,7 +123,8 @@ def mock_redis():
     mock.ping.side_effect = fake_ping
 
     with patch("app.core.redis.get_redis", return_value=mock), \
-         patch("app.core.security.get_redis", return_value=mock):
+         patch("app.core.security.get_redis", return_value=mock), \
+         patch("app.api.v1.health.get_redis", return_value=mock):
         yield mock
 
 

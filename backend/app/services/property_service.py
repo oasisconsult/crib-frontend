@@ -158,6 +158,7 @@ async def create_property(body: PropertyCreate, org_id: uuid.UUID, db: AsyncSess
     )
     db.add(prop)
     await db.flush()
+    await db.refresh(prop)
     return await _property_out(prop, db)
 
 
@@ -178,6 +179,7 @@ async def update_property(
         setattr(prop, key, val)
 
     await db.flush()
+    await db.refresh(prop)
     return await _property_out(prop, db)
 
 
@@ -187,6 +189,7 @@ async def update_property_rules(
     prop = await get_property(prop_id, org_id, db)
     prop.rules = {**prop.rules, **rules}
     await db.flush()
+    await db.refresh(prop)
     return await _property_out(prop, db)
 
 
@@ -273,6 +276,7 @@ async def create_unit(
     )
     db.add(unit)
     await db.flush()
+    await db.refresh(unit)
     return _unit_out(unit)
 
 
@@ -302,6 +306,8 @@ async def batch_create_units(
     ]
     db.add_all(units)
     await db.flush()
+    for u in units:
+        await db.refresh(u)
     return [_unit_out(u) for u in units]
 
 
@@ -315,6 +321,7 @@ async def update_unit(
         setattr(unit, key, val)
 
     await db.flush()
+    await db.refresh(unit)
     return _unit_out(unit)
 
 
@@ -326,6 +333,7 @@ async def update_unit_rules(
     # rules=None means reset to property inheritance
     unit.rules = body.rules.model_dump(by_alias=True) if body.rules else None
     await db.flush()
+    await db.refresh(unit)
     return _unit_out(unit)
 
 
@@ -351,10 +359,12 @@ async def bulk_update_units(
         )
         await db.flush()
 
-    result = await db.execute(
+    units_loaded = (await db.execute(
         select(Unit).where(Unit.id.in_(unit_uuids), Unit.property_id == prop_id)
-    )
-    return [_unit_out(u) for u in result.scalars().all()]
+    )).scalars().all()
+    for u in units_loaded:
+        await db.refresh(u)
+    return [_unit_out(u) for u in units_loaded]
 
 
 async def delete_unit(

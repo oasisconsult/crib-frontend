@@ -7,6 +7,8 @@ not Logto's network behaviour.
 
 from unittest.mock import patch
 
+from app.core.config import get_settings
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -28,10 +30,8 @@ PROVISION_PAYLOAD = {
 @pytest.mark.asyncio
 async def test_provision_creates_organisation(client: AsyncClient, db_session: AsyncSession):
     """Provisioning should create an Organisation row and link the caller's Profile."""
-    with patch(
-        "app.api.v1.organisations._create_logto_org",
-        return_value="org_test_abc123",
-    ):
+    with patch.object(get_settings(), "logto_m2m_app_id", "test_m2m"), \
+         patch("app.api.v1.organisations._create_logto_org", return_value="org_test_abc123"):
         resp = await client.post(
             "/api/v1/organisations/provision",
             headers=auth_headers("owner-1"),
@@ -58,10 +58,8 @@ async def test_provision_creates_organisation(client: AsyncClient, db_session: A
 @pytest.mark.asyncio
 async def test_provision_links_caller_profile(client: AsyncClient, db_session: AsyncSession):
     """After provisioning, the caller's Profile should be role=owner and linked to the org."""
-    with patch(
-        "app.api.v1.organisations._create_logto_org",
-        return_value="org_test_owner_link",
-    ):
+    with patch.object(get_settings(), "logto_m2m_app_id", "test_m2m"), \
+         patch("app.api.v1.organisations._create_logto_org", return_value="org_test_owner_link"):
         await client.post(
             "/api/v1/organisations/provision",
             headers=auth_headers("owner-1"),
@@ -80,10 +78,8 @@ async def test_provision_links_caller_profile(client: AsyncClient, db_session: A
 @pytest.mark.asyncio
 async def test_provision_conflict_if_already_in_org(client: AsyncClient):
     """A user who already belongs to an org cannot provision another."""
-    with patch(
-        "app.api.v1.organisations._create_logto_org",
-        return_value="org_first",
-    ):
+    with patch.object(get_settings(), "logto_m2m_app_id", "test_m2m"), \
+         patch("app.api.v1.organisations._create_logto_org", return_value="org_first"):
         first = await client.post(
             "/api/v1/organisations/provision",
             headers=auth_headers("owner-1"),
@@ -92,10 +88,8 @@ async def test_provision_conflict_if_already_in_org(client: AsyncClient):
     assert first.status_code == 201
 
     # Second attempt should conflict
-    with patch(
-        "app.api.v1.organisations._create_logto_org",
-        return_value="org_second",
-    ):
+    with patch.object(get_settings(), "logto_m2m_app_id", "test_m2m"), \
+         patch("app.api.v1.organisations._create_logto_org", return_value="org_second"):
         second = await client.post(
             "/api/v1/organisations/provision",
             headers=auth_headers("owner-1"),

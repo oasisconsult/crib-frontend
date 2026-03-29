@@ -349,7 +349,7 @@ async def test_anonymise_row_still_exists(client: AsyncClient, tenant, db_sessio
 # ── Org isolation ─────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_cross_org_tenant_returns_404(client: AsyncClient, other_org, db_session):
+async def test_cross_org_tenant_returns_404(client: AsyncClient, org, other_org, db_session):
     other = await make_tenant(db_session, other_org, email="cross@test.local")
     resp = await client.get(
         f"/api/v1/tenants/{other.id}", headers=auth_headers("manager-1")

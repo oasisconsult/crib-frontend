@@ -109,8 +109,7 @@ async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
         db.add(profile)
         await db.flush()
     else:
-        # Sync cached fields
-        profile.display_name = claims.name or profile.display_name
+        # Sync cached fields (display_name is NOT synced — user can override via PATCH /me)
         profile.email = claims.email or profile.email
         profile.last_seen_at = now
         if claims.org_id and profile.logto_org_id != claims.org_id:

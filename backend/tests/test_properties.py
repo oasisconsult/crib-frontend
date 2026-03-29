@@ -130,7 +130,7 @@ async def test_get_property_404(client: AsyncClient, org):
 
 
 @pytest.mark.asyncio
-async def test_get_property_other_org_404(client: AsyncClient, other_org, db_session):
+async def test_get_property_other_org_404(client: AsyncClient, org, other_org, db_session):
     other_prop = await make_property(db_session, other_org)
     resp = await client.get(f"/api/v1/properties/{other_prop.id}", headers=auth_headers("manager-1"))
     assert resp.status_code == 404

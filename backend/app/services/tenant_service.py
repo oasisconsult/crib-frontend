@@ -188,6 +188,7 @@ async def update_tenant(
     for key, val in data.items():
         setattr(tenant, key, val)
     await db.flush()
+    await db.refresh(tenant, attribute_names=["status", "onboarding_state", "updated_at"])
     return _tenant_out(tenant)
 
 
@@ -278,6 +279,7 @@ async def get_onboarding_by_token(token: str, db: AsyncSession) -> dict:
             tenant.onboarding_state, "ONBOARDING_STARTED"
         )
         await db.flush()
+        await db.refresh(tenant, attribute_names=["onboarding_state", "updated_at"])
 
     return {"tenant": _tenant_out(tenant), "invite": _invite_out(invite)}
 
@@ -324,6 +326,7 @@ async def submit_onboarding(
     tenant.onboarding_completed_at = datetime.now(timezone.utc)
     invite.status = InviteStatus.accepted
     await db.flush()
+    await db.refresh(tenant, attribute_names=["status", "onboarding_state", "updated_at"])
 
     return _tenant_out(tenant)
 
@@ -339,6 +342,7 @@ async def approve_tenant(
     )
     tenant.status = TenantStatus.active
     await db.flush()
+    await db.refresh(tenant, attribute_names=["status", "onboarding_state", "updated_at"])
     return _tenant_out(tenant)
 
 
@@ -351,6 +355,7 @@ async def reject_tenant(
     )
     tenant.rejection_reason = reason
     await db.flush()
+    await db.refresh(tenant, attribute_names=["onboarding_state", "rejection_reason", "updated_at"])
     return _tenant_out(tenant)
 
 
@@ -392,6 +397,7 @@ async def upload_document(
     )
     db.add(doc)
     await db.flush()
+    await db.refresh(doc)
     return _doc_out(doc)
 
 
