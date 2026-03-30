@@ -1,40 +1,21 @@
 export const runtime = "edge";
 
 import { type NextRequest, NextResponse } from "next/server";
-import { logtoClient, LOGTO_API_RESOURCE } from "@/lib/logto";
 
 /**
  * GET /api/auth/token
  *
- * Returns an access token for the backend API.
+ * Returns the access token from the httpOnly logto_session cookie so client-
+ * side code (AuthInitializer) can store it in sessionStorage for axios Bearer auth.
  *
- * Mock mode: reads the logto_session cookie set by /api/auth/dev-login and
- *            returns it as-is (the backend ignores it in favour of X-Dev-User-Id).
- *
- * Real mode: uses the Logto SDK to obtain a valid access token scoped to the
- *            backend API resource (audience = LOGTO_API_RESOURCE).
- *            If the access token is expired the SDK will refresh it automatically
- *            using the stored refresh_token.
+ * Mock mode:  cookie value is a dev session string; the backend ignores it and
+ *             reads X-Dev-User-Id header instead.
+ * Real mode:  cookie value is the Logto access token (set by /api/logto/sign-in-callback).
  */
 export async function GET(request: NextRequest) {
-  if (process.env.NEXT_PUBLIC_MOCK_API === "true") {
-    const session = request.cookies.get("logto_session")?.value;
-    if (!session) {
-      return NextResponse.json({ error: "No session" }, { status: 401 });
-    }
-    return NextResponse.json({ token: session });
-  }
-
-  // getLogtoContext reads the encrypted SDK session cookie, decrypts it, and
-  // uses the stored refresh_token to obtain a fresh access_token if needed.
-  const context = await logtoClient.getLogtoContext(request, {
-    getAccessToken: true,
-    resource: LOGTO_API_RESOURCE,
-  });
-
-  if (!context.isAuthenticated || !context.accessToken) {
+  const session = request.cookies.get("logto_session")?.value;
+  if (!session) {
     return NextResponse.json({ error: "No session" }, { status: 401 });
   }
-
-  return NextResponse.json({ token: context.accessToken });
+  return NextResponse.json({ token: session });
 }

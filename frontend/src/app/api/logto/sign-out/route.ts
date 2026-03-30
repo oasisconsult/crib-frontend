@@ -1,35 +1,34 @@
 export const runtime = "edge";
 
-import { type NextRequest } from "next/server";
-import { logtoClient } from "@/lib/logto";
+import { type NextRequest, NextResponse } from "next/server";
 
+// Browser-accessible Logto URL (end_session_endpoint must be browser-reachable)
+const LOGTO_PUBLIC_ENDPOINT =
+  process.env.NEXT_PUBLIC_LOGTO_ENDPOINT ?? "http://localhost:3001";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010";
 
 /**
  * GET /api/logto/sign-out
  *
- * Signs the user out of Logto and clears all session/role cookies.
- * The SDK revokes the refresh token and redirects to the Logto logout endpoint,
- * which then redirects back to APP_URL.
+ * Clears local session cookies and redirects the browser to Logto's
+ * end_session_endpoint so the Logto session is also invalidated.
+ * Logto will redirect back to APP_URL after sign-out.
+ *
+ * No server-side fetch to Logto needed — the browser follows the redirect.
  */
-export async function GET(request: NextRequest) {
-  // SDK revokes tokens + redirects to Logto's end_session_endpoint,
-  // which then redirects back to APP_URL.
-  const sdkResponse = await logtoClient.handleSignOut(APP_URL)(request);
+export async function GET(_request: NextRequest) {
+  const endSessionUrl = new URL(`${LOGTO_PUBLIC_ENDPOINT}/oidc/session/end`);
+  endSessionUrl.searchParams.set("post_logout_redirect_uri", APP_URL);
 
-  // Clear our compat cookies on top of whatever the SDK sets.
-  const response = new Response(null, {
-    status: sdkResponse.status,
-    headers: new Headers(sdkResponse.headers),
-  });
-  response.headers.append(
-    "Set-Cookie",
-    "logto_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
-  );
-  response.headers.append(
-    "Set-Cookie",
-    "user_role=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0",
-  );
+  const response = NextResponse.redirect(endSessionUrl.toString());
+
+  // Clear all session/auth cookies
+  const c = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 0 };
+  response.cookies.set("logto_session", "", c);
+  response.cookies.set("user_role", "", c);
+  response.cookies.set("pkce_verifier", "", c);
+  response.cookies.set("pkce_state", "", c);
+  response.cookies.set("post_login_redirect", "", c);
 
   return response;
 }

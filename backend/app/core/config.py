@@ -54,6 +54,10 @@ class Settings(BaseSettings):
     logto_admin_endpoint: AnyHttpUrl = "http://localhost:3002/"  # type: ignore[assignment]
     logto_m2m_app_id: str = ""
     logto_m2m_app_secret: str = ""
+    # Optional: override JWKS fetch URL with a Docker-internal address while keeping
+    # logto_endpoint (and therefore logto_issuer) as the public browser-accessible URL.
+    # Example in docker-compose: LOGTO_JWKS_URI=http://logto:3001/oidc/jwks
+    logto_jwks_uri_override: str = ""
 
     # ── Settings encryption ───────────────────────────────────────────────────
     # Required in all environments. Generate with:
@@ -125,7 +129,8 @@ class Settings(BaseSettings):
 
     @property
     def logto_jwks_uri(self) -> str:
-        return f"{self.logto_endpoint}oidc/jwks"
+        # Use the override (e.g. Docker-internal URL) if set; otherwise derive from endpoint.
+        return self.logto_jwks_uri_override or f"{self.logto_endpoint}oidc/jwks"
 
     @property
     def logto_issuer(self) -> str:

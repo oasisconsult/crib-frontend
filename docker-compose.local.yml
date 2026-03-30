@@ -20,6 +20,8 @@ services:
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_LOGTO_ENDPOINT: "http://localhost:3001"
+      # Server-side endpoint for token exchange — uses Docker network, not localhost
+      LOGTO_ENDPOINT: "http://logto:3001"
       NEXT_PUBLIC_API_URL: ""
       NEXT_PUBLIC_APP_URL: "http://localhost:3010"
       BACKEND_URL: "http://backend:8000"
@@ -42,9 +44,11 @@ services:
       DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
       MINIO_ENDPOINT: "minio:9000"
-      # Docker-internal Logto URLs — backend reaches Logto via the Docker network.
-      # These override whatever LOGTO_* values are in .env.local.
-      LOGTO_ENDPOINT: "http://logto:3001/"
+      # logto_endpoint must be the PUBLIC URL so logto_issuer matches
+      # the `iss` claim in Logto JWTs (Logto sets iss = ENDPOINT/oidc).
+      LOGTO_ENDPOINT: "http://localhost:3001/"
+      # JWKS are fetched server-to-server so use the Docker-internal hostname.
+      LOGTO_JWKS_URI_OVERRIDE: "http://logto:3001/oidc/jwks"
       LOGTO_ADMIN_ENDPOINT: "http://logto:3002/"
     depends_on:
       postgres:
@@ -151,7 +155,8 @@ services:
       DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
       MINIO_ENDPOINT: "minio:9000"
-      LOGTO_ENDPOINT: "http://logto:3001/"
+      LOGTO_ENDPOINT: "http://localhost:3001/"
+      LOGTO_JWKS_URI_OVERRIDE: "http://logto:3001/oidc/jwks"
       LOGTO_ADMIN_ENDPOINT: "http://logto:3002/"
     depends_on:
       postgres:
