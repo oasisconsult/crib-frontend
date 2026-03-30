@@ -69,6 +69,9 @@ async def test_engine():
             "DO $$ BEGIN CREATE TYPE maintenance_category_enum AS ENUM ('plumbing','electrical','structural','appliance','pest','security','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE maintenance_priority_enum AS ENUM ('low','medium','high','urgent'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE maintenance_state_enum AS ENUM ('reported','assigned','in_progress','resolved','closed','cancelled'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE notification_channel_enum AS ENUM ('email','sms','whatsapp','in_app'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE notification_trigger_enum AS ENUM ('rent_due','rent_overdue','lease_expiry','lease_activated','onboarding_invite','document_ready','inspection_scheduled','maintenance_update','payment_confirmed','payment_failed','late_fee_applied','deposit_received','custom'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE notification_state_enum AS ENUM ('queued','sent','delivered','read','failed'); EXCEPTION WHEN duplicate_object THEN null; END $$",
         ]:
             await conn.execute(sa.text(stmt))
 

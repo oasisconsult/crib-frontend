@@ -232,6 +232,60 @@ async def make_maintenance_issue(db: AsyncSession, org: Organisation, prop: Prop
     return issue
 
 
+async def make_notification_template(db: AsyncSession, org: Organisation, **kwargs):
+    from app.models.notification import NotificationTemplate
+
+    tmpl = NotificationTemplate(
+        organisation_id=org.id,
+        name=kwargs.get("name", "Test Template"),
+        trigger=kwargs.get("trigger", "custom"),
+        channel=kwargs.get("channel", "in_app"),
+        subject=kwargs.get("subject", "Hello {{tenant_name}}"),
+        body=kwargs.get("body", "Your rent of {{amount}} is due on {{due_date}}."),
+        variables=kwargs.get("variables", ["tenant_name", "amount", "due_date"]),
+        is_active=kwargs.get("is_active", True),
+    )
+    db.add(tmpl)
+    await db.flush()
+    return tmpl
+
+
+async def make_notification(db: AsyncSession, org: Organisation, **kwargs):
+    from datetime import datetime, timezone
+
+    from app.models.notification import Notification, NotificationState
+
+    now = datetime.now(timezone.utc)
+    notif = Notification(
+        organisation_id=org.id,
+        template_id=kwargs.get("template_id", None),
+        tenant_id=kwargs.get("tenant_id", None),
+        channel=kwargs.get("channel", "in_app"),
+        trigger=kwargs.get("trigger", "custom"),
+        recipient_name=kwargs.get("recipient_name", "Test Recipient"),
+        recipient_email=kwargs.get("recipient_email", "recipient@example.com"),
+        recipient_phone=kwargs.get("recipient_phone", None),
+        subject=kwargs.get("subject", "Test notification"),
+        body=kwargs.get("body", "This is a test notification."),
+        state=kwargs.get("state", NotificationState.queued),
+        queued_at=kwargs.get("queued_at", now),
+        sent_at=kwargs.get("sent_at", None),
+        delivered_at=kwargs.get("delivered_at", None),
+        read_at=kwargs.get("read_at", None),
+        failed_at=kwargs.get("failed_at", None),
+        failure_reason=kwargs.get("failure_reason", None),
+        retry_count=kwargs.get("retry_count", 0),
+        external_message_id=kwargs.get("external_message_id", None),
+        property_id=kwargs.get("property_id", None),
+        lease_id=kwargs.get("lease_id", None),
+        payment_id=kwargs.get("payment_id", None),
+        created_at=now,
+    )
+    db.add(notif)
+    await db.flush()
+    return notif
+
+
 async def make_unit(db: AsyncSession, prop: Property, **kwargs) -> Unit:
     unit = Unit(
         property_id=prop.id,
