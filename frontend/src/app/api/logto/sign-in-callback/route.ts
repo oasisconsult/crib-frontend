@@ -10,7 +10,13 @@ const LOGTO_SERVER_ENDPOINT =
   process.env.NEXT_PUBLIC_LOGTO_ENDPOINT ??
   "http://localhost:3001";
 const LOGTO_APP_ID = process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "";
-const LOGTO_APP_SECRET = process.env.LOGTO_APP_SECRET ?? "";
+// Only include client_secret if it looks like a real value (not the template placeholder).
+// - Traditional Web App in Logto: fill in LOGTO_APP_SECRET from the Logto console.
+// - SPA app type in Logto: leave LOGTO_APP_SECRET empty — PKCE is sufficient.
+const LOGTO_APP_SECRET = (() => {
+  const v = process.env.LOGTO_APP_SECRET ?? "";
+  return v && !v.startsWith("<") ? v : "";
+})();
 const LOGTO_API_RESOURCE =
   process.env.NEXT_PUBLIC_LOGTO_API_RESOURCE ?? "http://localhost:8001";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010";
