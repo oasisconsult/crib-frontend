@@ -25,6 +25,10 @@ services:
       NEXT_PUBLIC_API_URL: ""
       NEXT_PUBLIC_APP_URL: "http://localhost:3010"
       BACKEND_URL: "http://backend:8000"
+      # Disable mock mode in Docker so the backend proxy rewrite is active and
+      # AuthInitializer fetches a real Bearer token from /api/auth/token.
+      # To use MSW mock data instead, comment this line out (or set to "true").
+      NEXT_PUBLIC_MOCK_API: "false"
     # depends_on:
     #   - backend
     networks:
