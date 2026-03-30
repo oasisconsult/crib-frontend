@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # ── App ──────────────────────────────────────────────────────────────────
     app_name: str = "Crib"
     environment: Environment = Environment.development
-    debug: bool = True
+    debug: bool = False  # overridden by property below — set via DEBUG env var or derived from environment
     api_prefix: str = "/api/v1"
 
     # ── Security ─────────────────────────────────────────────────────────────
@@ -109,6 +109,11 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.environment == Environment.development
+
+    @property
+    def is_debug(self) -> bool:
+        """True when explicitly set via DEBUG=true, or automatically in development."""
+        return self.debug or self.environment == Environment.development
 
     @property
     def effective_celery_broker(self) -> str:

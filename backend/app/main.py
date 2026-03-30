@@ -24,7 +24,7 @@ from app.core.logging import configure_logging
 from app.core.redis import close_redis, get_redis
 
 settings = get_settings()
-configure_logging(debug=settings.debug)
+configure_logging(debug=settings.is_debug)
 
 log = structlog.get_logger(__name__)
 
@@ -63,7 +63,7 @@ class RequestIdMiddleware:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    log.info("crib.startup", environment=settings.environment, debug=settings.debug)
+    log.info("crib.startup", environment=settings.environment, debug=settings.is_debug)
 
     # Verify Redis is reachable
     try:
