@@ -49,6 +49,7 @@ class TokenClaims:
 
 
 DEV_USERS: dict[str, TokenClaims] = {
+    # Short aliases (internal / test usage)
     "owner-1": TokenClaims(
         sub="dev_owner1",
         org_id="org_dev",
@@ -84,6 +85,29 @@ DEV_USERS: dict[str, TokenClaims] = {
         email="superadmin@dev.local",
         name="Dev Superadmin",
     ),
+    # Frontend DevLoginPanel IDs (login/page.tsx DEV_USERS catalogue)
+    "user-landlord-1": TokenClaims(
+        sub="dev_owner1",
+        org_id="org_dev",
+        org_roles=["owner"],
+        email="robert@crib.ug",
+        name="Robert Mukasa",
+    ),
+    "user-manager-1": TokenClaims(
+        sub="dev_manager1",
+        org_id="org_dev",
+        org_roles=["manager"],
+        email="sarah@crib.ug",
+        name="Sarah Nalwanga",
+    ),
+    "user-superadmin-1": TokenClaims(
+        sub="dev_superadmin1",
+        org_id=None,
+        org_roles=["superadmin"],
+        email="admin@crib.ug",
+        name="Crib Admin",
+    ),
+    # tenant-1 already matches the frontend ID
 }
 
 

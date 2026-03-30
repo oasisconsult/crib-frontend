@@ -166,31 +166,11 @@ export default function LoginPage() {
   const redirect = searchParams.get("redirect") ?? "/";
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const handleLogin = () => {
     setLoading(true);
-
-    // PKCE: generate code_verifier + code_challenge (SPA — no client secret)
-    const verifier = Array.from(crypto.getRandomValues(new Uint8Array(48)))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
-    const challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
-      .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-
-    // Store verifier in a cookie so the server-side callback can read it.
-    // Setting via document.cookie is synchronous and guaranteed to be present
-    // before window.location.href navigates away (fetch Set-Cookie can race).
-    document.cookie = `pkce_verifier=${verifier}; SameSite=Lax; Path=/; Max-Age=300`;
-
-    const logtoUrl = new URL(`${process.env.NEXT_PUBLIC_LOGTO_ENDPOINT}/oidc/auth`);
-    logtoUrl.searchParams.set("client_id", process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "");
-    logtoUrl.searchParams.set("redirect_uri", `${window.location.origin}/api/auth/callback`);
-    logtoUrl.searchParams.set("response_type", "code");
-    logtoUrl.searchParams.set("scope", "openid profile email roles offline_access");
-    logtoUrl.searchParams.set("state", btoa(JSON.stringify({ redirect })));
-    logtoUrl.searchParams.set("code_challenge", challenge);
-    logtoUrl.searchParams.set("code_challenge_method", "S256");
-    window.location.href = logtoUrl.toString();
+    // Delegate to the server-side SDK sign-in route which handles PKCE,
+    // resource scoping, and org-scoped token requests correctly.
+    window.location.href = `/api/logto/sign-in?redirectTo=${encodeURIComponent(redirect)}`;
   };
 
   return (

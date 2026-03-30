@@ -4,6 +4,7 @@ const PUBLIC_ROUTES = [
   "/login",
   "/signup",
   "/api/auth",
+  "/api/logto", // Logto SDK auth routes (sign-in, callback, sign-out)
   "/_next",
   "/favicon.ico",
 ];
@@ -31,10 +32,15 @@ export function middleware(request: NextRequest) {
   // Skip the Logto session check entirely — the cookie just needs to exist.
   const isMockMode = process.env.NEXT_PUBLIC_MOCK_API === "true";
 
-  // Check for session token (set by Logto after callback, or dev-login in mock mode)
+  // Check for session token. Accept any of:
+  //  • logto_session  — compat cookie set by /api/logto/sign-in-callback
+  //  • __session      — legacy alias
+  //  • logto:<appId>  — encrypted session cookie written directly by the Logto SDK
+  const sdkCookieKey = `logto:${process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? ""}`;
   const sessionToken =
     request.cookies.get("logto_session")?.value ||
-    request.cookies.get("__session")?.value;
+    request.cookies.get("__session")?.value ||
+    request.cookies.get(sdkCookieKey)?.value;
 
   if (!isMockMode && !sessionToken) {
     const loginUrl = new URL("/login", request.url);

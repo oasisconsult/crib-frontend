@@ -18,7 +18,7 @@
  *  Post sign-out redirect:  ${NEXT_PUBLIC_APP_URL}/
  */
 
-import LogtoClient from "@logto/next";
+import LogtoClient from "@logto/next/edge";
 
 // The API resource identifier registered in Logto under "API Resources".
 // Must match backend setting: logto_api_resource (default: http://localhost:8001).
