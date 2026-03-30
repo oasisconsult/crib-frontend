@@ -55,7 +55,13 @@ class Settings(BaseSettings):
     logto_m2m_app_id: str = ""
     logto_m2m_app_secret: str = ""
 
-    # ── MinIO ─────────────────────────────────────────────────────────────────
+    # ── Settings encryption ───────────────────────────────────────────────────
+    # Required in all environments. Generate with:
+    #   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    # NEVER store this in the database — it is the key that decrypts DB secrets.
+    settings_encryption_key: str = Field(default="", alias="SETTINGS_ENCRYPTION_KEY")
+
+    # ── MinIO (legacy fallback — superseded by system_settings table) ─────────
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"

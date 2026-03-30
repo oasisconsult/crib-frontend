@@ -92,7 +92,9 @@ async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
     if profile is None:
         # Determine role from org_roles claim
         role = Role.tenant
-        if "owner" in claims.org_roles:
+        if "superadmin" in claims.org_roles:
+            role = Role.superadmin
+        elif "owner" in claims.org_roles:
             role = Role.owner
         elif "manager" in claims.org_roles:
             role = Role.manager
@@ -145,6 +147,22 @@ def require_role(*roles: Role) -> Callable:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Required role(s): {[r.value for r in roles]}",
+            )
+        return current_user
+
+    return _guard
+
+
+def require_superadmin() -> Callable:
+    """
+    Dependency: only platform superadmins may call this endpoint.
+    Superadmins are cross-org — they do not require an org_id in their token.
+    """
+    async def _guard(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+        if current_user.role != Role.superadmin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Superadmin role required",
             )
         return current_user
 

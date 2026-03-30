@@ -31,8 +31,12 @@ dependencies = [
     # Redis
     "redis[hiredis]==5.2.1",
 
-    # Object storage
+    # Object storage (S3-compatible: AWS S3, Cloudflare R2, MinIO)
     "minio==7.2.13",
+    "boto3==1.35.99",
+
+    # Encryption (Fernet symmetric — for DB-stored secrets)
+    "cryptography==44.0.0",
 
     # PDF generation
     "weasyprint==62.3",

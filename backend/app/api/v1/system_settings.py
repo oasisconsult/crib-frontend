@@ -1,0 +1,116 @@
+"""
+System settings endpoints — superadmin only.
+
+All endpoints require Role.superadmin. These manage platform-wide configuration
+(storage provider, email/SMS credentials, feature flags) that a platform
+operator controls via the admin UI.
+
+Endpoints:
+  GET  /admin/settings                    — all settings grouped by category
+  GET  /admin/settings/{key}              — single setting (secret masked)
+  PUT  /admin/settings/{key}              — update value (encrypts secrets)
+  POST /admin/settings/test/storage       — test storage connection
+  POST /admin/settings/test/email         — send test email
+  POST /admin/settings/test/sms          — send test SMS
+"""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import CurrentUser, require_superadmin
+from app.core.database import get_db
+from app.schemas.system_setting import (
+    NotificationTestRequest,
+    NotificationTestResult,
+    SettingOut,
+    SettingsByCategoryOut,
+    SettingUpdate,
+    StorageTestResult,
+)
+from app.services import settings_service
+
+router = APIRouter(prefix="/admin/settings", tags=["admin"])
+
+# _super enforces the superadmin guard. Handlers that don't use the user value
+# bind it to `_` to silence linters while keeping the auth check active.
+_super = Depends(require_superadmin())
+
+
+# ── Read ───────────────────────────────────────────────────────────────────────
+
+@router.get("", response_model=SettingsByCategoryOut)
+async def get_all_settings(
+    _: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all settings grouped by category. Secrets shown as '••••••'."""
+    return await settings_service.list_grouped(db)
+
+
+@router.get("/{key:path}", response_model=SettingOut)
+async def get_setting(
+    key: str,
+    _: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return a single setting. Secret values are always masked."""
+    return await settings_service.get_one_masked(key, db)
+
+
+# ── Write ──────────────────────────────────────────────────────────────────────
+
+@router.put("/{key:path}", response_model=SettingOut)
+async def update_setting(
+    key: str,
+    body: SettingUpdate,
+    current_user: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update a setting value.
+    - Secret values are Fernet-encrypted before storage.
+    - Passing an empty string clears the value.
+    - The response always masks secrets as '••••••'.
+    """
+    return await settings_service.update(
+        key=key,
+        value=body.value,
+        updated_by=current_user.sub,
+        db=db,
+    )
+
+
+# ── Connection tests ───────────────────────────────────────────────────────────
+
+@router.post("/test/storage", response_model=StorageTestResult)
+async def test_storage(
+    _: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """Upload and delete a canary object to verify storage credentials."""
+    result = await settings_service.test_storage(db)
+    return StorageTestResult(**result)
+
+
+@router.post("/test/email", response_model=NotificationTestResult)
+async def test_email(
+    body: NotificationTestRequest,
+    _: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """Send a test email to verify email provider credentials."""
+    result = await settings_service.test_email(body.recipient, db)
+    return NotificationTestResult(**result)
+
+
+@router.post("/test/sms", response_model=NotificationTestResult)
+async def test_sms(
+    body: NotificationTestRequest,
+    _: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """Send a test SMS to verify SMS provider credentials."""
+    result = await settings_service.test_sms(body.recipient, db)
+    return NotificationTestResult(**result)

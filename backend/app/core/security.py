@@ -77,6 +77,13 @@ DEV_USERS: dict[str, TokenClaims] = {
         email="tenant2@dev.local",
         name="Dev Tenant 2",
     ),
+    "superadmin-1": TokenClaims(
+        sub="dev_superadmin1",
+        org_id=None,
+        org_roles=["superadmin"],
+        email="superadmin@dev.local",
+        name="Dev Superadmin",
+    ),
 }
 
 

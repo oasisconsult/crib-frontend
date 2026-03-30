@@ -38,6 +38,7 @@ from app.models.lease import Lease  # noqa: F401
 from app.models.payment import Deposit, LateFee, Payment, RentSchedule  # noqa: F401
 from app.models.inspection import Inspection, MaintenanceIssue  # noqa: F401
 from app.models.notification import Notification, NotificationTemplate  # noqa: F401
+from app.models.system_setting import SystemSetting  # noqa: F401
 
 target_metadata = Base.metadata
 

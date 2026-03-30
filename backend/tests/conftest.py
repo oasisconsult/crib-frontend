@@ -48,7 +48,7 @@ async def test_engine():
         # Create enum types idempotently (SQLAlchemy won't create them if they exist)
         for stmt in [
             "DO $$ BEGIN CREATE TYPE plan_enum AS ENUM ('starter','growth','enterprise'); EXCEPTION WHEN duplicate_object THEN null; END $$",
-            "DO $$ BEGIN CREATE TYPE role_enum AS ENUM ('owner','manager','tenant','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE role_enum AS ENUM ('superadmin','owner','manager','tenant','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE property_type_enum AS ENUM ('flat','house','hostel','commercial','villa'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE property_status_enum AS ENUM ('active','inactive','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE unit_type_enum AS ENUM ('single','double','studio','ensuite','shared'); EXCEPTION WHEN duplicate_object THEN null; END $$",
@@ -85,6 +85,20 @@ async def test_engine():
             BEGIN NEW.updated_at = now(); RETURN NEW; END;
             $$ language 'plpgsql'
         """))
+
+        # Seed system_settings defaults (mirrors the migration bulk_insert)
+        from app.models.system_setting import SYSTEM_SETTING_DEFAULTS as _SETTING_DEFAULTS
+        for key, value, category, label, description, value_type, is_secret, is_required in _SETTING_DEFAULTS:
+            await conn.execute(sa.text(
+                "INSERT INTO system_settings "
+                "(key, value, category, label, description, value_type, is_secret, is_required) "
+                "VALUES (:key, :value, :category, :label, :description, :value_type, :is_secret, :is_required) "
+                "ON CONFLICT (key) DO NOTHING"
+            ), {
+                "key": key, "value": value, "category": category, "label": label,
+                "description": description, "value_type": value_type,
+                "is_secret": is_secret, "is_required": is_required,
+            })
 
     yield engine
 

@@ -22,9 +22,10 @@ from app.models.base import TimestampedBase
 
 
 class Role(str, enum.Enum):
-    owner = "owner"        # Organisation owner / landlord (full access)
-    manager = "manager"    # Property manager (org-scoped admin)
-    tenant = "tenant"      # Tenant (restricted to their own data)
+    superadmin = "superadmin"    # Platform operator — cross-org, system settings
+    owner = "owner"              # Organisation owner / landlord (full access)
+    manager = "manager"          # Property manager (org-scoped admin)
+    tenant = "tenant"            # Tenant (restricted to their own data)
     maintenance = "maintenance"  # Maintenance staff (read-only inspections)
 
 
