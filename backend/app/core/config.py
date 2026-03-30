@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     # ── App ──────────────────────────────────────────────────────────────────
     app_name: str = "Crib"
     environment: Environment = Environment.development
-    debug: bool = False
+    debug: bool = True
     api_prefix: str = "/api/v1"
 
     # ── Security ─────────────────────────────────────────────────────────────
