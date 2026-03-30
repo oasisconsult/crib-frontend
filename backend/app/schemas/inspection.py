@@ -5,12 +5,14 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.schemas.common import CamelModel
 
 
 # ── Checklist ──────────────────────────────────────────────────────────────────
 
-class ChecklistItemIn(BaseModel):
+class ChecklistItemIn(CamelModel):
     id: str
     area: str
     description: str
@@ -22,7 +24,7 @@ class ChecklistItemIn(BaseModel):
 
 # ── Inspection ─────────────────────────────────────────────────────────────────
 
-class InspectionCreate(BaseModel):
+class InspectionCreate(CamelModel):
     property_id: str
     unit_id: str | None = None
     lease_id: str | None = None
@@ -35,7 +37,7 @@ class InspectionCreate(BaseModel):
     checklist: list[dict[str, Any]] = Field(default_factory=list)
 
 
-class InspectionUpdate(BaseModel):
+class InspectionUpdate(CamelModel):
     inspector_id: str | None = None
     inspector_name: str | None = None
     scheduled_date: date | None = None
@@ -47,15 +49,15 @@ class InspectionUpdate(BaseModel):
     notes: str | None = None
 
 
-class InspectionTransition(BaseModel):
+class InspectionTransition(CamelModel):
     event: str  # INSPECTION_STARTED, INSPECTION_COMPLETED, etc.
 
 
-class InspectionPhotos(BaseModel):
+class InspectionPhotos(CamelModel):
     urls: list[str]
 
 
-class InspectionOut(BaseModel):
+class InspectionOut(CamelModel):
     id: str
     organisation_id: str
     property_id: str
@@ -86,7 +88,7 @@ class InspectionOut(BaseModel):
 
 # ── Maintenance ────────────────────────────────────────────────────────────────
 
-class MaintenanceCreate(BaseModel):
+class MaintenanceCreate(CamelModel):
     property_id: str
     unit_id: str | None = None
     lease_id: str | None = None
@@ -103,7 +105,7 @@ class MaintenanceCreate(BaseModel):
     notes: str | None = None
 
 
-class MaintenanceUpdate(BaseModel):
+class MaintenanceUpdate(CamelModel):
     title: str | None = None
     description: str | None = None
     category: str | None = None
@@ -116,12 +118,12 @@ class MaintenanceUpdate(BaseModel):
     photo_urls: list[str] | None = None
 
 
-class MaintenanceTransition(BaseModel):
+class MaintenanceTransition(CamelModel):
     event: str  # ISSUE_ASSIGNED, ISSUE_STARTED, ISSUE_RESOLVED, ISSUE_CLOSED, ISSUE_CANCELLED
     assigned_to: str | None = None  # required for ISSUE_ASSIGNED
 
 
-class MaintenanceOut(BaseModel):
+class MaintenanceOut(CamelModel):
     id: str
     organisation_id: str
     property_id: str

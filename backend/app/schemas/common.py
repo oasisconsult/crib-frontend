@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 T = TypeVar("T")
 
@@ -26,6 +26,13 @@ class PaginatedResponse(CamelModel, Generic[T]):
     page: int = 1
     page_size: int = Field(alias="pageSize", default=20)
     has_next: bool = Field(alias="hasNext", default=False)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def total_pages(self) -> int:
+        if self.page_size == 0:
+            return 0
+        return (self.total + self.page_size - 1) // self.page_size
 
 
 class MessageResponse(CamelModel):

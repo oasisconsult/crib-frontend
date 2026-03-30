@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from app.schemas.common import CamelModel
 
 
 # ── Templates ──────────────────────────────────────────────────────────────────
 
-class TemplateCreate(BaseModel):
+class TemplateCreate(CamelModel):
     name: str
     trigger: str
     channel: str
@@ -17,7 +19,7 @@ class TemplateCreate(BaseModel):
     is_active: bool = True
 
 
-class TemplateUpdate(BaseModel):
+class TemplateUpdate(CamelModel):
     name: str | None = None
     subject: str | None = None
     body: str | None = None
@@ -25,11 +27,11 @@ class TemplateUpdate(BaseModel):
     is_active: bool | None = None
 
 
-class TemplatePreview(BaseModel):
+class TemplatePreview(CamelModel):
     variables: dict[str, str] = Field(default_factory=dict)
 
 
-class TemplateOut(BaseModel):
+class TemplateOut(CamelModel):
     id: str
     organisation_id: str
     name: str
@@ -45,7 +47,7 @@ class TemplateOut(BaseModel):
 
 # ── Notifications ──────────────────────────────────────────────────────────────
 
-class NotificationSend(BaseModel):
+class NotificationSend(CamelModel):
     """Payload to manually queue and send a notification."""
     channel: str
     trigger: str
@@ -61,7 +63,7 @@ class NotificationSend(BaseModel):
     payment_id: str | None = None
 
 
-class NotificationOut(BaseModel):
+class NotificationOut(CamelModel):
     id: str
     organisation_id: str
     template_id: str | None
@@ -88,7 +90,7 @@ class NotificationOut(BaseModel):
     created_at: str
 
 
-class NotificationStatsOut(BaseModel):
+class NotificationStatsOut(CamelModel):
     total: int
     sent: int
     delivered: int

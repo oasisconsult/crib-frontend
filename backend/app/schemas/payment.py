@@ -60,6 +60,36 @@ class PaymentCreate(CamelModel):
         return v
 
 
+class PaymentCreateFlat(CamelModel):
+    """Used by flat POST /payments — lease_id is supplied in the body."""
+    lease_id: str
+    rent_schedule_id: str
+    amount: float = Field(gt=0)
+    currency: str = "UGX"
+    category: str = "rent"
+    method: str = "cash"
+    reference: str | None = None
+    idempotency_key: str | None = None
+    paid_at: datetime | None = None
+    notes: str | None = None
+
+    @field_validator("category")
+    @classmethod
+    def valid_category(cls, v: str) -> str:
+        allowed = {"rent", "deposit", "late_fee", "other"}
+        if v not in allowed:
+            raise ValueError(f"category must be one of {allowed}")
+        return v
+
+    @field_validator("method")
+    @classmethod
+    def valid_method(cls, v: str) -> str:
+        allowed = {"cash", "bank_transfer", "mobile_money_mtn", "mobile_money_airtel", "other"}
+        if v not in allowed:
+            raise ValueError(f"method must be one of {allowed}")
+        return v
+
+
 class PaymentOut(CamelModel):
     id: str
     organisation_id: str

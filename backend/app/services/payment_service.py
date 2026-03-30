@@ -43,6 +43,7 @@ from app.schemas.payment import (
     LateFeeWaive,
     LedgerOut,
     PaymentCreate,
+    PaymentCreateFlat,
     PaymentOut,
     RentScheduleOut,
 )
@@ -758,6 +759,180 @@ async def export_payments_csv(
             writer.writerow(row)
 
     return output.getvalue()
+
+
+# ── Flat (org-level) queries ───────────────────────────────────────────────────
+
+async def list_payments_org(
+    org_id: uuid.UUID,
+    db: AsyncSession,
+    status_filter: str | None = None,
+    category: str | None = None,
+    lease_id_filter: uuid.UUID | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
+    q = select(Payment).where(Payment.organisation_id == org_id)
+    if status_filter:
+        q = q.where(Payment.status == status_filter)
+    if category:
+        q = q.where(Payment.category == category)
+    if lease_id_filter:
+        q = q.where(Payment.lease_id == lease_id_filter)
+
+    total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
+    q = q.order_by(Payment.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(q)
+
+    return {
+        "data": [_payment_out(p) for p in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "hasNext": (page * page_size) < total,
+        "totalPages": (total + page_size - 1) // page_size if page_size > 0 else 0,
+    }
+
+
+async def get_payment_by_org(
+    payment_id: uuid.UUID,
+    org_id: uuid.UUID,
+    db: AsyncSession,
+) -> PaymentOut:
+    p = await db.scalar(
+        select(Payment).where(Payment.id == payment_id, Payment.organisation_id == org_id)
+    )
+    if not p:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+    return _payment_out(p)
+
+
+async def create_payment_flat(
+    body: PaymentCreateFlat,
+    org_id: uuid.UUID,
+    db: AsyncSession,
+) -> PaymentOut:
+    """Create a payment with lease_id supplied in the request body."""
+    lease_id = uuid.UUID(body.lease_id)
+    nested = PaymentCreate(
+        rent_schedule_id=body.rent_schedule_id,
+        amount=body.amount,
+        currency=body.currency,
+        category=body.category,
+        method=body.method,
+        reference=body.reference,
+        idempotency_key=body.idempotency_key,
+        paid_at=body.paid_at,
+        notes=body.notes,
+    )
+    return await create_payment(lease_id, nested, org_id, db)
+
+
+async def confirm_payment_by_org(
+    payment_id: uuid.UUID,
+    org_id: uuid.UUID,
+    db: AsyncSession,
+) -> PaymentOut:
+    p = await db.scalar(
+        select(Payment).where(Payment.id == payment_id, Payment.organisation_id == org_id)
+    )
+    if not p:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+    if p.status != PaymentStatus.pending:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot confirm a payment with status '{p.status}'",
+        )
+    p.status = PaymentStatus.confirmed
+    if p.rent_schedule_id:
+        schedule = await _get_schedule(p.rent_schedule_id, p.lease_id, db)
+        schedule.amount_paid = float(schedule.amount_paid) + float(p.amount)
+        if float(schedule.amount_paid) >= float(schedule.amount_due) + float(schedule.late_fee_applied):
+            schedule.status = RentScheduleStatus.paid
+            schedule.paid_at = datetime.now(timezone.utc)
+    await db.flush()
+    await db.refresh(p, attribute_names=["status", "updated_at"])
+    return _payment_out(p)
+
+
+async def refund_payment_by_org(
+    payment_id: uuid.UUID,
+    org_id: uuid.UUID,
+    db: AsyncSession,
+) -> PaymentOut:
+    p = await db.scalar(
+        select(Payment).where(Payment.id == payment_id, Payment.organisation_id == org_id)
+    )
+    if not p:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
+    if p.status != PaymentStatus.confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only confirmed payments can be refunded",
+        )
+    p.status = PaymentStatus.refunded
+    if p.rent_schedule_id:
+        schedule = await _get_schedule(p.rent_schedule_id, p.lease_id, db)
+        schedule.amount_paid = max(0.0, float(schedule.amount_paid) - float(p.amount))
+        if schedule.status == RentScheduleStatus.paid:
+            schedule.status = RentScheduleStatus.pending
+            schedule.paid_at = None
+    await db.flush()
+    await db.refresh(p, attribute_names=["status", "updated_at"])
+    return _payment_out(p)
+
+
+async def list_schedules_org(
+    org_id: uuid.UUID,
+    db: AsyncSession,
+    status_filter: str | None = None,
+    lease_id_filter: uuid.UUID | None = None,
+    page: int = 1,
+    page_size: int = 24,
+) -> dict:
+    q = select(RentSchedule).where(RentSchedule.organisation_id == org_id)
+    if status_filter:
+        q = q.where(RentSchedule.status == status_filter)
+    if lease_id_filter:
+        q = q.where(RentSchedule.lease_id == lease_id_filter)
+
+    total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
+    q = q.order_by(RentSchedule.due_date.asc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(q)
+
+    return {
+        "data": [_schedule_out(s) for s in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "hasNext": (page * page_size) < total,
+        "totalPages": (total + page_size - 1) // page_size if page_size > 0 else 0,
+    }
+
+
+async def list_late_fees_org(
+    org_id: uuid.UUID,
+    db: AsyncSession,
+    lease_id_filter: uuid.UUID | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
+    q = select(LateFee).where(LateFee.organisation_id == org_id)
+    if lease_id_filter:
+        q = q.where(LateFee.lease_id == lease_id_filter)
+
+    total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
+    q = q.order_by(LateFee.applied_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(q)
+
+    return {
+        "data": [_late_fee_out(f) for f in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "hasNext": (page * page_size) < total,
+        "totalPages": (total + page_size - 1) // page_size if page_size > 0 else 0,
+    }
 
 
 def _build_csv_row(
