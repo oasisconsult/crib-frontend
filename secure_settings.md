@@ -49,7 +49,7 @@ openssl rand -base64 24
 | `NEXT_PUBLIC_LOGTO_APP_ID` | Frontend app client ID | Logto Admin Console → Applications |
 | `LOGTO_APP_ID` | Backend app client ID | Logto Admin Console → Applications |
 | `LOGTO_APP_SECRET` | Backend app secret | Logto Admin Console → Applications |
-| `LOGTO_API_RESOURCE` | API resource identifier | `https://crib.app/api` |
+| `LOGTO_API_RESOURCE` | API resource identifier | `http://localhost:8001` |
 | `LOGTO_ADMIN_ENDPOINT` | Logto Management API URL | `http://logto:3002/` ← Docker internal |
 | `LOGTO_M2M_APP_ID` | M2M app for org provisioning (optional) | Logto Admin Console → M2M Apps |
 | `LOGTO_M2M_APP_SECRET` | M2M app secret (optional) | Logto Admin Console → M2M Apps |

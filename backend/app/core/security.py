@@ -11,7 +11,7 @@ Token shape (Logto org-scoped token):
   {
     "sub":                "usr_abc123",
     "iss":                "http://localhost:3001/oidc",
-    "aud":                "https://crib.app/api",
+    "aud":                "http://localhost:8001",
     "organization_id":    "org_xyz789",
     "organization_roles": ["manager"],
     ...

@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     logto_endpoint: AnyHttpUrl = "http://localhost:3001/"  # type: ignore[assignment]
     logto_app_id: str = ""
     logto_app_secret: str = ""
-    logto_api_resource: str = "https://crib.app/api"  # the API resource identifier in Logto
+    logto_api_resource: str = "http://localhost:8001"  # the API resource identifier in Logto
     logto_admin_endpoint: AnyHttpUrl = "http://localhost:3002/"  # type: ignore[assignment]
     logto_m2m_app_id: str = ""
     logto_m2m_app_secret: str = ""

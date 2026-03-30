@@ -21,9 +21,9 @@
 import LogtoClient from "@logto/next";
 
 // The API resource identifier registered in Logto under "API Resources".
-// Must match backend setting: logto_api_resource (default: https://crib.app/api).
+// Must match backend setting: logto_api_resource (default: http://localhost:8001).
 export const LOGTO_API_RESOURCE =
-  process.env.NEXT_PUBLIC_LOGTO_API_RESOURCE ?? "https://crib.app/api";
+  process.env.NEXT_PUBLIC_LOGTO_API_RESOURCE ?? "http://localhost:8001";
 
 export const logtoClient = new LogtoClient({
   appId: process.env.NEXT_PUBLIC_LOGTO_APP_ID!,
@@ -63,9 +63,9 @@ export const logtoClient = new LogtoClient({
 // They also match the backend Role enum (app/models/profile.py).
 
 export const LOGTO_ORG_ROLES = {
-  OWNER: "owner",        // Landlord / property owner — full org access
-  MANAGER: "manager",    // Property manager — org-scoped admin
-  TENANT: "tenant",      // Tenant — restricted to own lease data
+  OWNER: "owner", // Landlord / property owner — full org access
+  MANAGER: "manager", // Property manager — org-scoped admin
+  TENANT: "tenant", // Tenant — restricted to own lease data
   MAINTENANCE: "maintenance", // Maintenance staff — read-only inspections
 } as const;
 
@@ -74,5 +74,7 @@ export const LOGTO_GLOBAL_ROLES = {
   SUPERADMIN: "superadmin", // Platform operator — cross-org, system settings
 } as const;
 
-export type LogtoOrgRole = (typeof LOGTO_ORG_ROLES)[keyof typeof LOGTO_ORG_ROLES];
-export type LogtoGlobalRole = (typeof LOGTO_GLOBAL_ROLES)[keyof typeof LOGTO_GLOBAL_ROLES];
+export type LogtoOrgRole =
+  (typeof LOGTO_ORG_ROLES)[keyof typeof LOGTO_ORG_ROLES];
+export type LogtoGlobalRole =
+  (typeof LOGTO_GLOBAL_ROLES)[keyof typeof LOGTO_GLOBAL_ROLES];
