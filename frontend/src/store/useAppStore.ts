@@ -42,10 +42,12 @@ interface AppState {
   setUser: (user: User | null) => void;
 
   isAuthenticated: boolean;
-
-  // ✅ NEW
   isAuthInitialized: boolean;
   setAuthInitialized: (val: boolean) => void;
+
+  // Active org for multi-tenant switching
+  activeOrgId: string | null;
+  setActiveOrg: (orgId: string | null) => void;
 
   properties: Property[];
   setProperties: (properties: Property[]) => void;
@@ -61,14 +63,11 @@ export const useAppStore = create<AppState>()((set) => ({
   user: null,
   isAuthenticated: false,
   isAuthInitialized: false,
+  activeOrgId: null,
 
-  setUser: (user) =>
-    set({
-      user,
-      isAuthenticated: !!user,
-    }),
-
+  setUser: (user) => set({ user, isAuthenticated: !!user }),
   setAuthInitialized: (val) => set({ isAuthInitialized: val }),
+  setActiveOrg: (orgId) => set({ activeOrgId: orgId }),
 
   properties: [],
   setProperties: (properties) => set({ properties }),

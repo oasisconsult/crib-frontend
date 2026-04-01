@@ -23,8 +23,7 @@ import { type NextRequest, NextResponse } from "next/server";
 // /app/api/auth/token/route.ts
 
 export async function GET(request: NextRequest) {
-  const accessToken = request.cookies.get("access_token")?.value;
-  console.log("[auth/token] Access token cookie:", accessToken);
+  const accessToken = request.cookies.get("logto_session")?.value;
 
   if (!accessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
