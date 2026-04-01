@@ -124,6 +124,7 @@ export async function exchangeCodeForTokens(
     code,
     redirect_uri: redirectUri,
     client_id: LOGTO_APP_ID,
+    resource: API_RESOURCE,
     code_verifier: codeVerifier,
   });
 }
