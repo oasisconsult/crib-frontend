@@ -115,24 +115,20 @@
 // export const config = {
 //   matcher: ["/((?!_next/static|_next/image|favicon.ico|icons|images|fonts).*)"],
 // };
-
 import { NextRequest, NextResponse } from "next/server";
 
-// Public routes that anyone can access
 const PUBLIC_ROUTES = [
   "/login",
   "/signup",
   "/api/auth",
-  "/api/logto", // Logto SDK auth routes
+  "/api/logto",
   "/_next",
   "/favicon.ico",
 ];
 
-// Role-based routes
 const TENANT_ONLY_ROUTES = ["/portal"];
 const ADMIN_ONLY_ROUTES = ["/admin"];
 
-// Helpers
 function isPublic(pathname: string) {
   return PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
 }
@@ -144,40 +140,39 @@ function isOnboardingRoute(pathname: string) {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1️⃣ Allow public & onboarding routes
+  // ✅ Allow public and onboarding routes
   if (isPublic(pathname) || isOnboardingRoute(pathname)) {
     return NextResponse.next();
   }
 
-  // 2️⃣ Get cookies
+  // ✅ Check for Logto session cookie
   const sessionToken = request.cookies.get("logto_session")?.value;
-  const roleCookie = request.cookies.get("user_role")?.value ?? "";
 
-  // 3️⃣ Redirect if not authenticated
   if (!sessionToken) {
+    // redirect to login and preserve destination
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // 4️⃣ Role-based route protection
+  // ✅ Role-based access
+  const role = request.cookies.get("user_role")?.value ?? "";
+
   if (ADMIN_ONLY_ROUTES.some((r) => pathname.startsWith(r))) {
-    if (roleCookie !== "superadmin") {
+    if (role !== "superadmin") {
       return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
   if (TENANT_ONLY_ROUTES.some((r) => pathname.startsWith(r))) {
-    if (roleCookie !== "tenant") {
+    if (role !== "tenant") {
       return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
-  // 5️⃣ Allow access
   return NextResponse.next();
 }
 
-// Match all routes except Next.js static assets
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|icons|images|fonts).*)"],
 };
