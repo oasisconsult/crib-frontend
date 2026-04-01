@@ -194,12 +194,18 @@ export function useAuth() {
             resolveAuth(userData);
             emitAudit({ action: "auth.login", userId: userData.id });
           } catch {
-            resolveAuth(null);
+            const status = (err as { response?: { status?: number } })?.response
+              ?.status;
+
+            console.error("[auth] /users/me failed:", status, err);
+            // resolveAuth(null);
           }
-        } else {
-          console.error("[auth] /users/me failed:", status, err);
-          resolveAuth(null);
+          return;
         }
+        // } else {
+        //   console.error("[auth] /users/me failed:", status, err);
+        //   resolveAuth(null);
+        // }
       }
     };
 
