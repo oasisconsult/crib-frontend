@@ -55,8 +55,12 @@ function createApiClient(): AxiosInstance {
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
 
+        // In mock mode there are no real tokens to refresh — just reject
+        if (process.env.NEXT_PUBLIC_MOCK_API === "true") {
+          return Promise.reject(error);
+        }
+
         if (_isRefreshing) {
-          // Queue this request until the in-flight refresh completes
           return new Promise((resolve) => {
             subscribeTokenRefresh((newToken) => {
               originalRequest.headers.Authorization = `Bearer ${newToken}`;
@@ -77,7 +81,6 @@ function createApiClient(): AxiosInstance {
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return client(originalRequest);
         } catch {
-          // Refresh failed — redirect to login
           tokenStore.clear();
           notifyRefreshSubscribers("");
           window.location.href = "/login";

@@ -1,16 +1,5 @@
 "use client";
 
-/**
- * useAuth — Production auth hook
- *
- * Responsibilities:
- *  - Bootstrap: fetch token from httpOnly cookie → store in memory
- *  - Silent refresh: schedule proactive token refresh 60s before expiry
- *  - Org switching: exchange token for org-scoped access token
- *  - Secure logout: revoke refresh token + clear cookies + Logto end_session
- *  - Audit logging: emit structured events for all auth actions
- */
-
 import { useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
@@ -24,34 +13,65 @@ import { emitAudit } from "@/lib/audit";
 import { apiGet } from "@/services/api/client";
 import type { User } from "@/types";
 
-const REFRESH_BUFFER_MS = 60_000; // refresh 60s before expiry
+const REFRESH_BUFFER_MS = 60_000;
+const IS_MOCK = process.env.NEXT_PUBLIC_MOCK_API === "true";
+
+/** Dev sessions are prefixed with "dev." — they are not real JWTs. */
+function isDevToken(token: string) {
+  return token.startsWith("dev.");
+}
 
 export function useAuth() {
   const router = useRouter();
-  const { user, setUser, setAuthInitialized, isAuthInitialized, setActiveOrg } =
-    useAppStore((s) => ({
-      user: s.user,
-      setUser: s.setUser,
-      setAuthInitialized: s.setAuthInitialized,
-      isAuthInitialized: s.isAuthInitialized,
-      setActiveOrg: s.setActiveOrg,
-    }));
+  const user = useAppStore((s) => s.user);
+  const setUser = useAppStore((s) => s.setUser);
+  const setAuthInitialized = useAppStore((s) => s.setAuthInitialized);
+  const isAuthInitialized = useAppStore((s) => s.isAuthInitialized);
+  const setActiveOrg = useAppStore((s) => s.setActiveOrg);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Schedule next silent refresh ──────────────────────────────────────────
-  const scheduleRefresh = useCallback((token: string) => {
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+  const scheduleRefresh = useCallback(
+    (token: string) => {
+      // Never schedule refresh for dev/mock tokens
+      if (IS_MOCK || isDevToken(token)) return;
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      const delay = Math.max(0, msUntilExpiry(token) - REFRESH_BUFFER_MS);
+      refreshTimerRef.current = setTimeout(() => {
+        silentRefresh(); // eslint-disable-line @typescript-eslint/no-use-before-define
+      }, delay);
+    },
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
-    const delay = Math.max(0, msUntilExpiry(token) - REFRESH_BUFFER_MS);
-    refreshTimerRef.current = setTimeout(() => {
-      silentRefresh();
-    }, delay);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // ── Secure logout ─────────────────────────────────────────────────────────
+  const logout = useCallback(
+    async (meta?: Record<string, unknown>) => {
+      emitAudit({ action: "auth.logout", userId: user?.id, meta });
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+      tokenStore.clear();
+
+      try {
+        const res = await fetch("/api/auth/logout", { method: "POST" });
+        if (res.ok) {
+          const { logoutUrl } = await res.json();
+          setUser(null);
+          window.location.href = logoutUrl;
+          return;
+        }
+      } catch {}
+
+      setUser(null);
+      window.location.href = "/login";
+    },
+    [user, setUser],
+  );
 
   // ── Silent refresh ────────────────────────────────────────────────────────
   const silentRefresh = useCallback(async (): Promise<string | null> => {
-    // Deduplicate concurrent refresh calls
+    if (IS_MOCK) return tokenStore.get(); // no-op in mock mode
+
     const inflight = tokenStore.getRefreshPromise();
     if (inflight) return inflight;
 
@@ -60,18 +80,14 @@ export function useAuth() {
         const res = await fetch("/api/auth/refresh", { method: "POST" });
         if (!res.ok) {
           emitAudit({ action: "auth.token_refresh_failed", userId: user?.id });
-          // Refresh token expired — force re-login
           await logout({ reason: "refresh_expired" });
           return null;
         }
-        const { accessToken, expiresIn, role, orgId } = await res.json();
+        const { accessToken, role, orgId } = await res.json();
         tokenStore.set(accessToken);
         scheduleRefresh(accessToken);
 
-        // Update role/org in store if changed
-        if (user && user.role !== role) {
-          setUser({ ...user, role });
-        }
+        if (user && user.role !== role) setUser({ ...user, role });
         if (orgId) setActiveOrg(orgId);
 
         emitAudit({ action: "auth.token_refresh", userId: user?.id, orgId });
@@ -86,7 +102,7 @@ export function useAuth() {
 
     tokenStore.setRefreshPromise(promise);
     return promise;
-  }, [user, setUser, setActiveOrg, scheduleRefresh]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user, setUser, setActiveOrg, scheduleRefresh, logout]);
 
   // ── Bootstrap on mount ────────────────────────────────────────────────────
   useEffect(() => {
@@ -94,29 +110,35 @@ export function useAuth() {
 
     const bootstrap = async () => {
       try {
-        // 1. Get token from httpOnly cookie bridge
+        // 1. Fetch token from httpOnly cookie bridge
         const tokenRes = await fetch("/api/auth/token");
-        if (!tokenRes.ok) throw new Error("no_session");
+        if (!tokenRes.ok) {
+          // No session at all — mark initialized so the UI can redirect
+          setUser(null);
+          setAuthInitialized(true);
+          return;
+        }
 
         const { token } = await tokenRes.json();
         tokenStore.set(token);
 
-        // 2. If token is expiring soon, refresh immediately
-        if (isTokenExpiringSoon(token)) {
-          const refreshed = await silentRefresh();
-          if (!refreshed) return; // logout was triggered
-        } else {
-          scheduleRefresh(token);
+        // 2. For real tokens: check expiry and schedule refresh
+        if (!isDevToken(token)) {
+          if (isTokenExpiringSoon(token)) {
+            const refreshed = await silentRefresh();
+            if (!refreshed) return; // logout was triggered inside silentRefresh
+          } else {
+            scheduleRefresh(token);
+          }
+
+          // Extract org from token claims
+          const claims = decodeJwt(tokenStore.get()!);
+          if (claims?.organization_id) setActiveOrg(claims.organization_id);
         }
 
-        // 3. Extract org from token claims
-        const claims = decodeJwt(tokenStore.get()!);
-        if (claims?.organization_id) setActiveOrg(claims.organization_id);
-
-        // 4. Fetch user profile
+        // 3. Fetch user profile — token is now in tokenStore, axios will attach it
         const userData = await apiGet<User>("/users/me");
         setUser(userData);
-
         emitAudit({ action: "auth.login", userId: userData.id });
       } catch {
         setUser(null);
@@ -151,42 +173,15 @@ export function useAuth() {
 
         emitAudit({ action: "auth.org_switch", userId: user?.id, orgId });
 
-        // Reload user profile for new org context
         const userData = await apiGet<User>("/users/me");
         setUser(userData);
-
-        router.refresh(); // re-run server components with new org context
+        router.refresh();
         return true;
       } catch {
         return false;
       }
     },
     [user, setUser, setActiveOrg, scheduleRefresh, router],
-  );
-
-  // ── Secure logout ─────────────────────────────────────────────────────────
-  const logout = useCallback(
-    async (meta?: Record<string, unknown>) => {
-      emitAudit({ action: "auth.logout", userId: user?.id, meta });
-
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-      tokenStore.clear();
-
-      try {
-        const res = await fetch("/api/auth/logout", { method: "POST" });
-        if (res.ok) {
-          const { logoutUrl } = await res.json();
-          setUser(null);
-          window.location.href = logoutUrl; // full navigation to Logto end_session
-          return;
-        }
-      } catch {}
-
-      // Fallback
-      setUser(null);
-      window.location.href = "/login";
-    },
-    [user, setUser],
   );
 
   return {
