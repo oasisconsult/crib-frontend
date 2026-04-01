@@ -1,15 +1,14 @@
 """
 Profile / "me" endpoints.
 
-GET  /me           — return the current user's profile
-POST /me/consent   — record GDPR consent
+GET   /me          — return the current user's profile (shape matches frontend User type)
+POST  /me/consent  — record GDPR consent
 PATCH /me          — update phone / display_name
 """
 
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
@@ -20,15 +19,26 @@ router = APIRouter(prefix="/me", tags=["me"])
 
 
 class ProfileOut(CamelModel):
+    """
+    Matches the frontend User interface exactly.
+
+    Frontend expects:
+      id, email, name, role, status, timezone, locale,
+      createdAt, updatedAt, phone?, avatar?, organisationId?
+    """
+
     id: str
-    logto_sub: str
+    email: str
+    name: str
     role: str
-    display_name: str | None
-    email: str | None
-    phone: str | None
-    avatar_url: str | None
-    gdpr_consent_given: bool
-    organisation_id: str | None
+    status: str
+    timezone: str
+    locale: str
+    phone: str | None = None
+    avatar: str | None = None
+    organisation_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class ProfilePatch(CamelModel):
@@ -36,20 +46,39 @@ class ProfilePatch(CamelModel):
     phone: str | None = None
 
 
-@router.get("", response_model=ProfileOut)
-async def get_me(current_user: CurrentUser = Depends(get_current_user)) -> ProfileOut:
-    p = current_user.profile
+def _profile_out(p: object) -> ProfileOut:  # type: ignore[type-arg]
+    from app.models.profile import Profile
+
+    assert isinstance(p, Profile)
+
+    # Derive a display name: prefer display_name, fall back to email prefix
+    name = p.display_name or (p.email.split("@")[0] if p.email else "User")
+
+    # Derive status from the profile — profiles don't have a status field,
+    # so we map from anonymised_at (anonymised → inactive, else active)
+    status = "inactive" if p.anonymised_at else "active"
+
     return ProfileOut(
         id=str(p.id),
-        logto_sub=p.logto_sub,
+        email=p.email or "",
+        name=name,
         role=p.role.value,
-        display_name=p.display_name,
-        email=p.email,
+        status=status,
+        timezone="Africa/Kampala",  # default — extend Profile model to store this if needed
+        locale="en-UG",  # default — extend Profile model to store this if needed
         phone=p.phone,
-        avatar_url=p.avatar_url,
-        gdpr_consent_given=p.gdpr_consent_given,
+        avatar=p.avatar_url,
         organisation_id=str(p.organisation_id) if p.organisation_id else None,
+        created_at=p.created_at,
+        updated_at=p.updated_at,
     )
+
+
+@router.get("", response_model=ProfileOut)
+async def get_me(
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ProfileOut:
+    return _profile_out(current_user.profile)
 
 
 @router.post("/consent", response_model=ProfileOut)
@@ -61,7 +90,7 @@ async def record_consent(
     profile.gdpr_consent_given = True
     profile.gdpr_consent_at = datetime.now(timezone.utc)
     await db.flush()
-    return await get_me(current_user)
+    return _profile_out(profile)
 
 
 @router.patch("", response_model=ProfileOut)
@@ -76,4 +105,4 @@ async def update_me(
     if body.phone is not None:
         profile.phone = body.phone
     await db.flush()
-    return await get_me(current_user)
+    return _profile_out(profile)

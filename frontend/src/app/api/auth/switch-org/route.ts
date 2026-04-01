@@ -1,24 +1,19 @@
-/**
- * POST /api/auth/switch-org
- *
- * Switches the active organisation context for a multi-tenant user.
- *
- * Flow:
- *  1. Validate the requested orgId exists in the user's JWT claims
- *  2. Exchange the refresh_token for an org-scoped access token
- *  3. Rotate cookies with the new org context
- *
- * Body: { orgId: string }
- *
- * Returns: { accessToken, expiresIn, role, orgId }
- */
-export const runtime = "edge";
-
+// Node runtime — server-to-server Logto token exchange needs LOGTO_ENDPOINT
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE, cookieOpts, TTL } from "@/lib/cookies";
 import { getOrgScopedToken, extractRole, OidcError } from "@/lib/oidc";
 import { decodeJwt } from "@/lib/auth";
 
+/**
+ * POST /api/auth/switch-org
+ *
+ * Switches the active organisation context for a multi-tenant user.
+ *  1. Validate the requested orgId exists in the user's JWT claims
+ *  2. Exchange the refresh_token for an org-scoped access token
+ *  3. Rotate cookies with the new org context
+ *
+ * Body: { orgId: string }
+ */
 export async function POST(request: NextRequest) {
   const refreshToken = request.cookies.get(COOKIE.REFRESH)?.value;
   if (!refreshToken) {
@@ -39,7 +34,6 @@ export async function POST(request: NextRequest) {
   if (currentToken) {
     const claims = decodeJwt(currentToken);
     const userOrgs = claims?.organizations ?? [];
-    // Only enforce if the token actually carries org claims
     if (userOrgs.length > 0 && !userOrgs.includes(orgId)) {
       return NextResponse.json({ error: "org_not_found" }, { status: 403 });
     }
@@ -61,22 +55,20 @@ export async function POST(request: NextRequest) {
   }
 
   const role = extractRole(tokens.access_token);
-  const expiresIn = tokens.expires_in;
-
   const response = NextResponse.json({
     accessToken: tokens.access_token,
-    expiresIn,
+    expiresIn: tokens.expires_in,
     role,
     orgId,
   });
 
   response.cookies.set(COOKIE.SESSION, tokens.access_token, {
     ...cookieOpts.session,
-    maxAge: expiresIn,
+    maxAge: tokens.expires_in,
   });
   response.cookies.set(COOKIE.ROLE, role, {
     ...cookieOpts.session,
-    maxAge: expiresIn,
+    maxAge: tokens.expires_in,
   });
   response.cookies.set(COOKIE.ACTIVE_ORG, orgId, {
     ...cookieOpts.session,

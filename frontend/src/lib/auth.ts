@@ -1,9 +1,20 @@
 /**
- * auth.ts — Core auth utilities
+ * auth.ts — Client-side auth utilities
  *
- * - JWT decode (no verification — server validates signatures)
- * - In-memory token store (avoids XSS via localStorage)
- * - Token expiry helpers
+ * Token security model:
+ *  - The access token lives exclusively in an httpOnly cookie (set by the server).
+ *  - JavaScript never receives the raw token value — only metadata (expiry, sub).
+ *  - The BFF proxy (src/app/api/v1/[...path]/route.ts) reads the cookie
+ *    server-side and injects Authorization: Bearer <token> before forwarding
+ *    requests to the FastAPI backend.
+ *  - tokenStore holds only the expiry timestamp for scheduling silent refresh.
+ *    It is NOT used to attach tokens to requests.
+ *
+ * What lives where:
+ *  httpOnly cookie  → access token (server-readable only)
+ *  httpOnly cookie  → refresh token (server-readable only)
+ *  tokenStore       → expiry timestamp only (in-memory, lost on reload)
+ *  Zustand store    → user profile (name, role, org — not the token)
  */
 
 export interface JwtClaims {
@@ -12,17 +23,15 @@ export interface JwtClaims {
   iat: number;
   aud?: string | string[];
   iss?: string;
-  // Logto-specific
   roles?: string[];
   organization_id?: string;
   organization_roles?: string[];
   organizations?: string[];
   name?: string;
   email?: string;
-  picture?: string;
 }
 
-/** Decode a JWT payload without verifying the signature. */
+/** Decode a JWT payload without verifying the signature (server verifies). */
 export function decodeJwt(token: string): JwtClaims | null {
   try {
     const parts = token.split(".");
@@ -34,46 +43,32 @@ export function decodeJwt(token: string): JwtClaims | null {
   }
 }
 
-/** Returns true if the token expires within `bufferSeconds` (default 60s). */
-export function isTokenExpiringSoon(
-  token: string,
-  bufferSeconds = 60,
-): boolean {
-  const claims = decodeJwt(token);
-  if (!claims?.exp) return true;
-  return claims.exp - bufferSeconds < Math.floor(Date.now() / 1000);
+/** Milliseconds until the given Unix timestamp (0 if already past). */
+export function msUntilTimestamp(expiresAt: number): number {
+  return Math.max(0, expiresAt * 1000 - Date.now());
 }
 
-/** Returns true if the token is already expired. */
-export function isTokenExpired(token: string): boolean {
-  const claims = decodeJwt(token);
-  if (!claims?.exp) return true;
-  return claims.exp < Math.floor(Date.now() / 1000);
-}
+// ── Token expiry store ───────────────────────────────────────────────────────
+// Holds only the expiry timestamp — never the token itself.
+// Used solely to schedule proactive silent refresh.
+// Lost on page reload (intentional — bootstrap re-reads from the cookie).
 
-/** Milliseconds until the token expires (0 if already expired). */
-export function msUntilExpiry(token: string): number {
-  const claims = decodeJwt(token);
-  if (!claims?.exp) return 0;
-  return Math.max(0, claims.exp * 1000 - Date.now());
-}
-
-// ── In-memory token store ────────────────────────────────────────────────────
-// Tokens are never written to localStorage/sessionStorage to reduce XSS surface.
-// The httpOnly cookie is the source of truth; this is just a runtime cache.
-
-let _accessToken: string | null = null;
+let _expiresAt: number = 0;
 let _refreshPromise: Promise<string | null> | null = null;
 
 export const tokenStore = {
-  get(): string | null {
-    return _accessToken;
+  /** Unix timestamp (seconds) when the current token expires. */
+  getExpiry(): number {
+    return _expiresAt;
   },
-  set(token: string | null) {
-    _accessToken = token;
+  setExpiry(expiresAt: number) {
+    _expiresAt = expiresAt;
   },
   clear() {
-    _accessToken = null;
+    _expiresAt = 0;
+  },
+  isExpired(): boolean {
+    return _expiresAt > 0 && _expiresAt < Math.floor(Date.now() / 1000);
   },
   /** Deduplicated refresh — concurrent callers share one in-flight request. */
   getRefreshPromise(): Promise<string | null> | null {

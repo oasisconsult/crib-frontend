@@ -1,20 +1,12 @@
 /**
  * GET /api/logto/sign-in-callback
- *
- * Handles the OIDC authorization code callback from Logto.
- *
- * Flow:
- *  1. Verify CSRF state
- *  2. Exchange authorization code for tokens (PKCE)
- *  3. If user belongs to an org, exchange for an org-scoped access token
- *  4. Extract role from the final access token
- *  5. Set httpOnly session cookies and redirect to post-login destination
+ * ...uses Node runtime for reliable server-side env var access.
  */
-export const runtime = "edge";
+// Node runtime — server-to-server Logto token exchange needs LOGTO_ENDPOINT
 
 import { type NextRequest, NextResponse } from "next/server";
 import { APP_URL } from "@/lib/config";
-import { COOKIE, cookieOpts, TTL, clearAuthCookies } from "@/lib/cookies";
+import { COOKIE, cookieOpts, TTL } from "@/lib/cookies";
 import {
   exchangeCodeForTokens,
   getOrgScopedToken,
@@ -77,9 +69,14 @@ export async function GET(request: NextRequest) {
   // Decode the ID token to find the user's org memberships.
   // Exchange the refresh_token for an org-scoped access token so the backend
   // receives organization_id + organization_roles in every request.
+  //
+  // IMPORTANT: getOrgScopedToken consumes the refresh token (Logto rotates on
+  // every use). We must store the NEW refresh token returned by that call, not
+  // the original one from the code exchange.
   let accessToken = tokens.access_token;
-  const idClaims = decodeJwt(tokens.id_token ?? "") ?? {};
-  const orgIds = (idClaims.organizations as string[] | undefined) ?? [];
+  let refreshTokenToStore = tokens.refresh_token;
+  const idClaims = decodeJwt(tokens.id_token ?? "");
+  const orgIds = (idClaims?.organizations as string[] | undefined) ?? [];
 
   if (orgIds.length > 0 && tokens.refresh_token) {
     try {
@@ -88,6 +85,10 @@ export async function GET(request: NextRequest) {
         orgIds[0],
       );
       accessToken = orgTokens.access_token;
+      // Use the rotated refresh token from the org exchange
+      if (orgTokens.refresh_token) {
+        refreshTokenToStore = orgTokens.refresh_token;
+      }
     } catch {
       // Non-fatal — fall back to base access token
       console.warn("[callback] Org token exchange failed, using base token");
@@ -116,8 +117,8 @@ export async function GET(request: NextRequest) {
     ...cookieOpts.session,
     maxAge: tokens.expires_in,
   });
-  if (tokens.refresh_token) {
-    response.cookies.set(COOKIE.REFRESH, tokens.refresh_token, {
+  if (refreshTokenToStore) {
+    response.cookies.set(COOKIE.REFRESH, refreshTokenToStore, {
       ...cookieOpts.session,
       maxAge: TTL.REFRESH_TOKEN,
     });

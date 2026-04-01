@@ -3,19 +3,32 @@
  *
  * All token exchange logic lives here. Route handlers call these functions
  * instead of duplicating fetch + URLSearchParams boilerplate.
+ *
+ * NOTE: Constants are evaluated lazily (inside functions) rather than at
+ * module load time. This ensures Edge runtime routes always read the current
+ * process.env values, including server-only vars like LOGTO_ENDPOINT.
  */
 
-import {
-  LOGTO_SERVER_URL,
-  LOGTO_APP_ID,
-  LOGTO_APP_SECRET,
-  API_RESOURCE,
-} from "./config";
+import { LOGTO_APP_ID, LOGTO_APP_SECRET, API_RESOURCE } from "./config";
 import { decodeJwt } from "./auth";
 import type { UserRole } from "@/types";
 
-const TOKEN_ENDPOINT = `${LOGTO_SERVER_URL}/oidc/token`;
-const REVOKE_ENDPOINT = `${LOGTO_SERVER_URL}/oidc/token/revocation`;
+function tokenEndpoint(): string {
+  // Read at call time so Edge runtime picks up LOGTO_ENDPOINT correctly
+  const base =
+    process.env.LOGTO_ENDPOINT ??
+    process.env.NEXT_PUBLIC_LOGTO_ENDPOINT ??
+    "http://localhost:3001";
+  return `${base}/oidc/token`;
+}
+
+function revokeEndpoint(): string {
+  const base =
+    process.env.LOGTO_ENDPOINT ??
+    process.env.NEXT_PUBLIC_LOGTO_ENDPOINT ??
+    "http://localhost:3001";
+  return `${base}/oidc/token/revocation`;
+}
 
 export interface TokenSet {
   access_token: string;
@@ -41,7 +54,10 @@ async function postToTokenEndpoint(
   const body = new URLSearchParams(params);
   if (LOGTO_APP_SECRET) body.set("client_secret", LOGTO_APP_SECRET);
 
-  const res = await fetch(TOKEN_ENDPOINT, {
+  const url = tokenEndpoint();
+  console.debug("[oidc] POST", url, "grant_type:", params.grant_type);
+
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
@@ -49,6 +65,13 @@ async function postToTokenEndpoint(
 
   if (!res.ok) {
     const text = await res.text();
+    console.error(
+      "[oidc] Token endpoint error:",
+      res.status,
+      text,
+      "url:",
+      url,
+    );
     throw new OidcError(res.status, text);
   }
 
@@ -150,7 +173,7 @@ export async function revokeToken(token: string): Promise<void> {
     });
     if (LOGTO_APP_SECRET) body.set("client_secret", LOGTO_APP_SECRET);
 
-    await fetch(REVOKE_ENDPOINT, {
+    await fetch(revokeEndpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,

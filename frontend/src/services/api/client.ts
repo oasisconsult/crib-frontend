@@ -1,3 +1,19 @@
+/**
+ * API client — axios instance configured for the BFF proxy pattern.
+ *
+ * All requests go to /api/v1/* (same origin, relative URL).
+ * The Next.js BFF proxy at src/app/api/v1/[...path]/route.ts reads the
+ * httpOnly logto_session cookie and injects Authorization: Bearer <token>
+ * before forwarding to the FastAPI backend.
+ *
+ * The client still maintains an in-memory tokenStore for:
+ *  - 401 detection and silent refresh triggering
+ *  - Knowing when to proactively refresh before expiry
+ *
+ * The browser never directly calls the backend — all traffic goes through
+ * the BFF, which owns the token injection.
+ */
+
 import axios, {
   type AxiosInstance,
   type AxiosError,
@@ -5,9 +21,9 @@ import axios, {
 } from "axios";
 import { tokenStore } from "@/lib/auth";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+// Always relative — hits the BFF proxy at /api/v1/*
+const BASE_URL = "";
 
-// Track whether a 401-triggered refresh is already in flight to avoid loops
 let _isRefreshing = false;
 let _refreshSubscribers: Array<(token: string) => void> = [];
 
@@ -24,20 +40,25 @@ function createApiClient(): AxiosInstance {
     baseURL: `${BASE_URL}/api/v1`,
     timeout: 30_000,
     headers: { "Content-Type": "application/json" },
+    // Credentials must be included so the browser sends the httpOnly cookie
+    // to the BFF proxy (same-origin, so this is always true — but explicit is better)
+    withCredentials: true,
   });
 
-  // ─── Request interceptor: attach in-memory access token ─────────────────
+  // ─── Request interceptor ─────────────────────────────────────────────────
+  // The BFF proxy injects the Authorization header from the cookie.
+  // We don't set it here — that would expose the token to the browser's
+  // request headers, defeating the httpOnly cookie security model.
+  //
+  // In mock mode only: attach X-Dev-User-Id so MSW returns the right fixture.
   client.interceptors.request.use(
     (config) => {
-      if (typeof window !== "undefined") {
-        const token = tokenStore.get();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        if (process.env.NEXT_PUBLIC_MOCK_API === "true") {
-          const devUserId = localStorage.getItem("crib:dev_user_id");
-          if (devUserId) config.headers["X-Dev-User-Id"] = devUserId;
-        }
+      if (
+        typeof window !== "undefined" &&
+        process.env.NEXT_PUBLIC_MOCK_API === "true"
+      ) {
+        const devUserId = localStorage.getItem("crib:dev_user_id");
+        if (devUserId) config.headers["X-Dev-User-Id"] = devUserId;
       }
       return config;
     },
@@ -55,15 +76,15 @@ function createApiClient(): AxiosInstance {
       if (error.response?.status === 401 && !originalRequest._retry) {
         originalRequest._retry = true;
 
-        // In mock mode there are no real tokens to refresh — just reject
+        // Mock mode has no real tokens — just reject
         if (process.env.NEXT_PUBLIC_MOCK_API === "true") {
           return Promise.reject(error);
         }
 
+        // Deduplicate concurrent 401s
         if (_isRefreshing) {
           return new Promise((resolve) => {
-            subscribeTokenRefresh((newToken) => {
-              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            subscribeTokenRefresh(() => {
               resolve(client(originalRequest));
             });
           });
@@ -74,16 +95,11 @@ function createApiClient(): AxiosInstance {
           const res = await fetch("/api/auth/refresh", { method: "POST" });
           if (!res.ok) throw new Error("refresh_failed");
 
-          const { accessToken } = await res.json();
-          tokenStore.set(accessToken);
-          notifyRefreshSubscribers(accessToken);
-
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+          // Retry — the BFF will pick up the refreshed cookie automatically
           return client(originalRequest);
         } catch {
-          tokenStore.clear();
           notifyRefreshSubscribers("");
-          window.location.href = "/login";
+          window.location.replace("/login");
           return Promise.reject(error);
         } finally {
           _isRefreshing = false;
@@ -99,7 +115,6 @@ function createApiClient(): AxiosInstance {
 
 export const apiClient = createApiClient();
 
-// Typed helper wrappers
 export async function apiGet<T>(url: string, params?: object): Promise<T> {
   const { data } = await apiClient.get<T>(url, { params });
   return data;

@@ -1,22 +1,38 @@
 "use client";
 
+/**
+ * useAuth — session bootstrap and lifecycle management.
+ *
+ * Flow after login:
+ *  1. GET /api/auth/token  — reads the httpOnly logto_session cookie,
+ *                            returns the JWT so we know its expiry.
+ *                            The token is stored in memory (tokenStore)
+ *                            only for expiry tracking — NOT for attaching
+ *                            to API requests (the BFF proxy does that).
+ *  2. GET /api/v1/users/me — goes through the BFF proxy which reads the
+ *                            cookie and injects Authorization: Bearer <token>.
+ *                            Returns the user profile from the backend.
+ *  3. resolveAuth(user)    — atomic store update, dashboard renders.
+ *
+ * Silent refresh:
+ *  - Scheduled 60s before the token expires.
+ *  - POST /api/auth/refresh rotates the refresh_token and sets a new
+ *    logto_session cookie. The BFF proxy picks it up automatically.
+ *  - On 401 from any API call, the axios interceptor triggers refresh
+ *    and retries the original request.
+ */
+
 import { useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
-import {
-  tokenStore,
-  isTokenExpiringSoon,
-  msUntilExpiry,
-  decodeJwt,
-} from "@/lib/auth";
+import { tokenStore, msUntilTimestamp } from "@/lib/auth";
 import { emitAudit } from "@/lib/audit";
 import { apiClient } from "@/services/api/client";
 import type { User } from "@/types";
 
-const REFRESH_BUFFER_MS = 60_000; // refresh 60s before expiry
+const REFRESH_BUFFER_MS = 60_000;
 const IS_MOCK = process.env.NEXT_PUBLIC_MOCK_API === "true";
 
-/** Dev tokens are plain strings prefixed with "dev." — not JWTs. */
 const isDevToken = (t: string) => t.startsWith("dev.");
 const devTokenUserId = (t: string) => t.slice(4);
 
@@ -31,17 +47,17 @@ export function useAuth() {
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Schedule proactive silent refresh ────────────────────────────────────
-  const scheduleRefresh = useCallback((token: string) => {
-    if (IS_MOCK || isDevToken(token)) return;
+  const scheduleRefreshAt = useCallback((expiresAt: number) => {
+    if (IS_MOCK) return;
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    const delay = Math.max(0, msUntilExpiry(token) - REFRESH_BUFFER_MS);
+    const delay = Math.max(0, msUntilTimestamp(expiresAt) - REFRESH_BUFFER_MS);
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     refreshTimerRef.current = setTimeout(() => {
       silentRefresh();
     }, delay);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Secure logout ─────────────────────────────────────────────────────────
+  // ── Logout ────────────────────────────────────────────────────────────────
   const logout = useCallback(
     async (meta?: Record<string, unknown>) => {
       emitAudit({ action: "auth.logout", userId: user?.id, meta });
@@ -53,7 +69,7 @@ export function useAuth() {
         if (res.ok) {
           const { logoutUrl } = (await res.json()) as { logoutUrl: string };
           resolveAuth(null);
-          window.location.href = logoutUrl; // full navigation to IdP end_session
+          window.location.href = logoutUrl;
           return;
         }
       } catch {
@@ -66,11 +82,10 @@ export function useAuth() {
     [user, resolveAuth],
   );
 
-  // ── Silent token refresh ──────────────────────────────────────────────────
+  // ── Silent refresh ────────────────────────────────────────────────────────
   const silentRefresh = useCallback(async (): Promise<string | null> => {
-    if (IS_MOCK) return tokenStore.get(); // no-op in mock mode
+    if (IS_MOCK) return tokenStore.get();
 
-    // Deduplicate: concurrent callers share one in-flight request
     const inflight = tokenStore.getRefreshPromise();
     if (inflight) return inflight;
 
@@ -82,13 +97,16 @@ export function useAuth() {
           await logout({ reason: "refresh_token_expired" });
           return null;
         }
-        const { accessToken, role, orgId } = (await res.json()) as {
+        const { accessToken, role, orgId, expiresIn } = (await res.json()) as {
           accessToken: string;
           role: string;
           orgId?: string;
+          expiresIn: number;
         };
-        tokenStore.set(accessToken);
-        scheduleRefresh(accessToken);
+        // Store only expiry — never the raw token in JS
+        const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
+        tokenStore.setExpiry(expiresAt);
+        scheduleRefreshAt(expiresAt);
         if (user && user.role !== role)
           setUser({ ...user, role: role as User["role"] });
         if (orgId) setActiveOrg(orgId);
@@ -106,51 +124,86 @@ export function useAuth() {
     return promise;
   }, [user, setUser, setActiveOrg, scheduleRefresh, logout]);
 
-  // ── Bootstrap on mount ────────────────────────────────────────────────────
+  // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (isAuthInitialized) return;
 
     const bootstrap = async () => {
+      // ── Step 1: Check session metadata ───────────────────────────────────
+      // /api/auth/session returns { authenticated, expiresAt, sub, orgId }
+      // — never the raw token. The token stays in the httpOnly cookie.
+      const sessionRes = await fetch("/api/auth/session");
+
+      if (!sessionRes.ok) {
+        resolveAuth(null);
+        return;
+      }
+
+      const session = (await sessionRes.json()) as {
+        authenticated: boolean;
+        expiresAt: number;
+        sub: string;
+        orgId: string | null;
+      };
+
+      if (!session.authenticated) {
+        resolveAuth(null);
+        return;
+      }
+
+      // ── Step 2: Mock mode setup ───────────────────────────────────────────
+      if (IS_MOCK && session.sub?.startsWith("dev.")) {
+        localStorage.setItem("crib:dev_user_id", session.sub.slice(4));
+      }
+
+      // ── Step 3: Token expiry check ────────────────────────────────────────
+      const nowSec = Math.floor(Date.now() / 1000);
+      const expiresIn = session.expiresAt - nowSec;
+
+      console.debug("[auth] token expires in", expiresIn, "s");
+
+      if (expiresIn <= 0) {
+        // Expired — refresh before hitting the backend
+        const refreshed = await silentRefresh();
+        if (!refreshed) return;
+      } else {
+        // Valid — schedule background refresh before expiry
+        // tokenStore holds expiry info only; the BFF reads the cookie for auth
+        tokenStore.setExpiry(session.expiresAt);
+        scheduleRefreshAt(session.expiresAt);
+      }
+
+      if (session.orgId) setActiveOrg(session.orgId);
+
+      // ── Step 4: Fetch user profile from backend ───────────────────────────
+      // BFF proxy reads logto_session cookie → injects Authorization header.
+      // No token handling needed here.
       try {
-        // 1. Retrieve token from httpOnly cookie via server bridge
-        const res = await fetch("/api/auth/token");
-        if (!res.ok) {
-          resolveAuth(null);
-          return;
-        }
-
-        const { token } = (await res.json()) as { token: string };
-        tokenStore.set(token);
-
-        // 2. Mock mode: sync localStorage so MSW returns the right user profile
-        if (IS_MOCK && isDevToken(token)) {
-          localStorage.setItem("crib:dev_user_id", devTokenUserId(token));
-        }
-
-        // 3. Real tokens: handle expiry proactively
-        if (!isDevToken(token)) {
-          if (isTokenExpiringSoon(token)) {
-            const refreshed = await silentRefresh();
-            if (!refreshed) return; // logout was triggered inside silentRefresh
-          } else {
-            scheduleRefresh(token);
-          }
-          const claims = decodeJwt(tokenStore.get()!);
-          if (claims?.organization_id) setActiveOrg(claims.organization_id);
-        }
-
-        // 4. Fetch user profile — token is in tokenStore, axios attaches it
         const { data: userData } = await apiClient.get<User>("/users/me");
-
-        // 5. Atomic state update — prevents AuthGate flash redirect
         resolveAuth(userData);
         emitAudit({ action: "auth.login", userId: userData.id });
-      } catch {
-        resolveAuth(null);
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response
+          ?.status;
+
+        if (status === 401) {
+          const refreshed = await silentRefresh();
+          if (!refreshed) return;
+          try {
+            const { data: userData } = await apiClient.get<User>("/users/me");
+            resolveAuth(userData);
+            emitAudit({ action: "auth.login", userId: userData.id });
+          } catch {
+            resolveAuth(null);
+          }
+        } else {
+          console.error("[auth] /users/me failed:", status, err);
+          resolveAuth(null);
+        }
       }
     };
 
-    bootstrap();
+    bootstrap().catch(() => resolveAuth(null));
 
     return () => {
       if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
@@ -168,20 +221,21 @@ export function useAuth() {
         });
         if (!res.ok) return false;
 
-        const { accessToken, role } = (await res.json()) as {
-          accessToken: string;
+        const { role, expiresIn } = (await res.json()) as {
+          accessToken: string; // cookie is updated server-side; we don't use the value
           role: string;
+          expiresIn: number;
         };
-        tokenStore.set(accessToken);
-        scheduleRefresh(accessToken);
+        const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
+        tokenStore.setExpiry(expiresAt);
+        scheduleRefreshAt(expiresAt);
         setActiveOrg(orgId);
         if (user) setUser({ ...user, role: role as User["role"] });
-
         emitAudit({ action: "auth.org_switch", userId: user?.id, orgId });
 
         const { data: userData } = await apiClient.get<User>("/users/me");
         setUser(userData);
-        router.refresh(); // re-run server components with new org context
+        router.refresh();
         return true;
       } catch {
         return false;
