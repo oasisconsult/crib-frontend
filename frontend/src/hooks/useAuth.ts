@@ -122,7 +122,7 @@ export function useAuth() {
 
     tokenStore.setRefreshPromise(promise);
     return promise;
-  }, [user, setUser, setActiveOrg, scheduleRefresh, logout]);
+  }, [user, setUser, setActiveOrg, scheduleRefreshAt, logout]);
 
   // ── Bootstrap ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -241,7 +241,7 @@ export function useAuth() {
         return false;
       }
     },
-    [user, setUser, setActiveOrg, scheduleRefresh, router],
+    [user, setUser, setActiveOrg, scheduleRefreshAt, router],
   );
 
   return {
