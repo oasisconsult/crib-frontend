@@ -13,46 +13,62 @@ export async function GET(request: NextRequest) {
   const logtoError = searchParams.get("error");
   if (logtoError || !code) {
     const msg = logtoError ?? "no_code";
-    console.error("[auth/callback] Logto error:", msg, searchParams.get("error_description"));
-    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, appUrl));
+    console.error(
+      "[auth/callback] Logto error:",
+      msg,
+      searchParams.get("error_description"),
+    );
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(msg)}`, appUrl),
+    );
   }
 
   // Retrieve PKCE verifier stored in a cookie (set by the login page server action)
   // The login page stores it in sessionStorage (client-side), so we read it from
   // a cookie that the login page sets via a small API route instead.
   const codeVerifier = request.cookies.get("pkce_verifier")?.value;
-  console.log("[auth/callback] cookies present:", [...request.cookies.getAll().map(c => c.name)]);
+  console.log("[auth/callback] cookies present:", [
+    ...request.cookies.getAll().map((c) => c.name),
+  ]);
   if (!codeVerifier) {
     console.error("[auth/callback] Missing PKCE verifier cookie");
-    return NextResponse.redirect(new URL("/login?error=missing_verifier", appUrl));
+    return NextResponse.redirect(
+      new URL("/login?error=missing_verifier", appUrl),
+    );
   }
 
   // Exchange code for tokens using PKCE (SPA — no client secret)
-  const tokenRes = await fetch(
-    `${process.env.LOGTO_ENDPOINT}/oidc/token`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: `${appUrl}/api/auth/callback`,
-        client_id: process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "",
-        code_verifier: codeVerifier,
-      }),
-    },
-  );
+  const tokenRes = await fetch(`${process.env.LOGTO_ENDPOINT}/oidc/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: `${appUrl}/api/auth/callback`,
+      client_id: process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "",
+      code_verifier: codeVerifier,
+    }),
+  });
 
   if (!tokenRes.ok) {
     const body = await tokenRes.text();
-    console.error("[auth/callback] Token exchange failed:", tokenRes.status, body);
+    console.error(
+      "[auth/callback] Token exchange failed:",
+      tokenRes.status,
+      body,
+    );
     return NextResponse.redirect(
       new URL("/login?error=token_exchange", appUrl),
     );
   }
 
   const tokens = await tokenRes.json();
-  console.log("[auth/callback] token keys:", Object.keys(tokens), "has access_token:", !!tokens.access_token);
+  console.log(
+    "[auth/callback] token keys:",
+    Object.keys(tokens),
+    "has access_token:",
+    !!tokens.access_token,
+  );
 
   // Determine redirect target from state
   let redirect = "/";
@@ -67,7 +83,14 @@ export async function GET(request: NextRequest) {
   response.cookies.delete("pkce_verifier");
 
   // Set httpOnly session cookie (access token)
-  response.cookies.set("logto_session", tokens.access_token, {
+  // response.cookies.set("logto_session", tokens.access_token, {
+  //   httpOnly: true,
+  //   secure: process.env.NODE_ENV === "production",
+  //   sameSite: "lax",
+  //   maxAge: tokens.expires_in,
+  //   path: "/",
+  // });
+  response.cookies.set("access_token", tokens.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -81,7 +104,9 @@ export async function GET(request: NextRequest) {
       Buffer.from(tokens.id_token.split(".")[1], "base64url").toString(),
     );
     const role: string =
-      payload?.roles?.[0] ?? payload?.["urn:logto:scope:roles"]?.[0] ?? "landlord";
+      payload?.roles?.[0] ??
+      payload?.["urn:logto:scope:roles"]?.[0] ??
+      "landlord";
 
     // httpOnly: true — middleware runs server-side and can read httpOnly cookies.
     // This prevents client JS from reading/forging the role cookie via XSS.
