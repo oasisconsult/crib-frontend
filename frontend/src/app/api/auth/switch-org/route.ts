@@ -1,125 +1,91 @@
 /**
  * POST /api/auth/switch-org
  *
- * Org switching for multi-tenant RBAC:
- *  1. Validate the requested orgId is in the user's organizations list
+ * Switches the active organisation context for a multi-tenant user.
+ *
+ * Flow:
+ *  1. Validate the requested orgId exists in the user's JWT claims
  *  2. Exchange the refresh_token for an org-scoped access token
- *  3. Update cookies and return the new token + role
+ *  3. Rotate cookies with the new org context
  *
  * Body: { orgId: string }
+ *
+ * Returns: { accessToken, expiresIn, role, orgId }
  */
 export const runtime = "edge";
 
 import { type NextRequest, NextResponse } from "next/server";
+import { COOKIE, cookieOpts, TTL } from "@/lib/cookies";
+import { getOrgScopedToken, extractRole, OidcError } from "@/lib/oidc";
 import { decodeJwt } from "@/lib/auth";
 
-const LOGTO_SERVER_ENDPOINT =
-  process.env.LOGTO_ENDPOINT ??
-  process.env.NEXT_PUBLIC_LOGTO_ENDPOINT ??
-  "http://localhost:3001";
-const LOGTO_APP_ID = process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "";
-const LOGTO_APP_SECRET = (() => {
-  const v = process.env.LOGTO_APP_SECRET ?? "";
-  return v && !v.startsWith("<") ? v : "";
-})();
-const LOGTO_API_RESOURCE =
-  process.env.NEXT_PUBLIC_LOGTO_API_RESOURCE ?? "http://localhost:8001";
-
-const cookieBase = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  path: "/",
-};
-
 export async function POST(request: NextRequest) {
-  const refreshToken = request.cookies.get("refresh_token")?.value;
+  const refreshToken = request.cookies.get(COOKIE.REFRESH)?.value;
   if (!refreshToken) {
     return NextResponse.json({ error: "no_session" }, { status: 401 });
   }
 
   let orgId: string;
   try {
-    const body = await request.json();
+    const body = (await request.json()) as { orgId?: unknown };
+    if (!body.orgId || typeof body.orgId !== "string") throw new Error();
     orgId = body.orgId;
-    if (!orgId || typeof orgId !== "string") throw new Error("invalid");
   } catch {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  // Validate the user actually belongs to this org (check current session claims)
-  const currentToken = request.cookies.get("logto_session")?.value;
+  // Verify the user actually belongs to this org before issuing a token
+  const currentToken = request.cookies.get(COOKIE.SESSION)?.value;
   if (currentToken) {
     const claims = decodeJwt(currentToken);
     const userOrgs = claims?.organizations ?? [];
+    // Only enforce if the token actually carries org claims
     if (userOrgs.length > 0 && !userOrgs.includes(orgId)) {
       return NextResponse.json({ error: "org_not_found" }, { status: 403 });
     }
   }
 
-  const tokenEndpoint = `${LOGTO_SERVER_ENDPOINT}/oidc/token`;
-  const body = new URLSearchParams({
-    grant_type: "refresh_token",
-    refresh_token: refreshToken,
-    client_id: LOGTO_APP_ID,
-    resource: LOGTO_API_RESOURCE,
-    organization_id: orgId,
-  });
-  if (LOGTO_APP_SECRET) body.set("client_secret", LOGTO_APP_SECRET);
-
-  let tokens: Record<string, unknown>;
+  let tokens;
   try {
-    const res = await fetch(tokenEndpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("[switch-org] Token exchange failed:", res.status, text);
+    tokens = await getOrgScopedToken(refreshToken, orgId);
+  } catch (err) {
+    if (err instanceof OidcError) {
+      console.error(
+        "[switch-org] Token exchange failed:",
+        err.status,
+        err.body,
+      );
       return NextResponse.json({ error: "exchange_failed" }, { status: 401 });
     }
-    tokens = (await res.json()) as Record<string, unknown>;
-  } catch (err) {
-    console.error("[switch-org] Network error:", err);
-    return NextResponse.json({ error: "network_error" }, { status: 503 });
+    return NextResponse.json({ error: "server_error" }, { status: 503 });
   }
 
-  const accessToken = tokens.access_token as string;
-  const newRefreshToken = tokens.refresh_token as string | undefined;
-  const expiresIn =
-    typeof tokens.expires_in === "number" ? tokens.expires_in : 3600;
+  const role = extractRole(tokens.access_token);
+  const expiresIn = tokens.expires_in;
 
-  // Extract role from new org-scoped token
-  let role = "owner";
-  const claims = decodeJwt(accessToken);
-  if (claims) {
-    const orgRoles = claims.organization_roles ?? [];
-    const globalRoles = claims.roles ?? [];
-    if (globalRoles.includes("superadmin")) {
-      role = "superadmin";
-    } else if (orgRoles.length > 0) {
-      role = orgRoles[0].includes(":")
-        ? orgRoles[0].split(":").pop()!
-        : orgRoles[0];
-    }
-  }
+  const response = NextResponse.json({
+    accessToken: tokens.access_token,
+    expiresIn,
+    role,
+    orgId,
+  });
 
-  const response = NextResponse.json({ accessToken, expiresIn, role, orgId });
-
-  response.cookies.set("logto_session", accessToken, {
-    ...cookieBase,
+  response.cookies.set(COOKIE.SESSION, tokens.access_token, {
+    ...cookieOpts.session,
     maxAge: expiresIn,
   });
-  response.cookies.set("user_role", role, { ...cookieBase, maxAge: expiresIn });
-  response.cookies.set("active_org_id", orgId, {
-    ...cookieBase,
-    maxAge: 60 * 60 * 24 * 30,
+  response.cookies.set(COOKIE.ROLE, role, {
+    ...cookieOpts.session,
+    maxAge: expiresIn,
   });
-  if (newRefreshToken) {
-    response.cookies.set("refresh_token", newRefreshToken, {
-      ...cookieBase,
-      maxAge: 60 * 60 * 24 * 30,
+  response.cookies.set(COOKIE.ACTIVE_ORG, orgId, {
+    ...cookieOpts.session,
+    maxAge: TTL.ACTIVE_ORG,
+  });
+  if (tokens.refresh_token) {
+    response.cookies.set(COOKIE.REFRESH, tokens.refresh_token, {
+      ...cookieOpts.session,
+      maxAge: TTL.REFRESH_TOKEN,
     });
   }
 

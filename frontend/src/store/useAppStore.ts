@@ -1,60 +1,35 @@
-// "use client";
-
-// import { create } from "zustand";
-// import type { User, Property } from "@/types";
-
-// interface AppState {
-//   // Auth
-//   user: User | null;
-//   setUser: (user: User | null) => void;
-//   isAuthenticated: boolean;
-//   // Properties context
-//   properties: Property[];
-//   setProperties: (properties: Property[]) => void;
-//   activeProperty: Property | null;
-//   setActiveProperty: (property: Property | null) => void;
-//   // Global loading
-//   isLoading: boolean;
-//   setLoading: (loading: boolean) => void;
-// }
-
-// export const useAppStore = create<AppState>()((set) => ({
-//   user: null,
-//   setUser: (user) => set({ user, isAuthenticated: !!user }),
-//   isAuthenticated: false,
-
-//   properties: [],
-//   setProperties: (properties) => set({ properties }),
-//   activeProperty: null,
-//   setActiveProperty: (property) => set({ activeProperty: property }),
-
-//   isLoading: false,
-//   setLoading: (isLoading) => set({ isLoading }),
-// }));
-
 "use client";
 
 import { create } from "zustand";
 import type { User, Property } from "@/types";
 
 interface AppState {
+  // ── Auth ──────────────────────────────────────────────────────────────────
   user: User | null;
-  setUser: (user: User | null) => void;
-
   isAuthenticated: boolean;
   isAuthInitialized: boolean;
-  setAuthInitialized: (val: boolean) => void;
 
-  // Active org for multi-tenant switching
+  setUser: (user: User | null) => void;
+
+  /**
+   * Atomically sets user + isAuthenticated + isAuthInitialized in one update.
+   * Use this instead of calling setUser + setAuthInitialized separately to
+   * prevent AuthGate from seeing an intermediate state where initialized=true
+   * but authenticated=false, which would trigger a spurious redirect to /login.
+   */
+  resolveAuth: (user: User | null) => void;
+
+  // ── Multi-tenant ──────────────────────────────────────────────────────────
   activeOrgId: string | null;
   setActiveOrg: (orgId: string | null) => void;
 
+  // ── Properties ────────────────────────────────────────────────────────────
   properties: Property[];
   setProperties: (properties: Property[]) => void;
-
   activeProperty: Property | null;
   setActiveProperty: (property: Property | null) => void;
 
+  // ── Global loading ────────────────────────────────────────────────────────
   isLoading: boolean;
   setLoading: (loading: boolean) => void;
 }
@@ -66,7 +41,10 @@ export const useAppStore = create<AppState>()((set) => ({
   activeOrgId: null,
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
-  setAuthInitialized: (val) => set({ isAuthInitialized: val }),
+
+  resolveAuth: (user) =>
+    set({ user, isAuthenticated: !!user, isAuthInitialized: true }),
+
   setActiveOrg: (orgId) => set({ activeOrgId: orgId }),
 
   properties: [],

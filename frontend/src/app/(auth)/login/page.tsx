@@ -22,16 +22,25 @@ const IS_MOCK = process.env.NEXT_PUBLIC_MOCK_API === "true";
 // ── Marketing copy ─────────────────────────────────────────────────────────
 
 const BENEFITS = [
-  { icon: Zap,       text: "Collect rent in one click — mobile money, bank, or card" },
-  { icon: Users,     text: "Onboard tenants in minutes, not days" },
-  { icon: BarChart3, text: "Know your occupancy and revenue the moment it changes" },
-  { icon: Clock,     text: "Automated late-fee reminders so you never chase again" },
+  {
+    icon: Zap,
+    text: "Collect rent in one click — mobile money, bank, or card",
+  },
+  { icon: Users, text: "Onboard tenants in minutes, not days" },
+  {
+    icon: BarChart3,
+    text: "Know your occupancy and revenue the moment it changes",
+  },
+  {
+    icon: Clock,
+    text: "Automated late-fee reminders so you never chase again",
+  },
 ];
 
 const STATS = [
   { value: "1,200+", label: "Units managed" },
-  { value: "98%",    label: "On-time collection" },
-  { value: "4.9★",   label: "Landlord rating" },
+  { value: "98%", label: "On-time collection" },
+  { value: "4.9★", label: "Landlord rating" },
 ];
 
 // ── Dev user catalogue ─────────────────────────────────────────────────────
@@ -46,7 +55,8 @@ export const DEV_USERS = [
     description: "Full platform access",
     gradient: "from-violet-500 to-indigo-600",
     badge: "Superadmin",
-    badgeColor: "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+    badgeColor:
+      "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
   },
   {
     id: "user-landlord-1",
@@ -57,7 +67,8 @@ export const DEV_USERS = [
     description: "3 properties · Kampala",
     gradient: "from-blue-500 to-cyan-600",
     badge: "Landlord",
-    badgeColor: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+    badgeColor:
+      "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
   },
   {
     id: "user-manager-1",
@@ -68,7 +79,8 @@ export const DEV_USERS = [
     description: "Property Manager",
     gradient: "from-emerald-500 to-teal-600",
     badge: "Manager",
-    badgeColor: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+    badgeColor:
+      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
   },
   {
     id: "tenant-1",
@@ -79,7 +91,8 @@ export const DEV_USERS = [
     description: "Unit 1 · Kololo Heights",
     gradient: "from-amber-500 to-orange-600",
     badge: "Tenant",
-    badgeColor: "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+    badgeColor:
+      "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
   },
 ];
 
@@ -89,7 +102,7 @@ function DevLoginPanel() {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
 
-  async function loginAs(user: typeof DEV_USERS[number]) {
+  async function loginAs(user: (typeof DEV_USERS)[number]) {
     setLoading(user.id);
     try {
       const res = await fetch("/api/auth/dev-login", {
@@ -98,7 +111,7 @@ function DevLoginPanel() {
         body: JSON.stringify({ userId: user.id, role: user.role }),
       });
       if (!res.ok) throw new Error("Dev login failed");
-      // Store for the axios interceptor to pick up
+      // Write localStorage BEFORE navigating so useAuth bootstrap finds it
       localStorage.setItem("crib:dev_user_id", user.id);
       const dest = user.role === "tenant" ? "/portal" : "/";
       router.push(dest);
@@ -111,7 +124,9 @@ function DevLoginPanel() {
     <div className="space-y-3">
       <div className="flex items-center gap-2 mb-4">
         <FlaskConical className="h-4 w-4 text-amber-500" />
-        <span className="text-sm font-semibold text-foreground">Dev mode — sign in as</span>
+        <span className="text-sm font-semibold text-foreground">
+          Dev mode — sign in as
+        </span>
         <span className="rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 text-[10px] font-medium px-2 py-0.5">
           MOCK
         </span>
@@ -129,10 +144,12 @@ function DevLoginPanel() {
           )}
         >
           {/* Avatar */}
-          <div className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white text-xs font-bold bg-gradient-to-br",
-            user.gradient,
-          )}>
+          <div
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white text-xs font-bold bg-gradient-to-br",
+              user.gradient,
+            )}
+          >
             {loading === user.id ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -142,18 +159,28 @@ function DevLoginPanel() {
           {/* Info */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground leading-none">{user.name}</span>
-              <span className={cn("text-[10px] font-medium rounded-full px-1.5 py-0.5 leading-none", user.badgeColor)}>
+              <span className="text-sm font-semibold text-foreground leading-none">
+                {user.name}
+              </span>
+              <span
+                className={cn(
+                  "text-[10px] font-medium rounded-full px-1.5 py-0.5 leading-none",
+                  user.badgeColor,
+                )}
+              >
                 {user.badge}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{user.description}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {user.description}
+            </p>
           </div>
           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
         </button>
       ))}
       <p className="text-[11px] text-muted-foreground/60 text-center pt-1">
-        Only available when <code className="font-mono">NEXT_PUBLIC_MOCK_API=true</code>
+        Only available when{" "}
+        <code className="font-mono">NEXT_PUBLIC_MOCK_API=true</code>
       </p>
     </div>
   );
@@ -175,11 +202,9 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-
       {/* ── LEFT — Sign-in form ───────────────────────────────── */}
       <div className="flex flex-1 flex-col items-center justify-center p-8 lg:p-12 bg-background lg:w-1/2 lg:flex-none">
         <div className="w-full max-w-sm">
-
           {/* Logo */}
           <div className="flex items-center gap-2.5 mb-10">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -232,14 +257,18 @@ export default function LoginPage() {
               </div>
 
               <div className="grid grid-cols-3 gap-3 mb-8">
-                {["End-to-end encrypted", "GDPR compliant", "SOC 2 ready"].map((label) => (
-                  <div
-                    key={label}
-                    className="flex items-center justify-center rounded-lg border border-border bg-muted/40 px-2 py-2.5 text-center"
-                  >
-                    <span className="text-[10px] font-medium text-muted-foreground leading-tight">{label}</span>
-                  </div>
-                ))}
+                {["End-to-end encrypted", "GDPR compliant", "SOC 2 ready"].map(
+                  (label) => (
+                    <div
+                      key={label}
+                      className="flex items-center justify-center rounded-lg border border-border bg-muted/40 px-2 py-2.5 text-center"
+                    >
+                      <span className="text-[10px] font-medium text-muted-foreground leading-tight">
+                        {label}
+                      </span>
+                    </div>
+                  ),
+                )}
               </div>
             </>
           )}
@@ -249,15 +278,28 @@ export default function LoginPage() {
             <>
               <p className="text-center text-sm text-muted-foreground">
                 Don&apos;t have an account?{" "}
-                <a href="/signup" className="font-medium text-primary hover:underline underline-offset-4">
+                <a
+                  href="/signup"
+                  className="font-medium text-primary hover:underline underline-offset-4"
+                >
                   Sign up free
                 </a>
               </p>
               <p className="mt-6 text-center text-[11px] text-muted-foreground/70 leading-relaxed">
                 By continuing, you agree to our{" "}
-                <a href="/terms" className="underline underline-offset-2 hover:text-muted-foreground">Terms of Service</a>
-                {" "}and{" "}
-                <a href="/privacy" className="underline underline-offset-2 hover:text-muted-foreground">Privacy Policy</a>
+                <a
+                  href="/terms"
+                  className="underline underline-offset-2 hover:text-muted-foreground"
+                >
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a
+                  href="/privacy"
+                  className="underline underline-offset-2 hover:text-muted-foreground"
+                >
+                  Privacy Policy
+                </a>
               </p>
             </>
           )}
@@ -265,11 +307,13 @@ export default function LoginPage() {
       </div>
 
       {/* ── RIGHT — Marketing copy ────────────────────────────── */}
-      <div className={cn(
-        "hidden lg:flex flex-col justify-between overflow-hidden",
-        "flex-1 min-h-screen p-12",
-        "bg-[radial-gradient(ellipse_at_top_right,_#312e81_0%,_#1e1b4b_40%,_#0f0a2e_100%)]",
-      )}>
+      <div
+        className={cn(
+          "hidden lg:flex flex-col justify-between overflow-hidden",
+          "flex-1 min-h-screen p-12",
+          "bg-[radial-gradient(ellipse_at_top_right,_#312e81_0%,_#1e1b4b_40%,_#0f0a2e_100%)]",
+        )}
+      >
         {/* Mesh glow */}
         <div
           className="pointer-events-none absolute inset-0 opacity-20"
@@ -286,7 +330,9 @@ export default function LoginPage() {
         <div className="relative z-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1">
             <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
-            <span className="text-xs font-medium text-violet-200">Uganda&apos;s #1 Property Platform</span>
+            <span className="text-xs font-medium text-violet-200">
+              Uganda&apos;s #1 Property Platform
+            </span>
           </div>
         </div>
 
@@ -294,7 +340,8 @@ export default function LoginPage() {
         <div className="relative z-10 flex-1 flex flex-col justify-center space-y-8 py-8">
           <div className="space-y-4">
             <h2 className="text-4xl font-extrabold text-white leading-tight tracking-tight">
-              Stop chasing rent.<br />
+              Stop chasing rent.
+              <br />
               <span className="bg-gradient-to-r from-violet-300 to-indigo-300 bg-clip-text text-transparent">
                 Start growing your portfolio.
               </span>
@@ -320,9 +367,14 @@ export default function LoginPage() {
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
             {STATS.map((s) => (
-              <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center backdrop-blur-sm">
+              <div
+                key={s.label}
+                className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center backdrop-blur-sm"
+              >
                 <p className="text-xl font-bold text-white">{s.value}</p>
-                <p className="text-[11px] text-white/50 mt-0.5 leading-tight">{s.label}</p>
+                <p className="text-[11px] text-white/50 mt-0.5 leading-tight">
+                  {s.label}
+                </p>
               </div>
             ))}
           </div>
@@ -330,21 +382,29 @@ export default function LoginPage() {
           {/* Testimonial */}
           <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 space-y-3">
             <div className="flex gap-0.5">
-              {[1,2,3,4,5].map((i) => (
-                <Star key={i} className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400" />
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Star
+                  key={i}
+                  className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400"
+                />
               ))}
             </div>
             <p className="text-sm text-white/70 leading-relaxed italic">
-              &ldquo;Before Crib I was using WhatsApp and Excel. Now I manage 18 units
-              from my phone and collect rent on the 1st of every month without calling a single tenant.&rdquo;
+              &ldquo;Before Crib I was using WhatsApp and Excel. Now I manage 18
+              units from my phone and collect rent on the 1st of every month
+              without calling a single tenant.&rdquo;
             </p>
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-indigo-400 text-white text-xs font-bold">
                 JK
               </div>
               <div>
-                <p className="text-xs font-semibold text-white/90">James Kizito</p>
-                <p className="text-[11px] text-white/45">Landlord · 18 units · Kampala</p>
+                <p className="text-xs font-semibold text-white/90">
+                  James Kizito
+                </p>
+                <p className="text-[11px] text-white/45">
+                  Landlord · 18 units · Kampala
+                </p>
               </div>
             </div>
           </div>

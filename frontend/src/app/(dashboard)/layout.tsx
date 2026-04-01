@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -10,18 +9,17 @@ import { AuthInitializer } from "@/components/providers/AuthInitializer";
 import { useAppStore } from "@/store/useAppStore";
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const isAuthInitialized = useAppStore((s) => s.isAuthInitialized);
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
 
   useEffect(() => {
-    // Only redirect after auth has fully resolved — avoids flash redirect
     if (isAuthInitialized && !isAuthenticated) {
-      router.replace("/login");
+      // Use hard navigation instead of router.replace to avoid Next.js RSC
+      // prefetch NetworkError when the login page isn't prefetched yet.
+      window.location.replace("/login");
     }
-  }, [isAuthInitialized, isAuthenticated, router]);
+  }, [isAuthInitialized, isAuthenticated]);
 
-  // Show nothing until we know the auth state
   if (!isAuthInitialized) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">

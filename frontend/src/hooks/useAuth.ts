@@ -10,40 +10,36 @@ import {
   decodeJwt,
 } from "@/lib/auth";
 import { emitAudit } from "@/lib/audit";
-import { apiGet } from "@/services/api/client";
+import { apiClient } from "@/services/api/client";
 import type { User } from "@/types";
 
-const REFRESH_BUFFER_MS = 60_000;
+const REFRESH_BUFFER_MS = 60_000; // refresh 60s before expiry
 const IS_MOCK = process.env.NEXT_PUBLIC_MOCK_API === "true";
 
-/** Dev sessions are prefixed with "dev." — they are not real JWTs. */
-function isDevToken(token: string) {
-  return token.startsWith("dev.");
-}
+/** Dev tokens are plain strings prefixed with "dev." — not JWTs. */
+const isDevToken = (t: string) => t.startsWith("dev.");
+const devTokenUserId = (t: string) => t.slice(4);
 
 export function useAuth() {
   const router = useRouter();
   const user = useAppStore((s) => s.user);
   const setUser = useAppStore((s) => s.setUser);
-  const setAuthInitialized = useAppStore((s) => s.setAuthInitialized);
+  const resolveAuth = useAppStore((s) => s.resolveAuth);
   const isAuthInitialized = useAppStore((s) => s.isAuthInitialized);
   const setActiveOrg = useAppStore((s) => s.setActiveOrg);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Schedule next silent refresh ──────────────────────────────────────────
-  const scheduleRefresh = useCallback(
-    (token: string) => {
-      // Never schedule refresh for dev/mock tokens
-      if (IS_MOCK || isDevToken(token)) return;
-      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-      const delay = Math.max(0, msUntilExpiry(token) - REFRESH_BUFFER_MS);
-      refreshTimerRef.current = setTimeout(() => {
-        silentRefresh(); // eslint-disable-line @typescript-eslint/no-use-before-define
-      }, delay);
-    },
-    [], // eslint-disable-line react-hooks/exhaustive-deps
-  );
+  // ── Schedule proactive silent refresh ────────────────────────────────────
+  const scheduleRefresh = useCallback((token: string) => {
+    if (IS_MOCK || isDevToken(token)) return;
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    const delay = Math.max(0, msUntilExpiry(token) - REFRESH_BUFFER_MS);
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    refreshTimerRef.current = setTimeout(() => {
+      silentRefresh();
+    }, delay);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Secure logout ─────────────────────────────────────────────────────────
   const logout = useCallback(
@@ -55,23 +51,26 @@ export function useAuth() {
       try {
         const res = await fetch("/api/auth/logout", { method: "POST" });
         if (res.ok) {
-          const { logoutUrl } = await res.json();
-          setUser(null);
-          window.location.href = logoutUrl;
+          const { logoutUrl } = (await res.json()) as { logoutUrl: string };
+          resolveAuth(null);
+          window.location.href = logoutUrl; // full navigation to IdP end_session
           return;
         }
-      } catch {}
+      } catch {
+        /* fall through */
+      }
 
-      setUser(null);
-      window.location.href = "/login";
+      resolveAuth(null);
+      window.location.replace("/login");
     },
-    [user, setUser],
+    [user, resolveAuth],
   );
 
-  // ── Silent refresh ────────────────────────────────────────────────────────
+  // ── Silent token refresh ──────────────────────────────────────────────────
   const silentRefresh = useCallback(async (): Promise<string | null> => {
     if (IS_MOCK) return tokenStore.get(); // no-op in mock mode
 
+    // Deduplicate: concurrent callers share one in-flight request
     const inflight = tokenStore.getRefreshPromise();
     if (inflight) return inflight;
 
@@ -80,18 +79,21 @@ export function useAuth() {
         const res = await fetch("/api/auth/refresh", { method: "POST" });
         if (!res.ok) {
           emitAudit({ action: "auth.token_refresh_failed", userId: user?.id });
-          await logout({ reason: "refresh_expired" });
+          await logout({ reason: "refresh_token_expired" });
           return null;
         }
-        const { accessToken, role, orgId } = await res.json();
+        const { accessToken, role, orgId } = (await res.json()) as {
+          accessToken: string;
+          role: string;
+          orgId?: string;
+        };
         tokenStore.set(accessToken);
         scheduleRefresh(accessToken);
-
-        if (user && user.role !== role) setUser({ ...user, role });
+        if (user && user.role !== role)
+          setUser({ ...user, role: role as User["role"] });
         if (orgId) setActiveOrg(orgId);
-
         emitAudit({ action: "auth.token_refresh", userId: user?.id, orgId });
-        return accessToken as string;
+        return accessToken;
       } catch {
         emitAudit({ action: "auth.token_refresh_failed", userId: user?.id });
         return null;
@@ -110,19 +112,22 @@ export function useAuth() {
 
     const bootstrap = async () => {
       try {
-        // 1. Fetch token from httpOnly cookie bridge
-        const tokenRes = await fetch("/api/auth/token");
-        if (!tokenRes.ok) {
-          // No session at all — mark initialized so the UI can redirect
-          setUser(null);
-          setAuthInitialized(true);
+        // 1. Retrieve token from httpOnly cookie via server bridge
+        const res = await fetch("/api/auth/token");
+        if (!res.ok) {
+          resolveAuth(null);
           return;
         }
 
-        const { token } = await tokenRes.json();
+        const { token } = (await res.json()) as { token: string };
         tokenStore.set(token);
 
-        // 2. For real tokens: check expiry and schedule refresh
+        // 2. Mock mode: sync localStorage so MSW returns the right user profile
+        if (IS_MOCK && isDevToken(token)) {
+          localStorage.setItem("crib:dev_user_id", devTokenUserId(token));
+        }
+
+        // 3. Real tokens: handle expiry proactively
         if (!isDevToken(token)) {
           if (isTokenExpiringSoon(token)) {
             const refreshed = await silentRefresh();
@@ -130,20 +135,18 @@ export function useAuth() {
           } else {
             scheduleRefresh(token);
           }
-
-          // Extract org from token claims
           const claims = decodeJwt(tokenStore.get()!);
           if (claims?.organization_id) setActiveOrg(claims.organization_id);
         }
 
-        // 3. Fetch user profile — token is now in tokenStore, axios will attach it
-        const userData = await apiGet<User>("/users/me");
-        setUser(userData);
+        // 4. Fetch user profile — token is in tokenStore, axios attaches it
+        const { data: userData } = await apiClient.get<User>("/users/me");
+
+        // 5. Atomic state update — prevents AuthGate flash redirect
+        resolveAuth(userData);
         emitAudit({ action: "auth.login", userId: userData.id });
       } catch {
-        setUser(null);
-      } finally {
-        setAuthInitialized(true);
+        resolveAuth(null);
       }
     };
 
@@ -165,17 +168,20 @@ export function useAuth() {
         });
         if (!res.ok) return false;
 
-        const { accessToken, role } = await res.json();
+        const { accessToken, role } = (await res.json()) as {
+          accessToken: string;
+          role: string;
+        };
         tokenStore.set(accessToken);
         scheduleRefresh(accessToken);
         setActiveOrg(orgId);
-        if (user) setUser({ ...user, role });
+        if (user) setUser({ ...user, role: role as User["role"] });
 
         emitAudit({ action: "auth.org_switch", userId: user?.id, orgId });
 
-        const userData = await apiGet<User>("/users/me");
+        const { data: userData } = await apiClient.get<User>("/users/me");
         setUser(userData);
-        router.refresh();
+        router.refresh(); // re-run server components with new org context
         return true;
       } catch {
         return false;

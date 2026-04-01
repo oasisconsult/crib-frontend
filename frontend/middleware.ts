@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_ROUTES = [
+// ── Route classification ──────────────────────────────────────────────────────
+
+const PUBLIC_PREFIXES = [
   "/login",
   "/signup",
   "/api/auth",
@@ -9,19 +11,20 @@ const PUBLIC_ROUTES = [
   "/favicon.ico",
 ];
 
-const TENANT_ONLY_ROUTES = ["/portal"];
-const ADMIN_ONLY_ROUTES = ["/admin"];
+const ADMIN_PREFIXES = ["/admin"];
+const TENANT_PREFIXES = ["/portal"];
 
 function isPublic(pathname: string) {
-  return PUBLIC_ROUTES.some((r) => pathname.startsWith(r));
+  return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
 }
 
-function isOnboardingRoute(pathname: string) {
+function isOnboarding(pathname: string) {
   return pathname.startsWith("/onboarding/");
 }
 
-/** Decode JWT payload without verification (signature checked by backend). */
-function decodeJwtExp(token: string): number | null {
+// ── JWT helpers (no signature verification — backend owns that) ───────────────
+
+function getTokenExp(token: string): number | null {
   try {
     const payload = token.split(".")[1];
     if (!payload) return null;
@@ -34,56 +37,59 @@ function decodeJwtExp(token: string): number | null {
   }
 }
 
-function isExpired(token: string): boolean {
-  const exp = decodeJwtExp(token);
-  if (!exp) return true;
-  // Allow 10s clock skew
+/** True if the token is a real JWT that has expired (with 10s clock skew). */
+function isJwtExpired(token: string): boolean {
+  const exp = getTokenExp(token);
+  if (exp === null) return false; // not a JWT (e.g. dev token) — don't treat as expired
   return exp < Math.floor(Date.now() / 1000) - 10;
 }
+
+// ── Middleware ────────────────────────────────────────────────────────────────
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (isPublic(pathname) || isOnboardingRoute(pathname)) {
+  if (isPublic(pathname) || isOnboarding(pathname)) {
     return NextResponse.next();
   }
 
   const sessionToken = request.cookies.get("logto_session")?.value;
 
-  // No session → redirect to login
+  // No session at all → redirect to login
   if (!sessionToken) {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    const url = new URL("/login", request.url);
+    url.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(url);
   }
 
-  // Session exists but access token is expired → let the client-side silent
-  // refresh handle it. We only hard-redirect if there's also no refresh_token.
-  if (isExpired(sessionToken)) {
-    const hasRefreshToken = !!request.cookies.get("refresh_token")?.value;
-    if (!hasRefreshToken) {
-      const loginUrl = new URL("/login", request.url);
-      loginUrl.searchParams.set("redirect", pathname);
-      loginUrl.searchParams.set("reason", "session_expired");
-      return NextResponse.redirect(loginUrl);
+  // JWT is expired → only hard-redirect if there's no refresh token.
+  // If a refresh token exists, let the page load and useAuth will silently refresh.
+  if (isJwtExpired(sessionToken)) {
+    const hasRefresh = !!request.cookies.get("refresh_token")?.value;
+    if (!hasRefresh) {
+      const url = new URL("/login", request.url);
+      url.searchParams.set("redirect", pathname);
+      url.searchParams.set("reason", "session_expired");
+      return NextResponse.redirect(url);
     }
-    // Has refresh token — allow through; useAuth will silently refresh
     return NextResponse.next();
   }
 
-  // ── Role-based route guards ──────────────────────────────────────────────
+  // ── Role-based route guards ───────────────────────────────────────────────
   const role = request.cookies.get("user_role")?.value ?? "";
 
-  if (ADMIN_ONLY_ROUTES.some((r) => pathname.startsWith(r))) {
-    if (role !== "superadmin") {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
+  if (
+    ADMIN_PREFIXES.some((p) => pathname.startsWith(p)) &&
+    role !== "superadmin"
+  ) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
-  if (TENANT_ONLY_ROUTES.some((r) => pathname.startsWith(r))) {
-    if (role !== "tenant") {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
+  if (
+    TENANT_PREFIXES.some((p) => pathname.startsWith(p)) &&
+    role !== "tenant"
+  ) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return NextResponse.next();

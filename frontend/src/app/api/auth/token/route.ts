@@ -1,33 +1,24 @@
-export const runtime = "edge";
-
-import { type NextRequest, NextResponse } from "next/server";
-
 /**
  * GET /api/auth/token
  *
- * Returns the access token from the httpOnly logto_session cookie so client-
- * side code (AuthInitializer) can store it in sessionStorage for axios Bearer auth.
+ * Returns the current access token from the httpOnly session cookie.
+ * Used by the client-side auth bootstrap to load the token into the
+ * in-memory token store (never localStorage/sessionStorage).
  *
- * Mock mode:  cookie value is a dev session string; the backend ignores it and
- *             reads X-Dev-User-Id header instead.
- * Real mode:  cookie value is the Logto access token (set by /api/logto/sign-in-callback).
+ * If the session cookie is missing, returns 401.
+ * Token validity is not checked here — useAuth handles expiry + refresh.
  */
-// export async function GET(request: NextRequest) {
-//   const session = request.cookies.get("logto_session")?.value;
-//   if (!session) {
-//     return NextResponse.json({ error: "No session" }, { status: 401 });
-//   }
-//   return NextResponse.json({ token: session });
-// }
+export const runtime = "edge";
 
-// /app/api/auth/token/route.ts
+import { type NextRequest, NextResponse } from "next/server";
+import { COOKIE } from "@/lib/cookies";
 
 export async function GET(request: NextRequest) {
-  const accessToken = request.cookies.get("logto_session")?.value;
+  const token = request.cookies.get(COOKIE.SESSION)?.value;
 
-  if (!accessToken) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!token) {
+    return NextResponse.json({ error: "no_session" }, { status: 401 });
   }
 
-  return NextResponse.json({ token: accessToken });
+  return NextResponse.json({ token });
 }
