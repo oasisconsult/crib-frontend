@@ -12,10 +12,23 @@ import { type NextRequest, NextResponse } from "next/server";
  *             reads X-Dev-User-Id header instead.
  * Real mode:  cookie value is the Logto access token (set by /api/logto/sign-in-callback).
  */
+// export async function GET(request: NextRequest) {
+//   const session = request.cookies.get("logto_session")?.value;
+//   if (!session) {
+//     return NextResponse.json({ error: "No session" }, { status: 401 });
+//   }
+//   return NextResponse.json({ token: session });
+// }
+
+// /app/api/auth/token/route.ts
+
 export async function GET(request: NextRequest) {
-  const session = request.cookies.get("logto_session")?.value;
-  if (!session) {
-    return NextResponse.json({ error: "No session" }, { status: 401 });
+  const accessToken = request.cookies.get("access_token")?.value;
+  console.log("[auth/token] Access token cookie:", accessToken);
+
+  if (!accessToken) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json({ token: session });
+
+  return NextResponse.json({ token: accessToken });
 }

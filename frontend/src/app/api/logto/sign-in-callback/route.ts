@@ -46,21 +46,31 @@ export async function GET(request: NextRequest) {
 
   if (logtoError || !code) {
     const msg = logtoError ?? "no_code";
-    console.error("[sign-in-callback] Logto error:", msg, searchParams.get("error_description"));
-    return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(msg)}`, APP_URL));
+    console.error(
+      "[sign-in-callback] Logto error:",
+      msg,
+      searchParams.get("error_description"),
+    );
+    return NextResponse.redirect(
+      new URL(`/login?error=${encodeURIComponent(msg)}`, APP_URL),
+    );
   }
 
   // ── State verification (CSRF) ─────────────────────────────────────────────
   const storedState = request.cookies.get("pkce_state")?.value;
   if (!stateParam || stateParam !== storedState) {
     console.error("[sign-in-callback] State mismatch");
-    return NextResponse.redirect(new URL("/login?error=state_mismatch", APP_URL));
+    return NextResponse.redirect(
+      new URL("/login?error=state_mismatch", APP_URL),
+    );
   }
 
   const codeVerifier = request.cookies.get("pkce_verifier")?.value;
   if (!codeVerifier) {
     console.error("[sign-in-callback] Missing PKCE verifier");
-    return NextResponse.redirect(new URL("/login?error=missing_verifier", APP_URL));
+    return NextResponse.redirect(
+      new URL("/login?error=missing_verifier", APP_URL),
+    );
   }
 
   // ── Exchange authorization code for tokens ────────────────────────────────
@@ -86,13 +96,21 @@ export async function GET(request: NextRequest) {
     });
     if (!tokenRes.ok) {
       const body = await tokenRes.text();
-      console.error("[sign-in-callback] Token exchange failed:", tokenRes.status, body);
-      return NextResponse.redirect(new URL("/login?error=token_exchange", APP_URL));
+      console.error(
+        "[sign-in-callback] Token exchange failed:",
+        tokenRes.status,
+        body,
+      );
+      return NextResponse.redirect(
+        new URL("/login?error=token_exchange", APP_URL),
+      );
     }
-    tokens = await tokenRes.json() as Record<string, unknown>;
+    tokens = (await tokenRes.json()) as Record<string, unknown>;
   } catch (err) {
     console.error("[sign-in-callback] Token exchange network error:", err);
-    return NextResponse.redirect(new URL("/login?error=network_error", APP_URL));
+    return NextResponse.redirect(
+      new URL("/login?error=network_error", APP_URL),
+    );
   }
 
   // ── Decode ID token claims ───────────────────────────────────────────────
@@ -100,9 +118,13 @@ export async function GET(request: NextRequest) {
   try {
     const idTokenParts = (tokens.id_token as string | undefined)?.split(".");
     if (idTokenParts?.[1]) {
-      idClaims = JSON.parse(atob(idTokenParts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      idClaims = JSON.parse(
+        atob(idTokenParts[1].replace(/-/g, "+").replace(/_/g, "/")),
+      );
     }
-  } catch { /* malformed id_token — proceed with empty claims */ }
+  } catch {
+    /* malformed id_token — proceed with empty claims */
+  }
 
   // ── Org-scoped access token ──────────────────────────────────────────────
   // organizations[] in the ID token lists the user's org memberships.
@@ -129,14 +151,18 @@ export async function GET(request: NextRequest) {
         body: orgTokenBody,
       });
       if (orgRes.ok) {
-        const orgTokens = await orgRes.json() as Record<string, unknown>;
+        const orgTokens = (await orgRes.json()) as Record<string, unknown>;
         if (orgTokens.access_token) {
           accessToken = orgTokens.access_token as string;
         }
       } else {
-        console.warn("[sign-in-callback] Org token exchange failed, using regular access token");
+        console.warn(
+          "[sign-in-callback] Org token exchange failed, using regular access token",
+        );
       }
-    } catch { /* fall back to regular access token */ }
+    } catch {
+      /* fall back to regular access token */
+    }
   }
 
   // ── Extract role for middleware ──────────────────────────────────────────
@@ -146,24 +172,31 @@ export async function GET(request: NextRequest) {
   try {
     const atParts = accessToken.split(".");
     if (atParts[1]) {
-      const atClaims = JSON.parse(atob(atParts[1].replace(/-/g, "+").replace(/_/g, "/")));
+      const atClaims = JSON.parse(
+        atob(atParts[1].replace(/-/g, "+").replace(/_/g, "/")),
+      );
       const orgRoles: string[] = atClaims.organization_roles ?? [];
       const globalRoles: string[] = atClaims.roles ?? [];
       if (globalRoles.includes("superadmin")) {
         role = "superadmin";
       } else if (orgRoles.length > 0) {
         // org-scoped token: roles are plain names; ID token: "orgId:roleName"
-        role = orgRoles[0].includes(":") ? orgRoles[0].split(":").pop()! : orgRoles[0];
+        role = orgRoles[0].includes(":")
+          ? orgRoles[0].split(":").pop()!
+          : orgRoles[0];
       }
     }
-  } catch { /* use default role */ }
+  } catch {
+    /* use default role */
+  }
 
   // ── Build redirect response ──────────────────────────────────────────────
   const rawRedirect = request.cookies.get("post_login_redirect")?.value;
   const redirectTo = rawRedirect ? decodeURIComponent(rawRedirect) : APP_URL;
 
   const response = NextResponse.redirect(new URL(redirectTo, APP_URL));
-  const expiresIn = typeof tokens.expires_in === "number" ? tokens.expires_in : 3600;
+  const expiresIn =
+    typeof tokens.expires_in === "number" ? tokens.expires_in : 3600;
   const secure = process.env.NODE_ENV === "production";
   const c = { httpOnly: true, secure, sameSite: "lax" as const, path: "/" };
 
@@ -173,8 +206,27 @@ export async function GET(request: NextRequest) {
   response.cookies.delete("post_login_redirect");
 
   // Session: store the access token so /api/auth/token can return it for axios Bearer auth
-  response.cookies.set("logto_session", accessToken, { ...c, maxAge: expiresIn });
-  response.cookies.set("user_role", role, { ...c, maxAge: expiresIn });
+  // response.cookies.set("logto_session", accessToken, { ...c, maxAge: expiresIn });
+  // response.cookies.set("user_role", role, { ...c, maxAge: expiresIn });
+  // ✅ Store access token (short-lived)
+  response.cookies.set("access_token", accessToken, {
+    ...c,
+    maxAge: expiresIn, // usually ~1 hour
+  });
+
+  // ✅ Store refresh token (long-lived)
+  if (tokens.refresh_token) {
+    response.cookies.set("refresh_token", tokens.refresh_token as string, {
+      ...c,
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+    });
+  }
+
+  // ✅ Store role (for middleware)
+  response.cookies.set("user_role", role, {
+    ...c,
+    maxAge: expiresIn,
+  });
 
   return response;
 }

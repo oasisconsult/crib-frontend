@@ -47,6 +47,55 @@
 //   return null;
 // }
 
+// "use client";
+
+// import { useEffect } from "react";
+// import { useAppStore } from "@/store/useAppStore";
+// import { apiGet } from "@/services/api/client";
+// import type { User } from "@/types";
+
+// export function AuthInitializer() {
+//   const setUser = useAppStore((s) => s.setUser);
+//   const user = useAppStore((s) => s.user);
+//   const setAuthInitialized = useAppStore((s) => s.setAuthInitialized);
+
+//   useEffect(() => {
+//     if (user) return;
+
+//     const init = async () => {
+//       try {
+//         // ✅ STEP 1: ALWAYS fetch token first
+//         let token = sessionStorage.getItem("crib:access_token");
+
+//         if (process.env.NEXT_PUBLIC_MOCK_API !== "true" && !token) {
+//           const res = await fetch("/api/auth/token");
+
+//           if (!res.ok) throw new Error("No session");
+
+//           const data = await res.json();
+//           token = data.token;
+
+//           sessionStorage.setItem("crib:access_token", token);
+//         }
+
+//         // ✅ STEP 2: ONLY call API AFTER token exists
+//         const userData = await apiGet<User>("/users/me");
+
+//         setUser(userData);
+//       } catch (err) {
+//         setUser(null);
+//       } finally {
+//         // ✅ CRITICAL: mark auth as initialized
+//         useAppStore.getState().setAuthInitialized(true);
+//       }
+//     };
+
+//     init();
+//   }, [setUser, user]);
+
+//   return null;
+// }
+
 "use client";
 
 import { useEffect } from "react";
@@ -54,42 +103,30 @@ import { useAppStore } from "@/store/useAppStore";
 import { apiGet } from "@/services/api/client";
 import type { User } from "@/types";
 
+/**
+ * Hydrates the app store with the current authenticated user.
+ * Works with HTTP-only logto_session cookie — fetches /users/me from backend.
+ * Renders nothing; purely side-effect.
+ */
 export function AuthInitializer() {
   const setUser = useAppStore((s) => s.setUser);
   const user = useAppStore((s) => s.user);
-  const setAuthInitialized = useAppStore((s) => s.setAuthInitialized);
 
   useEffect(() => {
-    if (user) return;
+    if (user) return; // already loaded
 
     const init = async () => {
       try {
-        // ✅ STEP 1: ALWAYS fetch token first
-        let token = sessionStorage.getItem("crib:access_token");
-
-        if (process.env.NEXT_PUBLIC_MOCK_API !== "true" && !token) {
-          const res = await fetch("/api/auth/token");
-
-          if (!res.ok) throw new Error("No session");
-
-          const data = await res.json();
-          token = data.token;
-
-          sessionStorage.setItem("crib:access_token", token);
-        }
-
-        // ✅ STEP 2: ONLY call API AFTER token exists
-        const userData = await apiGet<User>("/users/me");
-
-        setUser(userData);
+        // Make authenticated request — Axios attaches Bearer token from sessionStorage
+        const res = await apiGet<User>("/users/me");
+        setUser(res);
       } catch (err) {
+        // Not authenticated or backend unavailable — user stays null
         setUser(null);
-      } finally {
-        // ✅ CRITICAL: mark auth as initialized
-        useAppStore.getState().setAuthInitialized(true);
       }
     };
 
+    // Only hydrate store if no user yet
     init();
   }, [setUser, user]);
 
