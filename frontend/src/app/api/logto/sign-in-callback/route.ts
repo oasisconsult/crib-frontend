@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const stateParam = searchParams.get("state");
   const oidcError = searchParams.get("error");
+  const oidcErrorDescription = searchParams.get("error_description");
 
   const baseOrigin =
     process.env.NEXT_PUBLIC_APP_URL
@@ -39,19 +40,23 @@ export async function GET(request: NextRequest) {
     baseOrigin,
   ).toString();
 
-  const loginError = (reason: string) =>
-    NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(reason)}`, baseOrigin),
+  const loginError = (reason: string, description?: string | null) => {
+    const url = new URL(
+      `/login?error=${encodeURIComponent(reason)}`,
+      baseOrigin,
     );
+    if (description) url.searchParams.set("error_description", description);
+    return NextResponse.redirect(url);
+  };
 
   // ── Error from IdP ────────────────────────────────────────────────────────
   if (oidcError || !code) {
     console.error(
       "[callback] IdP error:",
       oidcError ?? "no_code",
-      searchParams.get("error_description"),
+      oidcErrorDescription,
     );
-    return loginError(oidcError ?? "no_code");
+    return loginError(oidcError ?? "no_code", oidcErrorDescription);
   }
 
   // ── CSRF state check ──────────────────────────────────────────────────────
