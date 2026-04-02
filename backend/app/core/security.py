@@ -133,9 +133,27 @@ async def decode_token(token: str) -> TokenClaims:
     """
     try:
         jwks = await _get_jwks()
+        header = jwt.get_unverified_header(token)
+        kid = header.get("kid")
+        if not kid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: missing kid",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        keys = jwks.get("keys", [])
+        key = next((k for k in keys if k.get("kid") == kid), None)
+        if not key:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token: unknown kid",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
         payload = jwt.decode(
             token,
-            jwks,
+            key,
             # Logto may issue ES384 tokens depending on tenant/app config.
             # Accept common asymmetric algs we support.
             algorithms=["RS256", "ES256", "ES384"],
