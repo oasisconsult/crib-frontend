@@ -5,7 +5,6 @@
 // Node runtime — server-to-server Logto token exchange needs LOGTO_ENDPOINT
 
 import { type NextRequest, NextResponse } from "next/server";
-import { APP_URL } from "@/lib/config";
 import { COOKIE, cookieOpts, TTL } from "@/lib/cookies";
 import {
   exchangeCodeForTokens,
@@ -21,9 +20,15 @@ export async function GET(request: NextRequest) {
   const stateParam = searchParams.get("state");
   const oidcError = searchParams.get("error");
 
+  const baseOrigin = request.nextUrl.origin;
+  const callbackRedirectUri = new URL(
+    "/api/logto/sign-in-callback",
+    baseOrigin,
+  ).toString();
+
   const loginError = (reason: string) =>
     NextResponse.redirect(
-      new URL(`/login?error=${encodeURIComponent(reason)}`, APP_URL),
+      new URL(`/login?error=${encodeURIComponent(reason)}`, baseOrigin),
     );
 
   // ── Error from IdP ────────────────────────────────────────────────────────
@@ -55,7 +60,7 @@ export async function GET(request: NextRequest) {
     tokens = await exchangeCodeForTokens(
       code,
       codeVerifier,
-      `${APP_URL}/api/logto/sign-in-callback`,
+      callbackRedirectUri,
     );
   } catch (err) {
     console.error(
@@ -98,7 +103,7 @@ export async function GET(request: NextRequest) {
   // ── Build redirect response ───────────────────────────────────────────────
   const redirectTo =
     request.cookies.get(COOKIE.POST_LOGIN_REDIRECT)?.value ?? "/";
-  const response = NextResponse.redirect(new URL(redirectTo, APP_URL));
+  const response = NextResponse.redirect(new URL(redirectTo, baseOrigin));
 
   // Clear one-time flow cookies
   response.cookies.delete(COOKIE.PKCE_VERIFIER);

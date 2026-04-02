@@ -20,12 +20,18 @@ import {
   LOGTO_PUBLIC_URL,
   LOGTO_APP_ID,
   API_RESOURCE,
-  APP_URL,
 } from "@/lib/config";
 import { COOKIE, cookieOpts, TTL } from "@/lib/cookies";
 
 export async function GET(request: NextRequest) {
   const redirectTo = request.nextUrl.searchParams.get("redirectTo") ?? "/";
+  // Build redirect URI from the *current* host/port that the browser used.
+  // This avoids Logto rejecting the request with `invalid_target` when
+  // NEXT_PUBLIC_APP_URL/APP_URL is misconfigured.
+  const redirectUri = new URL(
+    "/api/logto/sign-in-callback",
+    request.nextUrl.origin,
+  ).toString();
 
   // ── PKCE ─────────────────────────────────────────────────────────────────
   const verifierBytes = crypto.getRandomValues(new Uint8Array(48));
@@ -50,7 +56,7 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set("client_id", LOGTO_APP_ID);
   authUrl.searchParams.set(
     "redirect_uri",
-    `${APP_URL}/api/logto/sign-in-callback`,
+    redirectUri,
   );
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set(
