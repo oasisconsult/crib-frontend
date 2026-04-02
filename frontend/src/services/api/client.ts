@@ -83,8 +83,12 @@ function createApiClient(): AxiosInstance {
 
         // Deduplicate concurrent 401s
         if (_isRefreshing) {
-          return new Promise((resolve) => {
-            subscribeTokenRefresh(() => {
+          return new Promise((resolve, reject) => {
+            subscribeTokenRefresh((token) => {
+              if (!token) {
+                reject(error);
+                return;
+              }
               resolve(client(originalRequest));
             });
           });
@@ -93,9 +97,30 @@ function createApiClient(): AxiosInstance {
         _isRefreshing = true;
         try {
           const res = await fetch("/api/auth/refresh", { method: "POST" });
-          if (!res.ok) throw new Error("refresh_failed");
+          if (!res.ok) {
+            let errBody: unknown = null;
+            try {
+              errBody = await res.json();
+            } catch {
+              // ignore
+            }
+
+            const errCode =
+              (errBody as { error?: unknown } | null)?.error ??
+              (errBody as { code?: unknown } | null)?.code;
+
+            // If the session has no refresh token (common until Logto is configured
+            // to issue refresh tokens), treat as non-fatal: don't redirect to /login.
+            if (res.status === 401 && errCode === "no_refresh_token") {
+              notifyRefreshSubscribers("");
+              return Promise.reject(error);
+            }
+
+            throw new Error("refresh_failed");
+          }
 
           // Retry — the BFF will pick up the refreshed cookie automatically
+          notifyRefreshSubscribers("ok");
           return client(originalRequest);
         } catch {
           notifyRefreshSubscribers("");

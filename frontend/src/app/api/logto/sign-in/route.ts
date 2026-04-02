@@ -76,6 +76,9 @@ export async function GET(request: NextRequest) {
     redirectUri,
   );
   authUrl.searchParams.set("response_type", "code");
+  // Ensure Logto presents consent when requesting offline_access so a refresh
+  // token can be issued (depending on app settings).
+  authUrl.searchParams.set("prompt", "consent");
   authUrl.searchParams.set(
     "scope",
     [
