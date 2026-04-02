@@ -86,11 +86,9 @@ export const RENT_TRANSITIONS: Record<
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
 export type PaymentState =
-  | "initiated"
   | "pending"
-  | "completed"
+  | "confirmed"
   | "failed"
-  | "reconciled"
   | "refunded";
 
 export type PaymentEvent =
@@ -105,11 +103,9 @@ export const PAYMENT_TRANSITIONS: Record<
   PaymentState,
   Partial<Record<PaymentEvent, PaymentState>>
 > = {
-  initiated: { PAYMENT_PROCESSING: "pending" },
-  pending: { PAYMENT_CONFIRMED: "completed", PAYMENT_FAILED: "failed" },
-  completed: { PAYMENT_RECONCILED: "reconciled", PAYMENT_REFUNDED: "refunded" },
-  failed: { PAYMENT_RECORDED: "initiated" }, // retry
-  reconciled: {},
+  pending: { PAYMENT_CONFIRMED: "confirmed", PAYMENT_FAILED: "failed" },
+  confirmed: { PAYMENT_REFUNDED: "refunded" },
+  failed: { PAYMENT_PROCESSING: "pending" }, // retry
   refunded: {},
 };
 
@@ -327,11 +323,9 @@ export const ONBOARDING_STATE_DISPLAY: Record<OnboardingState, StateDisplayConfi
 };
 
 export const PAYMENT_STATE_DISPLAY: Record<PaymentState, StateDisplayConfig> = {
-  initiated: { label: "Initiated", color: "text-indigo-700", bgColor: "bg-indigo-100" },
   pending: { label: "Processing", color: "text-amber-700", bgColor: "bg-amber-100" },
-  completed: { label: "Completed", color: "text-emerald-700", bgColor: "bg-emerald-100" },
+  confirmed: { label: "Confirmed", color: "text-emerald-700", bgColor: "bg-emerald-100" },
   failed: { label: "Failed", color: "text-red-700", bgColor: "bg-red-100" },
-  reconciled: { label: "Reconciled", color: "text-violet-700", bgColor: "bg-violet-100" },
   refunded: { label: "Refunded", color: "text-orange-700", bgColor: "bg-orange-100" },
 };
 

@@ -13,44 +13,70 @@ import type {
   CashFlowDataPoint,
 } from "@/types";
 
+function mapQueryParamsToBackend(params?: QueryParams): Record<string, unknown> | undefined {
+  if (!params) return undefined;
+
+  const out: Record<string, unknown> = {};
+  if (params.page != null) out.page = params.page;
+  if (params.pageSize != null) out.pageSize = params.pageSize;
+
+  // Best-effort mapping from the generic UI filter model to backend query params.
+  // Backend currently supports: status, category, leaseId (+ pagination).
+  for (const f of params.filters ?? []) {
+    if (f.field === "state" && (f.operator === "eq" || f.operator === "in")) {
+      const v = Array.isArray(f.value) ? f.value[0] : f.value;
+      if (typeof v === "string") out.status = v;
+    }
+    if (f.field === "category" && f.operator === "eq" && typeof f.value === "string") {
+      out.category = f.value;
+    }
+    if (f.field === "leaseId" && f.operator === "eq" && typeof f.value === "string") {
+      out.leaseId = f.value;
+    }
+  }
+
+  return out;
+}
+
 export const paymentsApi = {
   list: (params?: QueryParams) =>
-    apiGet<PaginatedResponse<Payment>>("/payments", params),
+    apiGet<PaginatedResponse<Payment>>("/payments", mapQueryParamsToBackend(params)),
 
   get: (id: string) =>
     apiGet<Payment>(`/payments/${id}`),
 
-  create: (data: Omit<Payment, "id" | "createdAt" | "updatedAt" | "state">) =>
+  // Flat POST /payments expects at least leaseId + rentScheduleId + amount.
+  create: (data: Omit<Payment, "id" | "createdAt" | "updatedAt">) =>
     apiPost<Payment>("/payments", data),
 
-  reconcile: (id: string) =>
-    apiPatch<Payment>(`/payments/${id}/reconcile`, {}),
+  confirm: (id: string) =>
+    apiPatch<Payment>(`/payments/${id}/confirm`, {}),
+
+  refund: (id: string) =>
+    apiPatch<Payment>(`/payments/${id}/refund`, {}),
 
   // Rent schedules
-  getRentSchedule: (leaseId: string) =>
-    apiGet<RentSchedule[]>(`/rent-schedules?leaseId=${leaseId}`),
+  listRentSchedules: (params?: QueryParams) =>
+    apiGet<PaginatedResponse<RentSchedule>>(`/rent-schedules`, mapQueryParamsToBackend(params)),
 
   // Late fees
   listLateFees: (params?: QueryParams) =>
-    apiGet<PaginatedResponse<LateFee>>("/late-fees", params),
+    apiGet<PaginatedResponse<LateFee>>("/late-fees", mapQueryParamsToBackend(params)),
 
-  waiveLateFee: (id: string, reason: string) =>
-    apiPatch<LateFee>(`/late-fees/${id}/waive`, { reason }),
+  // NOTE: flat late-fees router currently only supports GET; waive/apply are lease-nested.
+  // Keep these lease-nested helpers for now where used.
 
   // Deposits
   getDeposit: (leaseId: string) =>
     apiGet<Deposit>(`/leases/${leaseId}/deposit`),
 
-  updateDeposit: (leaseId: string, data: Partial<Deposit>) =>
-    apiPut<Deposit>(`/leases/${leaseId}/deposit`, data),
+  // Deposit return is PATCH /leases/{leaseId}/deposit/return (backend)
+  returnDeposit: (leaseId: string, data: Partial<Deposit>) =>
+    apiPatch<Deposit>(`/leases/${leaseId}/deposit/return`, data),
 
   // Ledger
-  getLedger: (tenantId: string, params?: QueryParams) =>
-    apiGet<LedgerEntry[]>(`/tenants/${tenantId}/ledger`, params),
-
-  // Export
-  exportPayments: (params?: QueryParams, format: "csv" | "pdf" = "csv") =>
-    apiGet<Blob>(`/payments/export?format=${format}`, params),
+  getLedger: (leaseId: string, params?: QueryParams) =>
+    apiGet<LedgerEntry[]>(`/leases/${leaseId}/ledger`, params),
 };
 
 export const analyticsApi = {

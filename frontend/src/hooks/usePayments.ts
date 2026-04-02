@@ -24,29 +24,29 @@ export function usePayment(id: string) {
 export function useReconcilePayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => paymentsApi.reconcile(id),
+    mutationFn: (id: string) => paymentsApi.confirm(id),
     onSuccess: (_, id) => {
       qc.invalidateQueries({ queryKey: queryKeys.payments.detail(id) });
       qc.invalidateQueries({ queryKey: queryKeys.payments.all() });
-      toast.success("Payment reconciled");
+      toast.success("Payment confirmed");
     },
-    onError: () => toast.error("Failed to reconcile payment"),
+    onError: () => toast.error("Failed to confirm payment"),
   });
 }
 
 export function useRentSchedule(leaseId: string) {
   return useQuery({
     queryKey: queryKeys.payments.rentSchedule(leaseId),
-    queryFn: () => paymentsApi.getRentSchedule(leaseId),
+    queryFn: () => paymentsApi.listRentSchedules({ leaseId }),
     enabled: !!leaseId,
   });
 }
 
-export function useLedger(tenantId: string) {
+export function useLedger(leaseId: string) {
   return useQuery({
-    queryKey: queryKeys.payments.ledger(tenantId),
-    queryFn: () => paymentsApi.getLedger(tenantId),
-    enabled: !!tenantId,
+    queryKey: queryKeys.payments.ledger(leaseId),
+    queryFn: () => paymentsApi.getLedger(leaseId),
+    enabled: !!leaseId,
   });
 }
 
@@ -68,7 +68,7 @@ export function useDeposit(leaseId: string) {
 export function useRecordPayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: Omit<Payment, "id" | "createdAt" | "updatedAt" | "state">) =>
+    mutationFn: (data: Omit<Payment, "id" | "createdAt" | "updatedAt">) =>
       paymentsApi.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.payments.all() });

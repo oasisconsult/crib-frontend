@@ -19,15 +19,19 @@ function TenantAvatar({ id }: { id: string }) {
   );
 }
 
-const STATE_CONFIG: Record<string, { label: string; variant: "destructive" | "warning" | "success" | "outline" }> = {
-  pending:  { label: "Pending",  variant: "warning"     },
-  overdue:  { label: "Overdue",  variant: "destructive" },
-  completed:{ label: "Paid",     variant: "success"     },
+const STATE_CONFIG: Record<
+  string,
+  { label: string; variant: "destructive" | "warning" | "success" | "outline" }
+> = {
+  pending: { label: "Pending", variant: "warning" },
+  confirmed: { label: "Confirmed", variant: "success" },
+  failed: { label: "Failed", variant: "destructive" },
+  refunded: { label: "Refunded", variant: "outline" },
 };
 
 export function PendingRentWidget() {
   const { data, isLoading } = usePayments({
-    filters: [{ field: "state", operator: "in", value: ["pending", "overdue"] }],
+    filters: [{ field: "state", operator: "eq", value: "pending" }],
   });
 
   const items = data?.data.slice(0, 6) ?? [];
@@ -66,14 +70,13 @@ export function PendingRentWidget() {
           <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
             <CheckCircle2 className="h-8 w-8 text-emerald-500" />
             <p className="text-sm font-medium">All payments up to date</p>
-            <p className="text-xs text-muted-foreground">No pending or overdue rent</p>
+            <p className="text-xs text-muted-foreground">No pending payments</p>
           </div>
         ) : (
           <>
             {/* Table header */}
-            <div className="hidden sm:grid grid-cols-[auto_1fr_auto_auto] gap-4 px-6 py-2 text-xs font-medium text-muted-foreground border-b">
-              <span className="w-8" />
-              <span>Tenant</span>
+            <div className="hidden sm:grid grid-cols-[1fr_auto_auto] gap-4 px-6 py-2 text-xs font-medium text-muted-foreground border-b">
+              <span>Payment</span>
               <span>Status</span>
               <span className="text-right">Amount</span>
             </div>
@@ -84,26 +87,22 @@ export function PendingRentWidget() {
                   <li
                     key={payment.id}
                     className={cn(
-                      "grid sm:grid-cols-[auto_1fr_auto_auto] gap-3 sm:gap-4 items-center px-6 py-3 transition-colors hover:bg-muted/30",
+                      "grid sm:grid-cols-[1fr_auto_auto] gap-3 sm:gap-4 items-center px-6 py-3 transition-colors hover:bg-muted/30",
                       i > 0 && "border-t",
                     )}
                   >
-                    <TenantAvatar id={payment.tenantId} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">
-                        Tenant {payment.tenantId.replace("tenant-", "#")}
+                        {payment.reference ?? "Payment"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Due {formatDate(payment.dueDate)} · {payment.type}
+                        Lease {payment.leaseId} · {payment.category?.replace(/_/g, " ")}
                       </p>
                     </div>
                     <Badge variant={sc.variant} className="text-xs w-fit shrink-0">
                       {sc.label}
                     </Badge>
-                    <span className={cn(
-                      "text-sm font-semibold text-right shrink-0",
-                      payment.state === "overdue" ? "text-red-600" : "text-foreground",
-                    )}>
+                    <span className="text-sm font-semibold text-right shrink-0">
                       {formatCurrency(payment.amount, payment.currency)}
                     </span>
                   </li>

@@ -6,30 +6,20 @@ export type PaymentMethod = "bank_transfer" | "card" | "cash" | "direct_debit" |
 export interface Payment {
   id: string;
   state: PaymentState;
+  leaseId: string;
+  rentScheduleId?: string | null;
+  organisationId?: string;
   category: PaymentCategory;
   method?: PaymentMethod;
-  // Parties
-  tenantId: string;
-  landlordId: string;
-  leaseId: string;
-  propertyId: string;
-  unitId: string;
   // Amounts
   amount: number;
   currency: string;
-  // Dates
-  dueDate: string;
   paidAt?: string;
-  reconciledAt?: string;
   // References
-  reference: string;
-  externalReference?: string;
-  // Linked
-  rentPeriodId?: string;
-  lateFeeId?: string;
+  reference?: string | null;
+  idempotencyKey?: string | null;
   // Meta
   notes?: string;
-  receiptUrl?: string;
   createdAt: string;
   updatedAt: string;
 }

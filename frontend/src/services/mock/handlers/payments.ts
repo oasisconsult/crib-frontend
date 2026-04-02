@@ -73,6 +73,17 @@ export const paymentHandlers = [
     if (!payment) return HttpResponse.json({ code: "NOT_FOUND", message: "Payment not found" }, { status: 404 });
     return HttpResponse.json({ ...payment, state: "completed", updatedAt: new Date().toISOString() });
   }),
+  http.patch(`${BASE}/payments/:id/confirm`, ({ params }) => {
+    const payment = mockPayments.find((p) => p.id === params.id);
+    if (!payment) return HttpResponse.json({ code: "NOT_FOUND", message: "Payment not found" }, { status: 404 });
+    return HttpResponse.json({ ...payment, state: "confirmed", updatedAt: new Date().toISOString() });
+  }),
+
+  http.patch(`${BASE}/payments/:id/refund`, ({ params }) => {
+    const payment = mockPayments.find((p) => p.id === params.id);
+    if (!payment) return HttpResponse.json({ code: "NOT_FOUND", message: "Payment not found" }, { status: 404 });
+    return HttpResponse.json({ ...payment, state: "refunded", updatedAt: new Date().toISOString() });
+  }),
 
   // ─── Rent Schedules ───────────────────────────────────────────────────────
   http.get(`${BASE}/rent-schedules`, ({ request }) => {
@@ -98,9 +109,9 @@ export const paymentHandlers = [
   }),
 
   // ─── Ledger ───────────────────────────────────────────────────────────────
-  http.get(`${BASE}/tenants/:id/ledger`, ({ params }) => {
-    // Return ledger entries derived from payments for this tenant
-    const tenantPayments = mockPayments.filter((p) => p.tenantId === params.id);
+  http.get(`${BASE}/leases/:id/ledger`, ({ params }) => {
+    // Return ledger entries derived from payments for this lease
+    const tenantPayments = mockPayments.filter((p) => p.leaseId === params.id);
     const entries = tenantPayments.map((p, i) => ({
       id: `led-${p.id}`,
       date: p.dueDate,

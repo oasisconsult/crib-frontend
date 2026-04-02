@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, TrendingUp, AlertTriangle, CheckCircle2, Download, Loader2 } from "lucide-react";
+import { CreditCard, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,6 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayments, useDashboardStats } from "@/hooks/usePayments";
-import { paymentsApi } from "@/services/api/payments";
-import { toast } from "@/store/useUIStore";
 import type { Payment } from "@/types";
 
 const COLUMNS: Column<Payment>[] = [
@@ -44,12 +42,6 @@ const COLUMNS: Column<Payment>[] = [
     ),
   },
   {
-    key: "dueDate",
-    header: "Due Date",
-    sortable: true,
-    render: (p) => formatDate(p.dueDate),
-  },
-  {
     key: "paidAt",
     header: "Paid On",
     render: (p) => (p.paidAt ? formatDate(p.paidAt) : "—"),
@@ -60,7 +52,6 @@ export default function PaymentsPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
-  const [exporting, setExporting] = useState(false);
   const { data, isLoading } = usePayments();
   const { data: stats } = useDashboardStats();
 
@@ -70,32 +61,13 @@ export default function PaymentsPage() {
     const state = p.state as string;
     const tabMatch =
       tab === "all" ||
-      (tab === "pending" && ["pending", "initiated"].includes(state)) ||
-      (tab === "completed" && ["completed", "reconciled"].includes(state)) ||
-      (tab === "overdue" && state === "overdue") ||
+      (tab === "pending" && state === "pending") ||
+      (tab === "confirmed" && state === "confirmed") ||
       (tab === "failed" && state === "failed");
     const searchMatch =
-      !search || p.reference.toLowerCase().includes(search.toLowerCase());
+      !search || (p.reference ?? "").toLowerCase().includes(search.toLowerCase());
     return tabMatch && searchMatch;
   });
-
-  async function handleExport(format: "csv" | "pdf") {
-    setExporting(true);
-    try {
-      const blob = await paymentsApi.exportPayments(undefined, format);
-      const url = URL.createObjectURL(blob as Blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `payments-export.${format}`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(`Exported as ${format.toUpperCase()}`);
-    } catch {
-      toast.error("Export failed");
-    } finally {
-      setExporting(false);
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -105,30 +77,6 @@ export default function PaymentsPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Rent collection, deposits, and payment tracking
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={exporting}
-            onClick={() => handleExport("csv")}
-          >
-            {exporting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Download className="h-3.5 w-3.5" />
-            )}
-            Export CSV
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={exporting}
-            onClick={() => handleExport("pdf")}
-          >
-            <Download className="h-3.5 w-3.5" />
-            Export PDF
-          </Button>
         </div>
       </div>
 
@@ -189,12 +137,12 @@ export default function PaymentsPage() {
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="overdue">Overdue</TabsTrigger>
+          <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
           <TabsTrigger value="failed">Failed</TabsTrigger>
+          <TabsTrigger value="refunded">Refunded</TabsTrigger>
         </TabsList>
 
-        {["all", "pending", "completed", "overdue", "failed"].map((t) => (
+        {["all", "pending", "confirmed", "failed", "refunded"].map((t) => (
           <TabsContent key={t} value={t} className="mt-3">
             <DataTable
               data={payments}

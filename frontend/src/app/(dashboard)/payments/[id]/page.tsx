@@ -7,10 +7,7 @@ import {
   CreditCard,
   Banknote,
   Calendar,
-  User,
   FileText,
-  Building2,
-  Home,
   CheckCircle2,
   Clock,
   AlertTriangle,
@@ -24,8 +21,6 @@ import { Separator } from "@/components/ui/separator";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayment, useReconcilePayment } from "@/hooks/usePayments";
-import { useTenant } from "@/hooks/useTenants";
-import { useProperty, useUnit } from "@/hooks/useProperties";
 import { useLease } from "@/hooks/useLeases";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
@@ -39,11 +34,8 @@ interface Props {
 
 const STATE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
   pending:     { label: "Pending",     color: "text-amber-700",   bg: "bg-amber-100 dark:bg-amber-950/40",   icon: Clock         },
-  completed:   { label: "Completed",   color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-950/40", icon: CheckCircle2  },
-  paid:        { label: "Paid",        color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-950/40", icon: CheckCircle2  },
-  overdue:     { label: "Overdue",     color: "text-red-700",     bg: "bg-red-100 dark:bg-red-950/40",       icon: AlertTriangle },
+  confirmed:   { label: "Confirmed",   color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-950/40", icon: CheckCircle2  },
   failed:      { label: "Failed",      color: "text-red-700",     bg: "bg-red-100 dark:bg-red-950/40",       icon: AlertTriangle },
-  reconciled:  { label: "Reconciled",  color: "text-violet-700",  bg: "bg-violet-100 dark:bg-violet-950/40", icon: CheckCircle2  },
   refunded:    { label: "Refunded",    color: "text-orange-700",  bg: "bg-orange-100 dark:bg-orange-950/40", icon: Receipt       },
 };
 
@@ -93,9 +85,6 @@ export default function PaymentDetailPage({ params }: Props) {
   const { mutate: reconcile, isPending: reconciling } = useReconcilePayment();
 
   // Related data — only fetch when IDs are known
-  const { data: tenant }   = useTenant(payment?.tenantId ?? "");
-  const { data: property } = useProperty(payment?.propertyId ?? "");
-  const { data: unit }     = useUnit(payment?.propertyId ?? "", payment?.unitId ?? "");
   const { data: lease }    = useLease(payment?.leaseId ?? "");
 
   if (isLoading) return <PageSkeleton />;
@@ -111,7 +100,7 @@ export default function PaymentDetailPage({ params }: Props) {
 
   const stateCfg    = STATE_CONFIG[payment.state] ?? STATE_CONFIG.pending;
   const StateIcon   = stateCfg.icon;
-  const canReconcile = payment.state === "completed";
+  const canReconcile = payment.state === "pending";
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -134,7 +123,6 @@ export default function PaymentDetailPage({ params }: Props) {
             </div>
             <p className="text-sm text-muted-foreground mt-0.5 capitalize">
               {categoryLabel(payment)} payment
-              {payment.dueDate && ` · Due ${formatDate(payment.dueDate)}`}
             </p>
           </div>
         </div>
@@ -147,7 +135,7 @@ export default function PaymentDetailPage({ params }: Props) {
             onClick={() => reconcile(payment.id)}
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
-            Mark Reconciled
+            Confirm Payment
           </Button>
         )}
       </div>
@@ -198,14 +186,14 @@ export default function PaymentDetailPage({ params }: Props) {
               <span className="text-muted-foreground">Currency</span>
               <Badge variant="secondary">{payment.currency}</Badge>
             </div>
-            {(payment as any).externalReference && (
+            {(payment as any).idempotencyKey && (
               <>
                 <Separator />
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">External Ref</span>
+                  <span className="text-muted-foreground">Idempotency</span>
                   <span className="font-mono text-xs flex items-center">
-                    {(payment as any).externalReference}
-                    <CopyButton value={(payment as any).externalReference} />
+                    {(payment as any).idempotencyKey}
+                    <CopyButton value={(payment as any).idempotencyKey} />
                   </span>
                 </div>
               </>
@@ -222,31 +210,13 @@ export default function PaymentDetailPage({ params }: Props) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Due Date</span>
-              <span className={cn(
-                payment.state === "overdue" && "text-red-600 font-medium",
-              )}>
-                {formatDate(payment.dueDate)}
-              </span>
-            </div>
             {payment.paidAt && (
-              <>
-                <Separator />
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Paid On</span>
-                  <span className="text-emerald-600 font-medium">{formatDate(payment.paidAt)}</span>
-                </div>
-              </>
-            )}
-            {payment.reconciledAt && (
-              <>
-                <Separator />
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Reconciled</span>
-                  <span>{formatDate(payment.reconciledAt)}</span>
-                </div>
-              </>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Paid On</span>
+                <span className="text-emerald-600 font-medium">
+                  {formatDate(payment.paidAt)}
+                </span>
+              </div>
             )}
             <Separator />
             <div className="flex justify-between">
@@ -265,8 +235,8 @@ export default function PaymentDetailPage({ params }: Props) {
                 {[
                   { label: "Created",    done: true },
                   { label: "Paid",       done: !!payment.paidAt },
-                  { label: "Completed",  done: payment.state === "completed" || payment.state === "reconciled" },
-                  { label: "Reconciled", done: payment.state === "reconciled" },
+                  { label: "Confirmed",  done: payment.state === "confirmed" },
+                  { label: "Refunded",   done: payment.state === "refunded" },
                 ].map((s, i, arr) => (
                   <div key={s.label} className="flex items-center gap-1">
                     {i > 0 && <div className={cn("h-px w-4 shrink-0", s.done ? "bg-emerald-400" : "bg-border")} />}
@@ -284,121 +254,47 @@ export default function PaymentDetailPage({ params }: Props) {
           </CardContent>
         </Card>
 
-        {/* ── Related parties ────────────────────────────────── */}
+        {/* ── Related ────────────────────────────────────────── */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Related Parties
+              <FileText className="h-4 w-4" />
+              Related
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            {/* Tenant */}
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Tenant</span>
-              {tenant ? (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0 text-sm"
-                  onClick={() => router.push(`/tenants/${payment.tenantId}`)}
-                >
-                  {tenant.firstName} {tenant.lastName}
-                </Button>
-              ) : (
-                <span className="font-mono text-xs">{payment.tenantId}</span>
-              )}
-            </div>
-            <Separator />
             {/* Lease */}
             <div className="flex justify-between items-center">
               <span className="text-muted-foreground">Lease</span>
               <Button
                 variant="link"
                 size="sm"
-                className="h-auto p-0 text-sm font-mono text-xs"
+                className="h-auto p-0 font-mono text-xs"
                 onClick={() => router.push(`/leases/${payment.leaseId}`)}
               >
                 <FileText className="h-3.5 w-3.5 mr-1" />
                 {lease?.reference ?? payment.leaseId}
               </Button>
             </div>
-            {payment.propertyId && (
-              <>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Property</span>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-sm"
-                    onClick={() => router.push(`/properties/${payment.propertyId}`)}
-                  >
-                    <Building2 className="h-3.5 w-3.5 mr-1" />
-                    {property?.name ?? payment.propertyId}
-                  </Button>
-                </div>
-              </>
-            )}
-            {payment.unitId && (
-              <>
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Unit</span>
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-sm"
-                    onClick={() => router.push(`/properties/${payment.propertyId}/units/${payment.unitId}`)}
-                  >
-                    <Home className="h-3.5 w-3.5 mr-1" />
-                    {unit?.name ?? payment.unitId}
-                  </Button>
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
 
         {/* ── Notes / receipt ────────────────────────────────── */}
-        {(payment.notes || payment.receiptUrl) && (
+        {!!payment.notes && (
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Receipt className="h-4 w-4" />
-                Notes & Receipt
+                Notes
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              {payment.notes && (
-                <p className="text-muted-foreground leading-relaxed">{payment.notes}</p>
-              )}
-              {payment.receiptUrl && (
-                <Button variant="outline" size="sm" asChild>
-                  <a href={payment.receiptUrl} target="_blank" rel="noopener noreferrer">
-                    <Receipt className="h-3.5 w-3.5" />
-                    View Receipt
-                  </a>
-                </Button>
-              )}
+              <p className="text-muted-foreground leading-relaxed">{payment.notes}</p>
             </CardContent>
           </Card>
         )}
       </div>
 
-      {/* ── Overdue warning ──────────────────────────────────── */}
-      {payment.state === "overdue" && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20 px-4 py-3 text-sm text-red-800 dark:text-red-200">
-          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-          <div>
-            <p className="font-medium">Payment overdue</p>
-            <p className="text-xs mt-0.5 text-red-700 dark:text-red-300">
-              This payment was due on {formatDate(payment.dueDate)} and has not been received.
-              A late fee may apply.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
