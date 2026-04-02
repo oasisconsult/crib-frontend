@@ -88,7 +88,17 @@ class RentSchedule(TimestampedBase):
     amount_paid: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
     late_fee_applied: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False, default=0)
 
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
+    status: Mapped[RentScheduleStatus] = mapped_column(
+        Enum(
+            RentScheduleStatus,
+            name="rent_schedule_status_enum",
+            native_enum=True,
+            create_type=False,  # already created by migrations
+        ),
+        nullable=False,
+        default=RentScheduleStatus.pending,
+        index=True,
+    )
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
@@ -125,8 +135,26 @@ class Payment(TimestampedBase):
 
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="UGX")
-    category: Mapped[str] = mapped_column(String(20), nullable=False, default="rent")
-    method: Mapped[str] = mapped_column(String(30), nullable=False, default="cash")
+    category: Mapped[PaymentCategory] = mapped_column(
+        Enum(
+            PaymentCategory,
+            name="payment_category_enum",
+            native_enum=True,
+            create_type=False,  # already created by migrations
+        ),
+        nullable=False,
+        default=PaymentCategory.rent,
+    )
+    method: Mapped[PaymentMethod] = mapped_column(
+        Enum(
+            PaymentMethod,
+            name="payment_method_enum",
+            native_enum=True,
+            create_type=False,  # already created by migrations
+        ),
+        nullable=False,
+        default=PaymentMethod.cash,
+    )
     reference: Mapped[str | None] = mapped_column(Text(), nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
 
@@ -210,7 +238,16 @@ class Deposit(TimestampedBase):
     deductions: Mapped[list] = mapped_column(JSONB(), nullable=False, default=list)
     # deductions format: [{"reason": str, "amount": float}]
 
-    status: Mapped[str] = mapped_column(String(30), nullable=False, default="held")
+    status: Mapped[DepositStatus] = mapped_column(
+        Enum(
+            DepositStatus,
+            name="deposit_status_enum",
+            native_enum=True,
+            create_type=False,  # already created by migrations
+        ),
+        nullable=False,
+        default=DepositStatus.held,
+    )
     returned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
