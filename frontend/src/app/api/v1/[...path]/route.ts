@@ -50,6 +50,8 @@ async function proxy(
   path: string[],
 ): Promise<NextResponse> {
   const upstreamUrl = `${BACKEND_URL}/api/v1/${path.join("/")}${request.nextUrl.search}`;
+  const accessToken = request.cookies.get(COOKIE.SESSION)?.value;
+  const hasSessionCookie = !!accessToken;
 
   // Build forwarded headers — strip hop-by-hop, inject Authorization from cookie
   const headers = new Headers();
@@ -59,7 +61,6 @@ async function proxy(
     }
   });
 
-  const accessToken = request.cookies.get(COOKIE.SESSION)?.value;
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   } else {
@@ -92,6 +93,11 @@ async function proxy(
       responseHeaders.set(key, value);
     }
   });
+
+  // Debug signal: helps diagnose 401s (cookie missing vs token rejected).
+  // Visible in the browser network tab response headers.
+  responseHeaders.set("x-bff-has-session-cookie", hasSessionCookie ? "1" : "0");
+  responseHeaders.set("x-bff-upstream", upstreamUrl);
 
   return new NextResponse(upstream.body, {
     status: upstream.status,
