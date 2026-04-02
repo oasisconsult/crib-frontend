@@ -11,7 +11,8 @@ const nextConfig: NextConfig = {
     // Avoids ENOTFOUND errors when the backend container isn't running.
     if (process.env.NEXT_PUBLIC_MOCK_API === "true") return [];
 
-    const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8000";
+    // Local docker-compose exposes backend on 8001 (host) -> 8000 (container)
+    const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8001";
     return [
       {
         source: "/api/v1/:path*",

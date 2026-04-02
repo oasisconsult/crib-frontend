@@ -9,7 +9,7 @@
  *                            The token is stored in memory (tokenStore)
  *                            only for expiry tracking — NOT for attaching
  *                            to API requests (the BFF proxy does that).
- *  2. GET /api/v1/users/me — goes through the BFF proxy which reads the
+ *  2. GET /api/v1/me       — goes through the BFF proxy which reads the
  *                            cookie and injects Authorization: Bearer <token>.
  *                            Returns the user profile from the backend.
  *  3. resolveAuth(user)    — atomic store update, dashboard renders.
@@ -179,7 +179,7 @@ export function useAuth() {
       // BFF proxy reads logto_session cookie → injects Authorization header.
       // No token handling needed here.
       try {
-        const { data: userData } = await apiClient.get<User>("/users/me");
+        const { data: userData } = await apiClient.get<User>("/me");
         resolveAuth(userData);
         emitAudit({ action: "auth.login", userId: userData.id });
       } catch (err: unknown) {
@@ -190,20 +190,20 @@ export function useAuth() {
           const refreshed = await silentRefresh();
           if (!refreshed) return;
           try {
-            const { data: userData } = await apiClient.get<User>("/users/me");
+            const { data: userData } = await apiClient.get<User>("/me");
             resolveAuth(userData);
             emitAudit({ action: "auth.login", userId: userData.id });
           } catch {
             const status = (err as { response?: { status?: number } })?.response
               ?.status;
 
-            console.error("[auth] /users/me failed:", status, err);
+            console.error("[auth] /me failed:", status, err);
             // resolveAuth(null);
           }
           return;
         }
         // } else {
-        //   console.error("[auth] /users/me failed:", status, err);
+        //   console.error("[auth] /me failed:", status, err);
         //   resolveAuth(null);
         // }
       }
@@ -239,7 +239,7 @@ export function useAuth() {
         if (user) setUser({ ...user, role: role as User["role"] });
         emitAudit({ action: "auth.org_switch", userId: user?.id, orgId });
 
-        const { data: userData } = await apiClient.get<User>("/users/me");
+        const { data: userData } = await apiClient.get<User>("/me");
         setUser(userData);
         router.refresh();
         return true;

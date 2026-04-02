@@ -55,7 +55,7 @@ const DEV_USER_PROFILES: Record<string, object> = {
 const DEFAULT_USER = DEV_USER_PROFILES["user-superadmin-1"];
 
 export const userHandlers = [
-  http.get(`${BASE}/users/me`, ({ request }) => {
+  http.get(`${BASE}/me`, ({ request }) => {
     const devUserId = request.headers.get("x-dev-user-id");
     const profile = devUserId
       ? (DEV_USER_PROFILES[devUserId] ?? DEFAULT_USER)
@@ -63,7 +63,7 @@ export const userHandlers = [
     return HttpResponse.json(profile);
   }),
 
-  http.put(`${BASE}/users/me`, async ({ request }) => {
+  http.put(`${BASE}/me`, async ({ request }) => {
     const devUserId = request.headers.get("x-dev-user-id");
     const base = devUserId
       ? (DEV_USER_PROFILES[devUserId] ?? DEFAULT_USER)

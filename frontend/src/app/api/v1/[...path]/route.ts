@@ -24,8 +24,10 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE } from "@/lib/cookies";
 
-// Server-side backend URL — Docker-internal hostname in containers
-const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8000";
+// Server-side backend URL — Docker-internal hostname in containers.
+// For local dev on the host machine, the backend is typically exposed on 8001
+// (docker-compose.local.yml maps 8001 -> 8000).
+const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8001";
 
 // Headers that must not be forwarded (HTTP hop-by-hop + Next.js internals)
 const SKIP_HEADERS = new Set([
