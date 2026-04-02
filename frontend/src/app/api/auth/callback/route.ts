@@ -7,7 +7,7 @@
 
 //   // Use the public app URL so redirects go to the correct host:port,
 //   // not the container-internal port Next.js listens on.
-//   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010";
+//   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 //   // Logto may redirect back with an error instead of a code
 //   const logtoError = searchParams.get("error");
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   const logtoError = searchParams.get("error");
   if (logtoError || !code) {

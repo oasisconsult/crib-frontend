@@ -35,7 +35,7 @@ export const logtoClient = new LogtoClient({
   // Frontend URL — Logto uses this to build the default callback path:
   //   ${baseUrl}/api/logto/sign-in-callback
   // This MUST be the URL the browser sees, not a Docker-internal hostname.
-  baseUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3010",
+  baseUrl: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
 
   cookieSecret: process.env.NEXTAUTH_SECRET!,
   cookieSecure: process.env.NODE_ENV === "production",
