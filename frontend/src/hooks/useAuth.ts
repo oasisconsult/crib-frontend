@@ -93,7 +93,30 @@ export function useAuth() {
       try {
         const res = await fetch("/api/auth/refresh", { method: "POST" });
         if (!res.ok) {
-          emitAudit({ action: "auth.token_refresh_failed", userId: user?.id });
+          // If Logto didn't issue a refresh token (common until configured),
+          // don't immediately log the user out — they may still have a valid
+          // access token in the httpOnly session cookie.
+          let errBody: unknown = null;
+          try {
+            errBody = await res.json();
+          } catch {
+            // ignore
+          }
+
+          const errCode =
+            (errBody as { error?: unknown } | null)?.error ??
+            (errBody as { code?: unknown } | null)?.code;
+
+          emitAudit({
+            action: "auth.token_refresh_failed",
+            userId: user?.id,
+            meta: { status: res.status, error: errCode ?? "unknown" },
+          });
+
+          if (res.status === 401 && errCode === "no_refresh_token") {
+            return null;
+          }
+
           await logout({ reason: "refresh_token_expired" });
           return null;
         }
