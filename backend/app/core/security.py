@@ -136,7 +136,9 @@ async def decode_token(token: str) -> TokenClaims:
         payload = jwt.decode(
             token,
             jwks,
-            algorithms=["RS256", "ES256"],
+            # Logto may issue ES384 tokens depending on tenant/app config.
+            # Accept common asymmetric algs we support.
+            algorithms=["RS256", "ES256", "ES384"],
             audience=settings.logto_api_resource,
             issuer=settings.logto_issuer,
         )
