@@ -53,6 +53,22 @@ async function proxy(
   const accessToken = request.cookies.get(COOKIE.SESSION)?.value;
   const hasSessionCookie = !!accessToken;
 
+  // If the cookie isn't present, don't even hit the backend. This prevents
+  // confusing backend 401s ("missing Authorization") and clearly tells us
+  // the BFF didn't receive the cookie.
+  if (!hasSessionCookie) {
+    return NextResponse.json(
+      { detail: "Missing session cookie (logto_session)" },
+      {
+        status: 401,
+        headers: {
+          "x-bff-has-session-cookie": "0",
+          "x-bff-upstream": upstreamUrl,
+        },
+      },
+    );
+  }
+
   // Build forwarded headers — strip hop-by-hop, inject Authorization from cookie
   const headers = new Headers();
   request.headers.forEach((value, key) => {
