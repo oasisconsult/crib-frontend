@@ -6,20 +6,9 @@ const withNextIntl = createNextIntlPlugin("./src/lib/i18n.ts");
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  async rewrites() {
-    // Skip proxy in mock mode — MSW handles all /api/v1/* in the browser.
-    // Avoids ENOTFOUND errors when the backend container isn't running.
-    if (process.env.NEXT_PUBLIC_MOCK_API === "true") return [];
-
-    // Local docker-compose exposes backend on 8001 (host) -> 8000 (container)
-    const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8001";
-    return [
-      {
-        source: "/api/v1/:path*",
-        destination: `${backendUrl}/api/v1/:path*`,
-      },
-    ];
-  },
+  // IMPORTANT: Do not rewrite /api/v1/* directly to the backend.
+  // We use an App Router route handler at `src/app/api/v1/[...path]/route.ts`
+  // as a BFF proxy that injects Authorization from the httpOnly cookie.
   images: {
     remotePatterns: [
       { protocol: "http", hostname: "localhost" },
