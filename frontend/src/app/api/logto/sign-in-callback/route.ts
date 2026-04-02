@@ -20,7 +20,20 @@ export async function GET(request: NextRequest) {
   const stateParam = searchParams.get("state");
   const oidcError = searchParams.get("error");
 
-  const baseOrigin = request.nextUrl.origin;
+  const baseOrigin =
+    process.env.NEXT_PUBLIC_APP_URL
+      ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
+      : (() => {
+          const forwardedHost = request.headers.get("x-forwarded-host");
+          const forwardedProto = request.headers.get("x-forwarded-proto");
+          const host =
+            forwardedHost ?? request.headers.get("host") ?? request.nextUrl.host;
+          const proto =
+            forwardedProto ??
+            (request.nextUrl.protocol === "https:" ? "https" : "http");
+          return `${proto}://${host}`;
+        })();
+
   const callbackRedirectUri = new URL(
     "/api/logto/sign-in-callback",
     baseOrigin,

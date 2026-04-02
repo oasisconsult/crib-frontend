@@ -25,12 +25,29 @@ import { COOKIE, cookieOpts, TTL } from "@/lib/cookies";
 
 export async function GET(request: NextRequest) {
   const redirectTo = request.nextUrl.searchParams.get("redirectTo") ?? "/";
-  // Build redirect URI from the *current* host/port that the browser used.
-  // This avoids Logto rejecting the request with `invalid_target` when
-  // NEXT_PUBLIC_APP_URL/APP_URL is misconfigured.
+  // Build redirect URI from the public origin the browser used.
+  // When running behind Docker/NGINX, `request.nextUrl.origin` can reflect the
+  // internal port (e.g. 3000). Prefer:
+  // 1) explicit `NEXT_PUBLIC_APP_URL` (if set)
+  // 2) `X-Forwarded-*` headers
+  // 3) fall back to Next's derived origin
+  const appOrigin =
+    process.env.NEXT_PUBLIC_APP_URL
+      ? new URL(process.env.NEXT_PUBLIC_APP_URL).origin
+      : (() => {
+          const forwardedHost = request.headers.get("x-forwarded-host");
+          const forwardedProto = request.headers.get("x-forwarded-proto");
+          const host =
+            forwardedHost ?? request.headers.get("host") ?? request.nextUrl.host;
+          const proto =
+            forwardedProto ??
+            (request.nextUrl.protocol === "https:" ? "https" : "http");
+          return `${proto}://${host}`;
+        })();
+
   const redirectUri = new URL(
     "/api/logto/sign-in-callback",
-    request.nextUrl.origin,
+    appOrigin,
   ).toString();
 
   // ── PKCE ─────────────────────────────────────────────────────────────────
