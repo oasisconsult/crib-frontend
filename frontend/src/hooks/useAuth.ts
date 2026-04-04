@@ -120,9 +120,10 @@ export function useAuth() {
           await logout({ reason: "refresh_token_expired" });
           return null;
         }
-        const { accessToken, role, orgId, expiresIn } = (await res.json()) as {
+        const { accessToken, role, roles, orgId, expiresIn } = (await res.json()) as {
           accessToken: string;
           role: string;
+          roles?: string[];
           orgId?: string;
           expiresIn: number;
         };
@@ -130,8 +131,8 @@ export function useAuth() {
         const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
         tokenStore.setExpiry(expiresAt);
         scheduleRefreshAt(expiresAt);
-        if (user && user.role !== role)
-          setUser({ ...user, role: role as User["role"] });
+        if (user && (user.role !== role || roles))
+          setUser({ ...user, role: role as User["role"], roles: (roles ?? [role]) as User["roles"] });
         if (orgId) setActiveOrg(orgId);
         emitAudit({ action: "auth.token_refresh", userId: user?.id, orgId });
         return accessToken;
@@ -250,16 +251,17 @@ export function useAuth() {
         });
         if (!res.ok) return false;
 
-        const { role, expiresIn } = (await res.json()) as {
+        const { role, roles, expiresIn } = (await res.json()) as {
           accessToken: string; // cookie is updated server-side; we don't use the value
           role: string;
+          roles?: string[];
           expiresIn: number;
         };
         const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
         tokenStore.setExpiry(expiresAt);
         scheduleRefreshAt(expiresAt);
         setActiveOrg(orgId);
-        if (user) setUser({ ...user, role: role as User["role"] });
+        if (user) setUser({ ...user, role: role as User["role"], roles: (roles ?? [role]) as User["roles"] });
         emitAudit({ action: "auth.org_switch", userId: user?.id, orgId });
 
         const { data: userData } = await apiClient.get<User>("/me");

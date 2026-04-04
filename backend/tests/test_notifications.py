@@ -46,7 +46,7 @@ async def test_list_templates_empty(client: AsyncClient, ctx):
 @pytest.mark.asyncio
 async def test_list_templates_returns_own_org(client: AsyncClient, ctx, db_session):
     await make_notification_template(db_session, ctx["org"])
-    other_org = await make_organisation(db_session)
+    other_org = await make_organisation(db_session, logto_org_id="org_other_notif_tmpl")
     await make_notification_template(db_session, other_org, name="Other Org Template")
     await db_session.flush()
 
@@ -77,7 +77,7 @@ async def test_create_template(client: AsyncClient, ctx):
     assert body["trigger"] == "rent_due"
     assert body["channel"] == "email"
     assert "tenant_name" in body["variables"]
-    assert body["is_active"] is True
+    assert body["isActive"] is True
 
 
 # ── Template get ───────────────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ async def test_update_template(client: AsyncClient, ctx, db_session):
     assert r.status_code == 200
     body = r.json()
     assert body["name"] == "Updated Name"
-    assert body["is_active"] is False
+    assert body["isActive"] is False
 
 
 # ── Template delete (soft) ─────────────────────────────────────────────────────
@@ -190,7 +190,7 @@ async def test_list_notifications_empty(client: AsyncClient, ctx):
 @pytest.mark.asyncio
 async def test_list_notifications_cross_org_isolation(client: AsyncClient, ctx, db_session):
     await make_notification(db_session, ctx["org"])
-    other_org = await make_organisation(db_session)
+    other_org = await make_organisation(db_session, logto_org_id="org_other_notif")
     await make_notification(db_session, other_org)
     await db_session.flush()
 
@@ -232,7 +232,7 @@ async def test_send_notification_in_app(client: AsyncClient, ctx):
     body = r.json()
     assert body["channel"] == "in_app"
     assert body["state"] == "queued"
-    assert body["recipient_name"] == "Test User"
+    assert body["recipientName"] == "Test User"
 
 
 @pytest.mark.asyncio
@@ -253,7 +253,7 @@ async def test_send_notification_email(client: AsyncClient, ctx):
     assert r.status_code == 201
     body = r.json()
     assert body["channel"] == "email"
-    assert body["recipient_email"] == "alice@example.com"
+    assert body["recipientEmail"] == "alice@example.com"
     assert body["state"] == "queued"
 
 
@@ -265,9 +265,9 @@ async def test_get_stats_empty(client: AsyncClient, ctx):
     assert r.status_code == 200
     body = r.json()
     assert body["total"] == 0
-    assert body["delivery_rate"] == 0.0
-    assert body["read_rate"] == 0.0
-    assert body["by_channel"] == {}
+    assert body["deliveryRate"] == 0.0
+    assert body["readRate"] == 0.0
+    assert body["byChannel"] == {}
 
 
 @pytest.mark.asyncio
@@ -285,8 +285,8 @@ async def test_get_stats_counts(client: AsyncClient, ctx, db_session):
     assert body["total"] == 3
     assert body["failed"] == 1
     assert body["read"] == 1
-    assert "in_app" in body["by_channel"]
-    assert body["by_channel"]["in_app"] == 2
+    assert "in_app" in body["byChannel"]
+    assert body["byChannel"]["in_app"] == 2
 
 
 # ── Mark read ──────────────────────────────────────────────────────────────────
@@ -304,7 +304,7 @@ async def test_mark_read(client: AsyncClient, ctx, db_session):
     assert r.status_code == 200
     body = r.json()
     assert body["state"] == "read"
-    assert body["read_at"] is not None
+    assert body["readAt"] is not None
 
 
 @pytest.mark.asyncio

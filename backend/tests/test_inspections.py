@@ -50,7 +50,7 @@ async def test_list_inspections_empty(client: AsyncClient, ctx):  # ctx seeds th
 @pytest.mark.asyncio
 async def test_list_inspections_returns_own_org(client: AsyncClient, ctx, db_session):
     await make_inspection(db_session, ctx["org"], ctx["prop"])
-    other_org = await make_organisation(db_session)
+    other_org = await make_organisation(db_session, logto_org_id="org_other_insp")
     other_prop = await make_property(db_session, other_org)
     await make_inspection(db_session, other_org, other_prop)
     await db_session.flush()
@@ -85,7 +85,7 @@ async def test_create_inspection(client: AsyncClient, ctx):
     body = r.json()
     assert body["type"] == "routine"
     assert body["state"] == "scheduled"
-    assert body["inspector_name"] == "John Doe"
+    assert body["inspectorName"] == "John Doe"
     assert len(body["checklist"]) == 1
 
 
@@ -120,7 +120,7 @@ async def test_update_inspection(client: AsyncClient, ctx, db_session):
     )
     assert r.status_code == 200
     assert r.json()["summary"] == "All good"
-    assert r.json()["overall_condition"] == "good"
+    assert r.json()["overallCondition"] == "good"
 
 
 # ── Inspection state machine ───────────────────────────────────────────────────
@@ -139,7 +139,7 @@ async def test_inspection_full_lifecycle(client: AsyncClient, ctx, db_session):
     )
     assert r.status_code == 200
     assert r.json()["state"] == "in_progress"
-    assert r.json()["started_at"] is not None
+    assert r.json()["startedAt"] is not None
 
     # in_progress → completed
     r = await client.post(
@@ -149,7 +149,7 @@ async def test_inspection_full_lifecycle(client: AsyncClient, ctx, db_session):
     )
     assert r.status_code == 200
     assert r.json()["state"] == "completed"
-    assert r.json()["completed_at"] is not None
+    assert r.json()["completedAt"] is not None
 
     # completed → approved
     r = await client.post(
@@ -159,7 +159,7 @@ async def test_inspection_full_lifecycle(client: AsyncClient, ctx, db_session):
     )
     assert r.status_code == 200
     assert r.json()["state"] == "approved"
-    assert r.json()["approved_at"] is not None
+    assert r.json()["approvedAt"] is not None
 
 
 @pytest.mark.asyncio
@@ -211,7 +211,7 @@ async def test_add_inspection_photos(client: AsyncClient, ctx, db_session):
         headers=auth_headers(),
     )
     assert r.status_code == 200
-    assert len(r.json()["photo_urls"]) == 2
+    assert len(r.json()["photoUrls"]) == 2
 
 
 # ── Maintenance list ───────────────────────────────────────────────────────────
@@ -282,7 +282,7 @@ async def test_update_maintenance_issue(client: AsyncClient, ctx, db_session):
     )
     assert r.status_code == 200
     assert r.json()["priority"] == "urgent"
-    assert r.json()["estimated_cost"] == 150000.0
+    assert r.json()["estimatedCost"] == 150000.0
 
 
 # ── Maintenance state machine ──────────────────────────────────────────────────
@@ -302,8 +302,8 @@ async def test_maintenance_full_lifecycle(client: AsyncClient, ctx, db_session):
     assert r.status_code == 200
     body = r.json()
     assert body["state"] == "assigned"
-    assert body["assigned_to"] == "Bob Plumber"
-    assert body["assigned_at"] is not None
+    assert body["assignedTo"] == "Bob Plumber"
+    assert body["assignedAt"] is not None
 
     # assigned → in_progress
     r = await client.post(
@@ -313,7 +313,7 @@ async def test_maintenance_full_lifecycle(client: AsyncClient, ctx, db_session):
     )
     assert r.status_code == 200
     assert r.json()["state"] == "in_progress"
-    assert r.json()["started_at"] is not None
+    assert r.json()["startedAt"] is not None
 
     # in_progress → resolved
     r = await client.post(
@@ -323,7 +323,7 @@ async def test_maintenance_full_lifecycle(client: AsyncClient, ctx, db_session):
     )
     assert r.status_code == 200
     assert r.json()["state"] == "resolved"
-    assert r.json()["resolved_at"] is not None
+    assert r.json()["resolvedAt"] is not None
 
     # resolved → closed
     r = await client.post(
@@ -333,7 +333,7 @@ async def test_maintenance_full_lifecycle(client: AsyncClient, ctx, db_session):
     )
     assert r.status_code == 200
     assert r.json()["state"] == "closed"
-    assert r.json()["closed_at"] is not None
+    assert r.json()["closedAt"] is not None
 
 
 @pytest.mark.asyncio

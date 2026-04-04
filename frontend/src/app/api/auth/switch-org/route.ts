@@ -1,7 +1,7 @@
 // Node runtime — server-to-server Logto token exchange needs LOGTO_ENDPOINT
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE, cookieOpts, TTL } from "@/lib/cookies";
-import { getOrgScopedToken, extractRole, OidcError } from "@/lib/oidc";
+import { getOrgScopedToken, extractRole, extractRoles, OidcError } from "@/lib/oidc";
 import { decodeJwt } from "@/lib/auth";
 
 /**
@@ -55,10 +55,12 @@ export async function POST(request: NextRequest) {
   }
 
   const role = extractRole(tokens.access_token);
+  const roles = extractRoles(tokens.access_token);
   const response = NextResponse.json({
     accessToken: tokens.access_token,
     expiresIn: tokens.expires_in,
     role,
+    roles,
     orgId,
   });
 
@@ -67,6 +69,10 @@ export async function POST(request: NextRequest) {
     maxAge: tokens.expires_in,
   });
   response.cookies.set(COOKIE.ROLE, role, {
+    ...cookieOpts.session,
+    maxAge: tokens.expires_in,
+  });
+  response.cookies.set(COOKIE.ROLES, roles.join(","), {
     ...cookieOpts.session,
     maxAge: tokens.expires_in,
   });

@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
     accessToken: session.accessToken,
     expiresIn: session.expiresIn,
     role: session.role,
+    roles: session.roles,
     orgId: session.orgId,
   });
 
@@ -49,6 +50,10 @@ export async function POST(request: NextRequest) {
     maxAge: session.expiresIn,
   });
   response.cookies.set(COOKIE.ROLE, session.role, {
+    ...cookieOpts.session,
+    maxAge: session.expiresIn,
+  });
+  response.cookies.set(COOKIE.ROLES, session.roles.join(","), {
     ...cookieOpts.session,
     maxAge: session.expiresIn,
   });

@@ -92,12 +92,28 @@ DEV_USERS: dict[str, TokenClaims] = {
         email="tenant@dev.local",
         name="Dev Tenant",
     ),
-    # Short aliases for tests
-    "owner-1": TokenClaims(sub="dev_owner1", org_id="org_dev", org_roles=["owner"]),
-    "manager-1": TokenClaims(
-        sub="dev_manager1", org_id="org_dev", org_roles=["manager"]
+    # Multi-role fixtures — e.g. a platform superadmin who also manages an org
+    "superadmin-manager-1": TokenClaims(
+        sub="dev_superadmin_manager1",
+        org_id="org_dev",
+        org_roles=["superadmin", "manager"],
+        email="super.manager@crib.ug",
+        name="Super Manager",
     ),
-    "superadmin-1": TokenClaims(sub="dev_superadmin1", org_roles=["superadmin"]),
+    "owner-manager-1": TokenClaims(
+        sub="dev_owner_manager1",
+        org_id="org_dev",
+        org_roles=["owner", "manager"],
+        email="owner.manager@crib.ug",
+        name="Owner Manager",
+    ),
+    # Short aliases for tests
+    "tenant-2": TokenClaims(sub="dev_tenant2", org_id="org_dev", org_roles=["tenant"], email="tenant2@dev.local"),
+    "owner-1": TokenClaims(sub="dev_owner1", org_id="org_dev", org_roles=["owner"], email="owner@dev.local"),
+    "manager-1": TokenClaims(
+        sub="dev_manager1", org_id="org_dev", org_roles=["manager"], email="manager@dev.local"
+    ),
+    "superadmin-1": TokenClaims(sub="dev_superadmin1", org_roles=["superadmin"], email="superadmin@dev.local"),
 }
 
 

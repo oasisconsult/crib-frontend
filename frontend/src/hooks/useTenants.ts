@@ -76,6 +76,20 @@ export function useApproveOnboarding() {
   });
 }
 
+export function useRejectOnboarding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tenantId, reason }: { tenantId: string; reason: string }) =>
+      tenantsApi.rejectOnboarding(tenantId, reason),
+    onSuccess: (_, { tenantId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.detail(tenantId) });
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.all() });
+      toast.success("Application rejected");
+    },
+    onError: () => toast.error("Failed to reject application"),
+  });
+}
+
 export function useUploadTenantDocument() {
   const qc = useQueryClient();
   return useMutation({

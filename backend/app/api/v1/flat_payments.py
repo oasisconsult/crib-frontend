@@ -19,7 +19,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_org_access
+from app.api.deps import CurrentUser, get_tenant_record, require_org_access
 from app.core.database import get_db
 from app.schemas.payment import PaymentCreateFlat, PaymentOut
 from app.services import payment_service as svc
@@ -40,16 +40,25 @@ async def list_payments(
     category: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
-    current_user=_read,
+    current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
     """List all payments for the organisation, optionally filtered by lease."""
+    if current_user.org_id is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="No organisation context")
+
+    # Tenants only see payments tied to their own leases.
+    tenant_record = await get_tenant_record(current_user, db)
+    tenant_id_filter = tenant_record.id if tenant_record else None
+
     return await svc.list_payments_org(
         current_user.org_id,
         db,
         status_filter=payment_status,
         category=category,
         lease_id_filter=lease_id,
+        tenant_id_filter=tenant_id_filter,
         page=page,
         page_size=page_size,
     )

@@ -11,7 +11,7 @@ interface Props {
 
 export default function OnboardingPage({ params }: Props) {
   const { token } = use(params);
-  const { data: invite, isLoading, error } = useOnboardingByToken(token);
+  const { data, isLoading, error } = useOnboardingByToken(token);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-4 sm:p-6">
@@ -30,7 +30,7 @@ export default function OnboardingPage({ params }: Props) {
             <div className="h-4 w-48 bg-muted rounded animate-pulse" />
             <div className="h-96 bg-muted rounded-xl animate-pulse" />
           </div>
-        ) : error || !invite ? (
+        ) : error || !data ? (
           <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
             <h2 className="text-lg font-semibold text-destructive">Invalid or Expired Link</h2>
             <p className="text-sm text-muted-foreground mt-2">
@@ -43,12 +43,11 @@ export default function OnboardingPage({ params }: Props) {
             <div className="mb-6">
               <h1 className="text-2xl font-bold tracking-tight">Welcome to Crib</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Hi <span className="font-medium text-foreground">{invite.name}</span>! Complete
+                Hi <span className="font-medium text-foreground">{data.invite.name}</span>! Complete
                 your profile to activate your tenancy.
               </p>
             </div>
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            <OnboardingWizard token={token} invite={invite} tenant={null as any} />
+            <OnboardingWizard token={token} invite={data.invite} tenant={data.tenant} />
           </>
         )}
       </div>

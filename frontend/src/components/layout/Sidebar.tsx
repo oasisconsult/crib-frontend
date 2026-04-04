@@ -28,24 +28,27 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+import type { UserRole } from "@/types";
+
 interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  roles?: ("landlord" | "superadmin" | "tenant")[];
+  /** If set, at least one of the user's roles must be in this list. */
+  roles?: UserRole[];
   badge?: number;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/properties", label: "Properties", icon: Building2, roles: ["landlord", "superadmin"] },
-  { href: "/tenants", label: "Tenants", icon: Users, roles: ["landlord", "superadmin"] },
-  { href: "/leases", label: "Leases", icon: FileText, roles: ["landlord", "superadmin"] },
-  { href: "/payments", label: "Payments", icon: CreditCard, roles: ["landlord", "superadmin"] },
-  { href: "/inspections", label: "Inspections", icon: ClipboardList, roles: ["landlord", "superadmin"] },
-  { href: "/maintenance", label: "Maintenance", icon: Wrench, roles: ["landlord", "superadmin"] },
-  { href: "/notifications", label: "Notifications", icon: Bell, roles: ["landlord", "superadmin"] },
-  { href: "/analytics", label: "Analytics", icon: BarChart3, roles: ["landlord", "superadmin"] },
+  { href: "/properties", label: "Properties", icon: Building2, roles: ["owner", "manager", "superadmin"] },
+  { href: "/tenants", label: "Tenants", icon: Users, roles: ["owner", "manager", "superadmin"] },
+  { href: "/leases", label: "Leases", icon: FileText, roles: ["owner", "manager", "superadmin"] },
+  { href: "/payments", label: "Payments", icon: CreditCard, roles: ["owner", "manager", "superadmin"] },
+  { href: "/inspections", label: "Inspections", icon: ClipboardList, roles: ["owner", "manager", "superadmin", "maintenance"] },
+  { href: "/maintenance", label: "Maintenance", icon: Wrench, roles: ["owner", "manager", "superadmin", "maintenance"] },
+  { href: "/notifications", label: "Notifications", icon: Bell, roles: ["owner", "manager", "superadmin"] },
+  { href: "/analytics", label: "Analytics", icon: BarChart3, roles: ["owner", "manager", "superadmin"] },
   { href: "/admin", label: "Admin", icon: Shield, roles: ["superadmin"] },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
@@ -53,10 +56,10 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
-  const { role } = usePermissions();
+  const { roles } = usePermissions();
 
   const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.roles || item.roles.includes(role as "landlord" | "superadmin" | "tenant"),
+    (item) => !item.roles || item.roles.some((r) => roles.includes(r)),
   );
 
   return (

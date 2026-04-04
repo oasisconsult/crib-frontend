@@ -30,11 +30,11 @@ import { PermissionGate } from "@/components/common/PermissionGate";
 import { cn } from "@/utils/cn";
 
 const MOCK_USERS = [
-  { id: "1", name: "Tendo Mukasa",    email: "tendo@crib.ug",   role: "landlord", properties: 3, status: "active",   joined: "Jan 2026" },
-  { id: "2", name: "Grace Nabirye",   email: "grace@crib.ug",   role: "landlord", properties: 1, status: "active",   joined: "Feb 2026" },
+  { id: "1", name: "Tendo Mukasa",    email: "tendo@crib.ug",   role: "owner", properties: 3, status: "active",   joined: "Jan 2026" },
+  { id: "2", name: "Grace Nabirye",   email: "grace@crib.ug",   role: "owner", properties: 1, status: "active",   joined: "Feb 2026" },
   { id: "3", name: "Brian Ssempala",  email: "brian@crib.ug",   role: "tenant",   properties: 0, status: "active",   joined: "Feb 2026" },
   { id: "4", name: "Fatuma Nakato",   email: "fatuma@crib.ug",  role: "tenant",   properties: 0, status: "active",   joined: "Mar 2026" },
-  { id: "5", name: "Ronald Kiggundu", email: "ronald@crib.ug",  role: "landlord", properties: 2, status: "inactive", joined: "Jan 2026" },
+  { id: "5", name: "Ronald Kiggundu", email: "ronald@crib.ug",  role: "owner", properties: 2, status: "inactive", joined: "Jan 2026" },
   { id: "6", name: "Aisha Namusoke",  email: "aisha@crib.ug",   role: "tenant",   properties: 0, status: "pending",  joined: "Mar 2026" },
 ];
 

@@ -756,7 +756,7 @@ async def return_deposit(
             detail=f"Deposit is already {deposit.status}",
         )
 
-    total_deducted = sum(d["amount"] for d in (body.deductions or []))
+    total_deducted = sum(d.amount for d in (body.deductions or []))
     net_return = body.amount_returned
 
     if net_return + total_deducted > float(deposit.amount_held):
@@ -912,6 +912,7 @@ async def list_payments_org(
     status_filter: str | None = None,
     category: str | None = None,
     lease_id_filter: uuid.UUID | None = None,
+    tenant_id_filter: uuid.UUID | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
@@ -922,6 +923,11 @@ async def list_payments_org(
         q = q.where(Payment.category == category)
     if lease_id_filter:
         q = q.where(Payment.lease_id == lease_id_filter)
+    if tenant_id_filter:
+        from app.models.lease import Lease
+        q = q.join(Lease, Lease.id == Payment.lease_id).where(
+            Lease.tenant_id == tenant_id_filter
+        )
 
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(Payment.created_at.desc()).offset((page - 1) * page_size).limit(page_size)

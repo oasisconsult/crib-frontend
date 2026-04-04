@@ -13,6 +13,8 @@ import {
   User,
   Tag,
   StickyNote,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +35,7 @@ import { OnboardingProgress } from "@/components/tenants/OnboardingProgress";
 import { TenantDocumentsSection } from "@/components/tenants/TenantDocumentsSection";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatDate, getInitials } from "@/utils/formatters";
-import { useTenant, useUpdateTenant } from "@/hooks/useTenants";
+import { useTenant, useUpdateTenant, useApproveOnboarding, useRejectOnboarding } from "@/hooks/useTenants";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Tenant, TenantStatus } from "@/types";
 
@@ -272,6 +274,82 @@ function TenantNotesSection({ tenant }: { tenant: Tenant }) {
   );
 }
 
+function ApproveRejectSection({ tenant }: { tenant: Tenant }) {
+  const { mutate: approve, isPending: approving } = useApproveOnboarding();
+  const { mutate: reject, isPending: rejecting } = useRejectOnboarding();
+  const [rejectReason, setRejectReason] = useState("");
+  const [showRejectForm, setShowRejectForm] = useState(false);
+
+  if (tenant.onboardingState !== "submitted") return null;
+
+  return (
+    <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base text-amber-800 dark:text-amber-200">
+          Review Application
+        </CardTitle>
+        <p className="text-sm text-amber-700 dark:text-amber-300">
+          {tenant.firstName} {tenant.lastName} has submitted their onboarding application.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!showRejectForm ? (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
+              loading={approving}
+              onClick={() => approve(tenant.id)}
+            >
+              <CheckCircle className="h-4 w-4" />
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="flex-1"
+              onClick={() => setShowRejectForm(true)}
+            >
+              <XCircle className="h-4 w-4" />
+              Reject
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Reason for rejection (will be shown to tenant)…"
+              rows={3}
+              className="resize-none text-sm"
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => { setShowRejectForm(false); setRejectReason(""); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="flex-1"
+                loading={rejecting}
+                disabled={!rejectReason.trim()}
+                onClick={() => reject({ tenantId: tenant.id, reason: rejectReason })}
+              >
+                Confirm Rejection
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TenantDetailPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
@@ -419,6 +497,8 @@ export default function TenantDetailPage({ params }: Props) {
 
           {/* ── Sidebar ─────────────────────────────── */}
           <div className="space-y-6">
+            {canEdit && <ApproveRejectSection tenant={tenant} />}
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Onboarding Progress</CardTitle>

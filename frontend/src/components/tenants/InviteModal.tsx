@@ -12,7 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { useInviteTenant } from "@/hooks/useTenants";
+import { useProperties } from "@/hooks/useProperties";
 import type { TenantInvite } from "@/types";
 
 const schema = z.object({
@@ -35,16 +39,22 @@ export function InviteModal({ open, onOpenChange, propertyId, unitId }: InviteMo
   const [invite, setInvite] = useState<TenantInvite | null>(null);
   const [copied, setCopied] = useState(false);
   const { mutate: sendInvite, isPending } = useInviteTenant();
+  const { data: propertiesData } = useProperties({ pageSize: 100 });
+  const properties = propertiesData?.data ?? [];
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { propertyId: propertyId ?? "", unitId: unitId ?? "" },
   });
+
+  const selectedPropertyId = watch("propertyId");
 
   const inviteLink = invite
     ? `${window.location.origin}/onboarding/${invite.token}`
@@ -95,14 +105,37 @@ export function InviteModal({ open, onOpenChange, propertyId, unitId }: InviteMo
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="propertyId">Property ID <span className="text-destructive">*</span></Label>
-              <Input id="propertyId" placeholder="prop-1" error={!!errors.propertyId} {...register("propertyId")} />
+              <Label htmlFor="propertyId">Property <span className="text-destructive">*</span></Label>
+              {properties.length > 0 ? (
+                <Select
+                  value={selectedPropertyId}
+                  onValueChange={(v) => setValue("propertyId", v, { shouldValidate: true })}
+                >
+                  <SelectTrigger id="propertyId" className={errors.propertyId ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Select a property…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="propertyId"
+                  placeholder="Property ID"
+                  error={!!errors.propertyId}
+                  {...register("propertyId")}
+                />
+              )}
               {errors.propertyId && <p className="text-xs text-destructive">{errors.propertyId.message}</p>}
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="unitId">Unit ID (optional)</Label>
-              <Input id="unitId" placeholder="unit-1" {...register("unitId")} />
+              <Label htmlFor="unitId">Unit ID <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input id="unitId" placeholder="e.g. unit-1" {...register("unitId")} />
             </div>
 
             <DialogFooter>

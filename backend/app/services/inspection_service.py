@@ -179,7 +179,6 @@ async def list_inspections(
 ) -> dict:
     q = select(Inspection).where(
         Inspection.organisation_id == org_id,
-        Inspection.deleted_at.is_(None),
     )
     if property_id:
         q = q.where(Inspection.property_id == uuid.UUID(property_id))
@@ -314,7 +313,6 @@ async def list_maintenance(
 ) -> dict:
     q = select(MaintenanceIssue).where(
         MaintenanceIssue.organisation_id == org_id,
-        MaintenanceIssue.deleted_at.is_(None),
     )
     if property_id:
         q = q.where(MaintenanceIssue.property_id == uuid.UUID(property_id))

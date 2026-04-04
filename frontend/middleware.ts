@@ -76,20 +76,32 @@ export function middleware(request: NextRequest) {
   }
 
   // ── Role-based route guards ───────────────────────────────────────────────
-  const role = request.cookies.get("user_role")?.value ?? "";
+  // Prefer the comma-separated ROLES cookie; fall back to legacy ROLE cookie.
+  const rolesRaw = request.cookies.get("user_roles")?.value
+    ?? request.cookies.get("user_role")?.value
+    ?? "";
+  const roles = rolesRaw.split(",").map((r) => r.trim()).filter(Boolean);
 
   if (
     ADMIN_PREFIXES.some((p) => pathname.startsWith(p)) &&
-    role !== "superadmin"
+    !roles.includes("superadmin")
   ) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
   if (
     TENANT_PREFIXES.some((p) => pathname.startsWith(p)) &&
-    role !== "tenant"
+    !roles.includes("tenant")
   ) {
     return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  // Redirect pure tenants (no staff role) away from the staff dashboard.
+  const isStaff = ["superadmin", "owner", "manager", "maintenance"].some((r) =>
+    roles.includes(r),
+  );
+  if (pathname === "/" && !isStaff && roles.includes("tenant")) {
+    return NextResponse.redirect(new URL("/portal", request.url));
   }
 
   return NextResponse.next();

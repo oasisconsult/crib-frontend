@@ -77,9 +77,10 @@ async def active_lease(db_session: AsyncSession, org, unit, tenant):
         rent_day_of_month=1,
     )
     # Manually generate schedules for test isolation (bypasses activate_lease flow)
-    from app.services.payment_service import create_deposit_record, generate_rent_schedules
+    from app.services.payment_service import generate_rent_schedules
     await generate_rent_schedules(lease, db_session)
-    await create_deposit_record(lease, db_session)
+    # Pre-fund deposit — tests assert amountHeld == deposit_amount
+    await make_deposit(db_session, org, lease, amount_held=500_000)
     await db_session.flush()
     return lease
 

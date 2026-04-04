@@ -1,11 +1,26 @@
 """
 FastAPI dependency injection for authentication, authorisation, and DB sessions.
+
+Multi-role design
+-----------------
+A user's authoritative roles come from the JWT claims on every request:
+  - claims.org_roles  → organisation-scoped roles  (e.g. ["manager", "owner"])
+  - claims.app_roles  → global/platform roles      (e.g. ["superadmin"])
+
+CurrentUser.roles builds a de-duplicated list of Role enums from both sources.
+All guards (require_role, require_superadmin, require_org_access, …) use that
+list — never the single Profile.role field.
+
+Profile.role stores the *highest-priority* role purely as a display/notification
+convenience and is re-synced from the JWT on every authenticated request.
+
+Priority order (highest → lowest): superadmin > owner > manager > maintenance > tenant
 """
 
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable
 
 from fastapi import Depends, HTTPException, status
@@ -18,6 +33,54 @@ from app.models.organisation import Organisation
 from app.models.profile import Profile, Role
 
 
+# Highest-priority role wins when one DB value must represent many.
+_ROLE_PRIORITY: list[Role] = [
+    Role.superadmin,
+    Role.owner,
+    Role.manager,
+    Role.maintenance,
+    Role.tenant,
+]
+
+
+def _roles_from_claims(claims: TokenClaims) -> list[Role]:
+    """
+    Build a de-duplicated, priority-ordered list of Role enums from JWT claims.
+
+    Logto org-scoped tokens may carry role names in two formats:
+      - plain:            "manager"
+      - org-prefixed:     "org_abc123:manager"   (ID token format)
+    Both are normalised to just the role name before mapping.
+    """
+    seen: set[Role] = set()
+    result: list[Role] = []
+
+    # Combine org_roles + app_roles (superadmin may come via either)
+    all_raw: list[str] = list(claims.org_roles) + list(claims.app_roles)
+
+    for raw in all_raw:
+        # Strip optional "orgId:" prefix
+        name = raw.split(":")[-1].strip().lower()
+        try:
+            role = Role(name)
+            if role not in seen:
+                seen.add(role)
+                result.append(role)
+        except ValueError:
+            pass  # Unknown role string — ignore
+
+    # Return sorted by priority so the first element is always the highest role
+    return sorted(result, key=lambda r: _ROLE_PRIORITY.index(r)) if result else [Role.tenant]
+
+
+def _primary_role(roles: list[Role]) -> Role:
+    """Return the single highest-priority role from a list."""
+    for r in _ROLE_PRIORITY:
+        if r in roles:
+            return r
+    return Role.tenant
+
+
 # ── CurrentUser context object ────────────────────────────────────────────────
 
 
@@ -25,6 +88,11 @@ from app.models.profile import Profile, Role
 class CurrentUser:
     profile: Profile
     claims: TokenClaims
+    roles: list[Role] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if not self.roles:
+            self.roles = _roles_from_claims(self.claims)
 
     @property
     def id(self) -> uuid.UUID:
@@ -40,13 +108,15 @@ class CurrentUser:
 
     @property
     def role(self) -> Role:
-        return self.profile.role
+        """Primary (highest-priority) role — kept for backwards compatibility."""
+        return _primary_role(self.roles)
 
     def has_role(self, *roles: Role) -> bool:
-        return self.profile.role in roles
+        """True if the user holds ANY of the given roles."""
+        return bool(set(self.roles) & set(roles))
 
     def is_owner_or_manager(self) -> bool:
-        return self.profile.role in (Role.owner, Role.manager)
+        return self.has_role(Role.owner, Role.manager, Role.superadmin)
 
 
 # ── Profile upsert ────────────────────────────────────────────────────────────
@@ -55,7 +125,8 @@ class CurrentUser:
 async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
     """
     Get or create a Profile for the authenticated user.
-    Updates cached email and last_seen_at on every call.
+    Re-syncs the primary role from JWT on every call so Profile.role always
+    reflects the current highest privilege the user holds in Logto.
     """
     from datetime import datetime, timezone
 
@@ -70,21 +141,14 @@ async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
         org = org_result.scalar_one_or_none()
 
     now = datetime.now(timezone.utc)
+    primary = _primary_role(_roles_from_claims(claims))
 
     if profile is None:
-        role = Role.tenant
-        if "superadmin" in claims.org_roles:
-            role = Role.superadmin
-        elif "owner" in claims.org_roles:
-            role = Role.owner
-        elif "manager" in claims.org_roles:
-            role = Role.manager
-
         profile = Profile(
             logto_sub=claims.sub,
             logto_org_id=claims.org_id,
             organisation_id=org.id if org else None,
-            role=role,
+            role=primary,
             display_name=claims.name,
             email=claims.email,
             last_seen_at=now,
@@ -94,6 +158,8 @@ async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
     else:
         profile.email = claims.email or profile.email
         profile.last_seen_at = now
+        # Re-sync primary role on every request (Logto is the source of truth)
+        profile.role = primary
         if claims.org_id and profile.logto_org_id != claims.org_id:
             profile.logto_org_id = claims.org_id
             if org:
@@ -154,12 +220,12 @@ async def get_m2m_context(
 
 
 def require_role(*roles: Role) -> Callable:
-    """Ensure the current user has one of the specified roles."""
+    """Ensure the current user holds at least one of the specified roles."""
 
     async def _guard(
         current_user: CurrentUser = Depends(get_current_user),
     ) -> CurrentUser:
-        if current_user.role not in roles:
+        if not current_user.has_role(*roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Required role(s): {[r.value for r in roles]}",
@@ -175,7 +241,7 @@ def require_superadmin() -> Callable:
     async def _guard(
         current_user: CurrentUser = Depends(get_current_user),
     ) -> CurrentUser:
-        if current_user.role != Role.superadmin:
+        if not current_user.has_role(Role.superadmin):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Superadmin role required",
@@ -183,6 +249,25 @@ def require_superadmin() -> Callable:
         return current_user
 
     return _guard
+
+
+async def get_tenant_record(
+    current_user: CurrentUser,
+    db: AsyncSession,
+) -> "Tenant | None":
+    """
+    If the current user holds the tenant role, return their Tenant record.
+    Returns None for org-level users (owner/manager/superadmin).
+    Used to auto-scope list endpoints so tenants only see their own records.
+    """
+    from app.models.tenant import Tenant
+
+    if not current_user.has_role(Role.tenant):
+        return None
+    result = await db.execute(
+        select(Tenant).where(Tenant.logto_user_id == current_user.claims.sub)
+    )
+    return result.scalar_one_or_none()
 
 
 def require_org_access(allow_tenant_own: bool = False) -> Callable:

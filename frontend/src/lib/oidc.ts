@@ -13,8 +13,10 @@ import { LOGTO_APP_ID, LOGTO_APP_SECRET, API_RESOURCE } from "./config";
 import { decodeJwt } from "./auth";
 import type { UserRole } from "@/types";
 
+const KNOWN_ROLES: UserRole[] = ["superadmin", "owner", "manager", "maintenance", "tenant"];
+const ROLE_PRIORITY: UserRole[] = ["superadmin", "owner", "manager", "maintenance", "tenant"];
+
 function tokenEndpoint(): string {
-  // Read at call time so Edge runtime picks up LOGTO_ENDPOINT correctly
   const base =
     process.env.LOGTO_ENDPOINT ??
     process.env.NEXT_PUBLIC_LOGTO_ENDPOINT ??
@@ -42,7 +44,10 @@ export interface SessionTokens {
   accessToken: string;
   refreshToken?: string;
   expiresIn: number;
+  /** Primary (highest-priority) role — for backwards compat. */
   role: UserRole;
+  /** Full list of roles extracted from the JWT. */
+  roles: UserRole[];
   orgId?: string;
 }
 
@@ -65,13 +70,7 @@ async function postToTokenEndpoint(
 
   if (!res.ok) {
     const text = await res.text();
-    console.error(
-      "[oidc] Token endpoint error:",
-      res.status,
-      text,
-      "url:",
-      url,
-    );
+    console.error("[oidc] Token endpoint error:", res.status, text, "url:", url);
     throw new OidcError(res.status, text);
   }
 
@@ -90,30 +89,53 @@ export class OidcError extends Error {
 
 // ── Role extraction ──────────────────────────────────────────────────────────
 
-export function extractRole(accessToken: string): UserRole {
+/**
+ * Extract ALL roles from a JWT access token.
+ *
+ * Logto may carry roles in two claims:
+ *   organization_roles — org-scoped roles, plain ("manager") or prefixed ("orgId:manager")
+ *   roles              — global/app-level roles ("superadmin")
+ *
+ * Returns a de-duplicated, priority-ordered list.
+ */
+export function extractRoles(accessToken: string): UserRole[] {
   const claims = decodeJwt(accessToken);
-  if (!claims) return "owner" as UserRole;
+  if (!claims) return ["owner"];
 
-  const globalRoles = claims.roles ?? [];
-  const orgRoles = claims.organization_roles ?? [];
+  const globalRoles: string[] = claims.roles ?? [];
+  const orgRoles: string[] = claims.organization_roles ?? [];
 
-  if (globalRoles.includes("superadmin")) return "superadmin" as UserRole;
+  const seen = new Set<UserRole>();
+  const result: UserRole[] = [];
 
-  if (orgRoles.length > 0) {
-    // Org-scoped tokens use plain role names; ID tokens use "orgId:roleName"
-    const raw = orgRoles[0];
-    return (raw.includes(":") ? raw.split(":").pop()! : raw) as UserRole;
+  for (const raw of [...globalRoles, ...orgRoles]) {
+    // Strip optional "orgId:" prefix (ID token format)
+    const name = (raw.includes(":") ? raw.split(":").pop()! : raw)
+      .trim()
+      .toLowerCase() as UserRole;
+    if (KNOWN_ROLES.includes(name) && !seen.has(name)) {
+      seen.add(name);
+      result.push(name);
+    }
   }
 
-  return "owner" as UserRole;
+  if (result.length === 0) result.push("owner");
+
+  // Sort by priority so index 0 is always the highest role
+  return result.sort((a, b) => ROLE_PRIORITY.indexOf(a) - ROLE_PRIORITY.indexOf(b));
+}
+
+/**
+ * Extract the single highest-priority role (backwards compat).
+ * Prefer extractRoles() for new code.
+ */
+export function extractRole(accessToken: string): UserRole {
+  return extractRoles(accessToken)[0];
 }
 
 // ── Token exchange functions ─────────────────────────────────────────────────
 
-/**
- * Exchange an authorization code for tokens (PKCE flow).
- * Called once during the sign-in callback.
- */
+/** Exchange an authorization code for tokens (PKCE flow). */
 export async function exchangeCodeForTokens(
   code: string,
   codeVerifier: string,
@@ -129,13 +151,8 @@ export async function exchangeCodeForTokens(
   });
 }
 
-/**
- * Refresh an access token using a refresh token.
- * Logto rotates the refresh token on every use.
- */
-export async function refreshAccessToken(
-  refreshToken: string,
-): Promise<TokenSet> {
+/** Refresh an access token. Logto rotates the refresh token on every use. */
+export async function refreshAccessToken(refreshToken: string): Promise<TokenSet> {
   return postToTokenEndpoint({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
@@ -144,10 +161,7 @@ export async function refreshAccessToken(
   });
 }
 
-/**
- * Exchange a refresh token for an org-scoped access token.
- * The resulting token carries organization_id + organization_roles claims.
- */
+/** Exchange a refresh token for an org-scoped access token. */
 export async function getOrgScopedToken(
   refreshToken: string,
   orgId: string,
@@ -161,10 +175,7 @@ export async function getOrgScopedToken(
   });
 }
 
-/**
- * Revoke a refresh token at the Logto revocation endpoint.
- * Called during logout. Errors are swallowed — logout must always succeed.
- */
+/** Revoke a refresh token. Errors are swallowed — logout must always succeed. */
 export async function revokeToken(token: string): Promise<void> {
   try {
     const body = new URLSearchParams({
@@ -173,7 +184,6 @@ export async function revokeToken(token: string): Promise<void> {
       client_id: LOGTO_APP_ID,
     });
     if (LOGTO_APP_SECRET) body.set("client_secret", LOGTO_APP_SECRET);
-
     await fetch(revokeEndpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -188,22 +198,17 @@ export async function revokeToken(token: string): Promise<void> {
  * Full session token resolution:
  *  1. Refresh the base access token
  *  2. If an orgId is provided, exchange for an org-scoped token
- *  3. Extract role from the final access token
- *
- * Returns a normalised SessionTokens object ready to be written to cookies.
+ *  3. Extract role(s) from the final access token
  */
 export async function resolveSessionTokens(
   refreshToken: string,
   activeOrgId?: string,
 ): Promise<SessionTokens> {
-  // Step 1: base refresh
   const base = await refreshAccessToken(refreshToken);
 
   let accessToken = base.access_token;
-  // Use the new refresh token from the rotation if available
   const newRefreshToken = base.refresh_token ?? refreshToken;
 
-  // Step 2: org-scoped token
   if (activeOrgId) {
     try {
       const orgTokens = await getOrgScopedToken(newRefreshToken, activeOrgId);
@@ -213,16 +218,16 @@ export async function resolveSessionTokens(
     }
   }
 
-  // Step 3: extract role + org from final token
   const claims = decodeJwt(accessToken);
-  const role = extractRole(accessToken);
+  const roles = extractRoles(accessToken);
   const orgId = claims?.organization_id ?? activeOrgId;
 
   return {
     accessToken,
     refreshToken: newRefreshToken,
     expiresIn: base.expires_in,
-    role,
+    role: roles[0],
+    roles,
     orgId,
   };
 }

@@ -17,7 +17,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_org_access
+from app.api.deps import CurrentUser, get_tenant_record, require_org_access
 from app.core.database import get_db
 from app.schemas.lease import (
     LeaseActivate,
@@ -57,6 +57,11 @@ async def list_leases(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
+    # Tenants may only see their own leases — override any supplied tenantId param.
+    tenant_record = await get_tenant_record(current_user, db)
+    if tenant_record is not None:
+        tenant_id = str(tenant_record.id)
+
     return await svc.list_leases(
         current_user.org_id,
         db,

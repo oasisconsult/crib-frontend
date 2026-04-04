@@ -73,6 +73,7 @@ class NotificationTemplate(TimestampedBase):
     body: Mapped[str] = mapped_column(Text(), nullable=False)
     variables: Mapped[list] = mapped_column(JSONB(), nullable=False, default=list)
     is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self) -> str:
         return f"<NotificationTemplate {self.name!r} trigger={self.trigger} channel={self.channel}>"

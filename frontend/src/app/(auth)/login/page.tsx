@@ -60,13 +60,13 @@ export const DEV_USERS = [
   },
   {
     id: "user-landlord-1",
-    role: "landlord" as const,
+    role: "owner" as const,
     name: "Robert Mukasa",
     email: "robert@crib.ug",
     initials: "RM",
     description: "3 properties · Kampala",
     gradient: "from-blue-500 to-cyan-600",
-    badge: "Landlord",
+    badge: "Owner",
     badgeColor:
       "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
   },

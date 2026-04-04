@@ -21,8 +21,16 @@ export const COOKIE = {
   SESSION: "logto_session",
   /** Long-lived refresh token. Used for silent refresh and rotation. */
   REFRESH: "refresh_token",
-  /** User's role string. Read by middleware for RBAC route guards. */
+  /**
+   * Primary (highest-priority) role string — kept for backwards compat.
+   * Middleware uses ROLES for permission checks; ROLE is a display convenience.
+   */
   ROLE: "user_role",
+  /**
+   * Comma-separated list of all roles the user holds, e.g. "superadmin,manager".
+   * Authoritative for middleware role-based route guards.
+   */
+  ROLES: "user_roles",
   /** Currently active organisation ID. Persisted across refreshes. */
   ACTIVE_ORG: "active_org_id",
   /** One-time PKCE code_verifier. Cleared after callback. */

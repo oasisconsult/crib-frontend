@@ -1,22 +1,36 @@
 "use client";
 
 import { useAppStore } from "@/store/useAppStore";
-import { hasPermission, hasAnyPermission } from "@/utils/permissions";
+import {
+  hasRoleSetPermission,
+  hasRoleSetAnyPermission,
+} from "@/utils/permissions";
 import type { UserRole } from "@/types";
 
 export function usePermissions() {
   const user = useAppStore((s) => s.user);
-  const role = (user?.role ?? "tenant") as UserRole;
+
+  // Prefer full roles list; fall back to primary role for backwards compat
+  const roles: UserRole[] =
+    user?.roles && user.roles.length > 0
+      ? user.roles
+      : user?.role
+        ? [user.role as UserRole]
+        : ["tenant"];
+
+  const role = roles[0]; // primary role (highest priority)
 
   return {
     role,
-    can: (permission: Parameters<typeof hasPermission>[1]) =>
-      hasPermission(role, permission),
-    canAny: (permissions: Parameters<typeof hasAnyPermission>[1]) =>
-      hasAnyPermission(role, permissions),
-    isLandlord: role === "landlord" || role === "superadmin",
-    isManager: role === "manager",
-    isSuperAdmin: role === "superadmin",
-    isTenant: role === "tenant",
+    roles,
+    can: (permission: Parameters<typeof hasRoleSetPermission>[1]) =>
+      hasRoleSetPermission(roles, permission),
+    canAny: (permissions: Parameters<typeof hasRoleSetAnyPermission>[1]) =>
+      hasRoleSetAnyPermission(roles, permissions),
+    isOwnerOrAbove: roles.some((r) => r === "owner" || r === "superadmin"),
+    isManager: roles.includes("manager"),
+    isSuperAdmin: roles.includes("superadmin"),
+    isTenant: roles.includes("tenant"),
+    isMaintenance: roles.includes("maintenance"),
   };
 }

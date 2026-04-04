@@ -23,17 +23,24 @@ class ProfileOut(CamelModel):
     Matches the frontend User interface exactly.
 
     Frontend expects:
-      id, email, name, role, status, timezone, locale,
+      id, email, name, role, roles, status, timezone, locale,
       createdAt, updatedAt, phone?, avatar?, organisationId?
+
+    role  — primary (highest-priority) role string, kept for backwards compat
+    roles — full list of roles the user currently holds (from JWT claims)
     """
 
     id: str
     email: str
     name: str
+    display_name: str | None = None
     role: str
+    roles: list[str]
     status: str
     timezone: str
     locale: str
+    logto_sub: str
+    gdpr_consent_given: bool = False
     phone: str | None = None
     avatar: str | None = None
     organisation_id: str | None = None
@@ -46,31 +53,35 @@ class ProfilePatch(CamelModel):
     phone: str | None = None
 
 
-def _profile_out(p: object) -> ProfileOut:  # type: ignore[type-arg]
-    from app.models.profile import Profile
+def _profile_out(current_user: CurrentUser) -> ProfileOut:
+    p = current_user.profile
 
-    assert isinstance(p, Profile)
-
-    # Derive a display name: prefer display_name, fall back to email prefix
-    name = p.display_name or (p.email.split("@")[0] if p.email else "User")
-
-    # Derive status from the profile — profiles don't have a status field,
-    # so we map from anonymised_at (anonymised → inactive, else active)
+    display_name = p.display_name
+    name = display_name or (p.email.split("@")[0] if p.email else "User")
     status = "inactive" if p.anonymised_at else "active"
+
+    # SQLAlchemy DateTime columns are Python datetime at runtime;
+    # cast via Any to satisfy strict type checkers.
+    created_at: datetime = p.created_at  # type: ignore[assignment]
+    updated_at: datetime = p.updated_at  # type: ignore[assignment]
 
     return ProfileOut(
         id=str(p.id),
         email=p.email or "",
         name=name,
+        display_name=display_name,
         role=p.role.value,
+        roles=[r.value for r in current_user.roles],
         status=status,
-        timezone="Africa/Kampala",  # default — extend Profile model to store this if needed
-        locale="en-UG",  # default — extend Profile model to store this if needed
+        timezone="Africa/Kampala",
+        locale="en-UG",
+        logto_sub=p.logto_sub,
+        gdpr_consent_given=bool(p.gdpr_consent_given),
         phone=p.phone,
         avatar=p.avatar_url,
         organisation_id=str(p.organisation_id) if p.organisation_id else None,
-        created_at=p.created_at,
-        updated_at=p.updated_at,
+        created_at=created_at,
+        updated_at=updated_at,
     )
 
 
@@ -78,7 +89,7 @@ def _profile_out(p: object) -> ProfileOut:  # type: ignore[type-arg]
 async def get_me(
     current_user: CurrentUser = Depends(get_current_user),
 ) -> ProfileOut:
-    return _profile_out(current_user.profile)
+    return _profile_out(current_user)
 
 
 @router.post("/consent", response_model=ProfileOut)
@@ -86,11 +97,11 @@ async def record_consent(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProfileOut:
-    profile = current_user.profile
-    profile.gdpr_consent_given = True
-    profile.gdpr_consent_at = datetime.now(timezone.utc)
+    current_user.profile.gdpr_consent_given = True
+    current_user.profile.gdpr_consent_at = datetime.now(timezone.utc)  # type: ignore[assignment]
     await db.flush()
-    return _profile_out(profile)
+    await db.refresh(current_user.profile)
+    return _profile_out(current_user)
 
 
 @router.patch("", response_model=ProfileOut)
@@ -99,10 +110,10 @@ async def update_me(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ProfileOut:
-    profile = current_user.profile
     if body.display_name is not None:
-        profile.display_name = body.display_name
+        current_user.profile.display_name = body.display_name
     if body.phone is not None:
-        profile.phone = body.phone
+        current_user.profile.phone = body.phone
     await db.flush()
-    return _profile_out(profile)
+    await db.refresh(current_user.profile)
+    return _profile_out(current_user)

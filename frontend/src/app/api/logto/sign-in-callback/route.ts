@@ -10,6 +10,7 @@ import {
   exchangeCodeForTokens,
   getOrgScopedToken,
   extractRole,
+  extractRoles,
   OidcError,
 } from "@/lib/oidc";
 import { decodeJwt } from "@/lib/auth";
@@ -130,6 +131,7 @@ export async function GET(request: NextRequest) {
 
   // Set session cookies
   const role = extractRole(accessToken);
+  const roles = extractRoles(accessToken);
   const claims = decodeJwt(accessToken);
 
   response.cookies.set(COOKIE.SESSION, accessToken, {
@@ -137,6 +139,10 @@ export async function GET(request: NextRequest) {
     maxAge: tokens.expires_in,
   });
   response.cookies.set(COOKIE.ROLE, role, {
+    ...cookieOpts.session,
+    maxAge: tokens.expires_in,
+  });
+  response.cookies.set(COOKIE.ROLES, roles.join(","), {
     ...cookieOpts.session,
     maxAge: tokens.expires_in,
   });
