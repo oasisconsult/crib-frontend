@@ -1,0 +1,16 @@
+# Import all models so that Base.metadata is fully populated for create_all / alembic autogenerate.
+from app.models import (  # noqa: F401
+    inspection,
+    lease,
+    ledger,
+    mobile_money,
+    notification,
+    organisation,
+    payment,
+    payment_allocation,
+    profile,
+    property,
+    system_setting,
+    tenant,
+    wallet,
+)

@@ -7,7 +7,7 @@ from typing import Any
 
 from pydantic import Field, field_validator
 
-from app.schemas.common import CamelModel
+from app.schemas.common import CamelModel, PaginatedResponse
 
 
 # ── Rent Schedule ──────────────────────────────────────────────────────────────
@@ -33,7 +33,9 @@ class RentScheduleOut(CamelModel):
 # ── Payment ────────────────────────────────────────────────────────────────────
 
 class PaymentCreate(CamelModel):
-    rent_schedule_id: str
+    # Optional: if supplied the payment is linked to a specific schedule.
+    # If omitted, confirm_payment() allocates automatically (oldest-first).
+    rent_schedule_id: str | None = None
     amount: float = Field(gt=0)
     currency: str = "UGX"
     category: str = "rent"
@@ -63,7 +65,7 @@ class PaymentCreate(CamelModel):
 class PaymentCreateFlat(CamelModel):
     """Used by flat POST /payments — lease_id is supplied in the body."""
     lease_id: str
-    rent_schedule_id: str
+    rent_schedule_id: str | None = None
     amount: float = Field(gt=0)
     currency: str = "UGX"
     category: str = "rent"
@@ -176,3 +178,89 @@ class LedgerOut(CamelModel):
     # Payments summary
     total_payments: int
     total_confirmed: float
+
+
+# ── Payment Allocation ─────────────────────────────────────────────────────────
+
+class PaymentAllocationOut(CamelModel):
+    id: str
+    payment_id: str
+    rent_schedule_id: str
+    amount_applied: float
+    created_at: str
+    updated_at: str
+
+
+# ── Ledger ─────────────────────────────────────────────────────────────────────
+
+class LedgerEntryOut(CamelModel):
+    id: str
+    organisation_id: str
+    lease_id: str
+    entry_type: str           # "credit" | "debit"
+    amount: float
+    reference_type: str       # "payment" | "refund" | "late_fee" | "deposit" | "overpayment" | "wallet"
+    reference_id: str
+    balance_after: float
+    description: str | None
+    created_at: str
+    updated_at: str
+
+
+class LedgerPageOut(CamelModel):
+    data: list[LedgerEntryOut]
+    total: int
+    page: int
+    page_size: int
+    has_next: bool
+    current_balance: float
+
+
+# ── Wallet ─────────────────────────────────────────────────────────────────────
+
+class WalletOut(CamelModel):
+    id: str
+    tenant_id: str
+    organisation_id: str
+    balance: float
+    currency: str
+    created_at: str
+    updated_at: str
+
+
+class WalletTransactionOut(CamelModel):
+    id: str
+    tenant_id: str
+    organisation_id: str
+    transaction_type: str     # "credit" | "debit"
+    amount: float
+    reference_type: str
+    reference_id: str | None
+    description: str | None
+    balance_after: float
+    created_at: str
+    updated_at: str
+
+
+WalletTransactionPageOut = PaginatedResponse[WalletTransactionOut]
+
+
+# ── Mobile Money ───────────────────────────────────────────────────────────────
+
+class MobileMoneyTransactionOut(CamelModel):
+    id: str
+    organisation_id: str
+    provider: str             # "MTN" | "AIRTEL"
+    external_id: str
+    phone_number: str
+    amount: float
+    currency: str
+    status: str               # pending | received | matched | unmatched | failed | expired
+    received_at: str | None
+    matched_payment_id: str | None
+    reference_id: str | None
+    created_at: str
+    updated_at: str
+
+
+MobileMoneyPageOut = PaginatedResponse[MobileMoneyTransactionOut]

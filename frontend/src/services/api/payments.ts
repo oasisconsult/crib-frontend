@@ -5,6 +5,12 @@ import type {
   LateFee,
   Deposit,
   LedgerEntry,
+  LedgerEntryV2,
+  LedgerPage,
+  PaymentAllocation,
+  TenantWallet,
+  WalletTransactionPage,
+  MobileMoneyPage,
   PaginatedResponse,
   QueryParams,
   DashboardStats,
@@ -74,9 +80,33 @@ export const paymentsApi = {
   returnDeposit: (leaseId: string, data: Partial<Deposit>) =>
     apiPatch<Deposit>(`/leases/${leaseId}/deposit/return`, data),
 
-  // Ledger
+  // Ledger (summary)
   getLedger: (leaseId: string, params?: QueryParams) =>
     apiGet<LedgerEntry[]>(`/leases/${leaseId}/ledger`, params),
+
+  // Ledger entries (immutable audit trail — new allocation layer)
+  getLedgerEntries: (leaseId: string, page = 1, pageSize = 50) =>
+    apiGet<LedgerPage>(`/leases/${leaseId}/ledger/entries`, { page, pageSize }),
+
+  // Payment allocations — which schedules a payment touched
+  getPaymentAllocations: (leaseId: string, paymentId: string) =>
+    apiGet<PaymentAllocation[]>(`/leases/${leaseId}/payments/${paymentId}/allocations`),
+
+  // Tenant wallet
+  getWallet: (tenantId: string) =>
+    apiGet<TenantWallet>(`/tenants/${tenantId}/wallet`),
+
+  getWalletTransactions: (tenantId: string, page = 1, pageSize = 20) =>
+    apiGet<WalletTransactionPage>(`/tenants/${tenantId}/wallet/transactions`, { page, pageSize }),
+
+  // Mobile money reconciliation
+  getMobileMoneyTransactions: (params?: {
+    status?: string;
+    provider?: string;
+    page?: number;
+    pageSize?: number;
+  }) =>
+    apiGet<MobileMoneyPage>("/mobile-money", params),
 };
 
 export const analyticsApi = {

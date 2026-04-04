@@ -104,3 +104,101 @@ export interface LedgerEntry {
   paymentId?: string;
   reference?: string;
 }
+
+// New allocation-layer types
+
+export interface LedgerEntryV2 {
+  id: string;
+  organisationId: string;
+  leaseId: string;
+  entryType: "credit" | "debit";
+  amount: number;
+  referenceType: string;
+  referenceId: string;
+  balanceAfter: number;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LedgerPage {
+  data: LedgerEntryV2[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+  currentBalance: number;
+}
+
+export interface PaymentAllocation {
+  id: string;
+  paymentId: string;
+  rentScheduleId: string;
+  amountApplied: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TenantWallet {
+  id: string;
+  tenantId: string;
+  organisationId: string;
+  balance: number;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WalletTransaction {
+  id: string;
+  tenantId: string;
+  organisationId: string;
+  transactionType: "credit" | "debit";
+  amount: number;
+  referenceType: string;
+  referenceId: string | null;
+  description: string | null;
+  balanceAfter: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WalletTransactionPage {
+  data: WalletTransaction[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+}
+
+export type MobileMoneyStatus =
+  | "pending"
+  | "received"
+  | "matched"
+  | "unmatched"
+  | "failed"
+  | "expired";
+
+export interface MobileMoneyTransaction {
+  id: string;
+  organisationId: string;
+  provider: "MTN" | "AIRTEL";
+  externalId: string;
+  phoneNumber: string;
+  amount: number;
+  currency: string;
+  status: MobileMoneyStatus;
+  receivedAt: string | null;
+  matchedPaymentId: string | null;
+  referenceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MobileMoneyPage {
+  data: MobileMoneyTransaction[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasNext: boolean;
+}

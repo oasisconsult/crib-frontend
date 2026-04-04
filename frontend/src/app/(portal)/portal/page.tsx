@@ -12,11 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { usePayments, useRecordPayment } from "@/hooks/usePayments";
+import { usePayments, useRecordPayment, useRentSchedule } from "@/hooks/usePayments";
 import { useLeases, useSignLease } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue } from "@/hooks/useInspections";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/utils/cn";
+import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
+import { WalletBalanceCard } from "@/components/payments/WalletBalanceCard";
 import type { Payment } from "@/types";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -391,7 +393,7 @@ export default function TenantPortalPage() {
   const user = useAppStore((s) => s.user);
 
   const { data: leasesData, isLoading: leasesLoading } = useLeases();
-  const { data: paymentsData } = usePayments();
+  const { data: paymentsData, isLoading: paymentsLoading } = usePayments();
   const { data: maintenanceData } = useMaintenanceIssues();
 
   // Resolve tenant's data
@@ -403,6 +405,8 @@ export default function TenantPortalPage() {
 
   // Filter to this tenant's data (by tenantId or reportedBy)
   const myLease = allLeases.find((l) => l.tenantId === userId) ?? allLeases[0];
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
   const myPayments = allPayments.filter((p) => p.tenantId === userId);
   const myMaintenance = allMaintenance.filter((m) => (m as any).reportedBy === userId);
   const openRequests = myMaintenance.filter((m) => !["resolved", "closed"].includes(m.state));
@@ -580,37 +584,24 @@ export default function TenantPortalPage() {
                 </Button>
               </div>
             )}
+
+            {/* Wallet credit balance — only shows when balance > 0 */}
+            {userId && <WalletBalanceCard tenantId={userId} />}
+
+            {/* Payment timeline — expandable allocation details per entry */}
             <Card>
               <CardContent className="pt-4">
-                {myPayments.length === 0 ? (
-                  <div className="text-center py-8">
-                    <CreditCard className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">No payment history yet.</p>
-                    {myLease && (
-                      <Button variant="outline" size="sm" className="mt-3" onClick={() => setDialog("pay")}>
-                        Make first payment
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-0 divide-y divide-border/50">
-                    {myPayments.map((p) => (
-                      <button
-                        key={p.id}
-                        className="w-full flex items-center justify-between py-3 text-left hover:bg-muted/30 rounded px-2 -mx-2 transition-colors group"
-                        onClick={() => setSelectedPayment(p)}
-                      >
-                        <div>
-                          <p className="text-sm font-medium font-mono">{p.reference}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(p.dueDate)}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <StatusBadge state={p.state} domain="payment" />
-                          <span className="text-sm font-medium">{formatCurrency(p.amount, p.currency)}</span>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      </button>
-                    ))}
+                <PaymentTimeline
+                  leaseId={myLease?.id ?? ""}
+                  payments={myPayments}
+                  schedules={schedulesData?.data ?? []}
+                  isLoading={paymentsLoading}
+                />
+                {!paymentsLoading && myPayments.length === 0 && myLease && (
+                  <div className="flex justify-center mt-2">
+                    <Button variant="outline" size="sm" onClick={() => setDialog("pay")}>
+                      Make first payment
+                    </Button>
                   </div>
                 )}
               </CardContent>

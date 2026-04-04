@@ -92,7 +92,57 @@ export function useWaiveLateFee() {
   });
 }
 
-// Analytics
+// ── Allocation-layer hooks ────────────────────────────────────────────────────
+
+export function useLedgerEntries(leaseId: string, page = 1, pageSize = 50) {
+  return useQuery({
+    queryKey: [...queryKeys.payments.ledger(leaseId), "entries", page, pageSize],
+    queryFn: () => paymentsApi.getLedgerEntries(leaseId, page, pageSize),
+    enabled: !!leaseId,
+  });
+}
+
+export function usePaymentAllocations(leaseId: string, paymentId: string) {
+  return useQuery({
+    queryKey: ["payments", leaseId, paymentId, "allocations"],
+    queryFn: () => paymentsApi.getPaymentAllocations(leaseId, paymentId),
+    enabled: !!leaseId && !!paymentId,
+  });
+}
+
+export function useTenantWallet(tenantId: string) {
+  return useQuery({
+    queryKey: ["wallet", tenantId],
+    queryFn: () => paymentsApi.getWallet(tenantId),
+    enabled: !!tenantId,
+    // 404 = no wallet yet — treat as null rather than error
+    retry: (count, err: any) => err?.response?.status !== 404 && count < 2,
+  });
+}
+
+export function useWalletTransactions(tenantId: string, page = 1) {
+  return useQuery({
+    queryKey: ["wallet", tenantId, "transactions", page],
+    queryFn: () => paymentsApi.getWalletTransactions(tenantId, page),
+    enabled: !!tenantId,
+  });
+}
+
+export function useMobileMoneyTransactions(params?: {
+  status?: string;
+  provider?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  return useQuery({
+    queryKey: ["mobile-money", params],
+    queryFn: () => paymentsApi.getMobileMoneyTransactions(params),
+    refetchInterval: 30_000,  // auto-refresh every 30 s for live monitoring
+  });
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
 const queryKeys_dashboard = queryKeys.dashboard;
 
 export function useDashboardStats() {

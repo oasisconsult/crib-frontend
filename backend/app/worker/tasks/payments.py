@@ -283,3 +283,85 @@ async def _send_rent_reminders_async() -> dict:
 
     log.info("send_rent_reminders complete", sent=sent)
     return {"sent": sent}
+
+
+# ── Mobile money polling tasks ─────────────────────────────────────────────────
+# Fallback for missed webhooks. Runs every 5 minutes per provider.
+# Polls for all pending MobileMoneyTransaction rows and checks their status
+# with the provider API, then triggers matching for any newly-received ones.
+
+@celery_app.task(
+    name="app.worker.tasks.payments.poll_mtn_transactions",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def poll_mtn_transactions(self) -> dict:
+    """Every 5 min: poll MTN for pending transactions, trigger matching on received."""
+    try:
+        return _run(_poll_mobile_money_async("MTN"))
+    except Exception as exc:
+        log.exception("poll_mtn_transactions failed")
+        raise self.retry(exc=exc)
+
+
+@celery_app.task(
+    name="app.worker.tasks.payments.poll_airtel_transactions",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def poll_airtel_transactions(self) -> dict:
+    """Every 5 min: poll Airtel for pending transactions, trigger matching on received."""
+    try:
+        return _run(_poll_mobile_money_async("AIRTEL"))
+    except Exception as exc:
+        log.exception("poll_airtel_transactions failed")
+        raise self.retry(exc=exc)
+
+
+async def _poll_mobile_money_async(provider_name: str) -> dict:
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.pool import NullPool
+
+    from app.core.config import get_settings
+    from app.integrations.payments.base import ProviderName
+    from app.integrations.payments.service import sync_pending_transactions
+    from app.models.mobile_money import MobileMoneyTransaction
+    from app.services.matching_service import match_transaction
+
+    settings = get_settings()
+    engine = create_async_engine(settings.database_url, poolclass=NullPool)
+
+    updated = 0
+    matched = 0
+
+    try:
+        async with AsyncSession(engine, expire_on_commit=False) as db:
+            async with db.begin():
+                pname = ProviderName(provider_name)
+                updated = await sync_pending_transactions(db, provider_name=pname)
+
+                # Now match any newly-received transactions
+                from sqlalchemy import select
+                result = await db.execute(
+                    select(MobileMoneyTransaction).where(
+                        MobileMoneyTransaction.provider == provider_name,
+                        MobileMoneyTransaction.status == "received",
+                    )
+                )
+                received = result.scalars().all()
+                for txn in received:
+                    payment = await match_transaction(db, txn)
+                    if payment:
+                        matched += 1
+    finally:
+        await engine.dispose()
+
+    log.info(
+        "poll_%s_complete updated=%s matched=%s",
+        provider_name.lower(),
+        updated,
+        matched,
+    )
+    return {"provider": provider_name, "updated": updated, "matched": matched}

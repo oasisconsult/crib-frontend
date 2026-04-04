@@ -58,5 +58,14 @@ celery_app.conf.update(
             "task": "app.worker.tasks.payments.send_rent_reminders",
             "schedule": 86400,
         },
+        # Mobile money polling — fallback for missed webhooks
+        "poll-mtn-transactions-every-5min": {
+            "task": "app.worker.tasks.payments.poll_mtn_transactions",
+            "schedule": 300,  # every 5 minutes
+        },
+        "poll-airtel-transactions-every-5min": {
+            "task": "app.worker.tasks.payments.poll_airtel_transactions",
+            "schedule": 300,
+        },
     },
 )

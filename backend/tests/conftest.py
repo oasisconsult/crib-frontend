@@ -19,6 +19,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
+import app.models  # noqa: F401 — registers all ORM models with Base.metadata
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.base import Base

@@ -1,5 +1,5 @@
 """
-Payments REST API — 16 endpoints nested under /leases/{lease_id}.
+Payments REST API — nested under /leases/{lease_id}.
 
 Endpoints:
   POST   /leases/{id}/schedules/generate
@@ -8,16 +8,18 @@ Endpoints:
   PATCH  /leases/{id}/schedules/{sid}/waive
   POST   /leases/{id}/payments
   GET    /leases/{id}/payments
+  GET    /leases/{id}/payments/export
   GET    /leases/{id}/payments/{pid}
   PATCH  /leases/{id}/payments/{pid}/confirm
   PATCH  /leases/{id}/payments/{pid}/refund
+  GET    /leases/{id}/payments/{pid}/allocations
   GET    /leases/{id}/late-fees
   POST   /leases/{id}/late-fees/{schedule_id}/apply
   PATCH  /leases/{id}/late-fees/{fid}/waive
   GET    /leases/{id}/deposit
   PATCH  /leases/{id}/deposit/return
   GET    /leases/{id}/ledger
-  GET    /leases/{id}/payments/export
+  GET    /leases/{id}/ledger/entries
 """
 
 import uuid
@@ -33,12 +35,17 @@ from app.schemas.payment import (
     DepositReturn,
     LateFeeOut,
     LateFeeWaive,
+    LedgerEntryOut,
     LedgerOut,
+    LedgerPageOut,
+    PaymentAllocationOut,
     PaymentCreate,
     PaymentOut,
     RentScheduleOut,
 )
 from app.services import payment_service as svc
+from app.services.ledger_service import get_ledger_entries
+from app.services.payment_allocation_service import get_allocations_for_payment
 
 router = APIRouter(prefix="/leases", tags=["payments"])
 
@@ -180,6 +187,33 @@ async def refund_payment(
     return await svc.refund_payment(payment_id, lease_id, current_user.org_id, db)
 
 
+@router.get(
+    "/{lease_id}/payments/{payment_id}/allocations",
+    response_model=list[PaymentAllocationOut],
+)
+async def list_payment_allocations(
+    lease_id: uuid.UUID,
+    payment_id: uuid.UUID,
+    current_user=_read,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return all allocation rows showing how a payment was distributed across schedules."""
+    # Verify the payment belongs to this lease / org before exposing allocations.
+    await svc.get_payment(payment_id, lease_id, current_user.org_id, db)
+    allocations = await get_allocations_for_payment(db, payment_id)
+    return [
+        PaymentAllocationOut(
+            id=str(a.id),
+            payment_id=str(a.payment_id),
+            rent_schedule_id=str(a.rent_schedule_id),
+            amount_applied=float(a.amount_applied),
+            created_at=a.created_at.isoformat(),
+            updated_at=a.updated_at.isoformat(),
+        )
+        for a in allocations
+    ]
+
+
 # ── Late Fees ──────────────────────────────────────────────────────────────────
 
 @router.get("/{lease_id}/late-fees", response_model=list[LateFeeOut])
@@ -245,4 +279,42 @@ async def get_ledger(
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
+    """Computed ledger summary (totals). Use /ledger/entries for the full audit trail."""
     return await svc.get_ledger(lease_id, current_user.org_id, db)
+
+
+@router.get("/{lease_id}/ledger/entries", response_model=LedgerPageOut)
+async def list_ledger_entries(
+    lease_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200, alias="pageSize"),
+    current_user=_read,
+    db: AsyncSession = Depends(get_db),
+):
+    """Paginated immutable audit trail for this lease, newest-first."""
+    # Verify lease belongs to this org.
+    await svc._get_lease_checked(lease_id, current_user.org_id, db)
+    raw = await get_ledger_entries(db, lease_id, page=page, page_size=page_size)
+    return LedgerPageOut(
+        data=[
+            LedgerEntryOut(
+                id=str(e.id),
+                organisation_id=str(e.organisation_id),
+                lease_id=str(e.lease_id),
+                entry_type=e.entry_type,
+                amount=float(e.amount),
+                reference_type=e.reference_type,
+                reference_id=str(e.reference_id),
+                balance_after=float(e.balance_after),
+                description=e.description,
+                created_at=e.created_at.isoformat(),
+                updated_at=e.updated_at.isoformat(),
+            )
+            for e in raw["data"]
+        ],
+        total=raw["total"],
+        page=raw["page"],
+        page_size=raw["page_size"],
+        has_next=raw["has_next"],
+        current_balance=raw["current_balance"],
+    )

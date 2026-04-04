@@ -32,6 +32,7 @@ from app.models.payment import (
     DepositStatus,
     LateFee,
     Payment,
+    PaymentCategory,
     PaymentStatus,
     RentSchedule,
     RentScheduleStatus,
@@ -47,6 +48,12 @@ from app.schemas.payment import (
     PaymentOut,
     RentScheduleOut,
 )
+from app.services.ledger_service import create_ledger_entry
+from app.services.payment_allocation_service import (
+    allocate_payment,
+    reverse_allocations,
+)
+from app.services.wallet_service import credit_wallet
 
 
 # ── Serialisers ────────────────────────────────────────────────────────────────
@@ -243,10 +250,17 @@ async def _get_late_fee(
     return f
 
 
-def _calculate_late_fee_amount(lease: Lease, amount_due: float) -> float:
+def _calculate_late_fee_amount(lease: Lease, outstanding: float) -> float:
+    """
+    Calculate the late fee on the *outstanding* balance (amount_due + existing
+    late_fee_applied - amount_paid), not on the original amount_due.
+
+    Using outstanding ensures tenants who have partially paid receive a smaller
+    fee proportional to what they actually owe.
+    """
     if lease.late_fee_type == "percent":
-        return round(float(lease.late_fee_value) / 100 * amount_due, 2)
-    return float(lease.late_fee_value)  # flat
+        return round(float(lease.late_fee_value) / 100 * outstanding, 2)
+    return float(lease.late_fee_value)  # flat fee is independent of balance
 
 
 # ── Called by lease_service on activation ──────────────────────────────────────
@@ -260,13 +274,19 @@ async def generate_rent_schedules(lease: Lease, db: AsyncSession) -> None:
 
 
 async def create_deposit_record(lease: Lease, db: AsyncSession) -> None:
-    """Create a deposit row if the lease has a deposit_amount."""
+    """
+    Create a deposit row with amount_held=0 if the lease has a deposit_amount.
+
+    Per design decision: amount_held is built up only when a Payment with
+    category=deposit is confirmed, not pre-populated at activation.
+    The deposit_amount on the lease tells us the expected total.
+    """
     if not lease.deposit_amount or float(lease.deposit_amount) <= 0:
         return
     deposit = Deposit(
         organisation_id=lease.organisation_id,
         lease_id=lease.id,
-        amount_held=float(lease.deposit_amount),
+        amount_held=0,  # starts at zero — funded by confirmed deposit payments
         amount_returned=0,
         deductions=[],
         status=DepositStatus.held,
@@ -352,14 +372,17 @@ async def create_payment(
         if existing:
             return _payment_out(existing)
 
-    # Validate schedule
-    schedule_id = uuid.UUID(body.rent_schedule_id)
-    schedule = await _get_schedule(schedule_id, lease_id, db)
-    if schedule.status == RentScheduleStatus.waived:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot record payment against a waived schedule",
-        )
+    # Optionally validate a specific schedule if one is supplied.
+    # Allocation happens at confirm time; this FK is kept for backward compat.
+    schedule_id: uuid.UUID | None = None
+    if body.rent_schedule_id:
+        schedule_id = uuid.UUID(body.rent_schedule_id)
+        schedule = await _get_schedule(schedule_id, lease_id, db)
+        if schedule.status == RentScheduleStatus.waived:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot record payment against a waived schedule",
+            )
 
     now = datetime.now(timezone.utc)
     payment = Payment(
@@ -430,7 +453,21 @@ async def confirm_payment(
     org_id: uuid.UUID,
     db: AsyncSession,
 ) -> PaymentOut:
-    await _get_lease_checked(lease_id, org_id, db)
+    """
+    Confirm a pending payment.
+
+    Steps (in order, all in one transaction):
+      1. Mark payment as confirmed.
+      2. If category == deposit: credit deposit.amount_held.
+      3. If category == rent / late_fee / other: run allocation engine
+         (distributes across pending/overdue schedules oldest-first).
+      4. If there is leftover (overpayment): credit the tenant's wallet
+         and write an overpayment ledger entry.
+      5. Write a credit ledger entry for the full payment amount.
+
+    The tenant_id is resolved from the lease's current_tenant_id.
+    """
+    lease = await _get_lease_checked(lease_id, org_id, db)
     p = await _get_payment(payment_id, lease_id, db)
 
     if p.status != PaymentStatus.pending:
@@ -439,19 +476,83 @@ async def confirm_payment(
             detail=f"Cannot confirm a payment with status '{p.status}'",
         )
 
+    # 1. Mark confirmed
     p.status = PaymentStatus.confirmed
-
-    # Update schedule
-    if p.rent_schedule_id:
-        schedule = await _get_schedule(p.rent_schedule_id, lease_id, db)
-        schedule.amount_paid = float(schedule.amount_paid) + float(p.amount)
-        total_due = float(schedule.amount_due) + float(schedule.late_fee_applied)
-        if float(schedule.amount_paid) >= total_due:
-            schedule.status = RentScheduleStatus.paid
-            schedule.paid_at = datetime.now(timezone.utc)
-
+    if not p.paid_at:
+        p.paid_at = datetime.now(timezone.utc)
     await db.flush()
-    await db.refresh(p, attribute_names=["status", "updated_at"])
+
+    # 2. Handle deposit payments — credit amount_held directly
+    if p.category == PaymentCategory.deposit:
+        deposit = await db.scalar(
+            select(Deposit).where(Deposit.lease_id == lease_id)
+        )
+        if deposit:
+            deposit.amount_held = round(float(deposit.amount_held) + float(p.amount), 2)
+            await db.flush()
+        await create_ledger_entry(
+            db,
+            organisation_id=org_id,
+            lease_id=lease_id,
+            entry_type="credit",
+            amount=float(p.amount),
+            reference_type="deposit",
+            reference_id=p.id,
+            description=f"Deposit payment via {p.method}",
+        )
+
+    else:
+        # 3. Allocate across pending/overdue schedules (oldest-first)
+        overpayment = await allocate_payment(db, lease_id, p)
+
+        # 4. Handle overpayment → tenant wallet
+        if overpayment > 0 and lease.tenant_id:
+            await credit_wallet(
+                db,
+                tenant_id=lease.tenant_id,
+                organisation_id=org_id,
+                amount=overpayment,
+                reference_type="overpayment",
+                reference_id=p.id,
+                description=f"Overpayment credit from payment {p.id}",
+            )
+            await create_ledger_entry(
+                db,
+                organisation_id=org_id,
+                lease_id=lease_id,
+                entry_type="credit",
+                amount=overpayment,
+                reference_type="overpayment",
+                reference_id=p.id,
+                description=f"Overpayment of {overpayment} credited to wallet",
+            )
+
+        # 5. Main credit ledger entry for the full payment
+        await create_ledger_entry(
+            db,
+            organisation_id=org_id,
+            lease_id=lease_id,
+            entry_type="credit",
+            amount=float(p.amount),
+            reference_type="payment",
+            reference_id=p.id,
+            description=f"Payment confirmed via {p.method}",
+        )
+
+    await db.refresh(p, attribute_names=["status", "paid_at", "updated_at"])
+
+    # Publish event (non-fatal — failure is swallowed inside publish_event)
+    from app.core.events import emit_payment_confirmed
+    await emit_payment_confirmed(
+        payment_id=str(p.id),
+        lease_id=str(lease_id),
+        organisation_id=str(org_id),
+        amount=float(p.amount),
+        currency=p.currency,
+        category=p.category,
+        method=p.method,
+    )
+
     return _payment_out(p)
 
 
@@ -461,31 +562,68 @@ async def refund_payment(
     org_id: uuid.UUID,
     db: AsyncSession,
 ) -> PaymentOut:
+    """
+    Refund a confirmed payment.
+
+    Steps:
+      1. Mark payment as refunded.
+      2. Reverse all PaymentAllocation rows (decrement schedule.amount_paid,
+         revert paid schedules to pending).
+      3. If it was a deposit payment: decrement deposit.amount_held.
+      4. Write a debit ledger entry (reversal).
+    """
     await _get_lease_checked(lease_id, org_id, db)
     p = await _get_payment(payment_id, lease_id, db)
 
     if p.status != PaymentStatus.confirmed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Only confirmed payments can be refunded",
+            detail="Only confirmed payments can be refunded",
         )
 
+    # 1. Mark refunded
     p.status = PaymentStatus.refunded
 
-    # Reverse schedule amount
-    if p.rent_schedule_id:
-        schedule = await _get_schedule(p.rent_schedule_id, lease_id, db)
-        schedule.amount_paid = max(0.0, float(schedule.amount_paid) - float(p.amount))
-        if schedule.status == RentScheduleStatus.paid:
-            schedule.status = RentScheduleStatus.pending
-            schedule.paid_at = None
+    # 2. Reverse schedule allocations
+    await reverse_allocations(db, payment_id=p.id, lease_id=lease_id)
+
+    # 3. Reverse deposit credit
+    if p.category == PaymentCategory.deposit:
+        deposit = await db.scalar(
+            select(Deposit).where(Deposit.lease_id == lease_id)
+        )
+        if deposit:
+            deposit.amount_held = max(0.0, float(deposit.amount_held) - float(p.amount))
+            await db.flush()
+
+    # 4. Debit ledger entry (reversal)
+    await create_ledger_entry(
+        db,
+        organisation_id=org_id,
+        lease_id=lease_id,
+        entry_type="debit",
+        amount=float(p.amount),
+        reference_type="refund",
+        reference_id=p.id,
+        description=f"Refund of payment {p.id}",
+    )
 
     await db.flush()
     await db.refresh(p, attribute_names=["status", "updated_at"])
+
+    # Publish event (non-fatal)
+    from app.core.events import emit_payment_refunded
+    await emit_payment_refunded(
+        payment_id=str(p.id),
+        lease_id=str(lease_id),
+        organisation_id=str(org_id),
+        amount=float(p.amount),
+    )
+
     return _payment_out(p)
 
 
-# ── Late Fees ──────────────────────────────────────────────────────────────────
+# ── Late Fees ─────────────────────────────────────────────��────────────────────
 
 async def list_late_fees(
     lease_id: uuid.UUID,
@@ -524,7 +662,12 @@ async def apply_late_fee(
             detail="Late fee already applied to this schedule",
         )
 
-    amount = _calculate_late_fee_amount(lease, float(schedule.amount_due))
+    outstanding = (
+        float(schedule.amount_due)
+        + float(schedule.late_fee_applied)
+        - float(schedule.amount_paid)
+    )
+    amount = _calculate_late_fee_amount(lease, outstanding)
     now = datetime.now(timezone.utc)
 
     fee = LateFee(

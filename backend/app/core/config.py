@@ -76,6 +76,24 @@ class Settings(BaseSettings):
     celery_broker_url: str = ""  # defaults to redis_url if empty
     celery_result_backend: str = ""
 
+    # ── MTN MoMo ─────────────────────────────────────────────────────────────
+    # Obtain from https://momodeveloper.mtn.com — one set of credentials per product.
+    mtn_subscription_key: str = ""          # Ocp-Apim-Subscription-Key
+    mtn_api_user_id: str = ""               # UUID provisioned via API user endpoint
+    mtn_api_key: str = ""                   # Secret retrieved after provisioning
+    mtn_base_url: str = "https://sandbox.momodeveloper.mtn.com"
+    mtn_environment: str = "sandbox"        # "sandbox" | "mtnuganda" | "mtncameroon" etc.
+    mtn_callback_host: str = ""             # Public HTTPS URL, e.g. "https://api.crib.app"
+    mtn_token_ttl_seconds: int = 3500       # access token expires in ~3600 s; refresh 100 s early
+
+    # ── Airtel Money ──────────────────────────────────────────────────────────
+    airtel_client_id: str = ""
+    airtel_client_secret: str = ""
+    airtel_base_url: str = "https://openapi.airtel.africa"
+    airtel_country: str = "UG"
+    airtel_currency: str = "UGX"
+    airtel_callback_host: str = ""          # Public HTTPS URL for payment callbacks
+
     # ── Notifications ─────────────────────────────────────────────────────────
     # SMS: "twilio" | "africastalking"
     sms_provider: str = "twilio"

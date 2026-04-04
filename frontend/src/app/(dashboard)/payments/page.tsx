@@ -78,6 +78,13 @@ export default function PaymentsPage() {
             Rent collection, deposits, and payment tracking
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push("/payments/reconciliation")}
+        >
+          Mobile Money Reconciliation
+        </Button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
