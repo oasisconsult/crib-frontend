@@ -1,0 +1,1 @@
+upgrade crib platform using file crib-upgrades.pdf as a guide, follow industry standard practices used by major property management platforms. upgrades should be secure, scalable, maintainable and follow GDPR practives. Write a comprehensive plan first before writing code, ask questions if not sure. Your code should be testable.

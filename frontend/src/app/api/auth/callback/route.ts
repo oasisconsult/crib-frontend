@@ -44,7 +44,7 @@
 //     body: new URLSearchParams({
 //       grant_type: "authorization_code",
 //       code,
-//       redirect_uri: `${appUrl}/api/auth/callback`,
+//       redirect_uri: `${appUrl}/api/logto/sign-in-callback`,
 //       client_id: process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "",
 //       resource: process.env.LOGTO_API_RESOURCE,
 //       code_verifier: codeVerifier,

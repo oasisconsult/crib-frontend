@@ -3,7 +3,14 @@
 import { useState } from "react";
 import { Building2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function SignupPage() {
   const [loading, setLoading] = useState(false);
@@ -13,10 +20,19 @@ export default function SignupPage() {
     const logtoUrl = new URL(
       `${process.env.NEXT_PUBLIC_LOGTO_ENDPOINT}/oidc/auth`,
     );
-    logtoUrl.searchParams.set("client_id", process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "");
-    logtoUrl.searchParams.set("redirect_uri", `${window.location.origin}/api/auth/callback`);
+    logtoUrl.searchParams.set(
+      "client_id",
+      process.env.NEXT_PUBLIC_LOGTO_APP_ID ?? "",
+    );
+    logtoUrl.searchParams.set(
+      "redirect_uri",
+      `${window.location.origin}/api/logto/sign-in-callback`,
+    );
     logtoUrl.searchParams.set("response_type", "code");
-    logtoUrl.searchParams.set("scope", "openid profile email phone roles offline_access");
+    logtoUrl.searchParams.set(
+      "scope",
+      "openid profile email phone roles offline_access",
+    );
     logtoUrl.searchParams.set("prompt", "create");
     logtoUrl.searchParams.set("state", btoa(JSON.stringify({ redirect: "/" })));
     window.location.href = logtoUrl.toString();
@@ -29,7 +45,9 @@ export default function SignupPage() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Building2 className="h-5 w-5" />
           </div>
-          <span className="text-2xl font-bold tracking-tight gradient-text">Crib</span>
+          <span className="text-2xl font-bold tracking-tight gradient-text">
+            Crib
+          </span>
         </div>
 
         <Card className="shadow-xl border-border/50">
@@ -43,11 +61,26 @@ export default function SignupPage() {
           <CardContent className="pt-4 space-y-4">
             <div className="grid grid-cols-1 gap-3">
               {[
-                { icon: "🏠", title: "Property Management", desc: "Manage unlimited properties and units" },
-                { icon: "📋", title: "Lease Workflows", desc: "End-to-end lease lifecycle management" },
-                { icon: "💳", title: "Payment Tracking", desc: "Automated rent collection and ledgers" },
+                {
+                  icon: "🏠",
+                  title: "Property Management",
+                  desc: "Manage unlimited properties and units",
+                },
+                {
+                  icon: "📋",
+                  title: "Lease Workflows",
+                  desc: "End-to-end lease lifecycle management",
+                },
+                {
+                  icon: "💳",
+                  title: "Payment Tracking",
+                  desc: "Automated rent collection and ledgers",
+                },
               ].map((f) => (
-                <div key={f.title} className="flex items-center gap-3 rounded-lg border border-border/50 p-3 bg-muted/30">
+                <div
+                  key={f.title}
+                  className="flex items-center gap-3 rounded-lg border border-border/50 p-3 bg-muted/30"
+                >
                   <span className="text-xl">{f.icon}</span>
                   <div>
                     <p className="text-sm font-medium">{f.title}</p>
@@ -74,7 +107,8 @@ export default function SignupPage() {
 
           <CardFooter className="pt-0">
             <p className="text-xs text-muted-foreground text-center w-full">
-              By creating an account you agree to our Terms of Service and Privacy Policy
+              By creating an account you agree to our Terms of Service and
+              Privacy Policy
             </p>
           </CardFooter>
         </Card>
