@@ -15,7 +15,6 @@ export const runtime = "edge";
 
 import { type NextRequest, NextResponse } from "next/server";
 import { COOKIE } from "@/lib/cookies";
-import { log } from "console";
 
 interface JwtPayload {
   exp?: number;
@@ -37,12 +36,6 @@ function decodePayload(token: string): JwtPayload | null {
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(COOKIE.SESSION)?.value;
-
-  console.log("[session] hasToken:", !!token);
-
-  if (token) {
-    console.log("[session] first 20 chars:", token.slice(0, 20));
-  }
 
   if (!token) {
     return NextResponse.json({ authenticated: false }, { status: 401 });

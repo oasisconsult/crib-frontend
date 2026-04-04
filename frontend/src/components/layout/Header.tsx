@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUIStore } from "@/store/useUIStore";
 import { useAppStore } from "@/store/useAppStore";
+import { useAuth } from "@/hooks/useAuth";
 import { getInitials } from "@/utils/formatters";
 import Link from "next/link";
 import {
@@ -20,6 +21,7 @@ import { PropertySwitcher } from "./PropertySwitcher";
 export function Header() {
   const { setMobileNavOpen, theme, setTheme, setCommandPaletteOpen } = useUIStore();
   const user = useAppStore((s) => s.user);
+  const { logout } = useAuth();
 
   const themeIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
   const ThemeIcon = themeIcon;
@@ -98,11 +100,15 @@ export function Header() {
               <Link href="/settings">Settings</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive" asChild>
-              <Link href="/api/auth/logout">
-                <LogOut className="mr-2 h-4 w-4" />
-                Sign out
-              </Link>
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault();
+                logout();
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

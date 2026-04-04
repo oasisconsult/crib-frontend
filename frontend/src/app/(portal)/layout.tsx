@@ -3,9 +3,11 @@
 import { Building2, LogOut } from "lucide-react";
 import { AuthInitializer } from "@/components/providers/AuthInitializer";
 import { useAppStore } from "@/store/useAppStore";
+import { useAuth } from "@/hooks/useAuth";
 
 function PortalNav() {
   const user = useAppStore((s) => s.user);
+  const { logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -24,13 +26,13 @@ function PortalNav() {
               <p className="text-sm font-medium leading-none">{user.name}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
             </div>
-            <a
-              href="/login"
+            <button
+              onClick={() => logout()}
               className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Sign out</span>
-            </a>
+            </button>
           </div>
         )}
       </div>
