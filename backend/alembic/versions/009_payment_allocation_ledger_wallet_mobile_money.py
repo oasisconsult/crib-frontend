@@ -73,6 +73,7 @@ def upgrade() -> None:
     """)
 
     # ── ledger_entries ─────────────────────────────────────────────────────────
+    op.execute("CREATE SEQUENCE IF NOT EXISTS ledger_entries_seq START 1")
     op.create_table(
         "ledger_entries",
         sa.Column(
@@ -93,6 +94,7 @@ def upgrade() -> None:
             sa.ForeignKey("leases.id", ondelete="CASCADE"),
             nullable=False,
         ),
+        sa.Column("seq", sa.BigInteger, nullable=False, server_default=sa.text("nextval('ledger_entries_seq')")),
         sa.Column("entry_type", sa.String(10), nullable=False),   # "credit" | "debit"
         sa.Column("amount", sa.Numeric(12, 2), nullable=False),
         sa.Column("reference_type", sa.String(50), nullable=False),
@@ -112,6 +114,7 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
+    op.create_index("ix_ledger_entries_seq", "ledger_entries", ["seq"])
     op.create_index("ix_ledger_entries_organisation_id", "ledger_entries", ["organisation_id"])
     op.create_index("ix_ledger_entries_lease_id", "ledger_entries", ["lease_id"])
     op.create_index("ix_ledger_entries_reference_id", "ledger_entries", ["reference_id"])
@@ -205,7 +208,7 @@ def upgrade() -> None:
         sa.Column(
             "tenant_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            sa.ForeignKey("tenants.id", ondelete="CASCADE"),
             nullable=False,
             unique=True,
         ),
@@ -252,7 +255,7 @@ def upgrade() -> None:
         sa.Column(
             "tenant_id",
             postgresql.UUID(as_uuid=True),
-            sa.ForeignKey("users.id", ondelete="CASCADE"),
+            sa.ForeignKey("tenants.id", ondelete="CASCADE"),
             nullable=False,
         ),
         sa.Column(
@@ -330,4 +333,5 @@ def downgrade() -> None:
     op.drop_table("tenant_wallets")
     op.drop_table("mobile_money_transactions")
     op.drop_table("ledger_entries")
+    op.execute("DROP SEQUENCE IF EXISTS ledger_entries_seq")
     op.drop_table("payment_allocations")
