@@ -19,7 +19,6 @@ from app.api.deps import CurrentUser, get_current_user
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.organisation import Organisation, Plan
-from app.models.profile import Role
 from app.schemas.common import CamelModel
 
 router = APIRouter(prefix="/organisations", tags=["organisations"])
@@ -118,7 +117,7 @@ async def provision_organisation(
     profile = current_user.profile
     profile.organisation_id = org.id
     profile.logto_org_id = logto_org_id
-    profile.role = Role.owner
+    profile.role = "owner"
     await db.flush()
 
     return OrganisationOut(

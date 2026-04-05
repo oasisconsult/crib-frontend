@@ -7,18 +7,25 @@ A user's authoritative roles come from the JWT claims on every request:
   - claims.org_roles  → organisation-scoped roles  (e.g. ["manager", "owner"])
   - claims.app_roles  → global/platform roles      (e.g. ["superadmin"])
 
-CurrentUser.roles builds a de-duplicated list of Role enums from both sources.
-All guards (require_role, require_superadmin, require_org_access, …) use that
-list — never the single Profile.role field.
+CurrentUser.roles builds a de-duplicated list of role name strings from both
+sources.  All guards (require_role, require_superadmin, require_org_access, …)
+use that list.
 
-Profile.role stores the *highest-priority* role purely as a display/notification
-convenience and is re-synced from the JWT on every authenticated request.
+Role ordering
+-------------
+Priority is stored in the `roles` table (migration 011) as an integer column.
+Lower value = higher privilege (superadmin=0, tenant=40).  The list is cached
+in-process for 5 minutes so every request doesn't hit the DB.
 
-Priority order (highest → lowest): superadmin > owner > manager > maintenance > tenant
+Profile.role stores the *highest-priority* role name purely as a display/
+notification convenience and is re-synced from the JWT on every authenticated
+request.
 """
 
 from __future__ import annotations
 
+import asyncio
+import time
 import uuid
 from dataclasses import dataclass, field
 from typing import Callable
@@ -30,55 +37,94 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.security import TokenClaims, extract_token_claims
 from app.models.organisation import Organisation
-from app.models.profile import Profile, Role
+from app.models.profile import Profile
+from app.models.rbac import RoleModel
 
 
-# Highest-priority role wins when one DB value must represent many.
-_ROLE_PRIORITY: list[Role] = [
-    Role.superadmin,
-    Role.owner,
-    Role.manager,
-    Role.maintenance,
-    Role.tenant,
-]
+# ── Role priority cache ───────────────────────────────────────────────────────
+# Loaded from the `roles` table, refreshed every 5 minutes.
+# Format: { "rolename": priority_int } — lower = higher privilege.
+
+_priority_cache: dict[str, int] = {}
+_priority_cache_at: float = 0.0
+_PRIORITY_TTL = 300.0   # seconds
+_PRIORITY_LOCK = asyncio.Lock()
+
+# Fallback order used only when the DB is unreachable on first load.
+_FALLBACK_PRIORITY: dict[str, int] = {
+    "superadmin":  0,
+    "owner":      10,
+    "manager":    20,
+    "maintenance": 30,
+    "tenant":     40,
+}
 
 
-def _roles_from_claims(claims: TokenClaims) -> list[Role]:
+async def _get_priority_map(db: AsyncSession) -> dict[str, int]:
+    """Return a role-name → priority mapping, refreshing from DB as needed."""
+    global _priority_cache, _priority_cache_at
+
+    now = time.monotonic()
+    if _priority_cache and (now - _priority_cache_at) < _PRIORITY_TTL:
+        return _priority_cache
+
+    async with _PRIORITY_LOCK:
+        # Double-check after acquiring lock
+        if _priority_cache and (time.monotonic() - _priority_cache_at) < _PRIORITY_TTL:
+            return _priority_cache
+        try:
+            result = await db.execute(
+                select(RoleModel.name, RoleModel.priority).order_by(RoleModel.priority)
+            )
+            _priority_cache = {row.name: row.priority for row in result}
+            _priority_cache_at = time.monotonic()
+        except Exception:
+            # DB unavailable — use fallback so the service stays up
+            if not _priority_cache:
+                _priority_cache = dict(_FALLBACK_PRIORITY)
+    return _priority_cache
+
+
+def invalidate_priority_cache() -> None:
+    """Call after modifying roles table so the next request re-reads from DB."""
+    global _priority_cache_at
+    _priority_cache_at = 0.0
+
+
+# ── Role extraction from JWT ──────────────────────────────────────────────────
+
+
+def _roles_from_claims(claims: TokenClaims) -> list[str]:
     """
-    Build a de-duplicated, priority-ordered list of Role enums from JWT claims.
+    Build a de-duplicated list of role name strings from JWT claims.
 
     Logto org-scoped tokens may carry role names in two formats:
-      - plain:            "manager"
-      - org-prefixed:     "org_abc123:manager"   (ID token format)
-    Both are normalised to just the role name before mapping.
+      - plain:        "manager"
+      - org-prefixed: "org_abc123:manager"
+    Both are normalised to just the role name.
+
+    Returns raw strings — no enum mapping, no validation against the DB.
+    Unknown role names are kept; DB guards will simply not match them.
     """
-    seen: set[Role] = set()
-    result: list[Role] = []
+    seen: set[str] = set()
+    result: list[str] = []
 
-    # Combine org_roles + app_roles (superadmin may come via either)
     all_raw: list[str] = list(claims.org_roles) + list(claims.app_roles)
-
     for raw in all_raw:
-        # Strip optional "orgId:" prefix
         name = raw.split(":")[-1].strip().lower()
-        try:
-            role = Role(name)
-            if role not in seen:
-                seen.add(role)
-                result.append(role)
-        except ValueError:
-            pass  # Unknown role string — ignore
+        if name and name not in seen:
+            seen.add(name)
+            result.append(name)
 
-    # Return sorted by priority so the first element is always the highest role
-    return sorted(result, key=lambda r: _ROLE_PRIORITY.index(r)) if result else [Role.tenant]
+    return result if result else ["tenant"]
 
 
-def _primary_role(roles: list[Role]) -> Role:
-    """Return the single highest-priority role from a list."""
-    for r in _ROLE_PRIORITY:
-        if r in roles:
-            return r
-    return Role.tenant
+async def _primary_role(roles: list[str], db: AsyncSession) -> str:
+    """Return the single highest-priority role from a list (lowest priority int)."""
+    priority_map = await _get_priority_map(db)
+    # Sort by priority value; unknown roles get a high fallback so they sort last
+    sorted_roles = sorted(roles, key=lambda r: priority_map.get(r, 9999))
+    return sorted_roles[0] if sorted_roles else "tenant"
 
 
 # ── CurrentUser context object ────────────────────────────────────────────────
@@ -88,11 +134,7 @@ def _primary_role(roles: list[Role]) -> Role:
 class CurrentUser:
     profile: Profile
     claims: TokenClaims
-    roles: list[Role] = field(default_factory=list)
-
-    def __post_init__(self) -> None:
-        if not self.roles:
-            self.roles = _roles_from_claims(self.claims)
+    roles: list[str] = field(default_factory=list)
 
     @property
     def id(self) -> uuid.UUID:
@@ -107,16 +149,16 @@ class CurrentUser:
         return self.profile.organisation_id
 
     @property
-    def role(self) -> Role:
-        """Primary (highest-priority) role — kept for backwards compatibility."""
-        return _primary_role(self.roles)
+    def role(self) -> str:
+        """Primary (highest-priority) role string — kept for backwards compatibility."""
+        return self.profile.role  # already synced during _upsert_profile
 
-    def has_role(self, *roles: Role) -> bool:
+    def has_role(self, *roles: str) -> bool:
         """True if the user holds ANY of the given roles."""
         return bool(set(self.roles) & set(roles))
 
     def is_owner_or_manager(self) -> bool:
-        return self.has_role(Role.owner, Role.manager, Role.superadmin)
+        return self.has_role("owner", "manager", "superadmin")
 
 
 # ── Profile upsert ────────────────────────────────────────────────────────────
@@ -141,7 +183,8 @@ async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
         org = org_result.scalar_one_or_none()
 
     now = datetime.now(timezone.utc)
-    primary = _primary_role(_roles_from_claims(claims))
+    raw_roles = _roles_from_claims(claims)
+    primary = await _primary_role(raw_roles, db)
 
     if profile is None:
         profile = Profile(
@@ -185,7 +228,8 @@ async def get_current_user(
             detail="User token required; M2M token not accepted on this endpoint",
         )
     profile = await _upsert_profile(claims, db)
-    return CurrentUser(profile=profile, claims=claims)
+    raw_roles = _roles_from_claims(claims)
+    return CurrentUser(profile=profile, claims=claims, roles=raw_roles)
 
 
 # ── M2M context ───────────────────────────────────────────────────────────────
@@ -219,7 +263,7 @@ async def get_m2m_context(
 # ── Role-based guards ─────────────────────────────────────────────────────────
 
 
-def require_role(*roles: Role) -> Callable:
+def require_role(*roles: str) -> Callable:
     """Ensure the current user holds at least one of the specified roles."""
 
     async def _guard(
@@ -228,7 +272,7 @@ def require_role(*roles: Role) -> Callable:
         if not current_user.has_role(*roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Required role(s): {[r.value for r in roles]}",
+                detail=f"Required role(s): {list(roles)}",
             )
         return current_user
 
@@ -241,7 +285,7 @@ def require_superadmin() -> Callable:
     async def _guard(
         current_user: CurrentUser = Depends(get_current_user),
     ) -> CurrentUser:
-        if not current_user.has_role(Role.superadmin):
+        if not current_user.has_role("superadmin"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Superadmin role required",
@@ -262,7 +306,7 @@ async def get_tenant_record(
     """
     from app.models.tenant import Tenant
 
-    if not current_user.has_role(Role.tenant):
+    if not current_user.has_role("tenant"):
         return None
     result = await db.execute(
         select(Tenant).where(Tenant.logto_user_id == current_user.claims.sub)

@@ -28,6 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
+import { RbacPanel } from "@/components/admin/RbacPanel";
 import { cn } from "@/utils/cn";
 
 const MOCK_USERS = [
@@ -145,6 +146,10 @@ export default function AdminPage() {
             <TabsTrigger value="settings">
               <Database className="h-3.5 w-3.5 mr-1.5" />
               Settings
+            </TabsTrigger>
+            <TabsTrigger value="access">
+              <Shield className="h-3.5 w-3.5 mr-1.5" />
+              Access Control
             </TabsTrigger>
             <TabsTrigger value="gdpr">
               <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
@@ -329,6 +334,11 @@ export default function AdminPage() {
           {/* ─── Settings tab ────────────────────────────────── */}
           <TabsContent value="settings" className="mt-4">
             <SettingsPanel />
+          </TabsContent>
+
+          {/* ─── Access Control tab ──────────────────────────── */}
+          <TabsContent value="access" className="mt-4">
+            <RbacPanel />
           </TabsContent>
 
           {/* ─── Compliance tab ──────────────────────────────── */}

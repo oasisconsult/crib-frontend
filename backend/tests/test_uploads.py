@@ -34,7 +34,7 @@ async def test_presign_local_provider(client: AsyncClient, org):
     """With provider=local (default in test DB), presign should return a local URL."""
     r = await client.post(
         "/api/v1/upload/presign",
-        json={"key": "orgs/test/docs/passport.pdf", "mimeType": "application/pdf"},
+        json={"filename": "passport.pdf", "mimeType": "application/pdf", "category": "document"},
         headers=auth_headers("manager-1"),
     )
     assert r.status_code == 200
@@ -50,7 +50,7 @@ async def test_presign_local_provider(client: AsyncClient, org):
 async def test_presign_custom_expires_in(client: AsyncClient, org):
     r = await client.post(
         "/api/v1/upload/presign",
-        json={"key": "test/file.jpg", "mimeType": "image/jpeg", "expiresIn": 300},
+        json={"filename": "photo.jpg", "mimeType": "image/jpeg", "category": "property_image", "expiresIn": 300},
         headers=auth_headers("manager-1"),
     )
     assert r.status_code == 200
@@ -62,7 +62,7 @@ async def test_presign_expires_in_too_short(client: AsyncClient, org):
     """expires_in below minimum (60) should fail validation."""
     r = await client.post(
         "/api/v1/upload/presign",
-        json={"key": "test/file.jpg", "mimeType": "image/jpeg", "expiresIn": 30},
+        json={"filename": "photo.jpg", "mimeType": "image/jpeg", "category": "property_image", "expiresIn": 30},
         headers=auth_headers("manager-1"),
     )
     assert r.status_code == 422
@@ -72,7 +72,7 @@ async def test_presign_expires_in_too_short(client: AsyncClient, org):
 async def test_presign_requires_auth(client: AsyncClient):
     r = await client.post(
         "/api/v1/upload/presign",
-        json={"key": "test/file.jpg", "mimeType": "image/jpeg"},
+        json={"filename": "photo.jpg", "mimeType": "image/jpeg", "category": "document"},
     )
     assert r.status_code in (401, 403)
 
@@ -82,7 +82,7 @@ async def test_presign_tenant_forbidden(client: AsyncClient, org):
     """Tenants may not request presigned URLs — staff only."""
     r = await client.post(
         "/api/v1/upload/presign",
-        json={"key": "test/file.jpg", "mimeType": "image/jpeg"},
+        json={"filename": "photo.jpg", "mimeType": "image/jpeg", "category": "document"},
         headers={"X-Dev-User-Id": "tenant-1"},
     )
     assert r.status_code == 403

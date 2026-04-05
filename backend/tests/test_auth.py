@@ -14,7 +14,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.profile import Profile, Role
+from app.models.profile import Profile
 from tests.conftest import auth_headers
 
 
@@ -72,7 +72,7 @@ async def test_profile_created_on_first_request(client: AsyncClient, db_session:
     )
     profile = result.scalar_one_or_none()
     assert profile is not None
-    assert profile.role == Role.manager
+    assert profile.role == "manager"
     assert profile.email == "manager@dev.local"
 
 

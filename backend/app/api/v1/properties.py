@@ -29,7 +29,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, require_org_access
 from app.core.database import get_db
-from app.models.profile import Role
 from app.schemas.common import PaginatedResponse
 from app.schemas.property import (
     BatchUnitCreate,

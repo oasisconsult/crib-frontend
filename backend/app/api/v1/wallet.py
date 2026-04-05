@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_org_access
 from app.core.database import get_db
-from app.models.profile import Role
 from app.schemas.payment import WalletOut, WalletTransactionOut, WalletTransactionPageOut
 from app.services.wallet_service import get_wallet, get_wallet_transactions
 
@@ -65,7 +64,7 @@ async def get_tenant_wallet(
         )
     # Tenants may only view their own wallet; org members can view any wallet in their org.
     if (
-        current_user.role == Role.tenant
+        current_user.has_role("tenant")
         and str(wallet.tenant_id) != str(current_user.id)
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
@@ -83,7 +82,7 @@ async def list_wallet_transactions(
     """Paginated wallet transaction history, newest-first."""
     # Enforce same ownership check as get_tenant_wallet.
     if (
-        current_user.role == Role.tenant
+        current_user.has_role("tenant")
         and str(tenant_id) != str(current_user.id)
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")

@@ -6,6 +6,7 @@ import { inspectionHandlers } from "./inspections";
 import { notificationHandlers } from "./notifications";
 import { userHandlers } from "./users";
 import { settingsHandlers } from "./settings";
+import { rbacHandlers } from "./rbac";
 
 export const handlers = [
   ...userHandlers,
@@ -16,4 +17,5 @@ export const handlers = [
   ...inspectionHandlers,
   ...notificationHandlers,
   ...settingsHandlers,
+  ...rbacHandlers,
 ];

@@ -10,6 +10,7 @@ from app.models import (  # noqa: F401
     payment_allocation,
     profile,
     property,
+    rbac,
     system_setting,
     tenant,
     wallet,

@@ -26,11 +26,11 @@ from app.models.base import Base
 
 settings = get_settings()
 
-# Use a separate test database to avoid touching dev data
-TEST_DATABASE_URL = settings.database_url.replace(
-    f"/{settings.database_url.rsplit('/', 1)[-1]}",
-    "/crib_test",
-)
+# Use a separate test database to avoid touching dev data.
+# Replace only the DB name (the path component after the last '/') to avoid
+# accidentally replacing the username if it shares a prefix with the DB name.
+_db_base, _db_sep, _db_name = settings.database_url.rpartition("/")
+TEST_DATABASE_URL = f"{_db_base}/crib_test"
 
 
 # ── Database ──────────────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ async def test_engine():
         # Create enum types idempotently (SQLAlchemy won't create them if they exist)
         for stmt in [
             "DO $$ BEGIN CREATE TYPE plan_enum AS ENUM ('starter','growth','enterprise'); EXCEPTION WHEN duplicate_object THEN null; END $$",
-            "DO $$ BEGIN CREATE TYPE role_enum AS ENUM ('superadmin','owner','manager','tenant','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            # role_enum was removed in migration 011 — Profile.role is now VARCHAR(50)
             "DO $$ BEGIN CREATE TYPE property_type_enum AS ENUM ('flat','house','hostel','commercial','villa'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE property_status_enum AS ENUM ('active','inactive','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE unit_type_enum AS ENUM ('single','double','studio','ensuite','shared'); EXCEPTION WHEN duplicate_object THEN null; END $$",
@@ -100,6 +100,22 @@ async def test_engine():
                 "description": description, "value_type": value_type,
                 "is_secret": is_secret, "is_required": is_required,
             })
+
+        # Seed RBAC roles (mirrors migration 010 + 011 priority values).
+        # Required so deps._get_priority_map() returns correct ordering in tests.
+        _ROLES = [
+            ("superadmin", "Platform operator",  0),
+            ("owner",      "Organisation owner", 10),
+            ("manager",    "Property manager",   20),
+            ("maintenance","Maintenance staff",  30),
+            ("tenant",     "Tenant",             40),
+        ]
+        for name, description, priority in _ROLES:
+            await conn.execute(sa.text(
+                "INSERT INTO roles (name, description, priority) "
+                "VALUES (:name, :description, :priority) "
+                "ON CONFLICT (name) DO UPDATE SET priority = EXCLUDED.priority"
+            ), {"name": name, "description": description, "priority": priority})
 
     yield engine
 

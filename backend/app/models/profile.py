@@ -9,24 +9,21 @@ The Profile carries only domain-level context that Logto doesn't manage:
   - display name + email cached from the JWT (for notifications without Logto API calls)
 
 The Profile is upserted on first authenticated request.
+
+Role design:
+  `role` is stored as a plain VARCHAR(50) string — it is the *primary* role name
+  for display/notification purposes, re-synced from the JWT on every request.
+  The authoritative list of valid roles lives in the `roles` DB table (see rbac.py).
+  Use `deps.CurrentUser.roles` (list[str]) for all authorisation decisions.
 """
 
-import enum
 import uuid
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import TimestampedBase
-
-
-class Role(str, enum.Enum):
-    superadmin = "superadmin"    # Platform operator — cross-org, system settings
-    owner = "owner"              # Organisation owner / landlord (full access)
-    manager = "manager"          # Property manager (org-scoped admin)
-    tenant = "tenant"            # Tenant (restricted to their own data)
-    maintenance = "maintenance"  # Maintenance staff (read-only inspections)
 
 
 class Profile(TimestampedBase):
@@ -51,8 +48,9 @@ class Profile(TimestampedBase):
     )
 
     # ── Role ──────────────────────────────────────────────────────────────────
-    role: Mapped[Role] = mapped_column(
-        Enum(Role, name="role_enum"), nullable=False, default=Role.tenant
+    # Plain string — re-synced from JWT on every request. See module docstring.
+    role: Mapped[str] = mapped_column(
+        String(50), nullable=False, default="tenant", server_default="tenant"
     )
 
     # ── Cached identity fields (synced from JWT / Logto webhook) ─────────────

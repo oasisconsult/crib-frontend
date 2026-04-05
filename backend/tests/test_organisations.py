@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.organisation import Organisation
-from app.models.profile import Profile, Role
+from app.models.profile import Profile
 from tests.conftest import auth_headers
 
 
@@ -70,7 +70,7 @@ async def test_provision_links_caller_profile(client: AsyncClient, db_session: A
         select(Profile).where(Profile.logto_sub == "dev_owner1")
     )
     profile = result.scalar_one()
-    assert profile.role == Role.owner
+    assert profile.role == "owner"
     assert profile.organisation_id is not None
     assert profile.logto_org_id == "org_test_owner_link"
 

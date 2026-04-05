@@ -118,7 +118,7 @@ def create_app() -> FastAPI:
     from app.api.v1 import (
         analytics, health, inspections, leases, me,
         mobile_money, notifications, organisations, payments, properties,
-        system_settings, tenants, uploads, wallet, webhooks,
+        rbac, system_settings, tenants, uploads, wallet, webhooks,
     )
     from app.api.v1.flat_payments import (
         late_fees_router, payments_router, schedules_router,
@@ -139,6 +139,7 @@ def create_app() -> FastAPI:
     application.include_router(analytics.router, prefix=settings.api_prefix)
     application.include_router(notifications.router, prefix=settings.api_prefix)
     application.include_router(system_settings.router, prefix=settings.api_prefix)
+    application.include_router(rbac.router, prefix=settings.api_prefix)
     application.include_router(uploads.router, prefix=settings.api_prefix)
     application.include_router(wallet.router, prefix=settings.api_prefix)
     application.include_router(mobile_money.router, prefix=settings.api_prefix)

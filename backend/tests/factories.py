@@ -12,7 +12,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.organisation import Organisation, Plan
-from app.models.profile import Profile, Role
+from app.models.profile import Profile
 from app.models.property import Property, PropertyStatus, PropertyType, Unit, UnitStatus, UnitType
 
 DEFAULT_ADDRESS = {
