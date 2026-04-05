@@ -49,6 +49,7 @@ export const DEV_USERS = [
   {
     id: "user-superadmin-1",
     role: "superadmin" as const,
+    roles: ["superadmin"],
     name: "Crib Admin",
     email: "admin@crib.ug",
     initials: "CA",
@@ -61,6 +62,7 @@ export const DEV_USERS = [
   {
     id: "user-landlord-1",
     role: "owner" as const,
+    roles: ["owner"],
     name: "Robert Mukasa",
     email: "robert@crib.ug",
     initials: "RM",
@@ -73,6 +75,7 @@ export const DEV_USERS = [
   {
     id: "user-manager-1",
     role: "manager" as const,
+    roles: ["manager"],
     name: "Sarah Nalwanga",
     email: "sarah@crib.ug",
     initials: "SN",
@@ -83,8 +86,35 @@ export const DEV_USERS = [
       "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
   },
   {
+    id: "superadmin-manager-1",
+    role: "superadmin" as const,
+    roles: ["superadmin", "manager"],
+    name: "Super Manager",
+    email: "super.manager@crib.ug",
+    initials: "SM",
+    description: "Platform admin + property manager",
+    gradient: "from-violet-500 to-emerald-600",
+    badge: "Superadmin · Manager",
+    badgeColor:
+      "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+  },
+  {
+    id: "owner-manager-1",
+    role: "owner" as const,
+    roles: ["owner", "manager"],
+    name: "Owner Manager",
+    email: "owner.manager@crib.ug",
+    initials: "OM",
+    description: "Owns & manages properties",
+    gradient: "from-blue-500 to-emerald-600",
+    badge: "Owner · Manager",
+    badgeColor:
+      "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+  },
+  {
     id: "tenant-1",
     role: "tenant" as const,
+    roles: ["tenant"],
     name: "Aisha Nakawunde",
     email: "aisha.nakawunde@gmail.com",
     initials: "AN",
@@ -108,12 +138,13 @@ function DevLoginPanel() {
       const res = await fetch("/api/auth/dev-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, role: user.role }),
+        body: JSON.stringify({ userId: user.id, role: user.role, roles: user.roles }),
       });
       if (!res.ok) throw new Error("Dev login failed");
       // Write localStorage BEFORE navigating so useAuth bootstrap finds it
       localStorage.setItem("crib:dev_user_id", user.id);
-      const dest = user.role === "tenant" ? "/portal" : "/";
+      const isStaff = user.roles.some((r) => r !== "tenant");
+      const dest = isStaff ? "/" : "/portal";
       router.push(dest);
     } catch {
       setLoading(null);

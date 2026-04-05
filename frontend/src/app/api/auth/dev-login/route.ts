@@ -6,9 +6,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Not available" }, { status: 404 });
   }
 
-  const { userId, role } = (await request.json()) as {
+  const { userId, role, roles } = (await request.json()) as {
     userId: string;
     role: string;
+    roles?: string[];
   };
 
   if (!userId || !role) {
@@ -17,6 +18,9 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+
+  // Merge role + roles into a deduplicated list
+  const effectiveRoles = Array.from(new Set([role, ...(roles ?? [])]));
 
   const response = NextResponse.json({ ok: true });
 
@@ -31,7 +35,8 @@ export async function POST(request: NextRequest) {
   // Fake session token — middleware only checks existence, not value.
   // Prefixed with "dev." so useAuth can detect mock mode and skip JWT parsing.
   response.cookies.set("logto_session", `dev.${userId}`, cookieOpts);
-  response.cookies.set("user_role", role, cookieOpts);
+  response.cookies.set("user_role", effectiveRoles[0], cookieOpts);
+  response.cookies.set("user_roles", effectiveRoles.join(","), cookieOpts);
   // No refresh_token in mock mode — useAuth skips refresh for dev sessions
 
   return response;
