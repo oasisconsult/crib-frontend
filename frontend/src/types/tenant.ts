@@ -55,6 +55,27 @@ export interface Tenant {
   updatedAt: string;
 }
 
+export interface OnboardingDocumentPayload {
+  type: TenantDocument["type"];
+  name: string;
+  url: string;
+  key: string;
+  mimeType: string;
+  sizeBytes: number;
+  expiresAt?: string;
+}
+
+export interface OnboardingSubmitPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  gdprConsent: boolean;
+  documents: OnboardingDocumentPayload[];
+}
+
 export interface TenantInvite {
   id: string;
   landlordId: string;

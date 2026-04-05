@@ -40,6 +40,17 @@ class TenantUpdate(CamelModel):
     tags: list[str] | None = None
 
 
+class OnboardingDocumentSubmit(CamelModel):
+    """A document uploaded during onboarding, referenced by its storage key."""
+    type: str = Field(min_length=1, max_length=50, description="IdDocumentType value")
+    name: str = Field(min_length=1, max_length=255, description="Human-readable label, e.g. 'Passport'")
+    url: str = Field(min_length=1, description="Public URL returned by the presign response")
+    key: str = Field(min_length=1, description="Storage object key returned by presign")
+    mime_type: str = Field(min_length=1, max_length=100)
+    size_bytes: int = Field(default=0, ge=0)
+    expires_at: str | None = None
+
+
 class TenantOnboardingSubmit(CamelModel):
     """Data submitted by the tenant during onboarding."""
     first_name: str = Field(min_length=1, max_length=100)
@@ -50,6 +61,7 @@ class TenantOnboardingSubmit(CamelModel):
     nationality: str | None = None
     emergency_contact: EmergencyContactSchema | None = None
     gdpr_consent: bool = Field(default=False)
+    documents: list[OnboardingDocumentSubmit] = Field(default_factory=list)
 
 
 class TenantOut(CamelModel):

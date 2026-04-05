@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "./client";
-import type { Tenant, TenantInvite, TenantDocument, PaginatedResponse, QueryParams } from "@/types";
+import type { Tenant, TenantInvite, TenantDocument, OnboardingSubmitPayload, PaginatedResponse, QueryParams } from "@/types";
 
 export const tenantsApi = {
   list: (params?: QueryParams) =>
@@ -25,7 +25,7 @@ export const tenantsApi = {
   getOnboardingByToken: (token: string) =>
     apiGet<{ tenant: Tenant; invite: TenantInvite }>(`/tenants/onboarding/${token}`),
 
-  submitOnboarding: (token: string, data: Partial<Tenant>) =>
+  submitOnboarding: (token: string, data: OnboardingSubmitPayload) =>
     apiPost<Tenant>(`/tenants/onboarding/${token}/submit`, data),
 
   approveOnboarding: (tenantId: string) =>

@@ -7,12 +7,12 @@ import { cn } from "@/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { formatFileSize } from "@/utils/formatters";
-import { SUPPORTED_DOCUMENT_TYPES, MAX_FILE_SIZE_BYTES } from "@/utils/constants";
-import { uploadsApi } from "@/services/api/uploads";
+import { MAX_FILE_SIZE_BYTES } from "@/utils/constants";
+import { uploadsApi, type UploadResult } from "@/services/api/uploads";
 
 interface UploadedFile {
   file: File;
-  url: string;
+  result: UploadResult | null;
   progress: number;
   status: "uploading" | "done" | "error";
   error?: string;
@@ -25,7 +25,9 @@ interface FileUploadProps {
   tenantId?: string;
   leaseId?: string;
   inspectionId?: string;
-  onUpload?: (urls: string[]) => void;
+  /** When set, presign requests go to the public onboarding endpoint (no JWT). */
+  onboardingToken?: string;
+  onUpload?: (results: UploadResult[]) => void;
   className?: string;
   disabled?: boolean;
 }
@@ -37,6 +39,7 @@ export function FileUpload({
   tenantId,
   leaseId,
   inspectionId,
+  onboardingToken,
   onUpload,
   className,
   disabled,
@@ -44,10 +47,10 @@ export function FileUpload({
   const [files, setFiles] = useState<UploadedFile[]>([]);
 
   const upload = useCallback(
-    async (file: File): Promise<string> => {
+    async (file: File): Promise<UploadResult> => {
       return uploadsApi.uploadFile(
         file,
-        { category, tenantId, leaseId, inspectionId },
+        { category, tenantId, leaseId, inspectionId, onboardingToken },
         (progress) => {
           setFiles((prev) =>
             prev.map((f) => (f.file === file ? { ...f, progress } : f)),
@@ -55,28 +58,28 @@ export function FileUpload({
         },
       );
     },
-    [category, tenantId, leaseId, inspectionId],
+    [category, tenantId, leaseId, inspectionId, onboardingToken],
   );
 
   const onDrop = useCallback(
     async (accepted: File[]) => {
       const newFiles: UploadedFile[] = accepted.map((f) => ({
         file: f,
-        url: "",
+        result: null,
         progress: 0,
         status: "uploading" as const,
       }));
       setFiles((prev) => [...prev, ...newFiles]);
 
-      const urls: string[] = [];
+      const results: UploadResult[] = [];
       await Promise.all(
         accepted.map(async (file) => {
           try {
-            const url = await upload(file);
-            urls.push(url);
+            const result = await upload(file);
+            results.push(result);
             setFiles((prev) =>
               prev.map((f) =>
-                f.file === file ? { ...f, url, progress: 100, status: "done" } : f,
+                f.file === file ? { ...f, result, progress: 100, status: "done" } : f,
               ),
             );
           } catch {
@@ -90,7 +93,7 @@ export function FileUpload({
           }
         }),
       );
-      if (urls.length > 0) onUpload?.(urls);
+      if (results.length > 0) onUpload?.(results);
     },
     [upload, onUpload],
   );

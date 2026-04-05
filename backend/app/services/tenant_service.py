@@ -319,6 +319,37 @@ async def submit_onboarding(
             year=datetime.now(timezone.utc).year + 7
         )
 
+    # Persist uploaded documents
+    if body.documents:
+        from dateutil.parser import parse as parse_dt
+        now_utc = datetime.now(timezone.utc)
+        for doc_data in body.documents:
+            # Validate the document type — fall back to 'other' for unknown values
+            try:
+                doc_type = IdDocumentType(doc_data.type)
+            except ValueError:
+                doc_type = IdDocumentType.other
+
+            expires_at = None
+            if doc_data.expires_at:
+                try:
+                    expires_at = parse_dt(doc_data.expires_at).replace(tzinfo=timezone.utc)
+                except Exception:
+                    pass
+
+            doc = TenantDocument(
+                tenant_id=tenant.id,
+                type=doc_type,
+                name=doc_data.name,
+                url=doc_data.url,
+                mime_type=doc_data.mime_type,
+                size_bytes=doc_data.size_bytes,
+                verified=False,
+                uploaded_at=now_utc,
+                expires_at=expires_at,
+            )
+            db.add(doc)
+
     # Advance state machine
     tenant.onboarding_state = onboarding_sm.transition_or_422(
         tenant.onboarding_state, "ONBOARDING_COMPLETED"
@@ -326,7 +357,7 @@ async def submit_onboarding(
     tenant.onboarding_completed_at = datetime.now(timezone.utc)
     invite.status = InviteStatus.accepted
     await db.flush()
-    await db.refresh(tenant, attribute_names=["status", "onboarding_state", "updated_at"])
+    await db.refresh(tenant, attribute_names=["status", "onboarding_state", "updated_at", "documents"])
 
     return _tenant_out(tenant)
 

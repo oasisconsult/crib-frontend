@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { tenantsApi } from "@/services/api/tenants";
 import { toast } from "@/store/useUIStore";
-import type { Tenant, TenantDocument, QueryParams } from "@/types";
+import type { Tenant, TenantDocument, QueryParams, OnboardingSubmitPayload } from "@/types";
 
 export function useTenants(params?: QueryParams) {
   return useQuery({
@@ -57,7 +57,7 @@ export function useSubmitOnboarding() {
       data,
     }: {
       token: string;
-      data: Partial<Tenant>;
+      data: OnboardingSubmitPayload;
     }) => tenantsApi.submitOnboarding(token, data),
     onError: () => toast.error("Failed to submit onboarding"),
   });
