@@ -5,6 +5,7 @@ import { paymentHandlers } from "./payments";
 import { inspectionHandlers } from "./inspections";
 import { notificationHandlers } from "./notifications";
 import { userHandlers } from "./users";
+import { settingsHandlers } from "./settings";
 
 export const handlers = [
   ...userHandlers,
@@ -14,4 +15,5 @@ export const handlers = [
   ...paymentHandlers,
   ...inspectionHandlers,
   ...notificationHandlers,
+  ...settingsHandlers,
 ];

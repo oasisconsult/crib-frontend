@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { PermissionGate } from "@/components/common/PermissionGate";
+import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { cn } from "@/utils/cn";
 
 const MOCK_USERS = [
@@ -140,6 +141,10 @@ export default function AdminPage() {
             <TabsTrigger value="system">
               <Server className="h-3.5 w-3.5 mr-1.5" />
               System
+            </TabsTrigger>
+            <TabsTrigger value="settings">
+              <Database className="h-3.5 w-3.5 mr-1.5" />
+              Settings
             </TabsTrigger>
             <TabsTrigger value="gdpr">
               <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
@@ -319,6 +324,11 @@ export default function AdminPage() {
                 })}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ─── Settings tab ────────────────────────────────── */}
+          <TabsContent value="settings" className="mt-4">
+            <SettingsPanel />
           </TabsContent>
 
           {/* ─── Compliance tab ──────────────────────────────── */}
