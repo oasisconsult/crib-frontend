@@ -17,7 +17,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.conftest import auth_headers
-from tests.factories import make_organisation
+from tests.factories import make_organisation, make_tenant, make_tenant_invite
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -132,3 +132,123 @@ async def test_local_serve_path_traversal(client: AsyncClient, tmp_path, monkeyp
     r = await client.get("/api/v1/upload/local/../secret.txt")
     # FastAPI normalises paths, but the guard should still prevent escape
     assert r.status_code in (400, 403, 404)
+
+
+# ── Onboarding presign ────────────────────────────────────────────────────────
+
+@pytest_asyncio.fixture
+async def org_and_invite(db_session: AsyncSession):
+    org = await make_organisation(db_session)
+    tenant = await make_tenant(db_session, org)
+    invite = await make_tenant_invite(db_session, org, tenant, token="test-token-valid")
+    return org, tenant, invite
+
+
+@pytest.mark.asyncio
+async def test_onboarding_presign_valid_token(client: AsyncClient, org_and_invite):
+    """Valid invite token returns a presigned URL pointing to /api/upload/local/."""
+    r = await client.post(
+        "/api/v1/upload/presign/onboarding/test-token-valid",
+        json={"filename": "passport.pdf", "mimeType": "application/pdf", "category": "document"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "uploadUrl" in body
+    assert "publicUrl" in body
+    assert body["provider"] == "local"
+    # URL must be a relative path through the Next.js proxy — not localhost:8000
+    assert body["uploadUrl"].startswith("/api/upload/local/")
+    assert "localhost:8000" not in body["uploadUrl"]
+    assert "localhost:8001" not in body["uploadUrl"]
+
+
+@pytest.mark.asyncio
+async def test_onboarding_presign_signature_category(client: AsyncClient, org_and_invite):
+    """Signature uploads are also allowed during onboarding."""
+    r = await client.post(
+        "/api/v1/upload/presign/onboarding/test-token-valid",
+        json={"filename": "sig.png", "mimeType": "image/png", "category": "signature"},
+    )
+    assert r.status_code == 200
+    assert r.json()["provider"] == "local"
+
+
+@pytest.mark.asyncio
+async def test_onboarding_presign_forbidden_category(client: AsyncClient, org_and_invite):
+    """property_image is not allowed during onboarding — only document/signature."""
+    r = await client.post(
+        "/api/v1/upload/presign/onboarding/test-token-valid",
+        json={"filename": "photo.jpg", "mimeType": "image/jpeg", "category": "property_image"},
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_onboarding_presign_invalid_token(client: AsyncClient):
+    """Non-existent token returns 404."""
+    r = await client.post(
+        "/api/v1/upload/presign/onboarding/no-such-token",
+        json={"filename": "passport.pdf", "mimeType": "application/pdf", "category": "document"},
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_onboarding_presign_expired_token(client: AsyncClient, db_session: AsyncSession):
+    """Expired invite token returns 410 Gone."""
+    from datetime import datetime, timedelta, timezone
+
+    org = await make_organisation(db_session, logto_org_id=f"org-exp-{__import__('uuid').uuid4().hex[:6]}")
+    tenant = await make_tenant(db_session, org)
+    past = datetime.now(timezone.utc) - timedelta(days=1)
+    await make_tenant_invite(
+        db_session, org, tenant,
+        token="expired-token-xyz",
+        expires_at=past,
+    )
+
+    r = await client.post(
+        "/api/v1/upload/presign/onboarding/expired-token-xyz",
+        json={"filename": "id.pdf", "mimeType": "application/pdf", "category": "document"},
+    )
+    assert r.status_code == 410
+
+
+@pytest.mark.asyncio
+async def test_onboarding_presign_accepted_invite(client: AsyncClient, db_session: AsyncSession):
+    """Already-accepted invite token returns 409 Conflict."""
+    from app.models.tenant import InviteStatus
+
+    org = await make_organisation(db_session, logto_org_id=f"org-acc-{__import__('uuid').uuid4().hex[:6]}")
+    tenant = await make_tenant(db_session, org)
+    await make_tenant_invite(
+        db_session, org, tenant,
+        token="accepted-token-xyz",
+        status=InviteStatus.accepted,
+    )
+
+    r = await client.post(
+        "/api/v1/upload/presign/onboarding/accepted-token-xyz",
+        json={"filename": "id.pdf", "mimeType": "application/pdf", "category": "document"},
+    )
+    assert r.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_onboarding_presign_tenant_id_overridden(client: AsyncClient, org_and_invite):
+    """The server must use the invite's tenant_id, ignoring any tenantId in the request body."""
+    _, tenant, _ = org_and_invite
+    r = await client.post(
+        "/api/v1/upload/presign/onboarding/test-token-valid",
+        json={
+            "filename": "passport.pdf",
+            "mimeType": "application/pdf",
+            "category": "document",
+            "tenantId": "attacker-controlled-value",
+        },
+    )
+    assert r.status_code == 200
+    # The key in the URL should contain the real tenant ID, not the attacker value
+    body = r.json()
+    assert str(tenant.id) in body["uploadUrl"]
+    assert "attacker-controlled-value" not in body["uploadUrl"]

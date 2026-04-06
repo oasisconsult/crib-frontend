@@ -286,6 +286,27 @@ async def make_notification(db: AsyncSession, org: Organisation, **kwargs):
     return notif
 
 
+async def make_tenant_invite(db: AsyncSession, org: Organisation, tenant, **kwargs):
+    from datetime import datetime, timedelta, timezone
+
+    from app.models.tenant import InviteStatus, TenantInvite
+
+    now = datetime.now(timezone.utc)
+    invite = TenantInvite(
+        tenant_id=tenant.id,
+        organisation_id=org.id,
+        email=kwargs.get("email", tenant.email),
+        name=kwargs.get("name", f"{tenant.first_name} {tenant.last_name}"),
+        token=kwargs.get("token", f"invite-{uuid.uuid4().hex}"),
+        status=kwargs.get("status", InviteStatus.pending),
+        sent_at=kwargs.get("sent_at", now),
+        expires_at=kwargs.get("expires_at", now + timedelta(days=7)),
+    )
+    db.add(invite)
+    await db.flush()
+    return invite
+
+
 async def make_unit(db: AsyncSession, prop: Property, **kwargs) -> Unit:
     unit = Unit(
         property_id=prop.id,

@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     # NEVER store this in the database — it is the key that decrypts DB secrets.
     settings_encryption_key: str = Field(default="", alias="SETTINGS_ENCRYPTION_KEY")
 
+    # ── Storage ───────────────────────────────────────────────────────────────
+    # Base URL for the local-dev storage provider.
+    # Leave empty (default) so presign URLs are relative paths (/api/upload/local/...)
+    # that the browser resolves against the frontend origin — no CORS issues.
+    # In production this is irrelevant (S3/R2/MinIO return real presigned URLs).
+    storage_local_base_url: str = ""
+
     # ── MinIO (legacy fallback — superseded by system_settings table) ─────────
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"

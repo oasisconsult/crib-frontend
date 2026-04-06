@@ -162,16 +162,26 @@ class S3CompatibleProvider(StorageProvider):
 class LocalStorageProvider(StorageProvider):
     """
     Dev-mode provider — writes files to a local directory.
-    Presign returns a signed URL to the Next.js `/api/upload` route
-    (or a direct FastAPI endpoint in dev).
 
-    Never use in production — there is no access control.
+    Presign/public URLs point to the Next.js frontend proxy route
+    ``/api/upload/local/{key}`` so the browser never makes a cross-origin
+    request directly to the backend (which would be blocked by CORS).
+
+    ``base_url`` defaults to ``""`` (empty), producing relative paths that
+    the browser resolves against the current origin (the frontend).  Set
+    ``STORAGE_LOCAL_BASE_URL=http://localhost:3000`` if you need absolute
+    URLs (e.g. for server-side rendering or email links).
+
+    Never use in production — there is no access control on the local endpoint.
     """
 
-    def __init__(self, base_url: str = "http://localhost:8000") -> None:
+    def __init__(self, base_url: str = "") -> None:
         self._base_url = base_url.rstrip("/")
         self._upload_dir = os.path.join(os.getcwd(), "uploads")
         os.makedirs(self._upload_dir, exist_ok=True)
+
+    def _url(self, key: str) -> str:
+        return f"{self._base_url}/api/upload/local/{key}"
 
     async def presign_upload(
         self,
@@ -179,11 +189,11 @@ class LocalStorageProvider(StorageProvider):
         mime_type: str,
         expires_in: int = 900,
     ) -> str:
-        # In local mode, the client PUTs directly to our own upload endpoint
-        return f"{self._base_url}/api/v1/upload/local/{key}"
+        # Routes through the Next.js /api/upload/local proxy — same origin, no CORS.
+        return self._url(key)
 
     def public_url(self, key: str) -> str:
-        return f"{self._base_url}/api/v1/upload/local/{key}"
+        return self._url(key)
 
     async def delete(self, key: str) -> None:
         path = os.path.join(self._upload_dir, key.replace("/", os.sep))
@@ -201,15 +211,22 @@ class LocalStorageProvider(StorageProvider):
 
 # ── Factory ───────────────────────────────────────────────────────────────────
 
-def get_storage_provider(config: dict[str, Any]) -> StorageProvider:
+def get_storage_provider(
+    config: dict[str, Any],
+    local_base_url: str = "",
+) -> StorageProvider:
     """
     Instantiate the correct storage provider from a settings config dict.
     Config is produced by settings_service.get_storage_config().
+
+    ``local_base_url`` is only used when provider='local'.  Leave empty (the
+    default) so presign URLs are relative paths that the browser resolves
+    against the frontend origin — no CORS issues.
     """
     provider = config.get("provider", "local")
 
     if provider == "local":
-        return LocalStorageProvider()
+        return LocalStorageProvider(base_url=local_base_url)
 
     if provider in ("s3", "r2", "minio"):
         bucket = config.get("bucket", "")

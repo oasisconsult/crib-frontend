@@ -26,6 +26,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_org_access
+from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.storage import get_storage_provider
 from app.schemas.common import CamelModel
@@ -102,7 +103,7 @@ async def _do_presign(
 
     config = await settings_service.get_storage_config(db)
     try:
-        provider = get_storage_provider(config)
+        provider = get_storage_provider(config, local_base_url=get_settings().storage_local_base_url)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
