@@ -50,7 +50,7 @@ def upgrade() -> None:
             "onboarding_payment_ids",
             JSONB,
             nullable=False,
-            server_default="'[]'::jsonb",
+            server_default=sa.text("'[]'::jsonb"),
         ),
     )
 
