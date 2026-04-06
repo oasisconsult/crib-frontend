@@ -127,7 +127,7 @@ export function LeaseWorkflowStepper({
   return (
     <WorkflowStepper
       currentState={state}
-      steps={LEASE_STEPS as Step[]}
+      steps={LEASE_STEPS as unknown as Step[]}
       className={className}
     />
   );
@@ -143,7 +143,7 @@ export function OnboardingWorkflowStepper({
   return (
     <WorkflowStepper
       currentState={state}
-      steps={ONBOARDING_STEPS as Step[]}
+      steps={ONBOARDING_STEPS as unknown as Step[]}
       className={className}
     />
   );
@@ -159,7 +159,7 @@ export function PaymentFlowStepper({
   return (
     <WorkflowStepper
       currentState={step}
-      steps={PAYMENT_FLOW_STEPS as Step[]}
+      steps={PAYMENT_FLOW_STEPS as unknown as Step[]}
       className={className}
     />
   );
