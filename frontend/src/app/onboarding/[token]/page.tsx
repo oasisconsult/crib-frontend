@@ -90,6 +90,7 @@ export default function OnboardingPage({ params }: Props) {
               tenant={data.tenant}
               agreementPreview={data.agreementPreview}
               leaseStatus={data.lease?.state ?? null}
+              termsAcceptedAt={data.termsAcceptedAt}
             />
           </>
         )}

@@ -8,7 +8,7 @@ import { useAcceptTerms } from "@/hooks/useOnboardingFlow";
 
 interface Props {
   token: string;
-  onNext: () => void;
+  onNext: (termsAcceptedAt: string) => void;
   onBack: () => void;
 }
 
@@ -20,7 +20,7 @@ export function TermsAcceptanceStep({ token, onNext, onBack }: Props) {
   const canProceed = checkedTerms && checkedPayment;
 
   function handleAccept() {
-    acceptTerms(true, { onSuccess: onNext });
+    acceptTerms(true, { onSuccess: (result) => onNext(result.termsAcceptedAt) });
   }
 
   return (

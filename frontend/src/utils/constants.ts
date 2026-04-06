@@ -79,10 +79,9 @@ export const INSPECTION_AREAS = [
 // Workflow step configs for UI rendering
 export const LEASE_STEPS = [
   { state: "draft", label: "Draft", step: 1 },
-  { state: "pending", label: "Pending Signature", step: 2 },
+  { state: "onboarding_started", label: "Onboarding", step: 2 },
   { state: "active", label: "Active", step: 3 },
-  { state: "notice", label: "Notice Period", step: 4 },
-  { state: "closed", label: "Closed", step: 5 },
+  { state: "expired", label: "Closed", step: 4 },
 ] as const;
 
 export const ONBOARDING_STEPS = [
@@ -91,4 +90,13 @@ export const ONBOARDING_STEPS = [
   { state: "submitted", label: "Documents", step: 3 },
   { state: "approved", label: "Under Review", step: 4 },
   { state: "activated", label: "Active", step: 5 },
+] as const;
+
+// Payment flow sub-steps (Phase 2 of tenant onboarding)
+export const PAYMENT_FLOW_STEPS = [
+  { state: "agreement_preview", label: "Review", step: 1 },
+  { state: "terms_acceptance", label: "Accept", step: 2 },
+  { state: "payment", label: "Payment", step: 3 },
+  { state: "payment_pending", label: "Confirming", step: 4 },
+  { state: "signature", label: "Sign", step: 5 },
 ] as const;

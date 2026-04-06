@@ -3,7 +3,8 @@
 import { Check } from "lucide-react";
 import { cn } from "@/utils/cn";
 import type { LeaseState, OnboardingState } from "@/types/states";
-import { LEASE_STEPS, ONBOARDING_STEPS } from "@/utils/constants";
+import type { OnboardingStep } from "@/types/onboarding";
+import { LEASE_STEPS, ONBOARDING_STEPS, PAYMENT_FLOW_STEPS } from "@/utils/constants";
 
 interface Step {
   state: string;
@@ -143,6 +144,22 @@ export function OnboardingWorkflowStepper({
     <WorkflowStepper
       currentState={state}
       steps={ONBOARDING_STEPS as Step[]}
+      className={className}
+    />
+  );
+}
+
+export function PaymentFlowStepper({
+  step,
+  className,
+}: {
+  step: OnboardingStep;
+  className?: string;
+}) {
+  return (
+    <WorkflowStepper
+      currentState={step}
+      steps={PAYMENT_FLOW_STEPS as Step[]}
       className={className}
     />
   );

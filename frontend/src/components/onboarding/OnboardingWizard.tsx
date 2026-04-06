@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/common/FileUpload";
 import type { UploadResult } from "@/services/api/uploads";
 import { ESignatureCanvas } from "./ESignatureCanvas";
-import { OnboardingWorkflowStepper } from "@/components/leases/WorkflowStepper";
+import { OnboardingWorkflowStepper, PaymentFlowStepper } from "@/components/leases/WorkflowStepper";
 import { AgreementPreviewStep } from "./steps/AgreementPreviewStep";
 import { TermsAcceptanceStep } from "./steps/TermsAcceptanceStep";
 import { PaymentStep } from "./steps/PaymentStep";
@@ -79,6 +79,8 @@ interface OnboardingWizardProps {
   agreementPreview?: AgreementPreview | null;
   /** Backend lease status for resuming payment flow. */
   leaseStatus?: string | null;
+  /** ISO timestamp when tenant accepted the terms (from GET /flow). */
+  termsAcceptedAt?: string | null;
 }
 
 export function OnboardingWizard({
@@ -87,6 +89,7 @@ export function OnboardingWizard({
   tenant,
   agreementPreview: initialPreview = null,
   leaseStatus,
+  termsAcceptedAt: initialTermsAcceptedAt = null,
 }: OnboardingWizardProps) {
   // ── Phase determination ───────────────────────────────────────────────────
   const isApproved = ["approved", "activated"].includes(tenant.onboardingState);
@@ -112,6 +115,7 @@ export function OnboardingWizard({
   })();
   const [paymentStep, setPaymentStep] = useState<OnboardingStep>(initialPaymentStep);
   const [preview, setPreview] = useState<AgreementPreview | null>(initialPreview);
+  const [termsAcceptedAt, setTermsAcceptedAt] = useState<string | null>(initialTermsAcceptedAt);
 
   // ── Profile form ──────────────────────────────────────────────────────────
   const draft = tenant.onboardingDraft;
@@ -196,12 +200,16 @@ export function OnboardingWizard({
       {paymentStep !== "done" && profileStep !== "submitted" && (
         <div className="space-y-2">
           <Progress value={progress} className="h-2" />
-          <OnboardingWorkflowStepper
-            state={
-              isApproved ? "approved" :
-              profileStep === "documents" ? "started" : "started"
-            }
-          />
+          {isApproved && invite.leaseId ? (
+            <PaymentFlowStepper step={paymentStep} />
+          ) : (
+            <OnboardingWorkflowStepper
+              state={
+                isApproved ? "approved" :
+                profileStep === "documents" ? "started" : "started"
+              }
+            />
+          )}
         </div>
       )}
 
@@ -339,7 +347,7 @@ export function OnboardingWizard({
           {paymentStep === "terms_acceptance" && (
             <TermsAcceptanceStep
               token={token}
-              onNext={() => setPaymentStep("payment")}
+              onNext={(acceptedAt) => { setTermsAcceptedAt(acceptedAt); setPaymentStep("payment"); }}
               onBack={() => setPaymentStep("agreement_preview")}
             />
           )}
@@ -371,6 +379,7 @@ export function OnboardingWizard({
             <FinalSignatureStep
               token={token}
               preview={preview}
+              termsAcceptedAt={termsAcceptedAt}
               onSigned={() => setPaymentStep("done")}
             />
           )}

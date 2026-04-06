@@ -12,6 +12,7 @@ import type { AgreementPreview } from "@/types/onboarding";
 interface Props {
   token: string;
   preview: AgreementPreview;
+  termsAcceptedAt?: string | null;
   onSigned: () => void;
 }
 
@@ -19,7 +20,7 @@ function fmt(n: number, currency: string) {
   return `${currency} ${n.toLocaleString()}`;
 }
 
-export function FinalSignatureStep({ token, preview, onSigned }: Props) {
+export function FinalSignatureStep({ token, preview, termsAcceptedAt, onSigned }: Props) {
   const [signature, setSignature] = useState<string | null>(null);
   const { mutate: signAgreement, isPending, isError, error } = useSignAgreement(token);
 
@@ -73,7 +74,10 @@ export function FinalSignatureStep({ token, preview, onSigned }: Props) {
           </div>
           <Separator />
           <p className="text-xs text-muted-foreground text-center">
-            Payment confirmed · Terms accepted on {new Date().toLocaleDateString()}
+            Payment confirmed · Terms accepted on{" "}
+            {termsAcceptedAt
+              ? new Date(termsAcceptedAt).toLocaleDateString()
+              : new Date().toLocaleDateString()}
           </p>
         </div>
 

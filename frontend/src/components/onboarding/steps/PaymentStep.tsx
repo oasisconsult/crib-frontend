@@ -13,7 +13,7 @@ import type { AgreementPreview, OnboardingPaymentItem, OnboardingPaymentMethod }
 interface Props {
   token: string;
   preview: AgreementPreview;
-  onNext: (result: { payments: { id: string; status: string }[] }) => void;
+  onNext: () => void;
   onBack: () => void;
 }
 
@@ -67,7 +67,7 @@ export function PaymentStep({ token, preview, onNext, onBack }: Props) {
     }
 
     submitPayments(payments, {
-      onSuccess: (result) => onNext(result),
+      onSuccess: () => onNext(),
     });
   }
 
