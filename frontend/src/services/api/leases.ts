@@ -114,9 +114,31 @@ export const leasesApi = {
   delete: (id: string) =>
     apiDelete<void>(`/leases/${id}`),
 
-  // State transitions
+  // State transitions — maps frontend events to the correct backend endpoints.
+  // The backend has no generic /transition endpoint; each lifecycle action has
+  // its own route. This mapper keeps the rest of the frontend unchanged.
   transition: async (id: string, event: string, payload?: object) => {
-    const raw = await apiPost<Record<string, unknown>>(`/leases/${id}/transition`, { event, ...payload });
+    let raw: Record<string, unknown>;
+    switch (event) {
+      case "LEASE_ACTIVATED":
+        raw = await apiPost<Record<string, unknown>>(`/leases/${id}/activate`, payload ?? {});
+        break;
+      case "LEASE_TERMINATED":
+        raw = await apiPost<Record<string, unknown>>(`/leases/${id}/terminate`, payload ?? {});
+        break;
+      case "LEASE_CLOSED":
+      case "NOTICE_GIVEN":
+        // NOTICE_GIVEN / CLOSE are not separate backend states — map to expire
+        raw = await apiPost<Record<string, unknown>>(`/leases/${id}/expire`, payload ?? {});
+        break;
+      case "LEASE_SENT":
+        // "Send for Signature" in the manager UI — direct-activate (manager fast-path).
+        // Tenant-facing signing now lives in the onboarding payment flow.
+        raw = await apiPost<Record<string, unknown>>(`/leases/${id}/activate`, payload ?? {});
+        break;
+      default:
+        throw new Error(`Unknown lease event: ${event}`);
+    }
     return toLeaseModel(raw);
   },
 
