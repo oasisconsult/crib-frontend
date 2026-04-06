@@ -499,7 +499,7 @@ async def generate_lease_document(
 <table>
   <tr><td>Start date</td><td>{lease.start_date}</td></tr>
   <tr><td>End date</td><td>{lease.end_date or 'Rolling (month-to-month)'}</td></tr>
-  <tr><td>Type</td><td>{'Periodic / Rolling' if lease.is_rolling else 'Fixed term'}</td></tr>
+  <tr><td>Type</td><td>{'Periodic / Rolling' if lease.end_date is None else 'Fixed term'}</td></tr>
 </table>
 
 <h2>3. Financial Terms</h2>
