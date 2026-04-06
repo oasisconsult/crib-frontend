@@ -15,6 +15,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
+import sqlalchemy as sa
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, SmallInteger, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -59,9 +60,10 @@ class Lease(TimestampedBase):
 
     # ── Status ─────────────────────────────────────────────────────────────────
     status: Mapped[LeaseStatus] = mapped_column(
-        # use sa.Enum here — LeaseStatus is a str enum so no create_type issue
-        # (SQLAlchemy uses the existing DB type via the migration)
-        String(20),
+        # create_type=False: don't emit CREATE TYPE — migration 004 already created
+        # lease_status_enum in the DB. Using sa.Enum here tells asyncpg to bind
+        # the value as the correct enum type instead of VARCHAR.
+        sa.Enum(LeaseStatus, name="lease_status_enum", create_type=False),
         nullable=False,
         default=LeaseStatus.draft,
     )
