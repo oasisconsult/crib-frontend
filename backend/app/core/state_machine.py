@@ -65,3 +65,26 @@ ONBOARDING_TRANSITIONS: dict[OnboardingState, dict[str, OnboardingState]] = {
 }
 
 onboarding_sm = StateMachine(ONBOARDING_TRANSITIONS)
+
+
+# ── Lease onboarding state machine ────────────────────────────────────────────
+# This machine governs the tenant-facing payment-before-signing flow.
+# The manager fast-path (draft → active directly) is handled in lease_service
+# and does NOT use this machine.
+
+from app.models.lease import LeaseStatus  # noqa: E402
+
+LEASE_ONBOARDING_TRANSITIONS: dict[str, dict[str, str]] = {
+    LeaseStatus.draft:               {"TENANT_OPENED_LINK":    LeaseStatus.onboarding_started},
+    LeaseStatus.onboarding_started:  {"AGREEMENT_PREVIEWED":   LeaseStatus.agreement_previewed},
+    LeaseStatus.agreement_previewed: {"TERMS_ACCEPTED":        LeaseStatus.terms_accepted},
+    LeaseStatus.terms_accepted:      {"PAYMENT_SUBMITTED":     LeaseStatus.payment_pending},
+    LeaseStatus.payment_pending:     {
+        "PAYMENT_CONFIRMED":  LeaseStatus.payment_secured,
+        "PAYMENT_FAILED":     LeaseStatus.terms_accepted,   # retry: back to accepted
+    },
+    LeaseStatus.payment_secured:     {"AGREEMENT_SIGNED":      LeaseStatus.agreement_signed},
+    LeaseStatus.agreement_signed:    {"ACTIVATED":             LeaseStatus.active},
+}
+
+lease_onboarding_sm = StateMachine(LEASE_ONBOARDING_TRANSITIONS)

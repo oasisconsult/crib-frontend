@@ -117,7 +117,7 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1 import (
         analytics, health, inspections, leases, me,
-        mobile_money, notifications, organisations, payments, properties,
+        mobile_money, notifications, onboarding, organisations, payments, properties,
         rbac, system_settings, tenants, uploads, wallet, webhooks,
     )
     from app.api.v1.flat_payments import (
@@ -129,6 +129,11 @@ def create_app() -> FastAPI:
     application.include_router(organisations.router, prefix=settings.api_prefix)
     application.include_router(properties.router, prefix=settings.api_prefix)
     application.include_router(tenants.router, prefix=settings.api_prefix)
+    # Onboarding payment flow — must be registered BEFORE tenants router catch-all
+    # but uses the same /tenants/onboarding/{token}/... prefix so order matters.
+    # FastAPI matches routes in registration order; the more-specific onboarding
+    # routes are registered here, before any catch-all tenant routes.
+    application.include_router(onboarding.router, prefix=settings.api_prefix)
     application.include_router(leases.router, prefix=settings.api_prefix)
     application.include_router(payments.router, prefix=settings.api_prefix)
     # Flat (org-level) payment endpoints

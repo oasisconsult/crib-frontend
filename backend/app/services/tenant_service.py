@@ -69,6 +69,7 @@ def _invite_out(invite: TenantInvite) -> TenantInviteOut:
         landlord_id=str(invite.organisation_id),
         property_id=str(invite.property_id) if invite.property_id else None,
         unit_id=str(invite.unit_id) if invite.unit_id else None,
+        lease_id=str(invite.lease_id) if invite.lease_id else None,
         email=invite.email,
         name=invite.name,
         token=invite.token,
@@ -234,11 +235,13 @@ async def invite_tenant(
     db.add(tenant)
     await db.flush()
 
+    lease_id = uuid.UUID(body.lease_id) if body.lease_id else None
     invite = TenantInvite(
         tenant_id=tenant.id,
         organisation_id=org_id,
         property_id=prop_id,
         unit_id=unit_id,
+        lease_id=lease_id,
         email=body.email,
         name=body.name,
         token=token,

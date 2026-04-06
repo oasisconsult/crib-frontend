@@ -25,6 +25,7 @@ class TenantInviteCreate(CamelModel):
     name: str = Field(min_length=1, max_length=255)
     property_id: str
     unit_id: str | None = None
+    lease_id: str | None = None   # optional — links a draft lease to this invite
 
 
 class TenantUpdate(CamelModel):
@@ -116,6 +117,7 @@ class TenantInviteOut(CamelModel):
     landlord_id: str
     property_id: str | None
     unit_id: str | None
+    lease_id: str | None
     email: str
     name: str
     token: str

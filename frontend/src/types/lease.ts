@@ -57,6 +57,12 @@ export interface Lease {
   terminationReason?: string;
   // Documents
   documentUrl?: string;
+  // Onboarding flow
+  termsAcceptedAt?: string;
+  agreementPreviewSnapshot?: Record<string, unknown>;
+  finalAgreementSnapshot?: Record<string, unknown>;
+  onboardingCompletedAt?: string;
+  onboardingPaymentIds?: string[];
   // Related
   renewedFromLeaseId?: string;
   notes?: string;

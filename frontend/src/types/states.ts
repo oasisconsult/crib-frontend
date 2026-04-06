@@ -35,10 +35,16 @@ export const ONBOARDING_TRANSITIONS: Record<
 // ─── Lease Lifecycle ──────────────────────────────────────────────────────────
 export type LeaseState =
   | "draft"
-  | "pending"
+  // Onboarding payment flow states
+  | "onboarding_started"
+  | "agreement_previewed"
+  | "terms_accepted"
+  | "payment_pending"
+  | "payment_secured"
+  | "agreement_signed"
+  // Live states
   | "active"
-  | "notice"
-  | "closed"
+  | "expired"
   | "terminated";
 
 export type LeaseEvent =
@@ -49,18 +55,42 @@ export type LeaseEvent =
   | "NOTICE_GIVEN"
   | "LEASE_TERMINATED"
   | "LEASE_CLOSED"
-  | "LEASE_RENEWED";
+  | "LEASE_RENEWED"
+  // Onboarding events
+  | "TENANT_OPENED_LINK"
+  | "AGREEMENT_PREVIEWED"
+  | "TERMS_ACCEPTED"
+  | "PAYMENT_SUBMITTED"
+  | "PAYMENT_CONFIRMED"
+  | "AGREEMENT_SIGNED";
 
 export const LEASE_TRANSITIONS: Record<
   LeaseState,
   Partial<Record<LeaseEvent, LeaseState>>
 > = {
-  draft: { LEASE_SENT: "pending" },
-  pending: { LEASE_ACTIVATED: "active", LEASE_TERMINATED: "terminated" },
-  active: { NOTICE_GIVEN: "notice", LEASE_TERMINATED: "terminated" },
-  notice: { LEASE_CLOSED: "closed", LEASE_TERMINATED: "terminated" },
-  closed: {},
-  terminated: {},
+  draft:               { TENANT_OPENED_LINK: "onboarding_started" },
+  onboarding_started:  { AGREEMENT_PREVIEWED: "agreement_previewed" },
+  agreement_previewed: { TERMS_ACCEPTED: "terms_accepted" },
+  terms_accepted:      { PAYMENT_SUBMITTED: "payment_pending" },
+  payment_pending:     { PAYMENT_CONFIRMED: "payment_secured" },
+  payment_secured:     { AGREEMENT_SIGNED: "agreement_signed" },
+  agreement_signed:    { LEASE_ACTIVATED: "active" },
+  active:              { NOTICE_GIVEN: "active", LEASE_TERMINATED: "terminated" },
+  expired:             {},
+  terminated:          {},
+};
+
+export const LEASE_STATE_DISPLAY: Record<LeaseState, StateDisplayConfig> = {
+  draft:               { label: "Draft",              color: "text-slate-600",   bgColor: "bg-slate-100"   },
+  onboarding_started:  { label: "Onboarding",         color: "text-indigo-700",  bgColor: "bg-indigo-100"  },
+  agreement_previewed: { label: "Preview Sent",       color: "text-blue-700",    bgColor: "bg-blue-100"    },
+  terms_accepted:      { label: "Terms Accepted",     color: "text-violet-700",  bgColor: "bg-violet-100"  },
+  payment_pending:     { label: "Payment Pending",    color: "text-amber-700",   bgColor: "bg-amber-100"   },
+  payment_secured:     { label: "Payment Secured",    color: "text-emerald-700", bgColor: "bg-emerald-100" },
+  agreement_signed:    { label: "Agreement Signed",   color: "text-teal-700",    bgColor: "bg-teal-100"    },
+  active:              { label: "Active",              color: "text-emerald-700", bgColor: "bg-emerald-100" },
+  expired:             { label: "Expired",             color: "text-gray-600",    bgColor: "bg-gray-100"    },
+  terminated:          { label: "Terminated",          color: "text-red-700",     bgColor: "bg-red-100"     },
 };
 
 // ─── Rent / Billing ───────────────────────────────────────────────────────────
@@ -302,15 +332,6 @@ export type StateDisplayConfig = {
   color: string;
   bgColor: string;
   description?: string;
-};
-
-export const LEASE_STATE_DISPLAY: Record<LeaseState, StateDisplayConfig> = {
-  draft: { label: "Draft", color: "text-slate-600", bgColor: "bg-slate-100" },
-  pending: { label: "Pending Signature", color: "text-amber-700", bgColor: "bg-amber-100" },
-  active: { label: "Active", color: "text-emerald-700", bgColor: "bg-emerald-100" },
-  notice: { label: "Notice Period", color: "text-orange-700", bgColor: "bg-orange-100" },
-  closed: { label: "Closed", color: "text-gray-600", bgColor: "bg-gray-100" },
-  terminated: { label: "Terminated", color: "text-red-700", bgColor: "bg-red-100" },
 };
 
 export const ONBOARDING_STATE_DISPLAY: Record<OnboardingState, StateDisplayConfig> = {

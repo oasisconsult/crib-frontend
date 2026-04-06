@@ -295,6 +295,9 @@ async def make_tenant_invite(db: AsyncSession, org: Organisation, tenant, **kwar
     invite = TenantInvite(
         tenant_id=tenant.id,
         organisation_id=org.id,
+        property_id=kwargs.get("property_id", None),
+        unit_id=kwargs.get("unit_id", None),
+        lease_id=kwargs.get("lease_id", None),
         email=kwargs.get("email", tenant.email),
         name=kwargs.get("name", f"{tenant.first_name} {tenant.last_name}"),
         token=kwargs.get("token", f"invite-{uuid.uuid4().hex}"),

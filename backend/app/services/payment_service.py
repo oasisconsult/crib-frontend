@@ -541,6 +541,13 @@ async def confirm_payment(
 
     await db.refresh(p, attribute_names=["status", "paid_at", "updated_at"])
 
+    # ── Onboarding side-effect: advance lease if all onboarding payments confirmed ──
+    # Check if this payment is an onboarding payment; if so, attempt to advance
+    # the lease from payment_pending → payment_secured.
+    if lease.onboarding_payment_ids and str(p.id) in lease.onboarding_payment_ids:
+        from app.services.onboarding_service import _maybe_secure_payment
+        await _maybe_secure_payment(lease, db)
+
     # Publish event (non-fatal — failure is swallowed inside publish_event)
     from app.core.events import emit_payment_confirmed
     await emit_payment_confirmed(

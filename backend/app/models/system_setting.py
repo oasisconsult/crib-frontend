@@ -153,4 +153,20 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "Allow tenants to submit maintenance requests from the tenant portal.", "boolean", False, True),
     ("features.onboarding_enabled", "true",     "features","Tenant Onboarding",
      "Enable the self-service onboarding wizard for new tenants.", "boolean", False, True),
+
+    # ── Payments ──────────────────────────────────────────────────────────────
+    ("payments.auto_confirm_enabled", "false", "payments", "Auto-Confirm Payments",
+     "When enabled, payments from configured methods are confirmed automatically "
+     "without manager action. Disable to require manual confirmation for all payments.",
+     "boolean", False, True),
+    ("payments.auto_confirm_methods", "mobile_money_mtn,mobile_money_airtel", "payments",
+     "Auto-Confirm Methods",
+     "Comma-separated list of payment methods that trigger automatic confirmation "
+     "when auto-confirm is enabled. Options: cash, bank_transfer, mobile_money_mtn, "
+     "mobile_money_airtel.",
+     "string", False, False),
+    ("payments.advance_payment_months", "1", "payments", "Default Advance Rent Months",
+     "Default number of months rent required in advance during tenant onboarding. "
+     "Can be overridden per-property or per-unit via the billing rules.",
+     "integer", False, True),
 ]

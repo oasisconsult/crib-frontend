@@ -92,6 +92,7 @@ export interface TenantInvite {
   landlordId: string;
   propertyId: string;
   unitId?: string;
+  leaseId?: string;  // linked draft lease — drives the payment flow
   email: string;
   name: string;
   token: string;

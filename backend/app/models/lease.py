@@ -17,17 +17,25 @@ from datetime import date, datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Numeric, SmallInteger, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import TimestampedBase
 
 
 class LeaseStatus(str, enum.Enum):
-    draft      = "draft"
-    active     = "active"
-    expired    = "expired"
-    terminated = "terminated"
+    draft                = "draft"
+    # ── Tenant onboarding flow ─────────────────────────────────────────────────
+    onboarding_started   = "onboarding_started"   # tenant opened link, lease linked
+    agreement_previewed  = "agreement_previewed"  # tenant saw terms snapshot
+    terms_accepted       = "terms_accepted"        # tenant explicitly accepted terms
+    payment_pending      = "payment_pending"       # payment records created, awaiting confirmation
+    payment_secured      = "payment_secured"       # all onboarding payments confirmed
+    agreement_signed     = "agreement_signed"      # tenant signed final agreement
+    # ── Live states ────────────────────────────────────────────────────────────
+    active               = "active"
+    expired              = "expired"
+    terminated           = "terminated"
 
 
 class Lease(TimestampedBase):
@@ -98,6 +106,18 @@ class Lease(TimestampedBase):
     )
 
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
+
+    # ── Onboarding flow ────────────────────────────────────────────────────────
+    # Snapshot of terms shown to tenant at preview time; compared at signing
+    agreement_preview_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Snapshot built at signing time; must equal preview_snapshot (strict equality)
+    final_agreement_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # When tenant explicitly accepted terms (legal anchor)
+    terms_accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Set when lease becomes active via onboarding (vs manager direct-activate)
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # List of Payment UUIDs created during onboarding (deposit + advance rent)
+    onboarding_payment_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
     # ── Relationships ──────────────────────────────────────────────────────────
     renewal_of: Mapped["Lease | None"] = relationship(

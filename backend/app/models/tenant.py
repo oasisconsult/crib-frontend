@@ -191,6 +191,13 @@ class TenantInvite(TimestampedBase):
         nullable=True,
     )
     unit_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # Explicit lease linked at invite creation — drives the onboarding payment flow
+    lease_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("leases.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)

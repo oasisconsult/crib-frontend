@@ -3,18 +3,16 @@
 import { use } from "react";
 import { Building2, Clock, LinkIcon } from "lucide-react";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
-import { useOnboardingByToken } from "@/hooks/useTenants";
+import { useOnboardingFlowStatus } from "@/hooks/useOnboardingFlow";
 
 interface Props {
   params: Promise<{ token: string }>;
 }
 
-/** Distinguish a 410 Gone (expired token) from a 404/other error. */
 function isExpiredError(err: unknown): boolean {
   if (err && typeof err === "object" && "status" in err) {
     return (err as { status: number }).status === 410;
   }
-  // Axios / fetch wrapped errors
   const anyErr = err as Record<string, unknown>;
   const resp = anyErr?.response as Record<string, unknown> | undefined;
   return resp?.status === 410;
@@ -22,7 +20,7 @@ function isExpiredError(err: unknown): boolean {
 
 export default function OnboardingPage({ params }: Props) {
   const { token } = use(params);
-  const { data, isLoading, error } = useOnboardingByToken(token);
+  const { data, isLoading, error } = useOnboardingFlowStatus(token);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-4 sm:p-6">
@@ -43,7 +41,6 @@ export default function OnboardingPage({ params }: Props) {
           </div>
         ) : error ? (
           isExpiredError(error) ? (
-            /* ── Expired link ─────────────────────────────────────────── */
             <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-8 text-center space-y-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mx-auto">
                 <Clock className="h-7 w-7 text-amber-600 dark:text-amber-400" />
@@ -64,7 +61,6 @@ export default function OnboardingPage({ params }: Props) {
               </div>
             </div>
           ) : (
-            /* ── Invalid / not found ──────────────────────────────────── */
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center space-y-2">
               <h2 className="text-lg font-semibold text-destructive">Invalid Link</h2>
               <p className="text-sm text-muted-foreground">
@@ -78,13 +74,23 @@ export default function OnboardingPage({ params }: Props) {
             <div className="mb-6">
               <h1 className="text-2xl font-bold tracking-tight">Welcome to Crib</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Hi <span className="font-medium text-foreground">{data.invite.name}</span>!
-                {["submitted", "approved"].includes(data.tenant.onboardingState)
-                  ? " Review or update your details below."
-                  : " Complete your profile to activate your tenancy."}
+                Hi <span className="font-medium text-foreground">{data.invite.name}</span>!{" "}
+                {data.isActive
+                  ? "Your tenancy is active."
+                  : data.onboardingPhase === "payment_flow"
+                  ? "Complete your payment and sign your agreement to activate your tenancy."
+                  : ["submitted", "approved"].includes(data.tenant.onboardingState)
+                  ? "Review or update your details below."
+                  : "Complete your profile to begin."}
               </p>
             </div>
-            <OnboardingWizard token={token} invite={data.invite} tenant={data.tenant} />
+            <OnboardingWizard
+              token={token}
+              invite={data.invite}
+              tenant={data.tenant}
+              agreementPreview={data.agreementPreview}
+              leaseStatus={data.lease?.state ?? null}
+            />
           </>
         )}
       </div>
