@@ -64,6 +64,22 @@ class TenantOnboardingSubmit(CamelModel):
     documents: list[OnboardingDocumentSubmit] = Field(default_factory=list)
 
 
+class OnboardingDraftSave(CamelModel):
+    """
+    Partial progress saved server-side so the tenant can resume from where
+    they left off when they return via a resent invite link.
+
+    Only profile-level fields and the current step are stored here.
+    Documents are persisted as TenantDocument rows on upload, so they
+    don't need to be included in the draft.
+    """
+    step: str = Field(description="profile | documents | signature")
+    phone: str | None = None
+    date_of_birth: str | None = None
+    nationality: str | None = None
+    emergency_contact: EmergencyContactSchema | None = None
+
+
 class TenantOut(CamelModel):
     id: str
     user_id: str | None           # logto_user_id — frontend calls it userId
@@ -87,6 +103,7 @@ class TenantOut(CamelModel):
     tags: list[str]
     gdpr_consent_at: str | None
     data_retention_until: str | None
+    onboarding_draft: dict | None
     documents: list["TenantDocumentOut"]
     created_at: str
     updated_at: str

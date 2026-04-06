@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "./client";
-import type { Tenant, TenantInvite, TenantDocument, OnboardingSubmitPayload, PaginatedResponse, QueryParams } from "@/types";
+import type { Tenant, TenantInvite, TenantDocument, OnboardingDraft, OnboardingSubmitPayload, PaginatedResponse, QueryParams } from "@/types";
 
 export const tenantsApi = {
   list: (params?: QueryParams) =>
@@ -27,6 +27,13 @@ export const tenantsApi = {
 
   submitOnboarding: (token: string, data: OnboardingSubmitPayload) =>
     apiPost<Tenant>(`/tenants/onboarding/${token}/submit`, data),
+
+  /** Save partial wizard progress so the tenant can resume after token refresh. */
+  saveDraft: (token: string, draft: OnboardingDraft & { step: string }) =>
+    apiPatch<void>(`/tenants/onboarding/${token}/draft`, draft),
+
+  resendInvite: (tenantId: string) =>
+    apiPost<TenantInvite>(`/tenants/${tenantId}/resend-invite`, {}),
 
   approveOnboarding: (tenantId: string) =>
     apiPatch<Tenant>(`/tenants/${tenantId}/approve`, {}),

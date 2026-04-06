@@ -33,6 +33,7 @@ from app.models.tenant import (
     TenantStatus,
 )
 from app.schemas.tenant import (
+    OnboardingDraftSave,
     TenantDocumentCreate,
     TenantDocumentOut,
     TenantInviteCreate,
@@ -107,6 +108,7 @@ def _tenant_out(tenant: Tenant) -> TenantOut:
             tenant.data_retention_until.isoformat()
             if tenant.data_retention_until else None
         ),
+        onboarding_draft=tenant.onboarding_draft,
         documents=[_doc_out(d) for d in (tenant.documents or [])],
         created_at=tenant.created_at.isoformat(),
         updated_at=tenant.updated_at.isoformat(),
@@ -294,12 +296,26 @@ async def submit_onboarding(
     if not invite:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid token")
 
+    now = datetime.now(timezone.utc)
+    if invite.expires_at.replace(tzinfo=timezone.utc) < now:
+        invite.status = InviteStatus.expired
+        await db.flush()
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invite token has expired")
+
     tenant_result = await db.execute(
         select(Tenant)
         .options(selectinload(Tenant.documents))
         .where(Tenant.id == invite.tenant_id)
     )
     tenant = tenant_result.scalar_one()
+
+    # Re-submission is allowed (landlord may request corrections after review).
+    # Guard only against submitting on behalf of a fully activated tenant.
+    if tenant.onboarding_state == OnboardingState.activated:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Tenant is already fully activated",
+        )
 
     # Update personal details
     tenant.first_name = body.first_name
@@ -312,19 +328,17 @@ async def submit_onboarding(
         tenant.emergency_contact = body.emergency_contact.model_dump(by_alias=True)
 
     # GDPR consent
-    if body.gdpr_consent:
-        tenant.gdpr_consent_at = datetime.now(timezone.utc)
-        # Retain data for 7 years from consent
-        tenant.data_retention_until = datetime.now(timezone.utc).replace(
-            year=datetime.now(timezone.utc).year + 7
-        )
+    if body.gdpr_consent and not tenant.gdpr_consent_at:
+        tenant.gdpr_consent_at = now
+        tenant.data_retention_until = now.replace(year=now.year + 7)
 
-    # Persist uploaded documents
+    # Persist uploaded documents (append new; don't duplicate existing URLs)
     if body.documents:
         from dateutil.parser import parse as parse_dt
-        now_utc = datetime.now(timezone.utc)
+        existing_urls = {d.url for d in (tenant.documents or [])}
         for doc_data in body.documents:
-            # Validate the document type — fall back to 'other' for unknown values
+            if doc_data.url in existing_urls:
+                continue  # already saved from a previous draft-save or re-upload
             try:
                 doc_type = IdDocumentType(doc_data.type)
             except ValueError:
@@ -345,21 +359,128 @@ async def submit_onboarding(
                 mime_type=doc_data.mime_type,
                 size_bytes=doc_data.size_bytes,
                 verified=False,
-                uploaded_at=now_utc,
+                uploaded_at=now,
                 expires_at=expires_at,
             )
             db.add(doc)
 
-    # Advance state machine
-    tenant.onboarding_state = onboarding_sm.transition_or_422(
-        tenant.onboarding_state, "ONBOARDING_COMPLETED"
-    )
-    tenant.onboarding_completed_at = datetime.now(timezone.utc)
+    # Advance state machine on fresh submissions; re-submissions keep current state
+    _resubmit_states = {OnboardingState.submitted, OnboardingState.approved, OnboardingState.rejected}
+    if tenant.onboarding_state not in _resubmit_states:
+        tenant.onboarding_state = onboarding_sm.transition_or_422(
+            tenant.onboarding_state, "ONBOARDING_COMPLETED"
+        )
+    # Always update completion timestamp and mark invite accepted
+    tenant.onboarding_completed_at = now
+    # Clear the draft now that submission is complete
+    tenant.onboarding_draft = None
     invite.status = InviteStatus.accepted
+
     await db.flush()
     await db.refresh(tenant, attribute_names=["status", "onboarding_state", "updated_at", "documents"])
 
     return _tenant_out(tenant)
+
+
+async def save_onboarding_draft(
+    token: str, body: OnboardingDraftSave, db: AsyncSession
+) -> None:
+    """
+    Save partial onboarding progress to the tenant record.
+    Called automatically as the tenant navigates between wizard steps.
+    The draft is cleared on successful submission.
+    """
+    result = await db.execute(
+        select(TenantInvite).where(TenantInvite.token == token)
+    )
+    invite = result.scalar_one_or_none()
+    if not invite:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid token")
+
+    now = datetime.now(timezone.utc)
+    if invite.expires_at.replace(tzinfo=timezone.utc) < now:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invite token has expired")
+
+    result2 = await db.execute(select(Tenant).where(Tenant.id == invite.tenant_id))
+    tenant = result2.scalar_one()
+
+    draft: dict = {"step": body.step}
+    if body.phone is not None:
+        draft["phone"] = body.phone
+    if body.date_of_birth is not None:
+        draft["dateOfBirth"] = body.date_of_birth
+    if body.nationality is not None:
+        draft["nationality"] = body.nationality
+    if body.emergency_contact is not None:
+        draft["emergencyContact"] = body.emergency_contact.model_dump(by_alias=True)
+
+    tenant.onboarding_draft = draft
+    await db.flush()
+
+
+async def resend_invite(
+    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> TenantInviteOut:
+    """
+    Generate a fresh invite token for a tenant who has not yet completed
+    onboarding (states: invited, started, rejected).
+
+    - Marks any existing pending invites as expired.
+    - For a rejected tenant, resets the onboarding state back to invited
+      so they can start fresh.
+    - Returns the new TenantInvite so the caller can display the new link.
+    """
+    tenant = await _get_tenant(tenant_id, org_id, db)
+
+    _blocked_states = {OnboardingState.submitted, OnboardingState.approved, OnboardingState.activated}
+    if tenant.onboarding_state in _blocked_states:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Cannot resend invite: tenant onboarding is already '{tenant.onboarding_state.value}'. "
+                "Only tenants in 'invited', 'started', or 'rejected' state can receive a new link."
+            ),
+        )
+
+    # Expire all existing pending invites for this tenant
+    existing = await db.execute(
+        select(TenantInvite).where(
+            TenantInvite.tenant_id == tenant_id,
+            TenantInvite.status == InviteStatus.pending,
+        )
+    )
+    for old_invite in existing.scalars().all():
+        old_invite.status = InviteStatus.expired
+
+    now = datetime.now(timezone.utc)
+    token = secrets.token_urlsafe(48)
+
+    new_invite = TenantInvite(
+        tenant_id=tenant.id,
+        organisation_id=org_id,
+        property_id=tenant.current_property_id,
+        unit_id=tenant.current_unit_id,
+        email=tenant.email,
+        name=f"{tenant.first_name} {tenant.last_name}",
+        token=token,
+        status=InviteStatus.pending,
+        sent_at=now,
+        expires_at=now + timedelta(hours=INVITE_EXPIRY_HOURS),
+    )
+    db.add(new_invite)
+
+    # Update the tenant's onboarding token and reset rejected state
+    tenant.onboarding_token = token
+    if tenant.onboarding_state == OnboardingState.rejected:
+        tenant.onboarding_state = OnboardingState.invited
+        tenant.rejection_reason = None
+
+    await db.flush()
+    await db.refresh(new_invite)
+
+    # TODO Sprint 8: queue email/SMS notification with new invite link
+
+    return _invite_out(new_invite)
 
 
 # ── Approve / Reject ──────────────────────────────────────────────────────────

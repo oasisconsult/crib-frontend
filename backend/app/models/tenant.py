@@ -109,6 +109,12 @@ class Tenant(TimestampedBase):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
+    # ── Onboarding draft (partial progress saved server-side) ─────────────────
+    # Stores { step, profile: {phone, dateOfBirth, nationality}, emergencyContact }
+    # Cleared on successful submission. Used to restore wizard position when
+    # a tenant returns via a resent invite link.
+    onboarding_draft: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     # ── GDPR ─────────────────────────────────────────────────────────────────
     gdpr_consent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

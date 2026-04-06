@@ -23,6 +23,15 @@ export interface TenantDocument {
   expiresAt?: string;
 }
 
+/** Partial wizard progress saved server-side so the tenant can resume. */
+export interface OnboardingDraft {
+  step: "profile" | "documents" | "signature";
+  phone?: string;
+  dateOfBirth?: string;
+  nationality?: string;
+  emergencyContact?: EmergencyContact;
+}
+
 export interface Tenant {
   id: string;
   userId?: string; // linked Logto user
@@ -39,12 +48,14 @@ export interface Tenant {
   onboardingState: OnboardingState;
   onboardingToken?: string;
   onboardingCompletedAt?: string;
+  rejectionReason?: string;
   // Current placement
   currentPropertyId?: string;
   currentUnitId?: string;
   currentLeaseId?: string;
   // Meta
   emergencyContact?: EmergencyContact;
+  onboardingDraft?: OnboardingDraft;
   documents: TenantDocument[];
   notes?: string;
   tags: string[];

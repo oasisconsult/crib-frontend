@@ -15,6 +15,9 @@ import {
   StickyNote,
   CheckCircle,
   XCircle,
+  RefreshCw,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +38,7 @@ import { OnboardingProgress } from "@/components/tenants/OnboardingProgress";
 import { TenantDocumentsSection } from "@/components/tenants/TenantDocumentsSection";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatDate, getInitials } from "@/utils/formatters";
-import { useTenant, useUpdateTenant, useApproveOnboarding, useRejectOnboarding } from "@/hooks/useTenants";
+import { useTenant, useUpdateTenant, useApproveOnboarding, useRejectOnboarding, useResendInvite } from "@/hooks/useTenants";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Tenant, TenantStatus } from "@/types";
 
@@ -274,6 +277,83 @@ function TenantNotesSection({ tenant }: { tenant: Tenant }) {
   );
 }
 
+/** Shown in the sidebar when the tenant hasn't finished onboarding yet. */
+function ResendInviteSection({ tenant }: { tenant: Tenant }) {
+  const { mutate: resend, isPending, data: newInvite } = useResendInvite();
+  const [copied, setCopied] = useState(false);
+
+  const resendableStates = ["invited", "started", "rejected"];
+  if (!resendableStates.includes(tenant.onboardingState)) return null;
+
+  const inviteUrl = newInvite
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}/onboarding/${newInvite.token}`
+    : null;
+
+  function handleCopy() {
+    if (!inviteUrl) return;
+    navigator.clipboard.writeText(inviteUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <Card className={
+      tenant.onboardingState === "rejected"
+        ? "border-destructive/30 bg-destructive/5 dark:bg-destructive/10"
+        : "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
+    }>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <RefreshCw className="h-4 w-4" />
+          {tenant.onboardingState === "rejected" ? "Re-invite Tenant" : "Resend Invite"}
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          {tenant.onboardingState === "rejected"
+            ? "Generate a new link so the tenant can resubmit their application."
+            : tenant.onboardingState === "started"
+            ? "The tenant started but hasn't finished. Send a fresh link — their progress is saved."
+            : "The invite link may have expired. Generate a new 72-hour link."}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {inviteUrl ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">New link generated:</p>
+            <div className="flex gap-1.5">
+              <code className="flex-1 text-xs bg-muted rounded px-2 py-1.5 truncate block">
+                {inviteUrl}
+              </code>
+              <Button size="icon-sm" variant="outline" onClick={handleCopy} title="Copy link">
+                <Copy className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="icon-sm"
+                variant="outline"
+                onClick={() => window.open(inviteUrl, "_blank")}
+                title="Open link"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            {copied && <p className="text-xs text-emerald-600">Copied to clipboard!</p>}
+          </div>
+        ) : (
+          <Button
+            size="sm"
+            className="w-full"
+            loading={isPending}
+            onClick={() => resend(tenant.id)}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Generate New Link
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function ApproveRejectSection({ tenant }: { tenant: Tenant }) {
   const { mutate: approve, isPending: approving } = useApproveOnboarding();
   const { mutate: reject, isPending: rejecting } = useRejectOnboarding();
@@ -497,6 +577,7 @@ export default function TenantDetailPage({ params }: Props) {
 
           {/* ── Sidebar ─────────────────────────────── */}
           <div className="space-y-6">
+            {canEdit && <ResendInviteSection tenant={tenant} />}
             {canEdit && <ApproveRejectSection tenant={tenant} />}
 
             <Card>

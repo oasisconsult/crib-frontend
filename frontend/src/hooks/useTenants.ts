@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { tenantsApi } from "@/services/api/tenants";
 import { toast } from "@/store/useUIStore";
-import type { Tenant, TenantDocument, QueryParams, OnboardingSubmitPayload } from "@/types";
+import type { Tenant, TenantDocument, OnboardingDraft, QueryParams, OnboardingSubmitPayload } from "@/types";
 
 export function useTenants(params?: QueryParams) {
   return useQuery({
@@ -132,6 +132,27 @@ export function useDeleteTenantDocument() {
       toast.success("Document deleted");
     },
     onError: () => toast.error("Failed to delete document"),
+  });
+}
+
+export function useSaveOnboardingDraft() {
+  return useMutation({
+    mutationFn: ({ token, draft }: { token: string; draft: OnboardingDraft & { step: string } }) =>
+      tenantsApi.saveDraft(token, draft),
+    // Silent — draft saves should never surface errors to the user
+  });
+}
+
+export function useResendInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tenantId: string) => tenantsApi.resendInvite(tenantId),
+    onSuccess: (_, tenantId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.detail(tenantId) });
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.all() });
+      toast.success("New invite link generated");
+    },
+    onError: () => toast.error("Failed to resend invite"),
   });
 }
 

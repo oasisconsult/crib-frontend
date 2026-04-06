@@ -10,7 +10,13 @@ from app.schemas.common import CamelModel
 
 
 class LeaseCreate(CamelModel):
-    """Create a draft lease."""
+    """
+    Create a draft lease.
+
+    Billing-rule fields (rent_day_of_month, grace_period_days, etc.) are optional.
+    When omitted they fall back to the property's rules; when provided they override
+    the property defaults so the manager can customise per-lease.
+    """
     unit_id: str
     tenant_id: str
     start_date: date
@@ -20,6 +26,12 @@ class LeaseCreate(CamelModel):
     deposit_amount: float | None = None
     deposit_paid: bool = False
     notes: str | None = None
+    # Optional billing rule overrides (fall back to property rules when absent)
+    rent_day_of_month: int | None = Field(default=None, ge=1, le=28)
+    grace_period_days: int | None = Field(default=None, ge=0)
+    late_fee_type: str | None = None
+    late_fee_value: float | None = Field(default=None, ge=0)
+    notice_period_days: int | None = Field(default=None, ge=0)
 
     @field_validator("end_date", mode="after")
     @classmethod

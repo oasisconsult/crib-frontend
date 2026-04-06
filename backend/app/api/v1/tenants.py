@@ -1,5 +1,5 @@
 """
-Tenants REST API — 16 endpoints.
+Tenants REST API — 18 endpoints.
 
 Route order matters: /invite, /onboarding/:token must be registered before /:id
 to prevent FastAPI matching those path segments as UUID tenant IDs.
@@ -8,12 +8,14 @@ Endpoints:
   POST   /tenants/invite
   GET    /tenants/onboarding/{token}
   POST   /tenants/onboarding/{token}/submit
+  PATCH  /tenants/onboarding/{token}/draft      ← save partial progress (public)
   GET    /tenants
   GET    /tenants/{id}
   PUT    /tenants/{id}
   DELETE /tenants/{id}
   PATCH  /tenants/{id}/approve
   PATCH  /tenants/{id}/reject
+  POST   /tenants/{id}/resend-invite            ← regenerate expired/pending invite
   GET    /tenants/{id}/documents
   POST   /tenants/{id}/documents
   PATCH  /tenants/{id}/documents/{doc_id}/verify
@@ -30,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_current_user, require_org_access
 from app.core.database import get_db
 from app.schemas.tenant import (
+    OnboardingDraftSave,
     OnboardingResponse,
     TenantDocumentCreate,
     TenantDocumentOut,
@@ -73,6 +76,20 @@ async def submit_onboarding(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.submit_onboarding(token, body, db)
+
+
+@router.patch("/onboarding/{token}/draft", status_code=status.HTTP_204_NO_CONTENT)
+async def save_onboarding_draft(
+    token: str,
+    body: OnboardingDraftSave,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Save partial onboarding progress (current step + profile fields) so the
+    tenant can resume from where they left off if they return via a new invite
+    link. No authentication required — the invite token is the credential.
+    """
+    await svc.save_onboarding_draft(token, body, db)
 
 
 # ── Tenant CRUD ───────────────────────────────────────────────────────────────
@@ -143,6 +160,24 @@ async def reject_tenant(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.reject_tenant(tenant_id, body.reason, current_user.org_id, db)
+
+
+# ── Resend invite ─────────────────────────────────────────────────────────────
+
+@router.post("/{tenant_id}/resend-invite", response_model=TenantInviteOut)
+async def resend_invite(
+    tenant_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Generate a fresh 72-hour invite link for a tenant whose previous link
+    expired or who was rejected and needs another chance.
+
+    Allowed for onboarding states: invited, started, rejected.
+    Blocked for: submitted, approved, activated.
+    """
+    return await svc.resend_invite(tenant_id, current_user.org_id, db)
 
 
 # ── Documents ─────────────────────────────────────────────────────────────────

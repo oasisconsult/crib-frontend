@@ -1,12 +1,23 @@
 "use client";
 
 import { use } from "react";
-import { Building2 } from "lucide-react";
+import { Building2, Clock, LinkIcon } from "lucide-react";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { useOnboardingByToken } from "@/hooks/useTenants";
 
 interface Props {
   params: Promise<{ token: string }>;
+}
+
+/** Distinguish a 410 Gone (expired token) from a 404/other error. */
+function isExpiredError(err: unknown): boolean {
+  if (err && typeof err === "object" && "status" in err) {
+    return (err as { status: number }).status === 410;
+  }
+  // Axios / fetch wrapped errors
+  const anyErr = err as Record<string, unknown>;
+  const resp = anyErr?.response as Record<string, unknown> | undefined;
+  return resp?.status === 410;
 }
 
 export default function OnboardingPage({ params }: Props) {
@@ -30,21 +41,47 @@ export default function OnboardingPage({ params }: Props) {
             <div className="h-4 w-48 bg-muted rounded animate-pulse" />
             <div className="h-96 bg-muted rounded-xl animate-pulse" />
           </div>
-        ) : error || !data ? (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
-            <h2 className="text-lg font-semibold text-destructive">Invalid or Expired Link</h2>
-            <p className="text-sm text-muted-foreground mt-2">
-              This onboarding link is no longer valid. Please contact your landlord for a new
-              invitation.
-            </p>
-          </div>
-        ) : (
+        ) : error ? (
+          isExpiredError(error) ? (
+            /* ── Expired link ─────────────────────────────────────────── */
+            <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-8 text-center space-y-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mx-auto">
+                <Clock className="h-7 w-7 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-amber-800 dark:text-amber-200">
+                  Your invite link has expired
+                </h2>
+                <p className="text-sm text-amber-700 dark:text-amber-300 mt-2 max-w-sm mx-auto">
+                  Onboarding links are valid for 72 hours. Please contact your landlord or
+                  property manager to request a new link — your previously entered information
+                  is safely saved and will be pre-filled when you return.
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-3 py-1.5 rounded-full">
+                <LinkIcon className="h-3 w-3" />
+                Ask your landlord to resend your invite from the Crib dashboard
+              </div>
+            </div>
+          ) : (
+            /* ── Invalid / not found ──────────────────────────────────── */
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center space-y-2">
+              <h2 className="text-lg font-semibold text-destructive">Invalid Link</h2>
+              <p className="text-sm text-muted-foreground">
+                This onboarding link is not recognised. Please check the link in your
+                invitation email or contact your landlord for a new one.
+              </p>
+            </div>
+          )
+        ) : !data ? null : (
           <>
             <div className="mb-6">
               <h1 className="text-2xl font-bold tracking-tight">Welcome to Crib</h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Hi <span className="font-medium text-foreground">{data.invite.name}</span>! Complete
-                your profile to activate your tenancy.
+                Hi <span className="font-medium text-foreground">{data.invite.name}</span>!
+                {["submitted", "approved"].includes(data.tenant.onboardingState)
+                  ? " Review or update your details below."
+                  : " Complete your profile to activate your tenancy."}
               </p>
             </div>
             <OnboardingWizard token={token} invite={data.invite} tenant={data.tenant} />

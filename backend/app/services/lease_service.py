@@ -130,6 +130,7 @@ async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -
     # Copy billing rules from effective rules
     rules = _effective_rules(unit, prop)
 
+    # Billing rules: body values take precedence; fall back to property rules
     lease = Lease(
         organisation_id=org_id,
         property_id=unit.property_id,
@@ -143,12 +144,11 @@ async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -
         deposit_amount=body.deposit_amount,
         deposit_paid=body.deposit_paid,
         notes=body.notes,
-        # billing rules from effective rules
-        rent_day_of_month=rules.get("rentDayOfMonth", 1),
-        grace_period_days=rules.get("gracePeriodDays", 5),
-        late_fee_type=rules.get("lateFeeType", "flat"),
-        late_fee_value=rules.get("lateFeeValue", 0),
-        notice_period_days=rules.get("noticePeriodDays", 30),
+        rent_day_of_month=body.rent_day_of_month if body.rent_day_of_month is not None else rules.get("rentDayOfMonth", 1),
+        grace_period_days=body.grace_period_days if body.grace_period_days is not None else rules.get("gracePeriodDays", 5),
+        late_fee_type=body.late_fee_type or rules.get("lateFeeType", "flat"),
+        late_fee_value=body.late_fee_value if body.late_fee_value is not None else rules.get("lateFeeValue", 0),
+        notice_period_days=body.notice_period_days if body.notice_period_days is not None else rules.get("noticePeriodDays", 30),
     )
     db.add(lease)
     await db.flush()
