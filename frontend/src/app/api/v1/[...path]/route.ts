@@ -29,6 +29,18 @@ import { COOKIE } from "@/lib/cookies";
 // (docker-compose.local.yml maps 8001 -> 8000).
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8001";
 
+// Public backend paths that don't require a session cookie.
+// These are token-authenticated endpoints where the invite token in the URL
+// IS the credential — no Logto session exists for a tenant opening their invite link.
+const PUBLIC_PATH_PREFIXES = [
+  "tenants/onboarding/",
+];
+
+function isPublicPath(path: string[]): boolean {
+  const joined = path.join("/");
+  return PUBLIC_PATH_PREFIXES.some((prefix) => joined.startsWith(prefix));
+}
+
 // Headers that must not be forwarded (HTTP hop-by-hop + Next.js internals)
 const SKIP_HEADERS = new Set([
   "host",
@@ -53,10 +65,9 @@ async function proxy(
   const accessToken = request.cookies.get(COOKIE.SESSION)?.value;
   const hasSessionCookie = !!accessToken;
 
-  // If the cookie isn't present, don't even hit the backend. This prevents
-  // confusing backend 401s ("missing Authorization") and clearly tells us
-  // the BFF didn't receive the cookie.
-  if (!hasSessionCookie) {
+  // If the cookie isn't present, block the request — UNLESS it's a public
+  // onboarding path where the invite token in the URL is the credential.
+  if (!hasSessionCookie && !isPublicPath(path)) {
     return NextResponse.json(
       { detail: "Missing session cookie (logto_session)" },
       {
