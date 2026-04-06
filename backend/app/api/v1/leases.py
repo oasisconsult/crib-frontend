@@ -141,3 +141,14 @@ async def renew_lease(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.renew_lease(lease_id, body, current_user.org_id, db)
+
+
+@router.post("/{lease_id}/document", response_model=dict)
+async def generate_document(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate an HTML lease agreement document and return a URL to access it."""
+    url = await svc.generate_lease_document(lease_id, current_user.org_id, db)
+    return {"url": url}
