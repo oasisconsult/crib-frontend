@@ -27,7 +27,9 @@ from app.schemas.lease import (
     LeaseTerminate,
     LeaseUpdate,
 )
+from app.schemas.onboarding import CountersignBody, TenancyAgreementOut
 from app.services import lease_service as svc
+from app.services import onboarding_service as onb_svc
 
 router = APIRouter(prefix="/leases", tags=["leases"])
 
@@ -152,3 +154,24 @@ async def generate_document(
     """Generate an HTML lease agreement document and return a URL to access it."""
     url = await svc.generate_lease_document(lease_id, current_user.org_id, db)
     return {"url": url}
+
+
+@router.post("/{lease_id}/agreement/countersign", response_model=TenancyAgreementOut)
+async def countersign_agreement(
+    lease_id: uuid.UUID,
+    body: CountersignBody,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Manager/landlord countersigns the tenancy agreement.
+    The tenant must have already signed (lease must be active).
+    Once countersigned the agreement becomes fully_executed.
+    """
+    return await onb_svc.countersign_agreement(
+        lease_id=str(lease_id),
+        signature_data_url=body.signature_data_url,
+        signer_id=current_user.sub,
+        signer_name=current_user.profile.display_name or current_user.sub,
+        db=db,
+    )

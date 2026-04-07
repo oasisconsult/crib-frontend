@@ -39,6 +39,7 @@ from app.models.lease import Lease, LeaseStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.property import Property, Unit, UnitStatus
 from app.models.tenant import InviteStatus, OnboardingState, Tenant, TenantInvite, TenantStatus
+from app.models.tenancy_agreement import TenancyAgreement, TenancyAgreementStatus
 from app.schemas.lease import LeaseOut
 from app.schemas.onboarding import (
     AgreementPreviewOut,
@@ -639,6 +640,24 @@ async def sign_agreement(
     lease.signed_at = now
     lease.status = LeaseStatus.agreement_signed
 
+    # Create TenancyAgreement record with tenant signature
+    rendered_html = await _render_agreement_html(
+        lease=lease,
+        tenant=tenant,
+        unit=unit,
+        prop=prop,
+        db=db,
+        tenant_signature_data_url=body.signature_data_url,
+        tenant_signed_at=f"{now.day} {now.strftime('%B %Y %H:%M')} UTC",
+    )
+    ta = TenancyAgreement(
+        lease_id=lease.id,
+        rendered_html=rendered_html,
+        status=TenancyAgreementStatus.tenant_signed,
+        tenant_signature_data_url=body.signature_data_url,
+        tenant_signed_at=now,
+    )
+    db.add(ta)
     await db.flush()
 
     # Auto-activate immediately after signing
@@ -655,6 +674,8 @@ async def _activate_via_onboarding(
     Apply all activate_lease side-effects after signing.
     Mirrors lease_service.activate_lease but skips the duplicate-active-lease check
     since payment_secured already implies intent to occupy.
+
+    Also creates the tenant's Logto account (best-effort — failure does not block activation).
     """
     now = datetime.now(timezone.utc)
 
@@ -676,7 +697,170 @@ async def _activate_via_onboarding(
     await create_deposit_record(lease, db)
 
     await db.flush()
+
+    # Create Logto account for the tenant (best-effort — won't block activation if it fails)
+    from app.models.organisation import Organisation
+    org = await db.get(Organisation, lease.organisation_id)
+    if org and not tenant.logto_user_id:
+        from app.services.logto_service import create_tenant_user
+        logto_user_id = await create_tenant_user(
+            email=tenant.email,
+            first_name=tenant.first_name,
+            last_name=tenant.last_name,
+            logto_org_id=org.logto_org_id,
+        )
+        if logto_user_id:
+            tenant.logto_user_id = logto_user_id
+            await db.flush()
+
     log.info("onboarding.lease_activated", lease_id=str(lease.id), tenant_id=str(tenant.id))
+
+
+# ── Agreement rendering ───────────────────────────────────────────────────────
+
+async def _render_agreement_html(
+    lease: Lease,
+    tenant: Tenant,
+    unit: "Unit",
+    prop: "Property",
+    db: AsyncSession,
+    tenant_signature_data_url: str | None = None,
+    tenant_signed_at: str | None = None,
+    landlord_signature_data_url: str | None = None,
+    landlord_signed_at: str | None = None,
+    landlord_signer_name: str | None = None,
+) -> str:
+    """Render the full tenancy agreement HTML."""
+    from app.core.agreement_template import render_agreement
+    from app.models.organisation import Organisation
+
+    # Resolve landlord name: org name (agency) or individual owner name
+    org = await db.get(Organisation, lease.organisation_id)
+    landlord_name = org.name if org else "Landlord"
+
+    # Build property address string from JSONB
+    addr = prop.address or {}
+    address_parts = [
+        addr.get("line1", ""),
+        addr.get("line2", ""),
+        addr.get("city", ""),
+        addr.get("state", ""),
+        addr.get("postcode", ""),
+        addr.get("country", ""),
+    ]
+    property_address = ", ".join(p for p in address_parts if p)
+
+    # Format dates — cross-platform (avoid %-d which is Linux-only)
+    def _fmt_date(d) -> str:
+        if d is None:
+            return ""
+        if hasattr(d, "strftime"):
+            return f"{d.day} {d.strftime('%B %Y')}"
+        return str(d)
+
+    now = datetime.now(timezone.utc)
+
+    return render_agreement(
+        landlord_name=landlord_name,
+        tenant_name=f"{tenant.first_name} {tenant.last_name}",
+        tenant_nin=tenant.nin or "N/A",
+        property_address=property_address or prop.name,
+        unit_name=unit.name,
+        start_date=_fmt_date(lease.start_date),
+        end_date=_fmt_date(lease.end_date) if lease.end_date else None,
+        monthly_rent=float(lease.monthly_rent),
+        currency=lease.currency,
+        deposit_amount=float(lease.deposit_amount) if lease.deposit_amount else 0.0,
+        rent_day_of_month=lease.rent_day_of_month,
+        notice_period_days=lease.notice_period_days,
+        grace_period_days=lease.grace_period_days,
+        late_fee_type=lease.late_fee_type,
+        late_fee_value=float(lease.late_fee_value),
+        agreement_date=f"{now.day} {now.strftime('%B %Y')}",
+        tenant_signature_data_url=tenant_signature_data_url,
+        tenant_signed_at=tenant_signed_at,
+        landlord_signature_data_url=landlord_signature_data_url,
+        landlord_signed_at=landlord_signed_at,
+        landlord_signer_name=landlord_signer_name,
+    )
+
+
+# ── Countersign (manager) ─────────────────────────────────────────────────────
+
+async def countersign_agreement(
+    lease_id: str,
+    signature_data_url: str,
+    signer_id: str,
+    signer_name: str,
+    db: AsyncSession,
+) -> dict:
+    """
+    Manager countersigns the tenancy agreement.
+
+    Gate: lease must be active (tenant already signed + lease activated).
+    Creates/updates the TenancyAgreement record to fully_executed.
+    Returns the updated agreement as a dict.
+    """
+    from sqlalchemy.dialects.postgresql import UUID as PGUUID
+    lease_uuid = uuid.UUID(lease_id)
+    result = await db.execute(select(Lease).where(Lease.id == lease_uuid))
+    lease = result.scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found.")
+
+    if lease.status != LeaseStatus.active:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot countersign — lease is not active (status: {lease.status}).",
+        )
+
+    # Find existing TenancyAgreement
+    ta_result = await db.execute(
+        select(TenancyAgreement).where(TenancyAgreement.lease_id == lease_uuid)
+    )
+    ta = ta_result.scalar_one_or_none()
+    if not ta:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No tenancy agreement record found. Tenant must sign first.",
+        )
+
+    if ta.status == TenancyAgreementStatus.fully_executed:
+        return _tenancy_agreement_dict(ta)
+
+    now = datetime.now(timezone.utc)
+    ta.landlord_signature_data_url = signature_data_url
+    ta.landlord_signed_at = now
+    ta.landlord_signer_id = signer_id
+    ta.landlord_signer_name = signer_name
+    ta.status = TenancyAgreementStatus.fully_executed
+
+    # Re-render HTML with landlord signature
+    tenant_result = await db.execute(select(Tenant).where(Tenant.id == lease.tenant_id))
+    tenant = tenant_result.scalar_one_or_none()
+    unit, prop = await _get_unit_and_property(lease, db)
+
+    if tenant:
+        def _fmt_dt(dt) -> str:
+            return f"{dt.day} {dt.strftime('%B %Y %H:%M')} UTC"
+
+        ta.rendered_html = await _render_agreement_html(
+            lease=lease,
+            tenant=tenant,
+            unit=unit,
+            prop=prop,
+            db=db,
+            tenant_signature_data_url=ta.tenant_signature_data_url,
+            tenant_signed_at=_fmt_dt(ta.tenant_signed_at) if ta.tenant_signed_at else None,
+            landlord_signature_data_url=signature_data_url,
+            landlord_signed_at=_fmt_dt(now),
+            landlord_signer_name=signer_name,
+        )
+
+    await db.flush()
+    await db.refresh(ta)
+    log.info("onboarding.agreement_countersigned", lease_id=lease_id, signer_id=signer_id)
+    return _tenancy_agreement_dict(ta)
 
 
 # ── Private helpers ───────────────────────────────────────────────────────────
@@ -684,3 +868,15 @@ async def _activate_via_onboarding(
 def _payment_dict(p: Payment) -> dict:
     from app.services.payment_service import _payment_out
     return _payment_out(p).model_dump(by_alias=True)
+
+
+def _tenancy_agreement_dict(ta: TenancyAgreement) -> dict:
+    return {
+        "id": str(ta.id),
+        "leaseId": str(ta.lease_id),
+        "status": ta.status.value,
+        "tenantSignedAt": ta.tenant_signed_at.isoformat() if ta.tenant_signed_at else None,
+        "landlordSignedAt": ta.landlord_signed_at.isoformat() if ta.landlord_signed_at else None,
+        "landlordSignerName": ta.landlord_signer_name,
+        "renderedHtml": ta.rendered_html,
+    }

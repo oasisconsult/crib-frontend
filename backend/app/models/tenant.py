@@ -73,6 +73,7 @@ class Tenant(TimestampedBase):
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     date_of_birth: Mapped[str | None] = mapped_column(String(20), nullable=True)
     nationality: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    nin: Mapped[str | None] = mapped_column(String(50), nullable=True)  # National ID Number
 
     # ── Status + onboarding ───────────────────────────────────────────────────
     status: Mapped[TenantStatus] = mapped_column(

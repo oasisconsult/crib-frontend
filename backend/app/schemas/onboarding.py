@@ -113,3 +113,23 @@ class OnboardingFlowStatus(CamelModel):
     payment_secured: bool
     agreement_signed: bool
     is_active: bool
+
+
+# ── Countersign (manager) ─────────────────────────────────────────────────────
+
+class CountersignBody(CamelModel):
+    """Body for manager countersigning the tenancy agreement."""
+    signature_data_url: str = Field(
+        description="Base64-encoded PNG of the manager's signature."
+    )
+
+
+class TenancyAgreementOut(CamelModel):
+    """Response after tenant signs or manager countersigns."""
+    id: str
+    lease_id: str
+    status: str                      # draft | tenant_signed | fully_executed
+    tenant_signed_at: str | None
+    landlord_signed_at: str | None
+    landlord_signer_name: str | None
+    rendered_html: str

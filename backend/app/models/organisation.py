@@ -38,6 +38,16 @@ class Organisation(TimestampedBase):
     # Flexible settings blob: feature flags, notification prefs, branding, etc.
     settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
+    # Per-organisation payment method configuration
+    # Structure: {
+    #   "bank_transfer": {"enabled": true, "bank_name": "...", "account_name": "...",
+    #                     "account_number": "...", "sort_code": "..."},
+    #   "mobile_money_mtn": {"enabled": true, "number": "...", "name": "..."},
+    #   "mobile_money_airtel": {"enabled": true, "number": "...", "name": "..."},
+    #   "cash": {"enabled": true, "instructions": "Pay to property manager in person"}
+    # }
+    payment_settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
     # Soft-delete / suspension
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
 
