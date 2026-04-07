@@ -335,8 +335,16 @@ async def preview_agreement(token: str, db: AsyncSession) -> AgreementPreviewOut
     unit, prop = await _get_unit_and_property(lease, db)
     advance_months = await _advance_payment_months(unit, prop, db)
 
-    # Idempotent: already previewed — return stored snapshot (re-render HTML in case template changed)
-    if lease.status == LeaseStatus.agreement_previewed and lease.agreement_preview_snapshot:
+    # Idempotent / read-only for all post-preview statuses — return stored snapshot with fresh HTML
+    _post_preview_statuses = {
+        LeaseStatus.agreement_previewed,
+        LeaseStatus.terms_accepted,
+        LeaseStatus.payment_pending,
+        LeaseStatus.payment_secured,
+        LeaseStatus.agreement_signed,
+        LeaseStatus.active,
+    }
+    if lease.status in _post_preview_statuses and lease.agreement_preview_snapshot:
         rendered_html = await _render_agreement_html(lease, tenant, unit, prop, db)
         out = _snapshot_to_preview(
             lease.agreement_preview_snapshot,
@@ -345,7 +353,7 @@ async def preview_agreement(token: str, db: AsyncSession) -> AgreementPreviewOut
         out.rendered_html = rendered_html
         return out
 
-    allowed_entry = {LeaseStatus.draft, LeaseStatus.onboarding_started, LeaseStatus.agreement_previewed}
+    allowed_entry = {LeaseStatus.draft, LeaseStatus.onboarding_started}
     if lease.status not in allowed_entry:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
