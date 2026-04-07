@@ -44,22 +44,42 @@ function mapQueryParamsToBackend(params?: QueryParams): Record<string, unknown> 
   return out;
 }
 
-export const paymentsApi = {
-  list: (params?: QueryParams) =>
-    apiGet<PaginatedResponse<Payment>>("/payments", mapQueryParamsToBackend(params)),
+// Backend PaymentOut uses `status`; frontend Payment type uses `state`.
+function mapPayment(raw: Record<string, unknown>): Payment {
+  return {
+    ...(raw as unknown as Payment),
+    state: ((raw.status ?? raw.state) as Payment["state"]),
+  };
+}
 
-  get: (id: string) =>
-    apiGet<Payment>(`/payments/${id}`),
+function mapPaymentList(raw: PaginatedResponse<Record<string, unknown>>): PaginatedResponse<Payment> {
+  return { ...raw, data: raw.data.map(mapPayment) };
+}
+
+export const paymentsApi = {
+  list: async (params?: QueryParams) => {
+    const raw = await apiGet<PaginatedResponse<Record<string, unknown>>>("/payments", mapQueryParamsToBackend(params));
+    return mapPaymentList(raw);
+  },
+
+  get: async (id: string) => {
+    const raw = await apiGet<Record<string, unknown>>(`/payments/${id}`);
+    return mapPayment(raw);
+  },
 
   // Flat POST /payments expects at least leaseId + rentScheduleId + amount.
   create: (data: Omit<Payment, "id" | "createdAt" | "updatedAt">) =>
     apiPost<Payment>("/payments", data),
 
-  confirm: (id: string) =>
-    apiPatch<Payment>(`/payments/${id}/confirm`, {}),
+  confirm: async (id: string) => {
+    const raw = await apiPatch<Record<string, unknown>>(`/payments/${id}/confirm`, {});
+    return mapPayment(raw);
+  },
 
-  refund: (id: string) =>
-    apiPatch<Payment>(`/payments/${id}/refund`, {}),
+  refund: async (id: string) => {
+    const raw = await apiPatch<Record<string, unknown>>(`/payments/${id}/refund`, {});
+    return mapPayment(raw);
+  },
 
   // Rent schedules
   listRentSchedules: (params?: QueryParams) =>

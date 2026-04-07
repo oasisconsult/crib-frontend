@@ -15,7 +15,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { LeaseWorkflowStepper } from "./WorkflowStepper";
 import { TerminateModal } from "./TerminateModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
-import { useTransitionLease, useSendOnboarding } from "@/hooks/useLeases";
+import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments } from "@/hooks/useLeases";
 import { leasesApi } from "@/services/api/leases";
 import { toast } from "@/store/useUIStore";
 import { canTransition, LEASE_TRANSITIONS } from "@/types/states";
@@ -34,6 +34,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [onboardingToken, setOnboardingToken] = useState<string | null>(null);
   const { mutate: transition, isPending } = useTransitionLease();
   const { mutate: sendOnboarding, isPending: sendingOnboarding } = useSendOnboarding();
+  const { mutate: confirmPayments, isPending: confirmingPayments } = useConfirmOnboardingPayments();
 
   async function handleGeneratePdf() {
     setGeneratingPdf(true);
@@ -104,6 +105,20 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <Link className="h-3.5 w-3.5" />}
                 Resend Link
+              </Button>
+            )}
+            {/* Confirm onboarding payments — unblocks tenant to sign the agreement */}
+            {lease.state === "payment_pending" && (
+              <Button
+                size="sm"
+                variant="success"
+                disabled={confirmingPayments}
+                onClick={() => confirmPayments(lease.id)}
+              >
+                {confirmingPayments
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <CheckCircle className="h-3.5 w-3.5" />}
+                Confirm Payment
               </Button>
             )}
             {canSend && (

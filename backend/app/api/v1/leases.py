@@ -28,7 +28,7 @@ from app.schemas.lease import (
     LeaseTerminate,
     LeaseUpdate,
 )
-from app.schemas.onboarding import CountersignBody, TenancyAgreementOut
+from app.schemas.onboarding import CountersignBody, OnboardingPaymentOut, TenancyAgreementOut
 from app.schemas.tenant import TenantInviteOut
 from app.services import lease_service as svc
 from app.services import onboarding_service as onb_svc
@@ -172,6 +172,24 @@ async def send_onboarding_link(
     """
     assert current_user.org_id is not None  # guaranteed by require_org_access
     return await tenant_svc.send_onboarding_link(
+        lease_id=lease_id,
+        org_id=current_user.org_id,
+        db=db,
+    )
+
+
+@router.post("/{lease_id}/confirm-payments", response_model=OnboardingPaymentOut)
+async def confirm_onboarding_payments(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Manager confirms all pending onboarding payments for this lease.
+    Advances the lease from payment_pending → payment_secured when all are confirmed.
+    """
+    assert current_user.org_id is not None
+    return await onb_svc.confirm_all_onboarding_payments(
         lease_id=lease_id,
         org_id=current_user.org_id,
         db=db,

@@ -160,6 +160,10 @@ export const leasesApi = {
   sendOnboarding: (id: string) =>
     apiPost<{ id: string; token: string; email: string; leaseId: string | null; expiresAt: string }>(`/leases/${id}/send-onboarding`),
 
+  // Manager confirms all onboarding payments → advances lease to payment_secured
+  confirmOnboardingPayments: (id: string) =>
+    apiPost<{ leaseId: string; leaseStatus: string; payments: unknown[] }>(`/leases/${id}/confirm-payments`),
+
   // Renewal
   renew: async (id: string, data: Partial<Lease>) => {
     const raw = await apiPost<Record<string, unknown>>(`/leases/${id}/renew`, data);

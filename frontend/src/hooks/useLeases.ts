@@ -64,6 +64,19 @@ export function useTransitionLease() {
   });
 }
 
+export function useConfirmOnboardingPayments() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => leasesApi.confirmOnboardingPayments(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.payments.all() });
+      toast.success("Payments confirmed — tenant can now sign the agreement");
+    },
+    onError: () => toast.error("Failed to confirm payments"),
+  });
+}
+
 export function useSendOnboarding() {
   const qc = useQueryClient();
   return useMutation({

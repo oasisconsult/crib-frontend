@@ -39,7 +39,7 @@ type Domain =
   | "notification";
 
 interface StatusBadgeProps {
-  state?: AnyState | null; // 👈 allow unsafe input
+  state: AnyState;
   domain: Domain;
   className?: string;
 }
@@ -58,22 +58,12 @@ const DOMAIN_MAP: Record<
 };
 
 export function StatusBadge({ state, domain, className }: StatusBadgeProps) {
-  // 👇 guard early
-  if (!state) {
-    return (
-      <Badge variant="slate" className={className}>
-        Unknown
-      </Badge>
-    );
-  }
-
   const config = DOMAIN_MAP[domain]?.[state];
-
-  // 👇 fallback if state not mapped
   if (!config) {
+    const label = state ? capitalise(state) : "Unknown";
     return (
       <Badge variant="slate" className={className}>
-        {capitalise(state ?? "")}
+        {label}
       </Badge>
     );
   }

@@ -582,6 +582,73 @@ async def confirm_onboarding_payment(
     )
 
 
+async def confirm_all_onboarding_payments(
+    lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> OnboardingPaymentOut:
+    """
+    Manager action: confirm all pending onboarding payments for a lease and
+    advance it to payment_secured when all payments are confirmed.
+    Idempotent — safe to call multiple times.
+    """
+    from app.models.lease import Lease as LeaseModel
+
+    result = await db.execute(
+        select(LeaseModel).where(
+            LeaseModel.id == lease_id, LeaseModel.organisation_id == org_id
+        )
+    )
+    lease = result.scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found.")
+
+    if lease.status not in (LeaseStatus.payment_pending, LeaseStatus.payment_secured):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot confirm payments from lease status '{lease.status.value}'.",
+        )
+
+    payment_ids = lease.onboarding_payment_ids or []
+    if not payment_ids:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No onboarding payments found for this lease.",
+        )
+
+    ids = [uuid.UUID(pid) for pid in payment_ids]
+    payments_list = (await db.execute(
+        select(Payment).where(Payment.id.in_(ids))
+    )).scalars().all()
+
+    for p in payments_list:
+        if p.status == PaymentStatus.pending:
+            await payment_service.confirm_payment(
+                payment_id=p.id,
+                lease_id=lease.id,
+                org_id=lease.organisation_id,
+                db=db,
+            )
+
+    await _maybe_secure_payment(lease, db)
+    await db.flush()
+    await db.refresh(lease, attribute_names=["status", "updated_at"])
+
+    refreshed_payments = (await db.execute(
+        select(Payment).where(Payment.id.in_(ids))
+    )).scalars().all()
+
+    log.info(
+        "onboarding.payments_confirmed_by_manager",
+        lease_id=str(lease.id),
+        count=len(payment_ids),
+    )
+
+    return OnboardingPaymentOut(
+        lease_id=str(lease.id),
+        lease_status=lease.status.value,
+        payments=[_payment_dict(p) for p in refreshed_payments],
+    )
+
+
 async def sign_agreement(
     token: str, body: OnboardingSignBody, db: AsyncSession
 ) -> dict:
