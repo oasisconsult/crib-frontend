@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, LayoutGrid, List } from "lucide-react";
+import { Plus, LayoutGrid, List, ChevronRight, BedDouble, Bath, Maximize2 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BulkOperationsBar } from "./BulkOperationsBar";
@@ -14,49 +13,49 @@ import { cn } from "@/utils/cn";
 import { useUnits } from "@/hooks/useProperties";
 import type { Unit, UnitStatus } from "@/types";
 
-const STATUS_STYLES: Record<UnitStatus, { badge: string; card: string }> = {
+const STATUS_STYLES: Record<UnitStatus, { badge: string; card: string; dot: string }> = {
   available: {
-    badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30",
+    badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
     card: "border-emerald-200 dark:border-emerald-800 hover:border-emerald-400",
+    dot: "bg-emerald-500",
   },
   occupied: {
-    badge: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30",
+    badge: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
     card: "border-border hover:border-indigo-300",
+    dot: "bg-indigo-500",
   },
   reserved: {
-    badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/30",
+    badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
     card: "border-amber-200 dark:border-amber-800 hover:border-amber-400",
+    dot: "bg-amber-500",
   },
   maintenance: {
-    badge: "bg-red-100 text-red-800 dark:bg-red-900/30",
+    badge: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
     card: "border-red-200 dark:border-red-800 hover:border-red-400",
+    dot: "bg-red-500",
   },
 };
 
-interface UnitCardProps {
-  unit: Unit;
-  selected: boolean;
-  onSelect: () => void;
-  onClick: () => void;
-}
+const ALL_STATUSES: UnitStatus[] = ["available", "occupied", "reserved", "maintenance"];
 
-function UnitCard({ unit, selected, onSelect, onClick }: UnitCardProps) {
+// ── Grid card ─────────────────────────────────────────────────────────────────
+
+function UnitCard({ unit, selected, onSelect, onClick }: {
+  unit: Unit; selected: boolean; onSelect: () => void; onClick: () => void;
+}) {
   const styles = STATUS_STYLES[unit.status];
   return (
     <div
       className={cn(
-        "relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-150",
-        "hover:shadow-md",
+        "relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-150 hover:shadow-md",
         styles.card,
         selected && "ring-2 ring-primary ring-offset-2",
       )}
       onClick={onClick}
       role="button"
-      aria-label={`Unit ${unit.name}`}
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onClick()}
     >
-      {/* Select checkbox */}
       <div
         className="absolute top-2 left-2"
         onClick={(e) => { e.stopPropagation(); onSelect(); }}
@@ -69,7 +68,6 @@ function UnitCard({ unit, selected, onSelect, onClick }: UnitCardProps) {
           aria-label={`Select ${unit.name}`}
         />
       </div>
-
       <div className="mt-3">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-sm leading-tight">{unit.name}</h3>
@@ -79,17 +77,79 @@ function UnitCard({ unit, selected, onSelect, onClick }: UnitCardProps) {
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 capitalize">{unit.type.replace("_", " ")}</p>
         <div className="mt-3 flex items-end justify-between">
-          <div className="text-xs text-muted-foreground">
-            {unit.bedrooms}bd · {unit.area ?? "—"}m²
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="flex items-center gap-0.5"><BedDouble className="h-3 w-3" />{unit.bedrooms}</span>
+            <span className="flex items-center gap-0.5"><Bath className="h-3 w-3" />{unit.bathrooms}</span>
+            {unit.area && <span className="flex items-center gap-0.5"><Maximize2 className="h-3 w-3" />{unit.area}m²</span>}
           </div>
           <p className="text-sm font-bold">
-            {formatCurrency(unit.monthlyRent, unit.currency)}<span className="text-xs font-normal text-muted-foreground">/mo</span>
+            {formatCurrency(unit.monthlyRent, unit.currency)}
+            <span className="text-xs font-normal text-muted-foreground">/mo</span>
           </p>
         </div>
       </div>
     </div>
   );
 }
+
+// ── List row ──────────────────────────────────────────────────────────────────
+
+function UnitRow({ unit, selected, onSelect, onClick }: {
+  unit: Unit; selected: boolean; onSelect: () => void; onClick: () => void;
+}) {
+  const styles = STATUS_STYLES[unit.status];
+  return (
+    <tr
+      className="group border-b last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
+      onClick={onClick}
+    >
+      <td className="py-3 px-4 w-8" onClick={(e) => { e.stopPropagation(); onSelect(); }}>
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onSelect}
+          className="rounded border-border"
+          aria-label={`Select ${unit.name}`}
+        />
+      </td>
+      <td className="py-3 px-4">
+        <div className="flex items-center gap-2">
+          <span className={cn("h-2 w-2 rounded-full shrink-0", styles.dot)} />
+          <span className="font-medium text-sm">{unit.name}</span>
+          {unit.floor != null && (
+            <span className="text-xs text-muted-foreground">Floor {unit.floor}</span>
+          )}
+        </div>
+      </td>
+      <td className="py-3 px-4 text-sm text-muted-foreground capitalize hidden sm:table-cell">
+        {unit.type.replace("_", " ")}
+      </td>
+      <td className="py-3 px-4">
+        <span className={cn("text-xs font-medium rounded-full px-2 py-0.5 capitalize", styles.badge)}>
+          {unit.status}
+        </span>
+      </td>
+      <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{unit.bedrooms}</span>
+          <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{unit.bathrooms}</span>
+        </div>
+      </td>
+      <td className="py-3 px-4 text-sm text-muted-foreground hidden lg:table-cell">
+        {unit.area ? `${unit.area} m²` : "—"}
+      </td>
+      <td className="py-3 px-4 text-sm font-semibold text-right">
+        {formatCurrency(unit.monthlyRent, unit.currency)}
+        <span className="text-xs font-normal text-muted-foreground">/mo</span>
+      </td>
+      <td className="py-3 px-4 w-8">
+        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+      </td>
+    </tr>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 
 interface UnitGridProps {
   propertyId: string;
@@ -100,18 +160,20 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [statusFilter, setStatusFilter] = useState<UnitStatus | "all">("all");
   const parentRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading } = useUnits(propertyId);
   const units = data?.data ?? [];
 
-  const filtered = units.filter((u) =>
-    !search || u.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = units.filter((u) => {
+    const matchesSearch = !search || u.name.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === "all" || u.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
-  // Virtualizer for large lists
   const rowVirtualizer = useVirtualizer({
-    count: Math.ceil(filtered.length / 3),
+    count: Math.ceil(filtered.length / 4),
     getScrollElement: () => parentRef.current,
     estimateSize: () => 140,
     overscan: 5,
@@ -120,21 +182,46 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
 
+  const toggleSelectAll = () => {
+    if (selected.size === filtered.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filtered.map((u) => u.id)));
+    }
+  };
+
+  const navigateTo = (unitId: string) =>
+    router.push(`/properties/${propertyId}/units/${unitId}`);
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 items-center">
+      {/* Toolbar */}
+      <div className="flex gap-2 items-center flex-wrap">
         <FilterBar
           search={search}
           onSearchChange={setSearch}
           placeholder="Search units..."
-          className="flex-1"
+          className="flex-1 min-w-[180px]"
         />
+
+        {/* Status filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as UnitStatus | "all")}
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="all">All statuses</option>
+          {ALL_STATUSES.map((s) => (
+            <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+          ))}
+        </select>
+
+        {/* View toggle */}
         <div className="flex items-center gap-1 rounded-lg border p-1">
           <Button
             variant={viewMode === "grid" ? "default" : "ghost"}
@@ -153,20 +240,29 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
             <List className="h-3.5 w-3.5" />
           </Button>
         </div>
+
         <Button size="sm" onClick={() => router.push(`/properties/${propertyId}/units/new`)}>
           <Plus className="h-4 w-4" />
           Add Unit
         </Button>
       </div>
 
-      {/* Summary */}
+      {/* Status summary */}
       <div className="flex gap-2 flex-wrap text-xs">
-        {(["available", "occupied", "reserved", "maintenance"] as UnitStatus[]).map((s) => {
+        {ALL_STATUSES.map((s) => {
           const count = units.filter((u) => u.status === s).length;
           return (
-            <Badge key={s} variant="slate" className={cn("capitalize gap-1", STATUS_STYLES[s].badge)}>
-              <span>{count}</span> {s}
-            </Badge>
+            <button
+              key={s}
+              onClick={() => setStatusFilter(statusFilter === s ? "all" : s)}
+              className={cn(
+                "rounded-full px-2.5 py-0.5 capitalize font-medium transition-opacity",
+                STATUS_STYLES[s].badge,
+                statusFilter !== "all" && statusFilter !== s && "opacity-40",
+              )}
+            >
+              {count} {s}
+            </button>
           );
         })}
       </div>
@@ -181,7 +277,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
         />
       )}
 
-      {/* Grid — virtualised for 100+ units */}
+      {/* Content */}
       {isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -192,15 +288,24 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
             </div>
           ))}
         </div>
-      ) : (
+      ) : filtered.length === 0 ? (
+        <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+          <p className="text-sm">No units match your filters</p>
+          {(search || statusFilter !== "all") && (
+            <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); }}>
+              Clear filters
+            </Button>
+          )}
+        </div>
+      ) : viewMode === "grid" ? (
         <div
           ref={parentRef}
           className="overflow-y-auto"
-          style={{ maxHeight: "calc(100vh - 300px)" }}
+          style={{ maxHeight: "calc(100vh - 320px)" }}
         >
           <div
             className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3"
-            style={{ height: rowVirtualizer.getTotalSize() }}
+            style={{ height: rowVirtualizer.getTotalSize() || "auto" }}
           >
             {filtered.map((unit) => (
               <UnitCard
@@ -208,9 +313,52 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
                 unit={unit}
                 selected={selected.has(unit.id)}
                 onSelect={() => toggleSelect(unit.id)}
-                onClick={() => router.push(`/properties/${propertyId}/units/${unit.id}`)}
+                onClick={() => navigateTo(unit.id)}
               />
             ))}
+          </div>
+        </div>
+      ) : (
+        /* List view */
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/40">
+                <th className="py-2.5 px-4 w-8 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === filtered.length && filtered.length > 0}
+                    ref={(el) => {
+                      if (el) el.indeterminate = selected.size > 0 && selected.size < filtered.length;
+                    }}
+                    onChange={toggleSelectAll}
+                    className="rounded border-border"
+                    aria-label="Select all"
+                  />
+                </th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">Unit</th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden sm:table-cell">Type</th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">Status</th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">Beds / Baths</th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden lg:table-cell">Area</th>
+                <th className="py-2.5 px-4 text-right font-medium text-muted-foreground">Rent / mo</th>
+                <th className="py-2.5 px-4 w-8" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((unit) => (
+                <UnitRow
+                  key={unit.id}
+                  unit={unit}
+                  selected={selected.has(unit.id)}
+                  onSelect={() => toggleSelect(unit.id)}
+                  onClick={() => navigateTo(unit.id)}
+                />
+              ))}
+            </tbody>
+          </table>
+          <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
+            {filtered.length} of {units.length} unit{units.length !== 1 ? "s" : ""}
           </div>
         </div>
       )}
