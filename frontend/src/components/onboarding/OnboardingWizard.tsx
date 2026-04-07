@@ -326,6 +326,14 @@ export function OnboardingWizard({
                     Your landlord will review your application. You&apos;ll receive a link to proceed with payment once approved.
                   </p>
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setProfileStep("profile")}
+                  className="mx-auto"
+                >
+                  ← Edit Application
+                </Button>
               </CardContent>
             </Card>
           )}
@@ -399,6 +407,7 @@ export function OnboardingWizard({
                   preview={preview}
                   termsAcceptedAt={termsAcceptedAt}
                   onSigned={() => setPaymentStep("done")}
+                  onBack={() => setPaymentStep("payment_success")}
                 />
               )}
 

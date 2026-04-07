@@ -14,13 +14,14 @@ interface Props {
   preview: AgreementPreview;
   termsAcceptedAt?: string | null;
   onSigned: () => void;
+  onBack: () => void;
 }
 
 function fmt(n: number, currency: string) {
   return `${currency} ${n.toLocaleString()}`;
 }
 
-export function FinalSignatureStep({ token, preview, termsAcceptedAt, onSigned }: Props) {
+export function FinalSignatureStep({ token, preview, termsAcceptedAt, onSigned, onBack }: Props) {
   const [signature, setSignature] = useState<string | null>(null);
   const { mutate: signAgreement, isPending, isError, error } = useSignAgreement(token);
 
@@ -95,14 +96,19 @@ export function FinalSignatureStep({ token, preview, termsAcceptedAt, onSigned }
           </p>
         )}
 
-        <Button
-          className="w-full"
-          onClick={handleSign}
-          disabled={!signature || isPending}
-          loading={isPending}
-        >
-          Sign &amp; Activate My Tenancy ✓
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onBack} disabled={isPending}>
+            ← Back
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={handleSign}
+            disabled={!signature || isPending}
+            loading={isPending}
+          >
+            Sign &amp; Activate My Tenancy ✓
+          </Button>
+        </div>
 
         <p className="text-xs text-muted-foreground text-center">
           By signing you agree to the tenancy terms and confirm the information above is correct.
