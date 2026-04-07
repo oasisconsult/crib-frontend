@@ -39,12 +39,15 @@ type Domain =
   | "notification";
 
 interface StatusBadgeProps {
-  state: AnyState;
+  state?: AnyState | null; // 👈 allow unsafe input
   domain: Domain;
   className?: string;
 }
 
-const DOMAIN_MAP: Record<Domain, Record<string, { label: string; color: string; bgColor: string }>> = {
+const DOMAIN_MAP: Record<
+  Domain,
+  Record<string, { label: string; color: string; bgColor: string }>
+> = {
   lease: LEASE_STATE_DISPLAY,
   onboarding: ONBOARDING_STATE_DISPLAY,
   payment: PAYMENT_STATE_DISPLAY,
@@ -55,11 +58,22 @@ const DOMAIN_MAP: Record<Domain, Record<string, { label: string; color: string; 
 };
 
 export function StatusBadge({ state, domain, className }: StatusBadgeProps) {
+  // 👇 guard early
+  if (!state) {
+    return (
+      <Badge variant="slate" className={className}>
+        Unknown
+      </Badge>
+    );
+  }
+
   const config = DOMAIN_MAP[domain]?.[state];
+
+  // 👇 fallback if state not mapped
   if (!config) {
     return (
       <Badge variant="slate" className={className}>
-        {capitalise(state)}
+        {capitalise(state ?? "")}
       </Badge>
     );
   }
@@ -75,7 +89,10 @@ export function StatusBadge({ state, domain, className }: StatusBadgeProps) {
       role="status"
       aria-label={`Status: ${config.label}`}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-75" aria-hidden="true" />
+      <span
+        className="h-1.5 w-1.5 rounded-full bg-current opacity-75"
+        aria-hidden="true"
+      />
       {config.label}
     </span>
   );
