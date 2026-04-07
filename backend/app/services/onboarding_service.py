@@ -403,10 +403,11 @@ async def accept_terms(
 
     # Idempotent
     if lease.status == LeaseStatus.terms_accepted:
+        accepted_at = lease.terms_accepted_at or datetime.now(timezone.utc)
         return TermsAcceptOut(
             lease_id=str(lease.id),
             status=lease.status.value,
-            terms_accepted_at=lease.terms_accepted_at.isoformat(),
+            terms_accepted_at=accepted_at.isoformat(),
         )
 
     if lease.status != LeaseStatus.agreement_previewed:
