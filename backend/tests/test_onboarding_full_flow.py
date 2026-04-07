@@ -314,16 +314,14 @@ async def test_rendered_html_has_legal_content(
     html = ta.rendered_html
 
     # Key sections must be present
-    assert "Residential Tenancy Agreement" in html
-    assert "Financial Terms" in html
-    assert "Tenant&#" in html or "Tenant's Obligations" in html or "Tenant&" in html
-    assert "Landlord" in html
+    assert "Residential House Lease Agreement" in html
     assert "Security Deposit" in html
-    assert "Termination" in html
     assert "Governing Law" in html
     assert "Electronic Transactions Act" in html
     assert "600,000" in html  # formatted amount
     assert "Six Hundred Thousand" in html  # amount in words
+    assert "Abandonment" in html
+    assert "Holdover" in html
 
 
 # ── Test 4: Countersign blocked when lease not active ─────────────────────────

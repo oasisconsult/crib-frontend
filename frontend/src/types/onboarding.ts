@@ -40,6 +40,7 @@ export interface AgreementPreview {
   totalDueAtOnboarding: number;
   generatedAt: string;
   snapshotVersion: string;
+  renderedHtml: string;
 }
 
 // ── Terms acceptance ──────────────────────────────────────────────────────────

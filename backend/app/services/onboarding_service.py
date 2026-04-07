@@ -332,12 +332,18 @@ async def preview_agreement(token: str, db: AsyncSession) -> AgreementPreviewOut
             detail="Tenant must be approved before viewing the agreement.",
         )
 
-    # Idempotent: already previewed — return stored snapshot
+    unit, prop = await _get_unit_and_property(lease, db)
+    advance_months = await _advance_payment_months(unit, prop, db)
+
+    # Idempotent: already previewed — return stored snapshot (re-render HTML in case template changed)
     if lease.status == LeaseStatus.agreement_previewed and lease.agreement_preview_snapshot:
-        return _snapshot_to_preview(
+        rendered_html = await _render_agreement_html(lease, tenant, unit, prop, db)
+        out = _snapshot_to_preview(
             lease.agreement_preview_snapshot,
             lease.agreement_preview_snapshot.get("generatedAt", ""),
         )
+        out.rendered_html = rendered_html
+        return out
 
     allowed_entry = {LeaseStatus.draft, LeaseStatus.onboarding_started, LeaseStatus.agreement_previewed}
     if lease.status not in allowed_entry:
@@ -347,8 +353,6 @@ async def preview_agreement(token: str, db: AsyncSession) -> AgreementPreviewOut
                    f"Current step: {_LEASE_STATUS_TO_STEP.get(lease.status, 'unknown')}",
         )
 
-    unit, prop = await _get_unit_and_property(lease, db)
-    advance_months = await _advance_payment_months(unit, prop, db)
     now = datetime.now(timezone.utc)
 
     snapshot = _build_snapshot(lease, tenant, unit, prop, advance_months)
@@ -363,7 +367,10 @@ async def preview_agreement(token: str, db: AsyncSession) -> AgreementPreviewOut
     await db.flush()
     await db.refresh(lease, attribute_names=["status", "agreement_preview_snapshot", "updated_at"])
 
-    return _snapshot_to_preview(snapshot, now.isoformat())
+    rendered_html = await _render_agreement_html(lease, tenant, unit, prop, db)
+    out = _snapshot_to_preview(snapshot, now.isoformat())
+    out.rendered_html = rendered_html
+    return out
 
 
 async def accept_terms(
@@ -844,6 +851,7 @@ async def _render_agreement_html(
         late_fee_type=lease.late_fee_type,
         late_fee_value=float(lease.late_fee_value),
         agreement_date=f"{now.day} {now.strftime('%B %Y')}",
+        advance_months=await _advance_payment_months(unit, prop, db),
         tenant_signature_data_url=tenant_signature_data_url,
         tenant_signed_at=tenant_signed_at,
         landlord_signature_data_url=landlord_signature_data_url,

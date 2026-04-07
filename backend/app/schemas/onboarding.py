@@ -44,6 +44,7 @@ class AgreementPreviewOut(CamelModel):
     total_due_at_onboarding: float # total_deposit + total_advance_rent
     generated_at: str              # ISO timestamp
     snapshot_version: str = "1"
+    rendered_html: str = ""        # full agreement HTML for display in wizard
 
 
 # ── Terms acceptance ──────────────────────────────────────────────────────────
