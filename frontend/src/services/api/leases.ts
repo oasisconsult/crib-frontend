@@ -156,6 +156,10 @@ export const leasesApi = {
   getAudit: (id: string) =>
     apiGet<LeaseAuditEntry[]>(`/leases/${id}/audit`),
 
+  // Send onboarding link — links the lease to the tenant's invite
+  sendOnboarding: (id: string) =>
+    apiPost<{ id: string; token: string; email: string; leaseId: string | null; expiresAt: string }>(`/leases/${id}/send-onboarding`),
+
   // Renewal
   renew: async (id: string, data: Partial<Lease>) => {
     const raw = await apiPost<Record<string, unknown>>(`/leases/${id}/renew`, data);

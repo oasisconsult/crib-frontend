@@ -9,7 +9,8 @@ Leases REST API — 9 endpoints.
   PATCH  /leases/{id}/activate    draft → active               [manager/owner]
   PATCH  /leases/{id}/terminate   active → terminated          [manager/owner]
   PATCH  /leases/{id}/expire      active → expired             [manager/owner]
-  POST   /leases/{id}/renew       create renewal draft         [manager/owner]
+  POST   /leases/{id}/renew              create renewal draft         [manager/owner]
+  POST   /leases/{id}/send-onboarding   resend/refresh onboarding token [manager/owner]
 """
 
 import uuid
@@ -28,8 +29,10 @@ from app.schemas.lease import (
     LeaseUpdate,
 )
 from app.schemas.onboarding import CountersignBody, TenancyAgreementOut
+from app.schemas.tenant import TenantInviteOut
 from app.services import lease_service as svc
 from app.services import onboarding_service as onb_svc
+from app.services import tenant_service as tenant_svc
 
 router = APIRouter(prefix="/leases", tags=["leases"])
 
@@ -154,6 +157,25 @@ async def generate_document(
     """Generate an HTML lease agreement document and return a URL to access it."""
     url = await svc.generate_lease_document(lease_id, current_user.org_id, db)
     return {"url": url}
+
+
+@router.post("/{lease_id}/send-onboarding", response_model=TenantInviteOut)
+async def send_onboarding_link(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Regenerate the onboarding token for this lease (e.g. the tenant lost the link
+    or it expired).  On lease creation the link is issued automatically — this
+    endpoint is the manual resend / refresh path.
+    """
+    assert current_user.org_id is not None  # guaranteed by require_org_access
+    return await tenant_svc.send_onboarding_link(
+        lease_id=lease_id,
+        org_id=current_user.org_id,
+        db=db,
+    )
 
 
 @router.post("/{lease_id}/agreement/countersign", response_model=TenancyAgreementOut)

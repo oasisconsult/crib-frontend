@@ -64,6 +64,17 @@ export function useTransitionLease() {
   });
 }
 
+export function useSendOnboarding() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => leasesApi.sendOnboarding(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+    },
+    onError: () => toast.error("Failed to send onboarding link"),
+  });
+}
+
 export function useSignLease() {
   const qc = useQueryClient();
   return useMutation({

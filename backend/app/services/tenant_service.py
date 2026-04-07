@@ -17,10 +17,13 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import structlog
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+log = structlog.get_logger(__name__)
 
 from app.core.state_machine import onboarding_sm
 from app.models.tenant import (
@@ -482,6 +485,100 @@ async def resend_invite(
     await db.refresh(new_invite)
 
     # TODO Sprint 8: queue email/SMS notification with new invite link
+
+    return _invite_out(new_invite)
+
+
+# ── Send onboarding link (with lease linked) ─────────────────────────────────
+
+async def send_onboarding_link(
+    lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> TenantInviteOut:
+    """
+    Link a draft lease to the approved tenant's invite and issue a fresh token.
+
+    This is the manager action that unblocks a tenant stuck at 'Waiting for
+    lease setup'.  Can be called multiple times (idempotent per lease).
+
+    Flow:
+      1. Validate lease is draft + has tenant_id
+      2. Tenant must be approved or activated
+      3. Expire all existing pending invites for this tenant
+      4. Create a new TenantInvite with lease_id set
+      5. Return the invite (caller displays the link)
+    """
+    from app.models.lease import Lease, LeaseStatus
+
+    result = await db.execute(
+        select(Lease).where(Lease.id == lease_id, Lease.organisation_id == org_id)
+    )
+    lease = result.scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found.")
+
+    if lease.status not in (LeaseStatus.draft, LeaseStatus.onboarding_started):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Onboarding link can only be sent for a draft lease (current: {lease.status.value}).",
+        )
+
+    if not lease.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Lease has no tenant assigned. Link a tenant before sending the onboarding link.",
+        )
+
+    tenant = await _get_tenant(lease.tenant_id, org_id, db)
+
+    if tenant.onboarding_state not in (OnboardingState.approved, OnboardingState.activated):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Tenant must be approved before receiving an onboarding link "
+                f"(current state: {tenant.onboarding_state.value})."
+            ),
+        )
+
+    # Expire existing pending invites for this tenant
+    existing = await db.execute(
+        select(TenantInvite).where(
+            TenantInvite.tenant_id == tenant.id,
+            TenantInvite.status == InviteStatus.pending,
+        )
+    )
+    for old_invite in existing.scalars().all():
+        old_invite.status = InviteStatus.expired
+
+    now = datetime.now(timezone.utc)
+    token = secrets.token_urlsafe(48)
+
+    new_invite = TenantInvite(
+        tenant_id=tenant.id,
+        organisation_id=org_id,
+        property_id=lease.property_id,
+        unit_id=lease.unit_id,
+        lease_id=lease.id,
+        email=tenant.email,
+        name=f"{tenant.first_name} {tenant.last_name}",
+        token=token,
+        status=InviteStatus.pending,
+        sent_at=now,
+        expires_at=now + timedelta(hours=INVITE_EXPIRY_HOURS),
+    )
+    db.add(new_invite)
+    tenant.onboarding_token = token
+
+    await db.flush()
+    await db.refresh(new_invite)
+
+    log.info(
+        "onboarding_link.sent",
+        lease_id=str(lease_id),
+        tenant_id=str(tenant.id),
+        token=token[:8] + "…",
+    )
+
+    # TODO Sprint 8: queue email/SMS to tenant with the onboarding URL
 
     return _invite_out(new_invite)
 

@@ -18,9 +18,12 @@ import os
 import uuid
 from datetime import datetime, timezone
 
+import structlog
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+log = structlog.get_logger(__name__)
 
 from app.models.lease import Lease, LeaseStatus
 from app.models.property import Property, Unit, UnitStatus
@@ -154,6 +157,23 @@ async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -
     db.add(lease)
     await db.flush()
     await db.refresh(lease, attribute_names=["status", "updated_at", "created_at"])
+
+    # Auto-link the lease to the tenant's onboarding invite so the tenant
+    # can immediately proceed without the manager taking a separate action.
+    if tenant.onboarding_state in (OnboardingState.approved, OnboardingState.activated):
+        try:
+            from app.services import tenant_service as tenant_svc
+            await tenant_svc.send_onboarding_link(
+                lease_id=lease.id, org_id=org_id, db=db
+            )
+        except Exception:
+            log.warning(
+                "auto_link.onboarding_invite.failed",
+                lease_id=str(lease.id),
+                tenant_id=str(tenant.id),
+                exc_info=True,
+            )
+
     return _lease_out(lease)
 
 

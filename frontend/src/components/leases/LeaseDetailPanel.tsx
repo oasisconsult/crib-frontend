@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import {
-  FileText, Calendar, CreditCard, User, Building2,
-  Send, CheckCircle, XCircle, AlertTriangle, Download, Loader2,
+  FileText, Calendar, CreditCard, Building2,
+  Send, CheckCircle, XCircle, AlertTriangle, Download, Loader2, Copy, Link,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { LeaseWorkflowStepper } from "./WorkflowStepper";
 import { TerminateModal } from "./TerminateModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
-import { useTransitionLease } from "@/hooks/useLeases";
+import { useTransitionLease, useSendOnboarding } from "@/hooks/useLeases";
 import { leasesApi } from "@/services/api/leases";
 import { toast } from "@/store/useUIStore";
 import { canTransition, LEASE_TRANSITIONS } from "@/types/states";
@@ -31,7 +31,9 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [pendingEvent, setPendingEvent] = useState<string | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | undefined>(lease.documentUrl);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [onboardingToken, setOnboardingToken] = useState<string | null>(null);
   const { mutate: transition, isPending } = useTransitionLease();
+  const { mutate: sendOnboarding, isPending: sendingOnboarding } = useSendOnboarding();
 
   async function handleGeneratePdf() {
     setGeneratingPdf(true);
@@ -83,6 +85,27 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 mt-5">
+            {/* Resend onboarding link — regenerates the token if the tenant lost or the link expired */}
+            {lease.state === "draft" && lease.tenantId && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={sendingOnboarding}
+                onClick={() =>
+                  sendOnboarding(lease.id, {
+                    onSuccess: (data) => {
+                      setOnboardingToken(data.token);
+                      toast.success("New onboarding link generated");
+                    },
+                  })
+                }
+              >
+                {sendingOnboarding
+                  ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  : <Link className="h-3.5 w-3.5" />}
+                Resend Link
+              </Button>
+            )}
             {canSend && (
               <Button size="sm" onClick={() => handleTransition("LEASE_SENT")}>
                 <Send className="h-3.5 w-3.5" />
@@ -135,6 +158,33 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
               </Button>
             )}
           </div>
+
+          {/* Onboarding link — shown after manager clicks "Send to Tenant" */}
+          {onboardingToken && (
+            <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+              <p className="font-medium text-primary mb-1.5 flex items-center gap-1.5">
+                <Link className="h-3.5 w-3.5" />
+                Onboarding link ready — share with tenant
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 truncate text-xs bg-background border rounded px-2 py-1 font-mono">
+                  {`${window.location.origin}/onboarding/${onboardingToken}`}
+                </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/onboarding/${onboardingToken}`);
+                    toast.success("Link copied");
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
