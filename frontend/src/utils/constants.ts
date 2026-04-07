@@ -100,3 +100,17 @@ export const PAYMENT_FLOW_STEPS = [
   { state: "payment_pending", label: "Confirming", step: 4 },
   { state: "signature", label: "Sign", step: 5 },
 ] as const;
+
+// Full end-to-end onboarding journey — shown in the wizard at all stages
+// so the tenant always sees the complete picture ahead of them.
+export const FULL_ONBOARDING_JOURNEY_STEPS = [
+  { state: "invited",           label: "Invited",     step: 1 },
+  { state: "profile",           label: "Profile",     step: 2 },
+  { state: "documents",         label: "Docs",        step: 3 },
+  { state: "under_review",      label: "Review",      step: 4 },
+  { state: "agreement_preview", label: "Agreement",   step: 5 },
+  { state: "terms_acceptance",  label: "Terms",       step: 6 },
+  { state: "payment",           label: "Payment",     step: 7 },
+  { state: "signature",         label: "Sign",        step: 8 },
+  { state: "activated",         label: "Active",      step: 9 },
+] as const;

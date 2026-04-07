@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { cn } from "@/utils/cn";
 import type { LeaseState, OnboardingState } from "@/types/states";
 import type { OnboardingStep } from "@/types/onboarding";
-import { LEASE_STEPS, ONBOARDING_STEPS, PAYMENT_FLOW_STEPS } from "@/utils/constants";
+import { FULL_ONBOARDING_JOURNEY_STEPS, LEASE_STEPS, ONBOARDING_STEPS, PAYMENT_FLOW_STEPS } from "@/utils/constants";
 
 interface Step {
   state: string;
@@ -62,7 +62,7 @@ export function WorkflowStepper({
             <div className={cn(orientation === "horizontal" && "flex flex-col items-center flex-1")}>
               <div
                 className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-all duration-300",
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-bold transition-all duration-300",
                   status === "done" &&
                     "border-primary bg-primary text-primary-foreground",
                   status === "active" &&
@@ -84,9 +84,9 @@ export function WorkflowStepper({
               {/* Label */}
               <span
                 className={cn(
-                  "mt-1.5 text-xs font-medium text-center leading-tight max-w-[80px]",
+                  "mt-1.5 text-[10px] font-medium text-center leading-tight max-w-[56px] break-words",
                   status === "active" ? "text-primary" : "text-muted-foreground",
-                  orientation === "vertical" && "mt-0 max-w-none text-left",
+                  orientation === "vertical" && "mt-0 max-w-none text-left text-xs",
                 )}
               >
                 {step.label}
@@ -160,6 +160,26 @@ export function PaymentFlowStepper({
     <WorkflowStepper
       currentState={step}
       steps={PAYMENT_FLOW_STEPS as unknown as Step[]}
+      className={className}
+    />
+  );
+}
+
+/**
+ * Single unified stepper shown throughout the entire onboarding wizard.
+ * `journeyState` must be one of the states from FULL_ONBOARDING_JOURNEY_STEPS.
+ */
+export function FullOnboardingJourneyStepper({
+  journeyState,
+  className,
+}: {
+  journeyState: string;
+  className?: string;
+}) {
+  return (
+    <WorkflowStepper
+      currentState={journeyState}
+      steps={FULL_ONBOARDING_JOURNEY_STEPS as unknown as Step[]}
       className={className}
     />
   );

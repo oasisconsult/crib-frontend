@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { FileUpload } from "@/components/common/FileUpload";
 import type { UploadResult } from "@/services/api/uploads";
 import { ESignatureCanvas } from "./ESignatureCanvas";
-import { OnboardingWorkflowStepper, PaymentFlowStepper } from "@/components/leases/WorkflowStepper";
+import { FullOnboardingJourneyStepper } from "@/components/leases/WorkflowStepper";
 import { AgreementPreviewStep } from "./steps/AgreementPreviewStep";
 import { TermsAcceptanceStep } from "./steps/TermsAcceptanceStep";
 import { PaymentStep } from "./steps/PaymentStep";
@@ -173,11 +173,30 @@ export function OnboardingWizard({
     );
   };
 
+  // ── Unified journey state (for the 9-step stepper shown at all phases) ──────
+  const journeyState = (() => {
+    if (isActivated || paymentStep === "done") return "activated";
+    if (isApproved && invite.leaseId) {
+      if (paymentStep === "signature")                                    return "signature";
+      if (["payment", "payment_pending", "payment_success"].includes(paymentStep)) return "payment";
+      if (paymentStep === "terms_acceptance")                             return "terms_acceptance";
+      return "agreement_preview";
+    }
+    // Approved but no lease yet — waiting for landlord to link a lease
+    if (isApproved || tenant.onboardingState === "submitted")            return "under_review";
+    if (profileStep === "submitted")                                      return "under_review";
+    if (profileStep === "documents")                                      return "documents";
+    if (tenant.onboardingState === "invited")                             return "invited";
+    return "profile";
+  })();
+
   // ── Progress ──────────────────────────────────────────────────────────────
-  const allSteps = [...PROFILE_STEPS.filter(s => s !== "submitted"), ...PAYMENT_STEPS.filter(s => s !== "done"), "done"];
-  const currentStepKey = isApproved ? paymentStep : profileStep;
-  const stepIndex = allSteps.indexOf(currentStepKey as string);
-  const progress = stepIndex >= 0 ? (stepIndex / (allSteps.length - 1)) * 100 : 0;
+  const TOTAL_JOURNEY_STEPS = 9; // matches FULL_ONBOARDING_JOURNEY_STEPS length
+  const journeyStepNumber = {
+    invited: 1, profile: 2, documents: 3, under_review: 4,
+    agreement_preview: 5, terms_acceptance: 6, payment: 7, signature: 8, activated: 9,
+  }[journeyState] ?? 1;
+  const progress = ((journeyStepNumber - 1) / (TOTAL_JOURNEY_STEPS - 1)) * 100;
 
   // ── Rejection banner ──────────────────────────────────────────────────────
   const resubmitBanner = isResubmit && !isApproved && (
@@ -197,19 +216,10 @@ export function OnboardingWizard({
 
   return (
     <div className="w-full max-w-lg space-y-6 mx-auto">
-      {paymentStep !== "done" && profileStep !== "submitted" && (
+      {journeyState !== "activated" && (
         <div className="space-y-2">
           <Progress value={progress} className="h-2" />
-          {isApproved && invite.leaseId ? (
-            <PaymentFlowStepper step={paymentStep} />
-          ) : (
-            <OnboardingWorkflowStepper
-              state={
-                isApproved ? "approved" :
-                profileStep === "documents" ? "started" : "started"
-              }
-            />
-          )}
+          <FullOnboardingJourneyStepper journeyState={journeyState} />
         </div>
       )}
 
