@@ -215,19 +215,21 @@ export function OnboardingWizard({
   );
 
   return (
-    <div className="w-full max-w-lg space-y-6 mx-auto">
+    <div className="w-full space-y-6">
       {journeyState !== "activated" && (
-        <div className="space-y-2">
+        <div className="space-y-2 max-w-3xl mx-auto">
           <Progress value={progress} className="h-2" />
           <FullOnboardingJourneyStepper journeyState={journeyState} />
         </div>
       )}
 
-      {resubmitBanner}
+      {resubmitBanner && (
+        <div className="max-w-lg mx-auto">{resubmitBanner}</div>
+      )}
 
       {/* ── PHASE 1: Profile collection ──────────────────────────────── */}
       {!isApproved && (
-        <>
+        <div className="max-w-lg mx-auto space-y-6">
           {profileStep === "profile" && (
             <Card>
               <CardHeader>
@@ -327,25 +329,28 @@ export function OnboardingWizard({
               </CardContent>
             </Card>
           )}
-        </>
+        </div>
       )}
 
       {/* ── Pending approval gate ─────────────────────────────────────── */}
       {isApproved && !invite.leaseId && paymentStep !== "done" && (
-        <Card className="text-center">
-          <CardContent className="pt-8 pb-8 space-y-3">
-            <Clock className="h-10 w-10 text-amber-500 mx-auto" />
-            <h2 className="text-lg font-semibold">Waiting for lease setup</h2>
-            <p className="text-muted-foreground text-sm">
-              Your application has been approved. Your landlord is preparing your lease — you&apos;ll receive a new link shortly.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="max-w-lg mx-auto">
+          <Card className="text-center">
+            <CardContent className="pt-8 pb-8 space-y-3">
+              <Clock className="h-10 w-10 text-amber-500 mx-auto" />
+              <h2 className="text-lg font-semibold">Waiting for lease setup</h2>
+              <p className="text-muted-foreground text-sm">
+                Your application has been approved. Your landlord is preparing your lease — you&apos;ll receive a new link shortly.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* ── PHASE 2: Payment flow ─────────────────────────────────────── */}
       {isApproved && invite.leaseId && (
         <>
+          {/* Agreement preview uses full available width so the document is readable */}
           {paymentStep === "agreement_preview" && (
             <AgreementPreviewStep
               token={token}
@@ -354,64 +359,69 @@ export function OnboardingWizard({
             />
           )}
 
-          {paymentStep === "terms_acceptance" && (
-            <TermsAcceptanceStep
-              token={token}
-              onNext={(acceptedAt) => { setTermsAcceptedAt(acceptedAt); setPaymentStep("payment"); }}
-              onBack={() => setPaymentStep("agreement_preview")}
-            />
-          )}
+          {/* All other payment steps are narrower — centred at max-w-xl */}
+          {paymentStep !== "agreement_preview" && (
+            <div className="max-w-xl mx-auto space-y-6">
+              {paymentStep === "terms_acceptance" && (
+                <TermsAcceptanceStep
+                  token={token}
+                  onNext={(acceptedAt) => { setTermsAcceptedAt(acceptedAt); setPaymentStep("payment"); }}
+                  onBack={() => setPaymentStep("agreement_preview")}
+                />
+              )}
 
-          {paymentStep === "payment" && preview && (
-            <PaymentStep
-              token={token}
-              preview={preview}
-              onNext={() => setPaymentStep("payment_pending")}
-              onBack={() => setPaymentStep("terms_acceptance")}
-            />
-          )}
+              {paymentStep === "payment" && preview && (
+                <PaymentStep
+                  token={token}
+                  preview={preview}
+                  onNext={() => setPaymentStep("payment_pending")}
+                  onBack={() => setPaymentStep("terms_acceptance")}
+                />
+              )}
 
-          {paymentStep === "payment_pending" && (
-            <PaymentPendingStep
-              token={token}
-              onPaymentSecured={() => setPaymentStep("payment_success")}
-            />
-          )}
+              {paymentStep === "payment_pending" && (
+                <PaymentPendingStep
+                  token={token}
+                  onPaymentSecured={() => setPaymentStep("payment_success")}
+                />
+              )}
 
-          {paymentStep === "payment_success" && preview && (
-            <PaymentSuccessStep
-              preview={preview}
-              onNext={() => setPaymentStep("signature")}
-            />
-          )}
+              {paymentStep === "payment_success" && preview && (
+                <PaymentSuccessStep
+                  preview={preview}
+                  onNext={() => setPaymentStep("signature")}
+                />
+              )}
 
-          {paymentStep === "signature" && preview && (
-            <FinalSignatureStep
-              token={token}
-              preview={preview}
-              termsAcceptedAt={termsAcceptedAt}
-              onSigned={() => setPaymentStep("done")}
-            />
-          )}
+              {paymentStep === "signature" && preview && (
+                <FinalSignatureStep
+                  token={token}
+                  preview={preview}
+                  termsAcceptedAt={termsAcceptedAt}
+                  onSigned={() => setPaymentStep("done")}
+                />
+              )}
 
-          {paymentStep === "done" && (
-            <Card className="text-center">
-              <CardContent className="pt-8 pb-8 space-y-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mx-auto">
-                  <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold">Your Tenancy is Active!</h2>
-                  <p className="text-muted-foreground text-sm mt-1">
-                    Welcome home. Your tenancy at <strong>{invite.propertyId}</strong> is
-                    now active. Check your email for your tenancy agreement.
-                  </p>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Questions? Contact your landlord at <strong>{invite.email}</strong>
-                </p>
-              </CardContent>
-            </Card>
+              {paymentStep === "done" && (
+                <Card className="text-center">
+                  <CardContent className="pt-8 pb-8 space-y-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mx-auto">
+                      <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">Your Tenancy is Active!</h2>
+                      <p className="text-muted-foreground text-sm mt-1">
+                        Welcome home. Your tenancy at <strong>{invite.propertyId}</strong> is
+                        now active. Check your email for your tenancy agreement.
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Questions? Contact your landlord at <strong>{invite.email}</strong>
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           )}
         </>
       )}

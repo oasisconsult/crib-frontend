@@ -87,7 +87,7 @@ _TEMPLATE = """\
 <meta charset="UTF-8"/>
 <style>
   body {{ font-family: Georgia, serif; font-size: 14px; line-height: 1.8;
-         color: #111; max-width: 820px; margin: 0 auto; padding: 40px 24px; }}
+         color: #111; padding: 32px 28px; }}
   h1 {{ text-align: center; font-size: 18px; text-transform: uppercase;
         letter-spacing: 1px; margin-bottom: 6px; }}
   .subtitle {{ text-align: center; font-size: 13px; color: #555; margin-bottom: 28px; }}

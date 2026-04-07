@@ -71,12 +71,12 @@ export function AgreementPreviewStep({ token, preview: initialPreview, onNext }:
           </span>
         </div>
 
-        {/* Full agreement HTML */}
+        {/* Full agreement HTML — height scales with viewport */}
         {preview.renderedHtml ? (
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="h-[600px] overflow-y-auto rounded-lg border bg-white dark:bg-zinc-950 shadow-inner"
+            className="h-[70vh] min-h-[400px] overflow-y-auto rounded-lg border bg-white dark:bg-zinc-950 shadow-inner"
             style={{ scrollBehavior: "smooth" }}
             dangerouslySetInnerHTML={{ __html: preview.renderedHtml }}
           />

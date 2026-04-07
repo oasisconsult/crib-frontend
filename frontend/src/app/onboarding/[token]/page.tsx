@@ -23,8 +23,8 @@ export default function OnboardingPage({ params }: Props) {
   const { data, isLoading, error } = useOnboardingFlowStatus(token);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 p-4 sm:p-6">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-2.5 mb-8">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
