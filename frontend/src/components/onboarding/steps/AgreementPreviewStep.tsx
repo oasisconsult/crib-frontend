@@ -19,12 +19,14 @@ export function AgreementPreviewStep({ token, preview: initialPreview, onNext }:
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Fetch preview on mount if not yet loaded
+  // Fetch preview on mount if we don't yet have the full rendered HTML.
+  // The flow-status snapshot may have financial fields but no renderedHtml,
+  // so we always call /preview to get the full document HTML.
   useEffect(() => {
-    if (!preview) {
+    if (!preview?.renderedHtml) {
       fetchPreview(undefined, { onSuccess: setPreview });
     }
-  }, [fetchPreview, preview]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Track scroll — enable button only once user reaches the bottom
   function handleScroll() {
@@ -34,7 +36,7 @@ export function AgreementPreviewStep({ token, preview: initialPreview, onNext }:
     if (atBottom) setScrolledToBottom(true);
   }
 
-  if (isPending || !preview) {
+  if (isPending || !preview || !preview.renderedHtml) {
     return (
       <Card>
         <CardContent className="pt-6 space-y-3">
