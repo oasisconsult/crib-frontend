@@ -22,8 +22,16 @@ const base = (token: string) => `/tenants/onboarding/${token}`;
 
 export const onboardingFlowApi = {
   /** Full state — used on every mount to resume the wizard from the correct step. */
-  getFlowStatus: (token: string) =>
-    apiGet<OnboardingFlowStatus>(`${base(token)}/flow`),
+  getFlowStatus: async (token: string): Promise<OnboardingFlowStatus> => {
+    const raw = await apiGet<Record<string, unknown>>(`${base(token)}/flow`);
+    // Backend LeaseOut serialises the lease state as "status"; normalise to "state"
+    // so the wizard's LEASE_STATUS_TO_STEP lookup works correctly.
+    const lease = raw.lease as Record<string, unknown> | null;
+    if (lease && lease.status != null && lease.state == null) {
+      lease.state = lease.status;
+    }
+    return raw as unknown as OnboardingFlowStatus;
+  },
 
   /** Generate (or return cached) agreement preview snapshot. */
   previewAgreement: (token: string) =>

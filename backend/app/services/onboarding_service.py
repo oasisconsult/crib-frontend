@@ -401,8 +401,15 @@ async def accept_terms(
     if not lease:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No lease linked.")
 
-    # Idempotent
-    if lease.status == LeaseStatus.terms_accepted:
+    # Idempotent — terms are already accepted for any status beyond agreement_previewed
+    _already_accepted = {
+        LeaseStatus.terms_accepted,
+        LeaseStatus.payment_pending,
+        LeaseStatus.payment_secured,
+        LeaseStatus.agreement_signed,
+        LeaseStatus.active,
+    }
+    if lease.status in _already_accepted:
         accepted_at = lease.terms_accepted_at or datetime.now(timezone.utc)
         return TermsAcceptOut(
             lease_id=str(lease.id),
