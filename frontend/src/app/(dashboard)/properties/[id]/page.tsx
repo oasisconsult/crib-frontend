@@ -36,6 +36,7 @@ import {
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency } from "@/utils/formatters";
 import { useProperty, useUpdateProperty } from "@/hooks/useProperties";
+import { uploadsApi } from "@/services/api/uploads";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
 import type { Property, PropertyType, PropertyStatus } from "@/types";
@@ -319,18 +320,25 @@ function PropertyPhotos({
   const [uploading, setUploading] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
 
-  function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
-    setUploading(true);
-    const urls = files.map((f) => URL.createObjectURL(f));
-    const next = [...photos, ...urls];
-    setPhotos(next);
-    update(
-      { id: property.id, data: { images: next } },
-      { onSuccess: () => setUploading(false), onError: () => setUploading(false) },
-    );
     e.target.value = "";
+    setUploading(true);
+    try {
+      const results = await Promise.all(
+        files.map((f) => uploadsApi.uploadFile(f, { category: "property_image" })),
+      );
+      const newUrls = results.map((r) => r.url);
+      const next = [...photos, ...newUrls];
+      setPhotos(next);
+      update(
+        { id: property.id, data: { images: next } },
+        { onSettled: () => setUploading(false) },
+      );
+    } catch {
+      setUploading(false);
+    }
   }
 
   function remove(url: string) {

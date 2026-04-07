@@ -49,6 +49,7 @@ import {
   useMaintenanceIssues,
 } from "@/hooks/useInspections";
 import { inspectionsApi } from "@/services/api/inspections";
+import { uploadsApi } from "@/services/api/uploads";
 import { toast } from "@/store/useUIStore";
 import { useProperty, useUnit } from "@/hooks/useProperties";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -467,10 +468,13 @@ function PhotosSection({
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
+    e.target.value = "";
     setUploading(true);
     try {
-      // Generate object URLs for preview; in production these would be upload URLs
-      const urls = files.map((f) => URL.createObjectURL(f));
+      const results = await Promise.all(
+        files.map((f) => uploadsApi.uploadFile(f, { category: "inspection_photo", inspectionId: inspection.id })),
+      );
+      const urls = results.map((r) => r.url);
       await inspectionsApi.addPhotos(inspection.id, urls);
       setPhotos((prev) => [...prev, ...urls]);
       toast.success(`${files.length} photo${files.length > 1 ? "s" : ""} added`);
@@ -478,7 +482,6 @@ function PhotosSection({
       toast.error("Failed to upload photos");
     } finally {
       setUploading(false);
-      e.target.value = "";
     }
   }
 
