@@ -21,7 +21,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # ── 1. Enum type ──────────────────────────────────────────────────────────
+    # ── 1. Enum type (idempotent) ─────────────────────────────────────────────
     op.execute(
         "DO $$ BEGIN "
         "CREATE TYPE tenancy_agreement_status_enum AS ENUM "
@@ -30,34 +30,32 @@ def upgrade() -> None:
     )
 
     # ── 2. tenancy_agreements table ───────────────────────────────────────────
-    op.create_table(
-        "tenancy_agreements",
-        sa.Column("id", sa.dialects.postgresql.UUID(as_uuid=True),
-                  server_default=sa.text("gen_random_uuid()"),
-                  nullable=False, primary_key=True),
-        sa.Column("created_at", sa.DateTime(timezone=True),
-                  server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True),
-                  server_default=sa.text("now()"), nullable=False),
-        sa.Column("lease_id", sa.dialects.postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("rendered_html", sa.Text, nullable=False),
-        sa.Column(
-            "status",
-            sa.Enum("draft", "tenant_signed", "fully_executed",
-                    name="tenancy_agreement_status_enum", create_type=False),
-            nullable=False,
-            server_default="draft",
-        ),
-        sa.Column("tenant_signature_data_url", sa.Text, nullable=True),
-        sa.Column("tenant_signed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("tenant_ip", sa.String(45), nullable=True),
-        sa.Column("landlord_signature_data_url", sa.Text, nullable=True),
-        sa.Column("landlord_signed_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("landlord_signer_id", sa.String(100), nullable=True),
-        sa.Column("landlord_signer_name", sa.String(255), nullable=True),
-        sa.ForeignKeyConstraint(["lease_id"], ["leases.id"], ondelete="CASCADE"),
+    # Use raw DDL to avoid SQLAlchemy auto-emitting a second CREATE TYPE for the
+    # status column enum even when create_type=False is set (SA behaviour in
+    # op.create_table differs from op.add_column in this regard).
+    op.execute("""
+        CREATE TABLE IF NOT EXISTS tenancy_agreements (
+            id              UUID        NOT NULL DEFAULT gen_random_uuid(),
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+            lease_id        UUID        NOT NULL
+                REFERENCES leases(id) ON DELETE CASCADE,
+            rendered_html   TEXT        NOT NULL,
+            status          tenancy_agreement_status_enum NOT NULL DEFAULT 'draft',
+            tenant_signature_data_url   TEXT,
+            tenant_signed_at            TIMESTAMPTZ,
+            tenant_ip                   VARCHAR(45),
+            landlord_signature_data_url TEXT,
+            landlord_signed_at          TIMESTAMPTZ,
+            landlord_signer_id          VARCHAR(100),
+            landlord_signer_name        VARCHAR(255),
+            PRIMARY KEY (id)
+        )
+    """)
+    op.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_tenancy_agreements_lease_id "
+        "ON tenancy_agreements (lease_id)"
     )
-    op.create_index("ix_tenancy_agreements_lease_id", "tenancy_agreements", ["lease_id"], unique=True)
 
     # ── 3. tenants.nin ────────────────────────────────────────────────────────
     op.add_column("tenants", sa.Column("nin", sa.String(50), nullable=True))
