@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+// import { motion } from "framer-motion";
 import { cn } from "@/utils/cn";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -41,11 +41,8 @@ export function Table<T>({ data, columns, className = "", loading = false, empty
   }
 
   return (
-    <motion.div
+    <div
       className={cn("w-full text-sm", className)}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.3 }}
     >
       <table className="w-full text-sm">
         <thead className={cn("text-muted border-b border-border-" + theme)}>
@@ -59,22 +56,19 @@ export function Table<T>({ data, columns, className = "", loading = false, empty
         </thead>
         <tbody className={cn("divide-y divide-border-" + theme)}>
           {data.map((item, rowIndex) => (
-            <motion.tr
+            <tr
               key={rowIndex}
               className="hover:bg-white/5 transition-colors duration-200"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: rowIndex * 0.05 }}
             >
               {columns.map((column, colIndex) => (
                 <td key={colIndex} className={cn("py-3 px-4", column.className)}>
                   {column.render ? column.render(item[column.key], item) : String(item[column.key] || "")}
                 </td>
               ))}
-            </motion.tr>
+            </tr>
           ))}
         </tbody>
       </table>
-    </motion.div>
+    </div>
   );
 }
