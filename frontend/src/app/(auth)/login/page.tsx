@@ -45,7 +45,7 @@ const STATS = [
 
 // ── Dev user catalogue ─────────────────────────────────────────────────────
 
-export const DEV_USERS = [
+const DEV_USERS = [
   {
     id: "user-superadmin-1",
     role: "superadmin" as const,
