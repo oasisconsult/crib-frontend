@@ -44,9 +44,9 @@ export function PendingRentWidget() {
             <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
             <span className="truncate">Recent Transactions</span>
           </CardTitle>
-          <Button variant="ghost" size="sm" asChild className="h-7 px-2 text-xs gap-1 shrink-0">
+          <Button variant="ghost" size="sm" asChild className="h-8 px-3 text-xs gap-1">
             <Link href="/payments">
-              View all <ArrowRight className="h-3 w-3" />
+              View all <ArrowRight className="h-3 w-3 ml-1" />
             </Link>
           </Button>
         </div>
