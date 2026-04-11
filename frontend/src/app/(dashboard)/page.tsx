@@ -46,23 +46,23 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Upcoming inspections */}
-        <Card className="dashboard-card">
-          <CardHeader className="dashboard-card-header">
+        <Card style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '120px' }}>
+          <CardHeader style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexShrink: 0, borderBottom: '1px solid var(--re-border)' }}>
             <div className="flex items-center gap-2">
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="card-title" style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.3' }}>Upcoming Inspections</CardTitle>
+              <CardTitle style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.3', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>Upcoming Inspections</CardTitle>
             </div>
             {inspections.length > 0 && (
-              <Badge variant="secondary" className="badge">{inspections.length}</Badge>
+              <Badge variant="secondary" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>{inspections.length}</Badge>
             )}
           </CardHeader>
-          <CardContent className="dashboard-card-content">
+          <CardContent style={{ padding: '8px 12px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {inspections.length === 0 ? (
               <p className="text-sm text-muted-foreground">No scheduled inspections.</p>
             ) : (
-              <ul className="card-list">
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                 {inspections.slice(0, 5).map((insp: any) => (
-                  <li key={insp.id} className="flex items-center justify-between text-sm">
+                  <li key={insp.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', fontSize: '12px', lineHeight: '1.3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <span className="font-medium truncate">{insp.property_name ?? "â"}</span>
                     <Badge variant="outline" className="shrink-0 ml-2 capitalize">{insp.status}</Badge>
                   </li>
@@ -73,23 +73,23 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
         </Card>
 
         {/* Open maintenance issues */}
-        <Card className="dashboard-card">
-          <CardHeader className="dashboard-card-header">
+        <Card style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '120px' }}>
+          <CardHeader style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', flexShrink: 0, borderBottom: '1px solid var(--re-border)' }}>
             <div className="flex items-center gap-2">
               <Wrench className="h-4 w-4 text-muted-foreground" />
-              <CardTitle className="card-title" style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.3' }}>Open Maintenance Requests</CardTitle>
+              <CardTitle style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.3', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>Open Maintenance Requests</CardTitle>
             </div>
             {openIssues.length > 0 && (
-              <Badge variant="destructive" className="badge">{openIssues.length}</Badge>
+              <Badge variant="destructive" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>{openIssues.length}</Badge>
             )}
           </CardHeader>
-          <CardContent className="dashboard-card-content">
+          <CardContent style={{ padding: '8px 12px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {openIssues.length === 0 ? (
               <p className="text-sm text-muted-foreground">No open issues.</p>
             ) : (
-              <ul className="card-list">
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: '6px', overflow: 'hidden' }}>
                 {openIssues.slice(0, 5).map((issue: any) => (
-                  <li key={issue.id} className="flex items-center justify-between text-sm">
+                  <li key={issue.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', fontSize: '12px', lineHeight: '1.3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     <span className="font-medium truncate">{issue.title ?? "Untitled"}</span>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
                       {issue.priority === "high" || issue.priority === "urgent" ? (
