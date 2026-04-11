@@ -82,8 +82,8 @@ function KPIDashboardCards() {
         const TrendIcon = kpi.trend.positive ? TrendingUp : TrendingDown;
         
         return (
-          <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-4">
+          <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-32 hover:shadow-md transition-shadow">
+            <div className="flex items-start justify-between h-full">
               <div className="flex items-center gap-3">
                 <div className={cn(
                   "w-12 h-12 rounded-lg flex items-center justify-center",
@@ -107,7 +107,7 @@ function KPIDashboardCards() {
               </div>
             </div>
             <div className={cn(
-              "flex items-center text-sm",
+              "flex items-center text-sm mt-auto",
               kpi.trend.positive ? "text-green-600" : "text-red-600"
             )}>
               <TrendIcon className="w-4 h-4 mr-1" />
