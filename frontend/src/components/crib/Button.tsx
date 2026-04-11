@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+// import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -41,7 +41,7 @@ export function Button({
   };
 
   return (
-    <motion.button
+    <button
       type={type}
       className={cn(
         baseClasses,
@@ -52,15 +52,12 @@ export function Button({
       )}
       onClick={onClick}
       disabled={disabled || loading}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.2 }}
     >
       {loading ? (
         <Loader2 className="w-4 h-4 animate-spin" />
       ) : (
         children
       )}
-    </motion.button>
+    </button>
   );
 }
