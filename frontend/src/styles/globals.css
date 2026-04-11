@@ -5,6 +5,9 @@
 /* ─── Inter font ─────────────────────────────────────────────────────────────── */
 @import url('https://rsms.me/inter/inter.css');
 
+/* Real Estate SaaS Theme */
+@import './real-estate-theme.css';
+
 @layer base {
   :root {
     /* Light mode — slate/indigo palette */

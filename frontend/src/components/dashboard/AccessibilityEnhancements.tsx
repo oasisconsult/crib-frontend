@@ -5,24 +5,55 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 
-// Enhanced color palette with better contrast ratios
-export const dashboardColors = {
-  // Primary colors with WCAG AA compliance
+// Modern Real Estate SaaS Color Palette
+// Professional, trustworthy, and property-focused color scheme
+export const realEstateColors = {
+  // Primary Brand - Deep Navy Blue (Professional, Trustworthy)
   primary: {
-    50: "#f0f9ff",
-    100: "#e0f2fe", 
-    200: "#bae6fd",
-    300: "#7dd3fc",
-    400: "#38bdf8",
-    500: "#0ea5e9",
-    600: "#0284c7",
-    700: "#0369a1",
-    800: "#075985",
-    900: "#0c4a6e",
-    950: "#082f49"
+    50: "#f8fafc",
+    100: "#f1f5f9",
+    200: "#e2e8f0",
+    300: "#cbd5e1",
+    400: "#94a3b8",
+    500: "#64748b",
+    600: "#475569",
+    700: "#334155",
+    800: "#1e293b",
+    900: "#0f172a",
+    950: "#020617"
   },
-  
-  // Success colors
+
+  // Secondary Brand - Slate Blue (Property, Modern)
+  secondary: {
+    50: "#f8fafc",
+    100: "#f1f5f9",
+    200: "#e2e8f0",
+    300: "#cbd5e1",
+    400: "#94a3b8",
+    500: "#64748b",
+    600: "#475569",
+    700: "#334155",
+    800: "#1e293b",
+    900: "#0f172a",
+    950: "#020617"
+  },
+
+  // Accent - Emerald Green (Growth, Success, Revenue)
+  accent: {
+    50: "#ecfdf5",
+    100: "#d1fae5",
+    200: "#a7f3d0",
+    300: "#6ee7b7",
+    400: "#34d399",
+    500: "#10b981",
+    600: "#059669",
+    700: "#047857",
+    800: "#065f46",
+    900: "#064e3b",
+    950: "#022c22"
+  },
+
+  // Success - Forest Green (Properties, Growth)
   success: {
     50: "#f0fdf4",
     100: "#dcfce7",
@@ -36,8 +67,8 @@ export const dashboardColors = {
     900: "#14532d",
     950: "#052e16"
   },
-  
-  // Warning colors
+
+  // Warning - Amber (Maintenance, Alerts)
   warning: {
     50: "#fffbeb",
     100: "#fef3c7",
@@ -51,23 +82,68 @@ export const dashboardColors = {
     900: "#78350f",
     950: "#451a03"
   },
-  
-  // Error colors
+
+  // Error - Rose (Urgent Issues, Overdue)
   error: {
-    50: "#fef2f2",
-    100: "#fee2e2",
-    200: "#fecaca",
-    300: "#fca5a5",
-    400: "#f87171",
-    500: "#ef4444",
-    600: "#dc2626",
-    700: "#b91c1c",
-    800: "#991b1b",
-    900: "#7f1d1d",
-    950: "#450a0a"
+    50: "#fdf2f8",
+    100: "#fce7f3",
+    200: "#fbcfe8",
+    300: "#f9a8d4",
+    400: "#f472b6",
+    500: "#ec4899",
+    600: "#db2777",
+    700: "#be185d",
+    800: "#9d174d",
+    900: "#831843",
+    950: "#500724"
   },
-  
-  // Neutral colors for better contrast
+
+  // Property Blue (Real Estate Focus)
+  property: {
+    50: "#eff6ff",
+    100: "#dbeafe",
+    200: "#bfdbfe",
+    300: "#93c5fd",
+    400: "#60a5fa",
+    500: "#3b82f6",
+    600: "#2563eb",
+    700: "#1d4ed8",
+    800: "#1e40af",
+    900: "#1e3a8a",
+    950: "#172554"
+  },
+
+  // Tenant Purple (People, Relationships)
+  tenant: {
+    50: "#faf5ff",
+    100: "#f3e8ff",
+    200: "#e9d5ff",
+    300: "#d8b4fe",
+    400: "#c084fc",
+    500: "#a855f7",
+    600: "#9333ea",
+    700: "#7c3aed",
+    800: "#6b21a8",
+    900: "#581c87",
+    950: "#3b0764"
+  },
+
+  // Revenue Gold (Financial, Premium)
+  revenue: {
+    50: "#fffbeb",
+    100: "#fef3c7",
+    200: "#fde68a",
+    300: "#fcd34d",
+    400: "#fbbf24",
+    500: "#f59e0b",
+    600: "#d97706",
+    700: "#b45309",
+    800: "#92400e",
+    900: "#78350f",
+    950: "#451a03"
+  },
+
+  // Neutral Grays (Professional Base)
   neutral: {
     50: "#fafafa",
     100: "#f5f5f5",
@@ -80,34 +156,61 @@ export const dashboardColors = {
     800: "#262626",
     900: "#171717",
     950: "#0a0a0a"
+  },
+
+  // Surface Colors (Cards, Backgrounds)
+  surface: {
+    50: "#ffffff",
+    100: "#f8fafc",
+    200: "#f1f5f9",
+    300: "#e2e8f0",
+    400: "#cbd5e1",
+    500: "#94a3b8",
+    600: "#64748b",
+    700: "#475569",
+    800: "#334155",
+    900: "#1e293b",
+    950: "#0f172a"
   }
 };
 
-// Accessible color variants for different states
-export const colorVariants = {
+// Real Estate themed color variants for different dashboard metrics
+export const realEstateColorVariants = {
   revenue: {
-    bg: dashboardColors.primary[50],
-    text: dashboardColors.primary[700],
-    icon: dashboardColors.primary[600],
-    border: dashboardColors.primary[200]
+    bg: realEstateColors.revenue[50],
+    text: realEstateColors.revenue[700],
+    icon: realEstateColors.revenue[600],
+    border: realEstateColors.revenue[200]
   },
   occupancy: {
-    bg: dashboardColors.success[50],
-    text: dashboardColors.success[700],
-    icon: dashboardColors.success[600],
-    border: dashboardColors.success[200]
+    bg: realEstateColors.property[50],
+    text: realEstateColors.property[700],
+    icon: realEstateColors.property[600],
+    border: realEstateColors.property[200]
   },
   tenants: {
-    bg: dashboardColors.warning[50],
-    text: dashboardColors.warning[700],
-    icon: dashboardColors.warning[600],
-    border: dashboardColors.warning[200]
+    bg: realEstateColors.tenant[50],
+    text: realEstateColors.tenant[700],
+    icon: realEstateColors.tenant[600],
+    border: realEstateColors.tenant[200]
   },
   overdue: {
-    bg: dashboardColors.error[50],
-    text: dashboardColors.error[700],
-    icon: dashboardColors.error[600],
-    border: dashboardColors.error[200]
+    bg: realEstateColors.error[50],
+    text: realEstateColors.error[700],
+    icon: realEstateColors.error[600],
+    border: realEstateColors.error[200]
+  },
+  maintenance: {
+    bg: realEstateColors.warning[50],
+    text: realEstateColors.warning[700],
+    icon: realEstateColors.warning[600],
+    border: realEstateColors.warning[200]
+  },
+  growth: {
+    bg: realEstateColors.accent[50],
+    text: realEstateColors.accent[700],
+    icon: realEstateColors.accent[600],
+    border: realEstateColors.accent[200]
   }
 };
 
@@ -117,7 +220,7 @@ interface AccessibleStatCardProps {
   value: string;
   trend?: { label: string; positive: boolean };
   progress?: number;
-  colorVariant: keyof typeof colorVariants;
+  colorVariant: keyof typeof realEstateColorVariants;
   ariaLabel?: string;
 }
 
@@ -129,7 +232,7 @@ export function AccessibleStatCard({
   colorVariant,
   ariaLabel 
 }: AccessibleStatCardProps) {
-  const colors = colorVariants[colorVariant];
+  const colors = realEstateColorVariants[colorVariant];
   
   return (
     <Card 

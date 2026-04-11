@@ -1,0 +1,423 @@
+/* Real Estate SaaS Theme - Modern Professional Color Palette */
+
+:root {
+  /* Primary Brand Colors - Deep Navy Blue */
+  --re-primary-50: #f8fafc;
+  --re-primary-100: #f1f5f9;
+  --re-primary-200: #e2e8f0;
+  --re-primary-300: #cbd5e1;
+  --re-primary-400: #94a3b8;
+  --re-primary-500: #64748b;
+  --re-primary-600: #475569;
+  --re-primary-700: #334155;
+  --re-primary-800: #1e293b;
+  --re-primary-900: #0f172a;
+  --re-primary-950: #020617;
+
+  /* Secondary Brand - Slate Blue */
+  --re-secondary-50: #f8fafc;
+  --re-secondary-100: #f1f5f9;
+  --re-secondary-200: #e2e8f0;
+  --re-secondary-300: #cbd5e1;
+  --re-secondary-400: #94a3b8;
+  --re-secondary-500: #64748b;
+  --re-secondary-600: #475569;
+  --re-secondary-700: #334155;
+  --re-secondary-800: #1e293b;
+  --re-secondary-900: #0f172a;
+  --re-secondary-950: #020617;
+
+  /* Accent - Emerald Green */
+  --re-accent-50: #ecfdf5;
+  --re-accent-100: #d1fae5;
+  --re-accent-200: #a7f3d0;
+  --re-accent-300: #6ee7b7;
+  --re-accent-400: #34d399;
+  --re-accent-500: #10b981;
+  --re-accent-600: #059669;
+  --re-accent-700: #047857;
+  --re-accent-800: #065f46;
+  --re-accent-900: #064e3b;
+  --re-accent-950: #022c22;
+
+  /* Success - Forest Green */
+  --re-success-50: #f0fdf4;
+  --re-success-100: #dcfce7;
+  --re-success-200: #bbf7d0;
+  --re-success-300: #86efac;
+  --re-success-400: #4ade80;
+  --re-success-500: #22c55e;
+  --re-success-600: #16a34a;
+  --re-success-700: #15803d;
+  --re-success-800: #166534;
+  --re-success-900: #14532d;
+  --re-success-950: #052e16;
+
+  /* Warning - Amber */
+  --re-warning-50: #fffbeb;
+  --re-warning-100: #fef3c7;
+  --re-warning-200: #fde68a;
+  --re-warning-300: #fcd34d;
+  --re-warning-400: #fbbf24;
+  --re-warning-500: #f59e0b;
+  --re-warning-600: #d97706;
+  --re-warning-700: #b45309;
+  --re-warning-800: #92400e;
+  --re-warning-900: #78350f;
+  --re-warning-950: #451a03;
+
+  /* Error - Rose */
+  --re-error-50: #fdf2f8;
+  --re-error-100: #fce7f3;
+  --re-error-200: #fbcfe8;
+  --re-error-300: #f9a8d4;
+  --re-error-400: #f472b6;
+  --re-error-500: #ec4899;
+  --re-error-600: #db2777;
+  --re-error-700: #be185d;
+  --re-error-800: #9d174d;
+  --re-error-900: #831843;
+  --re-error-950: #500724;
+
+  /* Property Blue */
+  --re-property-50: #eff6ff;
+  --re-property-100: #dbeafe;
+  --re-property-200: #bfdbfe;
+  --re-property-300: #93c5fd;
+  --re-property-400: #60a5fa;
+  --re-property-500: #3b82f6;
+  --re-property-600: #2563eb;
+  --re-property-700: #1d4ed8;
+  --re-property-800: #1e40af;
+  --re-property-900: #1e3a8a;
+  --re-property-950: #172554;
+
+  /* Tenant Purple */
+  --re-tenant-50: #faf5ff;
+  --re-tenant-100: #f3e8ff;
+  --re-tenant-200: #e9d5ff;
+  --re-tenant-300: #d8b4fe;
+  --re-tenant-400: #c084fc;
+  --re-tenant-500: #a855f7;
+  --re-tenant-600: #9333ea;
+  --re-tenant-700: #7c3aed;
+  --re-tenant-800: #6b21a8;
+  --re-tenant-900: #581c87;
+  --re-tenant-950: #3b0764;
+
+  /* Revenue Gold */
+  --re-revenue-50: #fffbeb;
+  --re-revenue-100: #fef3c7;
+  --re-revenue-200: #fde68a;
+  --re-revenue-300: #fcd34d;
+  --re-revenue-400: #fbbf24;
+  --re-revenue-500: #f59e0b;
+  --re-revenue-600: #d97706;
+  --re-revenue-700: #b45309;
+  --re-revenue-800: #92400e;
+  --re-revenue-900: #78350f;
+  --re-revenue-950: #451a03;
+
+  /* Neutral Grays */
+  --re-neutral-50: #fafafa;
+  --re-neutral-100: #f5f5f5;
+  --re-neutral-200: #e5e5e5;
+  --re-neutral-300: #d4d4d4;
+  --re-neutral-400: #a3a3a3;
+  --re-neutral-500: #737373;
+  --re-neutral-600: #525252;
+  --re-neutral-700: #404040;
+  --re-neutral-800: #262626;
+  --re-neutral-900: #171717;
+  --re-neutral-950: #0a0a0a;
+
+  /* Surface Colors */
+  --re-surface-50: #ffffff;
+  --re-surface-100: #f8fafc;
+  --re-surface-200: #f1f5f9;
+  --re-surface-300: #e2e8f0;
+  --re-surface-400: #cbd5e1;
+  --re-surface-500: #94a3b8;
+  --re-surface-600: #64748b;
+  --re-surface-700: #475569;
+  --re-surface-800: #334155;
+  --re-surface-900: #1e293b;
+  --re-surface-950: #0f172a;
+
+  /* Semantic Variables */
+  --re-background: var(--re-surface-50);
+  --re-foreground: var(--re-primary-900);
+  --re-muted: var(--re-surface-100);
+  --re-muted-foreground: var(--re-primary-600);
+  --re-popover: var(--re-surface-50);
+  --re-popover-foreground: var(--re-primary-900);
+  --re-card: var(--re-surface-50);
+  --re-card-foreground: var(--re-primary-900);
+  --re-border: var(--re-surface-200);
+  --re-input: var(--re-surface-100);
+  --re-ring: var(--re-property-500);
+
+  /* Dashboard Specific Colors */
+  --re-revenue-bg: linear-gradient(135deg, var(--re-revenue-50), var(--re-revenue-100));
+  --re-revenue-text: var(--re-revenue-700);
+  --re-revenue-icon: var(--re-revenue-600);
+  --re-revenue-border: var(--re-revenue-200);
+
+  --re-occupancy-bg: linear-gradient(135deg, var(--re-property-50), var(--re-property-100));
+  --re-occupancy-text: var(--re-property-700);
+  --re-occupancy-icon: var(--re-property-600);
+  --re-occupancy-border: var(--re-property-200);
+
+  --re-tenants-bg: linear-gradient(135deg, var(--re-tenant-50), var(--re-tenant-100));
+  --re-tenants-text: var(--re-tenant-700);
+  --re-tenants-icon: var(--re-tenant-600);
+  --re-tenants-border: var(--re-tenant-200);
+
+  --re-overdue-bg: linear-gradient(135deg, var(--re-error-50), var(--re-error-100));
+  --re-overdue-text: var(--re-error-700);
+  --re-overdue-icon: var(--re-error-600);
+  --re-overdue-border: var(--re-error-200);
+
+  --re-maintenance-bg: linear-gradient(135deg, var(--re-warning-50), var(--re-warning-100));
+  --re-maintenance-text: var(--re-warning-700);
+  --re-maintenance-icon: var(--re-warning-600);
+  --re-maintenance-border: var(--re-warning-200);
+
+  --re-growth-bg: linear-gradient(135deg, var(--re-accent-50), var(--re-accent-100));
+  --re-growth-text: var(--re-accent-700);
+  --re-growth-icon: var(--re-accent-600);
+  --re-growth-border: var(--re-accent-200);
+}
+
+/* Dark Theme Variables */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --re-background: var(--re-surface-950);
+    --re-foreground: var(--re-surface-50);
+    --re-muted: var(--re-surface-800);
+    --re-muted-foreground: var(--re-surface-300);
+    --re-popover: var(--re-surface-900);
+    --re-popover-foreground: var(--re-surface-50);
+    --re-card: var(--re-surface-900);
+    --re-card-foreground: var(--re-surface-50);
+    --re-border: var(--re-surface-700);
+    --re-input: var(--re-surface-800);
+    --re-ring: var(--re-property-400);
+  }
+}
+
+/* Component-Specific Styles */
+.re-stat-card {
+  background: linear-gradient(135deg, var(--re-surface-50), var(--re-surface-100));
+  border: none;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease-in-out;
+}
+
+.re-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.re-stat-card.revenue {
+  --re-icon-bg: var(--re-revenue-bg);
+  --re-icon-color: var(--re-revenue-icon);
+}
+
+.re-stat-card.occupancy {
+  --re-icon-bg: var(--re-occupancy-bg);
+  --re-icon-color: var(--re-occupancy-icon);
+}
+
+.re-stat-card.tenants {
+  --re-icon-bg: var(--re-tenants-bg);
+  --re-icon-color: var(--re-tenants-icon);
+}
+
+.re-stat-card.overdue {
+  --re-icon-bg: var(--re-overdue-bg);
+  --re-icon-color: var(--re-overdue-icon);
+}
+
+.re-stat-card.maintenance {
+  --re-icon-bg: var(--re-maintenance-bg);
+  --re-icon-color: var(--re-maintenance-icon);
+}
+
+.re-stat-card.growth {
+  --re-icon-bg: var(--re-growth-bg);
+  --re-icon-color: var(--re-growth-icon);
+}
+
+.re-icon-wrapper {
+  background: var(--re-icon-bg);
+  transition: transform 0.2s ease-in-out;
+}
+
+.re-stat-card:hover .re-icon-wrapper {
+  transform: scale(1.1);
+}
+
+.re-progress-bar {
+  background-color: var(--re-neutral-200);
+}
+
+.re-progress-bar.success {
+  background-color: var(--re-success-500);
+}
+
+.re-progress-bar.warning {
+  background-color: var(--re-warning-500);
+}
+
+.re-progress-bar.error {
+  background-color: var(--re-error-500);
+}
+
+/* Typography */
+.re-heading {
+  color: var(--re-foreground);
+  font-weight: 600;
+}
+
+.re-subheading {
+  color: var(--re-muted-foreground);
+  font-weight: 500;
+}
+
+.re-body {
+  color: var(--re-foreground);
+}
+
+.re-caption {
+  color: var(--re-muted-foreground);
+  font-size: 0.875rem;
+}
+
+/* Interactive Elements */
+.re-button-primary {
+  background-color: var(--re-property-500);
+  color: white;
+  border: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.re-button-primary:hover {
+  background-color: var(--re-property-600);
+  transform: translateY(-1px);
+}
+
+.re-button-secondary {
+  background-color: var(--re-surface-100);
+  color: var(--re-foreground);
+  border: 1px solid var(--re-border);
+  transition: all 0.2s ease-in-out;
+}
+
+.re-button-secondary:hover {
+  background-color: var(--re-surface-200);
+  transform: translateY(-1px);
+}
+
+/* Charts and Data Visualization */
+.re-chart-line {
+  stroke: var(--re-property-500);
+  stroke-width: 2.5;
+}
+
+.re-chart-area {
+  fill: var(--re-property-500);
+  fill-opacity: 0.1;
+}
+
+.re-chart-grid {
+  stroke: var(--re-border);
+  stroke-dasharray: 3 3;
+}
+
+/* Status Indicators */
+.re-status-success {
+  color: var(--re-success-600);
+  background-color: var(--re-success-50);
+}
+
+.re-status-warning {
+  color: var(--re-warning-600);
+  background-color: var(--re-warning-50);
+}
+
+.re-status-error {
+  color: var(--re-error-600);
+  background-color: var(--re-error-50);
+}
+
+.re-status-info {
+  color: var(--re-property-600);
+  background-color: var(--re-property-50);
+}
+
+/* Animations */
+@keyframes re-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.re-fade-in {
+  animation: re-fade-in 0.5s ease-out;
+}
+
+@keyframes re-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.re-slide-up {
+  animation: re-slide-up 0.6s ease-out;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .re-stat-card {
+    margin-bottom: 1rem;
+  }
+  
+  .re-stat-card:hover {
+    transform: none;
+  }
+}
+
+/* Focus and Accessibility */
+.re-focus-ring {
+  outline: 2px solid var(--re-ring);
+  outline-offset: 2px;
+}
+
+.re-focus-ring:focus-visible {
+  outline: 2px solid var(--re-ring);
+  outline-offset: 2px;
+}
+
+/* Print Styles */
+@media print {
+  .re-stat-card {
+    background: white !important;
+    box-shadow: none !important;
+    border: 1px solid var(--re-neutral-300) !important;
+  }
+  
+  .re-icon-wrapper {
+    background: var(--re-neutral-100) !important;
+  }
+}
