@@ -83,33 +83,35 @@ function KPIDashboardCards() {
         
         return (
           <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-600 mb-1">{kpi.title}</p>
-                <p className="text-2xl font-bold text-gray-900 mb-2">{kpi.value}</p>
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
                 <div className={cn(
-                  "flex items-center text-sm",
-                  kpi.trend.positive ? "text-green-600" : "text-red-600"
+                  "w-12 h-12 rounded-lg flex items-center justify-center",
+                  kpi.color === "blue" && "bg-blue-100",
+                  kpi.color === "green" && "bg-green-100",
+                  kpi.color === "purple" && "bg-purple-100",
+                  kpi.color === "orange" && "bg-orange-100"
                 )}>
-                  <TrendIcon className="w-4 h-4 mr-1" />
-                  {kpi.trend.value}
+                  <Icon className={cn(
+                    "w-6 h-6",
+                    kpi.color === "blue" && "text-blue-600",
+                    kpi.color === "green" && "text-green-600",
+                    kpi.color === "purple" && "text-purple-600",
+                    kpi.color === "orange" && "text-orange-600"
+                  )} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">{kpi.title}</p>
+                  <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
                 </div>
               </div>
-              <div className={cn(
-                "w-12 h-12 rounded-lg flex items-center justify-center",
-                kpi.color === "blue" && "bg-blue-100",
-                kpi.color === "green" && "bg-green-100",
-                kpi.color === "purple" && "bg-purple-100",
-                kpi.color === "orange" && "bg-orange-100"
-              )}>
-                <Icon className={cn(
-                  "w-6 h-6",
-                  kpi.color === "blue" && "text-blue-600",
-                  kpi.color === "green" && "text-green-600",
-                  kpi.color === "purple" && "text-purple-600",
-                  kpi.color === "orange" && "text-orange-600"
-                )} />
-              </div>
+            </div>
+            <div className={cn(
+              "flex items-center text-sm",
+              kpi.trend.positive ? "text-green-600" : "text-red-600"
+            )}>
+              <TrendIcon className="w-4 h-4 mr-1" />
+              {kpi.trend.value}
             </div>
           </div>
         );
@@ -154,22 +156,24 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
       <KPIDashboardCards />
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Upcoming inspections */}
         <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
           <CardHeader className="px-6 pt-6 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <ClipboardList className="w-5 h-5 text-blue-600" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <ClipboardList className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-semibold text-gray-900">Upcoming Inspections</CardTitle>
+                  <p className="text-sm text-gray-600">Scheduled and in-progress</p>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-lg font-semibold text-gray-900">Upcoming Inspections</CardTitle>
-                <p className="text-sm text-gray-600">Scheduled and in-progress</p>
-              </div>
+              {inspections.length > 0 && (
+                <Badge className="bg-blue-100 text-blue-700 px-2 py-1 text-xs font-medium">{inspections.length}</Badge>
+              )}
             </div>
-            {inspections.length > 0 && (
-              <Badge className="bg-blue-100 text-blue-700 px-2 py-1 text-xs font-medium">{inspections.length}</Badge>
-            )}
           </CardHeader>
           <CardContent className="px-6 pb-6">
             {inspectionsLoading ? (
@@ -209,18 +213,20 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
         {/* Open maintenance issues */}
         <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
           <CardHeader className="px-6 pt-6 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Wrench className="w-5 h-5 text-orange-600" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Wrench className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-semibold text-gray-900">Open Maintenance Requests</CardTitle>
+                  <p className="text-sm text-gray-600">Requiring attention</p>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-lg font-semibold text-gray-900">Open Maintenance Requests</CardTitle>
-                <p className="text-sm text-gray-600">Requiring attention</p>
-              </div>
+              {openIssues.length > 0 && (
+                <Badge className="bg-red-100 text-red-700 px-2 py-1 text-xs font-medium">{openIssues.length}</Badge>
+              )}
             </div>
-            {openIssues.length > 0 && (
-              <Badge className="bg-red-100 text-red-700 px-2 py-1 text-xs font-medium">{openIssues.length}</Badge>
-            )}
           </CardHeader>
           <CardContent className="px-6 pb-6">
             {maintenanceLoading ? (
