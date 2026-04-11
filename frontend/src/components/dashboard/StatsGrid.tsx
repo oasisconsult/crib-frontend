@@ -40,10 +40,10 @@ function StatCard({ title, value, trend, progress, icon: Icon, iconBg, iconColor
       <CardContent className="p-6 sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <p className="re-caption uppercase tracking-wider truncate mb-3">{title}</p>
-            <p className="text-xl sm:text-2xl font-bold tracking-tight leading-none break-words re-heading mb-3">{value}</p>
+            <p className="stat-label truncate mb-3">{title}</p>
+            <p className="mt-2 stat-value leading-none break-words mb-3">{value}</p>
             {trend && (
-              <div className={cn("flex items-center gap-2 text-xs font-medium",
+              <div className={cn("flex items-center gap-2 stat-trend",
                 trend.positive ? "re-status-success" : "re-status-error"
               )}>
                 {trend.positive
@@ -59,7 +59,7 @@ function StatCard({ title, value, trend, progress, icon: Icon, iconBg, iconColor
         </div>
         {progress !== undefined && (
           <div className="mt-6">
-            <div className="flex justify-between re-caption mb-2">
+            <div className="flex justify-between stat-trend mb-2">
               <span className="truncate">Progress</span>
               <span className="shrink-0 font-semibold">{progress}%</span>
             </div>

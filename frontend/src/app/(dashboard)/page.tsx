@@ -36,10 +36,10 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="dashboard-title">
           {getGreeting()}, {firstName}!
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="dashboard-subtitle">
           Your assigned work for today.
         </p>
       </div>
@@ -49,7 +49,7 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
         <Card>
           <CardHeader className="flex flex-row items-center gap-3 pb-4">
             <ClipboardList className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-lg">Upcoming Inspections</CardTitle>
+            <CardTitle className="card-title">Upcoming Inspections</CardTitle>
             {inspections.length > 0 && (
               <Badge variant="secondary" className="ml-auto">{inspections.length}</Badge>
             )}
@@ -74,7 +74,7 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
         <Card>
           <CardHeader className="flex flex-row items-center gap-3 pb-4">
             <Wrench className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="text-lg">Open Maintenance Requests</CardTitle>
+            <CardTitle className="card-title">Open Maintenance Requests</CardTitle>
             {openIssues.length > 0 && (
               <Badge variant="destructive" className="ml-auto">{openIssues.length}</Badge>
             )}
@@ -113,10 +113,10 @@ function ManagerDashboard({ firstName }: { firstName: string }) {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="dashboard-title">
           {getGreeting()}, {firstName}!
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="dashboard-subtitle">
           Property management overview.
         </p>
       </div>
@@ -139,10 +139,10 @@ function OwnerDashboard({ firstName }: { firstName: string }) {
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="dashboard-title">
           {getGreeting()}, {firstName}!
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="dashboard-subtitle">
           Here&apos;s what&apos;s happening with your portfolio today.
         </p>
       </div>
