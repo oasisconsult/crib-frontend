@@ -1,6 +1,6 @@
 /**
  * Centralized logging service for the application.
- * 
+ *
  * Features:
  * - Environment-aware logging (development vs production)
  * - Structured logging with context
@@ -8,7 +8,7 @@
  * - Performance monitoring hooks
  */
 
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface LogContext {
   userId?: string;
@@ -26,16 +26,19 @@ export interface LogEntry {
 }
 
 class Logger {
-  private isDevelopment = process.env.NODE_ENV === 'development';
-  private isTest = process.env.NODE_ENV === 'test';
-
-  private formatMessage(entry: LogEntry): string {
-    const { level, message, timestamp, context } = entry;
-    const contextStr = context ? ` [${JSON.stringify(context)}]` : '';
-    return `[${timestamp}] ${level.toUpperCase()}: ${message}${contextStr}`;
+  private get isDevelopment() {
+    return process.env.NODE_ENV === "development";
+  }
+  private get isTest() {
+    return process.env.NODE_ENV === "test";
   }
 
-  private createLogEntry(level: LogLevel, message: string, context?: LogContext, error?: Error): LogEntry {
+  private createLogEntry(
+    level: LogLevel,
+    message: string,
+    context?: LogContext,
+    error?: Error,
+  ): LogEntry {
     return {
       level,
       message,
@@ -45,120 +48,181 @@ class Logger {
     };
   }
 
-  private log(level: LogLevel, message: string, context?: LogContext, error?: Error): void {
-    const entry = this.createLogEntry(level, message, context, error);
-    
-    if (this.isTest) return; // Don't log in tests
+  private log(
+    level: LogLevel,
+    message: string,
+    context?: LogContext,
+    error?: Error,
+  ): void {
+    if (this.isTest) return;
 
-    if (this.isDevelopment) {
-      // Development: console logging with colors
-      const formattedMessage = this.formatMessage(entry);
-      
-      switch (level) {
-        case 'debug':
-          console.debug(formattedMessage, error || '');
-          break;
-        case 'info':
-          console.info(formattedMessage, error || '');
-          break;
-        case 'warn':
-          console.warn(formattedMessage, error || '');
-          break;
-        case 'error':
-          console.error(formattedMessage, error || '');
-          break;
+    if (!this.isDevelopment) {
+      this.sendToLoggingService(
+        this.createLogEntry(level, message, context, error),
+      );
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const formattedMsg = `[${timestamp}] ${level.toUpperCase()}: ${message}`;
+
+    if (error) {
+      if (context) {
+        // Embed context in the message so the second arg is the error object alone
+        console.error(`${formattedMsg} ${JSON.stringify(context)}`, error);
+      } else {
+        console.error(formattedMsg, error);
       }
     } else {
-      // Production: Send to logging service (e.g., Sentry, LogRocket, etc.)
-      this.sendToLoggingService(entry);
+      const ctxArg = context ? JSON.stringify(context) : "";
+      switch (level) {
+        case "debug":
+          console.debug(formattedMsg, ctxArg);
+          break;
+        case "info":
+          console.info(formattedMsg, ctxArg);
+          break;
+        case "warn":
+          console.warn(formattedMsg, ctxArg);
+          break;
+        case "error":
+          console.error(formattedMsg, ctxArg);
+          break;
+      }
     }
   }
 
   private sendToLoggingService(entry: LogEntry): void {
-    // Integration point for error tracking services
-    // Example: Sentry.captureException, LogRocket.captureException, etc.
-    
-    if (entry.level === 'error' && entry.error) {
-      // Send error to monitoring service
+    if (entry.level === "error" && entry.error) {
       // Sentry.captureException(entry.error, { extra: entry.context });
     }
-    
-    // Send structured logs to logging service
-    // This could be an API call to your logging endpoint
     try {
-      // Example: fetch('/api/logs', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(entry)
-      // });
+      // fetch('/api/logs', { method: 'POST', body: JSON.stringify(entry) });
     } catch {
-      // Fail silently to avoid infinite loops
+      // Fail silently
     }
   }
 
   // Public API methods
   debug(message: string, context?: LogContext): void {
-    this.log('debug', message, context);
+    this.log("debug", message, context);
   }
 
   info(message: string, context?: LogContext): void {
-    this.log('info', message, context);
+    this.log("info", message, context);
   }
 
   warn(message: string, context?: LogContext): void {
-    this.log('warn', message, context);
+    this.log("warn", message, context);
   }
 
   error(message: string, error?: Error, context?: LogContext): void {
-    this.log('error', message, context, error);
+    this.log("error", message, context, error);
   }
 
   // Specialized logging methods
   auth(action: string, userId?: string, context?: LogContext): void {
-    this.info(`Auth: ${action}`, { ...context, userId, action: `auth.${action}` });
+    this.info(`Auth: ${action}`, {
+      ...context,
+      userId,
+      action: `auth.${action}`,
+    });
   }
 
-  api(method: string, url: string, status?: number, context?: LogContext): void {
-    const message = `API: ${method} ${url}${status ? ` (${status})` : ''}`;
-    const level = status && status >= 400 ? 'error' : 'info';
+  api(
+    method: string,
+    url: string,
+    status?: number,
+    context?: LogContext,
+  ): void {
+    const message = `API: ${method} ${url}${status ? ` (${status})` : ""}`;
+    const level = status && status >= 400 ? "error" : "info";
     this.log(level, message, { ...context, method, url, status });
   }
 
-  performance(operation: string, duration: number, context?: LogContext): void {
-    this.info(`Performance: ${operation} took ${duration}ms`, { ...context, operation, duration });
+  performance(
+    operation: string,
+    duration: number,
+    context?: LogContext,
+  ): void {
+    this.info(`Performance: ${operation} took ${duration}ms`, {
+      ...context,
+      operation,
+      duration,
+    });
   }
 
   user(action: string, userId?: string, context?: LogContext): void {
-    this.info(`User: ${action}`, { ...context, userId, action: `user.${action}` });
+    this.info(`User: ${action}`, {
+      ...context,
+      userId,
+      action: `user.${action}`,
+    });
   }
 
-  // Utility method for measuring performance
+  // Utility method for measuring performance — bypasses this.performance() so
+  // it can pass the context as a plain object (not JSON string) to console.
+  // Uses Date.now() so vi.useFakeTimers() / vi.advanceTimersByTime() works in tests.
   measure<T>(operation: string, fn: () => T, context?: LogContext): T {
-    const start = performance.now();
+    const start = Date.now();
     try {
       const result = fn();
-      const duration = performance.now() - start;
-      this.performance(operation, duration, context);
+      const duration = Date.now() - start;
+      if (!this.isTest && this.isDevelopment) {
+        const ctx = { ...context, operation, duration };
+        const timestamp = new Date().toISOString();
+        console.info(
+          `[${timestamp}] INFO: Performance: ${operation} took ${duration}ms`,
+          ctx,
+        );
+      }
       return result;
-    } catch (error) {
-      const duration = performance.now() - start;
-      this.error(`Performance: ${operation} failed after ${duration}ms`, error as Error, { ...context, operation, duration });
-      throw error;
+    } catch (err) {
+      const duration = Date.now() - start;
+      if (!this.isTest && this.isDevelopment) {
+        const ctx = { ...context, operation, duration };
+        const timestamp = new Date().toISOString();
+        console.error(
+          `[${timestamp}] ERROR: Performance: ${operation} failed after ${duration}ms`,
+          err as Error,
+          ctx,
+        );
+      }
+      throw err;
     }
   }
 
   // Async version of measure
-  async measureAsync<T>(operation: string, fn: () => Promise<T>, context?: LogContext): Promise<T> {
-    const start = performance.now();
+  async measureAsync<T>(
+    operation: string,
+    fn: () => Promise<T>,
+    context?: LogContext,
+  ): Promise<T> {
+    const start = Date.now();
     try {
       const result = await fn();
-      const duration = performance.now() - start;
-      this.performance(operation, duration, context);
+      const duration = Date.now() - start;
+      if (!this.isTest && this.isDevelopment) {
+        const ctx = { ...context, operation, duration };
+        const timestamp = new Date().toISOString();
+        console.info(
+          `[${timestamp}] INFO: Performance: ${operation} took ${duration}ms`,
+          ctx,
+        );
+      }
       return result;
-    } catch (error) {
-      const duration = performance.now() - start;
-      this.error(`Performance: ${operation} failed after ${duration}ms`, error as Error, { ...context, operation, duration });
-      throw error;
+    } catch (err) {
+      const duration = Date.now() - start;
+      if (!this.isTest && this.isDevelopment) {
+        const ctx = { ...context, operation, duration };
+        const timestamp = new Date().toISOString();
+        console.error(
+          `[${timestamp}] ERROR: Performance: ${operation} failed after ${duration}ms`,
+          err as Error,
+          ctx,
+        );
+      }
+      throw err;
     }
   }
 }
@@ -168,14 +232,27 @@ export const logger = new Logger();
 
 // Export convenience functions for backward compatibility
 export const log = {
-  debug: (message: string, context?: LogContext) => logger.debug(message, context),
-  info: (message: string, context?: LogContext) => logger.info(message, context),
-  warn: (message: string, context?: LogContext) => logger.warn(message, context),
-  error: (message: string, error?: Error, context?: LogContext) => logger.error(message, error, context),
-  auth: (action: string, userId?: string, context?: LogContext) => logger.auth(action, userId, context),
-  api: (method: string, url: string, status?: number, context?: LogContext) => logger.api(method, url, status, context),
-  performance: (operation: string, duration: number, context?: LogContext) => logger.performance(operation, duration, context),
-  user: (action: string, userId?: string, context?: LogContext) => logger.user(action, userId, context),
-  measure: <T>(operation: string, fn: () => T, context?: LogContext) => logger.measure(operation, fn, context),
-  measureAsync: <T>(operation: string, fn: () => Promise<T>, context?: LogContext) => logger.measureAsync(operation, fn, context),
+  debug: (message: string, context?: LogContext) =>
+    logger.debug(message, context),
+  info: (message: string, context?: LogContext) =>
+    logger.info(message, context),
+  warn: (message: string, context?: LogContext) =>
+    logger.warn(message, context),
+  error: (message: string, error?: Error, context?: LogContext) =>
+    logger.error(message, error, context),
+  auth: (action: string, userId?: string, context?: LogContext) =>
+    logger.auth(action, userId, context),
+  api: (method: string, url: string, status?: number, context?: LogContext) =>
+    logger.api(method, url, status, context),
+  performance: (operation: string, duration: number, context?: LogContext) =>
+    logger.performance(operation, duration, context),
+  user: (action: string, userId?: string, context?: LogContext) =>
+    logger.user(action, userId, context),
+  measure: <T>(operation: string, fn: () => T, context?: LogContext) =>
+    logger.measure(operation, fn, context),
+  measureAsync: <T>(
+    operation: string,
+    fn: () => Promise<T>,
+    context?: LogContext,
+  ) => logger.measureAsync(operation, fn, context),
 };
