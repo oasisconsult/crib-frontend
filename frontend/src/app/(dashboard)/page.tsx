@@ -34,12 +34,12 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" style={{ fontSize: '14px' }}>
       <div className="flex flex-col gap-2">
-        <h1 className="dashboard-title">
+        <h1 className="dashboard-title" style={{ fontSize: '18px', fontWeight: '700', lineHeight: '1.2' }}>
           {getGreeting()}, {firstName}!
         </h1>
-        <p className="dashboard-subtitle">
+        <p className="dashboard-subtitle" style={{ fontSize: '14px', fontWeight: '400', lineHeight: '1.5' }}>
           Your assigned work for today.
         </p>
       </div>
@@ -49,7 +49,7 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
         <Card>
           <CardHeader className="flex flex-row items-center gap-3 pb-4">
             <ClipboardList className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="card-title">Upcoming Inspections</CardTitle>
+            <CardTitle className="card-title" style={{ fontSize: '16px', fontWeight: '600', lineHeight: '1.3' }}>Upcoming Inspections</CardTitle>
             {inspections.length > 0 && (
               <Badge variant="secondary" className="ml-auto">{inspections.length}</Badge>
             )}
@@ -74,7 +74,7 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
         <Card>
           <CardHeader className="flex flex-row items-center gap-3 pb-4">
             <Wrench className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="card-title">Open Maintenance Requests</CardTitle>
+            <CardTitle className="card-title" style={{ fontSize: '16px', fontWeight: '600', lineHeight: '1.3' }}>Open Maintenance Requests</CardTitle>
             {openIssues.length > 0 && (
               <Badge variant="destructive" className="ml-auto">{openIssues.length}</Badge>
             )}
@@ -111,12 +111,12 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
 
 function ManagerDashboard({ firstName }: { firstName: string }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" style={{ fontSize: '14px' }}>
       <div className="flex flex-col gap-2">
-        <h1 className="dashboard-title">
+        <h1 className="dashboard-title" style={{ fontSize: '18px', fontWeight: '700', lineHeight: '1.2' }}>
           {getGreeting()}, {firstName}!
         </h1>
-        <p className="dashboard-subtitle">
+        <p className="dashboard-subtitle" style={{ fontSize: '14px', fontWeight: '400', lineHeight: '1.5' }}>
           Property management overview.
         </p>
       </div>
@@ -137,12 +137,12 @@ function ManagerDashboard({ firstName }: { firstName: string }) {
 
 function OwnerDashboard({ firstName }: { firstName: string }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" style={{ fontSize: '14px' }}>
       <div className="flex flex-col gap-2">
-        <h1 className="dashboard-title">
+        <h1 className="dashboard-title" style={{ fontSize: '18px', fontWeight: '700', lineHeight: '1.2' }}>
           {getGreeting()}, {firstName}!
         </h1>
-        <p className="dashboard-subtitle">
+        <p className="dashboard-subtitle" style={{ fontSize: '14px', fontWeight: '400', lineHeight: '1.5' }}>
           Here&apos;s what&apos;s happening with your portfolio today.
         </p>
       </div>

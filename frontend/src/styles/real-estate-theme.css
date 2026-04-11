@@ -882,37 +882,149 @@ button[class*="icon"]:active,
 
 /* Remove button responsive overrides to maintain fixed sizes */
 
-/* Comprehensive text size overrides */
-h1, h2, h3, h4, h5, h6 {
+/* Maximum specificity text size overrides */
+body h1,
+body h2,
+body h3,
+body h4,
+body h5,
+body h6,
+html h1,
+html h2,
+html h3,
+html h4,
+html h5,
+html h6,
+* h1,
+* h2,
+* h3,
+* h4,
+* h5,
+* h6 {
   font-size: 1rem !important; /* 16px max for all headings */
 }
 
-.text-3xl, .text-4xl, .text-5xl, .text-6xl {
+body .text-3xl,
+body .text-4xl,
+body .text-5xl,
+body .text-6xl,
+html .text-3xl,
+html .text-4xl,
+html .text-5xl,
+html .text-6xl,
+* .text-3xl,
+* .text-4xl,
+* .text-5xl,
+* .text-6xl {
   font-size: 1.125rem !important; /* 18px max for large text */
 }
 
-.text-2xl {
+body .text-2xl,
+html .text-2xl,
+* .text-2xl {
   font-size: 1.125rem !important; /* 18px */
 }
 
-.text-xl {
+body .text-xl,
+html .text-xl,
+* .text-xl {
   font-size: 1rem !important; /* 16px */
 }
 
-.text-lg {
+body .text-lg,
+html .text-lg,
+* .text-lg {
   font-size: 0.9375rem !important; /* 15px */
 }
 
-.text-base {
+body .text-base,
+html .text-base,
+* .text-base {
   font-size: 0.875rem !important; /* 14px */
 }
 
-.text-sm {
+body .text-sm,
+html .text-sm,
+* .text-sm {
   font-size: 0.75rem !important; /* 12px */
 }
 
-.text-xs {
+body .text-xs,
+html .text-xs,
+* .text-xs {
   font-size: 0.6875rem !important; /* 11px */
+}
+
+/* Universal font size overrides - Maximum specificity */
+* {
+  font-size: 0.875rem !important; /* 14px default for everything */
+}
+
+/* Override specific elements */
+body *,
+html *,
+* * {
+  font-size: 0.875rem !important; /* 14px default for everything */
+}
+
+/* Dashboard specific overrides with maximum specificity */
+body .dashboard-title,
+html .dashboard-title,
+* .dashboard-title {
+  font-size: 1.125rem !important; /* 18px */
+}
+
+body .stat-value,
+html .stat-value,
+* .stat-value {
+  font-size: 1.25rem !important; /* 20px */
+}
+
+body .card-title,
+html .card-title,
+* .card-title {
+  font-size: 1rem !important; /* 16px */
+}
+
+body .stat-label,
+html .stat-label,
+* .stat-label {
+  font-size: 0.75rem !important; /* 12px */
+}
+
+/* Button overrides with maximum specificity */
+body button,
+html button,
+* button,
+body .btn,
+html .btn,
+* .btn,
+body [role="button"],
+html [role="button"],
+* [role="button"] {
+  font-size: 0.75rem !important; /* 12px */
+  padding: 6px 12px !important;
+  border-radius: 8px !important;
+}
+
+body button[data-size="sm"],
+html button[data-size="sm"],
+* button[data-size="sm"],
+body .btn-sm,
+html .btn-sm,
+* .btn-sm {
+  font-size: 0.6875rem !important; /* 11px */
+  padding: 4px 8px !important;
+}
+
+body button[data-size="lg"],
+html button[data-size="lg"],
+* button[data-size="lg"],
+body .btn-lg,
+html .btn-lg,
+* .btn-lg {
+  font-size: 0.875rem !important; /* 14px */
+  padding: 8px 16px !important;
 }
 
 /* Fix for specific UI components */
@@ -920,8 +1032,8 @@ h1, h2, h3, h4, h5, h6 {
 [data-radix-select-item] button,
 [data-radix-dropdown-menu-item] button {
   border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 14px;
+  padding: 6px 12px !important;
+  font-size: 0.75rem !important; /* 12px */
   transform: none !important;
 }
 
