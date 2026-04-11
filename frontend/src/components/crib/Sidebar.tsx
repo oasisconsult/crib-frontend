@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+// import { motion } from "framer-motion";
 import { cn } from "@/utils/cn";
 import { useTheme } from "@/contexts/ThemeContext";
 import {
@@ -54,25 +54,19 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
     <>
       {/* Mobile backdrop */}
       {isMobileOpen && (
-        <motion.div
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <motion.aside
+      <aside
         className={cn(
           sidebarClasses,
           "fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto transform",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          isMobileOpen ? "translate-x-0 lg:translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
-        initial={{ x: -300 }}
-        animate={{ x: 0 }}
-        transition={{ duration: 0.3 }}
       >
         {/* Header */}
         <div className="p-6 border-b border-border-dark">
@@ -97,7 +91,7 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-2">
           {navItems.map((item, index) => (
-            <motion.a
+            <a
               key={item.label}
               href={item.href}
               className={cn(
@@ -106,15 +100,10 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
                   ? "bg-primary text-white"
                   : "text-muted hover:bg-white/5 hover:text-text-dark"
               )}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
             >
               {item.icon}
               {!collapsed && <span className="font-medium">{item.label}</span>}
-            </motion.a>
+            </a>
           ))}
         </nav>
 
@@ -148,7 +137,7 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
             {!collapsed && <span>Logout</span>}
           </Button>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Mobile menu toggle */}
       <button
