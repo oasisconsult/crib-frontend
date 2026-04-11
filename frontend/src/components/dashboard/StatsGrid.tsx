@@ -4,66 +4,95 @@ import { Building2, Users, Banknote, AlertCircle, TrendingUp, TrendingDown } fro
 import { Card, CardContent } from "@/components/ui/card";
 import { StatsGridSkeleton } from "./DashboardSkeleton";
 import { formatCurrency, formatPercentage } from "@/utils/formatters";
-import { cn } from "@/utils/cn";
-import { useDashboardStats } from "@/hooks/usePayments";
-import { realEstateColors, realEstateColorVariants } from "./AccessibilityEnhancements";
-import type { DashboardStats } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface StatCardProps {
   title: string;
   value: string;
-  trend?: { label: string; positive: boolean };
-  progress?: number; // 0-100
-  icon: React.ComponentType<{ className?: string }>;
-  iconBg: string;
-  iconColor: string;
+  trend?: {
+    value: string;
+    positive: boolean;
+  };
+  icon: any;
+  color: string;
+  progress?: number;
 }
 
-function StatCard({ title, value, trend, progress, icon: Icon, iconBg, iconColor }: StatCardProps) {
+function StatCard({ title, value, trend, icon: Icon, color, progress }: StatCardProps) {
   const getCardClass = () => {
-    if (title.includes("Revenue")) return "re-stat-card revenue";
-    if (title.includes("Occupancy")) return "re-stat-card occupancy";
-    if (title.includes("Tenants")) return "re-stat-card tenants";
-    if (title.includes("Overdue")) return "re-stat-card overdue";
-    return "re-stat-card";
+    switch (color) {
+      case "blue":
+        return "border-blue-200 bg-blue-50";
+      case "green":
+        return "border-green-200 bg-green-50";
+      case "purple":
+        return "border-purple-200 bg-purple-50";
+      case "orange":
+        return "border-orange-200 bg-orange-50";
+      default:
+        return "border-gray-200 bg-gray-50";
+    }
+  };
+
+  const getIconBg = () => {
+    switch (color) {
+      case "blue":
+        return "bg-blue-500";
+      case "green":
+        return "bg-green-500";
+      case "purple":
+        return "bg-purple-500";
+      case "orange":
+        return "bg-orange-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  const getIconColor = () => {
+    return "text-white";
   };
 
   const getProgressClass = () => {
     if (progress === undefined) return "";
-    if (progress >= 80) return "re-progress-bar success";
-    if (progress >= 60) return "re-progress-bar warning";
-    return "re-progress-bar error";
+    if (progress >= 80) return "bg-green-500";
+    if (progress >= 60) return "bg-yellow-500";
+    return "bg-red-500";
   };
 
   return (
-    <Card className={cn("re-stat-card", getCardClass())} style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: '120px' }}>
-      <CardContent style={{ padding: '8px 12px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p className="stat-label truncate mb-2" style={{ fontSize: '11px', fontWeight: '600', lineHeight: '1.4', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</p>
-            <p className="mt-1 stat-value leading-none break-words mb-2" style={{ fontSize: '18px', fontWeight: '700', lineHeight: '1.2' }}>{value}</p>
+    <Card className={cn("re-card", getCardClass())}>
+      <CardContent className="re-card-content">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="re-dashboard-card-title">{title}</p>
+            <p className="re-dashboard-card-value">{value}</p>
             {trend && (
-              <div className={cn("flex items-center gap-2 stat-trend",
-                trend.positive ? "re-status-success" : "re-status-error"
-              )} style={{ fontSize: '11px', fontWeight: '500', lineHeight: '1.4' }}>
+              <div className={cn(
+                "re-dashboard-card-trend",
+                trend.positive ? "re-trend-up" : "re-trend-down"
+              )}>
                 {trend.positive
-                  ? <TrendingUp className="h-3 w-3 shrink-0" />
-                  : <TrendingDown className="h-3 w-3 shrink-0" />}
-                <span className="truncate">{trend.label}</span>
+                  ? <TrendingUp className="w-4 h-4" />
+                  : <TrendingDown className="w-4 h-4" />}
+                {trend.value}
               </div>
             )}
           </div>
-          <div className={cn("re-icon-wrapper flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-sm", iconBg)}>
-            <Icon className={cn("h-5 w-5", iconColor)} />
+          <div className={cn(
+            "re-icon-wrapper flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm",
+            getIconBg()
+          )}>
+            <Icon className={cn("h-6 w-6", getIconColor())} />
           </div>
         </div>
         {progress !== undefined && (
-          <div style={{ marginTop: '16px' }}>
-            <div className="flex justify-between stat-trend mb-1" style={{ fontSize: '11px', fontWeight: '500', lineHeight: '1.4' }}>
+          <div className="mt-6">
+            <div className="flex justify-between re-dashboard-card-trend mb-2">
               <span className="truncate">Progress</span>
               <span className="shrink-0 font-semibold">{progress}%</span>
             </div>
-            <div className="re-progress-bar h-2 w-full rounded-full overflow-hidden">
+            <div className="re-progress-bar h-3 w-full rounded-full overflow-hidden bg-gray-200">
               <div
                 className={cn("h-full rounded-full transition-all duration-500", getProgressClass())}
                 style={{ width: `${Math.min(progress, 100)}%` }}
@@ -76,7 +105,7 @@ function StatCard({ title, value, trend, progress, icon: Icon, iconBg, iconColor
   );
 }
 
-export function StatsGrid({ stats: statsProp, loading: loadingProp }: { stats?: DashboardStats; loading?: boolean }) {
+export function StatsGrid({ stats: statsProp, loading: loadingProp }: { stats?: any; loading?: boolean }) {
   const { data: fetchedStats, isLoading: fetchLoading } = useDashboardStats();
   const stats = statsProp ?? fetchedStats;
   const loading = loadingProp ?? fetchLoading;
@@ -90,23 +119,22 @@ export function StatsGrid({ stats: statsProp, loading: loadingProp }: { stats?: 
   const occupancy = Math.round(stats.occupancyRate);
   const collection = Math.round(stats.collectionRate);
 
-  const cards: StatCardProps[] = [
+  const cards = [
     {
       title: "Monthly Revenue",
       value: formatCurrency(stats.monthlyRevenue),
-      trend: { label: "+6.2% vs last month", positive: true },
+      trend: { value: "+6.2% vs last month", positive: true },
       icon: Banknote,
-      iconBg: "bg-gradient-to-br from-amber-50 to-amber-100",
-      iconColor: "text-amber-600",
+      color: "blue",
+      progress: 92
     },
     {
       title: "Occupancy Rate",
       value: formatPercentage(stats.occupancyRate),
-      trend: { label: "+2.3% vs last month", positive: true },
-      progress: occupancy,
+      trend: { value: "+2.3% vs last month", positive: true },
       icon: Building2,
-      iconBg: "bg-gradient-to-br from-blue-50 to-blue-100",
-      iconColor: "text-blue-600",
+      color: "green",
+      progress: occupancy
     },
     {
       title: "Active Tenants",
