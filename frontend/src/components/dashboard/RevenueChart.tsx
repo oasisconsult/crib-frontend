@@ -51,12 +51,12 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
   const loading = loadingProp ?? fetchLoading;
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <CardTitle className="text-base">Revenue Analytics</CardTitle>
-            <CardDescription>Collected vs expected rent per month</CardDescription>
+    <Card className="overflow-hidden">
+      <CardHeader className="pb-2 sm:pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
+            <CardTitle className="text-base sm:text-lg">Revenue Analytics</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Collected vs expected rent per month</CardDescription>
           </div>
           <div className="flex items-center gap-1 rounded-lg border p-0.5 shrink-0">
             {PERIODS.map((p) => (
@@ -64,7 +64,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                  "rounded-md px-2 py-1 text-xs font-medium transition-colors",
                   period === p
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
@@ -94,12 +94,21 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <XAxis 
+                  dataKey="month" 
+                  tick={{ fontSize: 11 }} 
+                  tickLine={false} 
+                  axisLine={false}
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
                 <YAxis
                   tickFormatter={(v) => `${(v / 1_000_000).toFixed(1)}M`}
                   tick={{ fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
+                  width={50}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Area
@@ -125,7 +134,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
               </AreaChart>
             </ResponsiveContainer>
             {/* Legend */}
-            <div className="flex items-center gap-5 mt-2 px-1">
+            <div className="flex items-center justify-center sm:justify-start gap-4 sm:gap-5 mt-3 px-1 flex-wrap">
               {[
                 { color: "#6366f1", label: "Collected", solid: true },
                 { color: "#94a3b8", label: "Expected",  solid: false },
@@ -137,7 +146,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
                       : <line x1="0" y1="4" x2="20" y2="4" stroke={l.color} strokeWidth="2" strokeDasharray="5 3" />
                     }
                   </svg>
-                  {l.label}
+                  <span className="truncate">{l.label}</span>
                 </div>
               ))}
             </div>

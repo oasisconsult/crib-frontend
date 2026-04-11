@@ -2,7 +2,7 @@
 
 import { Building2, Users, Banknote, AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { StatsGridSkeleton } from "./DashboardSkeleton";
 import { formatCurrency, formatPercentage } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
 import { useDashboardStats } from "@/hooks/usePayments";
@@ -20,32 +20,32 @@ interface StatCardProps {
 
 function StatCard({ title, value, trend, progress, icon: Icon, iconBg, iconColor }: StatCardProps) {
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
+    <Card className="hover:shadow-md transition-shadow overflow-hidden">
+      <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
-            <p className="mt-2 text-2xl font-bold tracking-tight leading-none">{value}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">{title}</p>
+            <p className="mt-2 text-xl sm:text-2xl font-bold tracking-tight leading-none break-words">{value}</p>
             {trend && (
               <div className={cn("flex items-center gap-1 mt-2 text-xs font-medium",
                 trend.positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"
               )}>
                 {trend.positive
-                  ? <TrendingUp className="h-3 w-3" />
-                  : <TrendingDown className="h-3 w-3" />}
-                {trend.label}
+                  ? <TrendingUp className="h-3 w-3 shrink-0" />
+                  : <TrendingDown className="h-3 w-3 shrink-0" />}
+                <span className="truncate">{trend.label}</span>
               </div>
             )}
           </div>
-          <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", iconBg)}>
-            <Icon className={cn("h-5 w-5", iconColor)} />
+          <div className={cn("flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl", iconBg)}>
+            <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", iconColor)} />
           </div>
         </div>
         {progress !== undefined && (
           <div className="mt-4">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>Progress</span>
-              <span>{progress}%</span>
+              <span className="truncate">Progress</span>
+              <span className="shrink-0">{progress}%</span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
               <div
@@ -66,19 +66,7 @@ export function StatsGrid({ stats: statsProp, loading: loadingProp }: { stats?: 
   const loading = loadingProp ?? fetchLoading;
 
   if (loading) {
-    return (
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-5 space-y-3">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-7 w-24" />
-              <Skeleton className="h-2 w-full rounded-full" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
+    return <StatsGridSkeleton />;
   }
 
   if (!stats) return null;
@@ -123,7 +111,7 @@ export function StatsGrid({ stats: statsProp, loading: loadingProp }: { stats?: 
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
       {cards.map((card) => (
         <StatCard key={card.title} {...card} />
       ))}

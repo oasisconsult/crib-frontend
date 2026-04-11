@@ -24,13 +24,13 @@ function getGreeting() {
 // ── Maintenance staff dashboard ───────────────────────────────────────────────
 
 function MaintenanceDashboard({ firstName }: { firstName: string }) {
-  const { data: inspectionsData } = useInspections({ status: "scheduled,in_progress" });
+  const { data: inspectionsData } = useInspections({ filters: [{ field: "status", operator: "in", value: ["scheduled", "in_progress"] }] });
   const { data: maintenanceData } = useMaintenanceIssues();
 
   const inspections = inspectionsData?.data ?? [];
   const issues = maintenanceData?.data ?? [];
   const openIssues = issues.filter(
-    (i: { status: string }) => i.status === "open" || i.status === "in_progress",
+    (i: any) => i.status === "open" || i.status === "in_progress",
   );
 
   return (
@@ -59,7 +59,7 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
               <p className="text-sm text-muted-foreground">No scheduled inspections.</p>
             ) : (
               <ul className="space-y-2">
-                {inspections.slice(0, 5).map((insp: { id: string; property_name?: string; scheduled_at?: string; status: string }) => (
+                {inspections.slice(0, 5).map((insp: any) => (
                   <li key={insp.id} className="flex items-center justify-between text-sm">
                     <span className="font-medium truncate">{insp.property_name ?? "—"}</span>
                     <Badge variant="outline" className="shrink-0 ml-2 capitalize">{insp.status}</Badge>
@@ -84,7 +84,7 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
               <p className="text-sm text-muted-foreground">No open issues.</p>
             ) : (
               <ul className="space-y-2">
-                {openIssues.slice(0, 5).map((issue: { id: string; title?: string; priority?: string; status: string }) => (
+                {openIssues.slice(0, 5).map((issue: any) => (
                   <li key={issue.id} className="flex items-center justify-between text-sm">
                     <span className="font-medium truncate">{issue.title ?? "Untitled"}</span>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
@@ -123,8 +123,8 @@ function ManagerDashboard({ firstName }: { firstName: string }) {
 
       <StatsGrid />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
           <PendingRentWidget />
         </div>
         <ActivityTimeline />
@@ -149,15 +149,15 @@ function OwnerDashboard({ firstName }: { firstName: string }) {
 
       <StatsGrid />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
           <RevenueChart />
         </div>
         <TopProperties />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div className="xl:col-span-2">
           <PendingRentWidget />
         </div>
         <ActivityTimeline />
