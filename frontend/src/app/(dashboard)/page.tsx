@@ -82,11 +82,11 @@ function KPIDashboardCards() {
         const TrendIcon = kpi.trend.positive ? TrendingUp : TrendingDown;
         
         return (
-          <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-32 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between h-full">
+          <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-36 hover:shadow-md transition-shadow">
+            <div className="flex flex-col justify-between h-full">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-12 h-12 rounded-lg flex items-center justify-center",
+                  "w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0",
                   kpi.color === "blue" && "bg-blue-100",
                   kpi.color === "green" && "bg-green-100",
                   kpi.color === "purple" && "bg-purple-100",
@@ -100,18 +100,18 @@ function KPIDashboardCards() {
                     kpi.color === "orange" && "text-orange-600"
                   )} />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="text-sm font-medium text-gray-600 mb-1">{kpi.title}</p>
                   <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
                 </div>
               </div>
-            </div>
-            <div className={cn(
-              "flex items-center text-sm mt-auto",
-              kpi.trend.positive ? "text-green-600" : "text-red-600"
-            )}>
-              <TrendIcon className="w-4 h-4 mr-1" />
-              {kpi.trend.value}
+              <div className={cn(
+                "flex items-center text-sm mt-4",
+                kpi.trend.positive ? "text-green-600" : "text-red-600"
+              )}>
+                <TrendIcon className="w-4 h-4 mr-1" />
+                {kpi.trend.value}
+              </div>
             </div>
           </div>
         );
