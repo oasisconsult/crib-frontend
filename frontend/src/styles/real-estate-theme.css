@@ -955,84 +955,11 @@ html .text-xs,
   font-size: 0.6875rem !important; /* 11px */
 }
 
-/* Universal font size overrides - Maximum specificity */
-* {
-  font-size: 0.875rem !important; /* 14px default for everything */
-}
+/* Universal font size overrides removed - causing issues on other pages */
 
-/* Override specific elements */
-body *,
-html *,
-* * {
-  font-size: 0.875rem !important; /* 14px default for everything */
-}
+/* Dashboard-specific overrides removed - using inline styles only */
 
-/* Dashboard specific overrides with maximum specificity - Smaller */
-body .dashboard-title,
-html .dashboard-title,
-* .dashboard-title {
-  font-size: 1rem !important; /* 16px - reduced */
-}
-
-body .stat-value,
-html .stat-value,
-* .stat-value {
-  font-size: 1.125rem !important; /* 18px - reduced */
-}
-
-body .card-title,
-html .card-title,
-* .card-title {
-  font-size: 0.875rem !important; /* 14px - reduced */
-}
-
-body .stat-label,
-html .stat-label,
-* .stat-label {
-  font-size: 0.6875rem !important; /* 11px - reduced */
-}
-
-/* Button overrides with maximum specificity - Much smaller */
-body button,
-html button,
-* button,
-body .btn,
-html .btn,
-* .btn,
-body [role="button"],
-html [role="button"],
-* [role="button"] {
-  font-size: 0.625rem !important; /* 10px - much smaller */
-  padding: 4px 8px !important; /* Reduced padding */
-  border-radius: 6px !important; /* Smaller radius */
-  min-height: 28px !important; /* Fixed height */
-  height: 28px !important;
-  line-height: 1.2 !important;
-}
-
-body button[data-size="sm"],
-html button[data-size="sm"],
-* button[data-size="sm"],
-body .btn-sm,
-html .btn-sm,
-* .btn-sm {
-  font-size: 0.5625rem !important; /* 9px - even smaller */
-  padding: 3px 6px !important; /* Minimal padding */
-  min-height: 24px !important; /* Smaller height */
-  height: 24px !important;
-}
-
-body button[data-size="lg"],
-html button[data-size="lg"],
-* button[data-size="lg"],
-body .btn-lg,
-html .btn-lg,
-* .btn-lg {
-  font-size: 0.6875rem !important; /* 11px - smaller than before */
-  padding: 5px 10px !important; /* Reduced padding */
-  min-height: 32px !important; /* Slightly taller */
-  height: 32px !important;
-}
+/* Universal button overrides removed - causing issues on other pages */
 
 /* Card layout fixes removed - using inline styles instead */
 
