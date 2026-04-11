@@ -34,8 +34,30 @@ module.exports = {
         bold: '700',
       },
       colors: {
-        // Primary (Trust) - Blue
-        primary: {
+        // CRIB Color System
+        primary: '#4F46E5', // Indigo (trust, fintech feel)
+        background: {
+          light: '#F9FAFB',
+          dark: '#0B0F19', // Deep dark (modern SaaS)
+        },
+        surface: {
+          light: '#FFFFFF',
+          dark: '#111827', // Cards
+        },
+        border: {
+          light: '#E5E7EB',
+          dark: '#1F2937', // Subtle separators
+        },
+        text: {
+          light: '#111827',
+          dark: '#E5E7EB', // Main text
+        },
+        muted: '#6B7280', // Secondary text
+        success: '#10B981',
+        warning: '#F59E0B',
+        danger: '#EF4444',
+        // Legacy colors for compatibility
+        blue: {
           50: '#EFF6FF',
           100: '#DBEAFE',
           200: '#BFDBFE',
@@ -48,31 +70,44 @@ module.exports = {
           900: '#1E2B5B',
           950: '#172554',
         },
-        // Neutral (UI)
-        background: '#F9FAFB',
-        card: '#FFFFFF',
-        border: '#E5E7EB',
-        text: {
-          primary: '#111827',
-          secondary: '#6B7280',
-          tertiary: '#9CA3AF',
+        green: {
+          50: '#F0FDF4',
+          100: '#DCFCE7',
+          200: '#BBF7D0',
+          300: '#86EFAC',
+          400: '#4ADE80',
+          500: '#22C55E',
+          600: '#16A34A',
+          700: '#15803D',
+          800: '#166534',
+          900: '#14532D',
+          950: '#052E16',
         },
-        // Semantic Colors
-        success: {
-          DEFAULT: '#16A34A',
-          light: '#DCFCE7',
+        orange: {
+          50: '#FFF7ED',
+          100: '#FFEDD5',
+          200: '#FED7AA',
+          300: '#FDBA74',
+          400: '#FB923C',
+          500: '#F97316',
+          600: '#EA580C',
+          700: '#C2410C',
+          800: '#9A3412',
+          900: '#7C2D12',
+          950: '#431407',
         },
-        warning: {
-          DEFAULT: '#F59E0B',
-          light: '#FEF3C7',
-        },
-        error: {
-          DEFAULT: '#DC2626',
-          light: '#FEE2E2',
-        },
-        info: {
-          DEFAULT: '#2563EB',
-          light: '#DBEAFE',
+        purple: {
+          50: '#FAF5FF',
+          100: '#F3E8FF',
+          200: '#E9D5FF',
+          300: '#D8B4FE',
+          400: '#C084FC',
+          500: '#A855F7',
+          600: '#9333EA',
+          700: '#7C3AED',
+          800: '#6B21A8',
+          900: '#581C87',
+          950: '#3B0764',
         },
       },
       spacing: {

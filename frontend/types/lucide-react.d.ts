@@ -581,5 +581,35 @@ declare module 'lucide-react' {
   export const Globe3: any;
   export const Globe4: any;
   export const Globe5: any;
+  export const Sun: any;
+  export const Sun2: any;
+  export const Sun3: any;
+  export const Sun4: any;
+  export const Sun5: any;
+  export const Moon: any;
+  export const Moon2: any;
+  export const Moon3: any;
+  export const Moon4: any;
+  export const Moon5: any;
+  export const Menu: any;
+  export const Menu2: any;
+  export const Menu3: any;
+  export const Menu4: any;
+  export const Menu5: any;
+  export const X: any;
+  export const X2: any;
+  export const X3: any;
+  export const X4: any;
+  export const X5: any;
+  export const HelpCircle: any;
+  export const HelpCircle2: any;
+  export const HelpCircle3: any;
+  export const HelpCircle4: any;
+  export const HelpCircle5: any;
+  export const LogOut: any;
+  export const LogOut2: any;
+  export const LogOut3: any;
+  export const LogOut4: any;
+  export const LogOut5: any;
   // Add any other icons you're using
 }
