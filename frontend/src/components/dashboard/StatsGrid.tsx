@@ -36,34 +36,34 @@ function StatCard({ title, value, trend, progress, icon: Icon, iconBg, iconColor
   };
 
   return (
-    <Card className={cn("re-stat-card", getCardClass())}>
-      <CardContent className="p-6 sm:p-8">
-        <div className="flex items-start justify-between gap-4">
+    <Card className={cn("dashboard-card re-stat-card", getCardClass())}>
+      <CardContent className="dashboard-card-content">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="stat-label truncate mb-3" style={{ fontSize: '11px', fontWeight: '600', lineHeight: '1.4', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</p>
-            <p className="mt-2 stat-value leading-none break-words mb-3" style={{ fontSize: '18px', fontWeight: '700', lineHeight: '1.2' }}>{value}</p>
+            <p className="stat-label truncate mb-2" style={{ fontSize: '11px', fontWeight: '600', lineHeight: '1.4', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{title}</p>
+            <p className="mt-1 stat-value leading-none break-words mb-2" style={{ fontSize: '18px', fontWeight: '700', lineHeight: '1.2' }}>{value}</p>
             {trend && (
               <div className={cn("flex items-center gap-2 stat-trend",
                 trend.positive ? "re-status-success" : "re-status-error"
-              )} style={{ fontSize: '12px', fontWeight: '500', lineHeight: '1.4' }}>
+              )} style={{ fontSize: '11px', fontWeight: '500', lineHeight: '1.4' }}>
                 {trend.positive
-                  ? <TrendingUp className="h-4 w-4 shrink-0" />
-                  : <TrendingDown className="h-4 w-4 shrink-0" />}
+                  ? <TrendingUp className="h-3 w-3 shrink-0" />
+                  : <TrendingDown className="h-3 w-3 shrink-0" />}
                 <span className="truncate">{trend.label}</span>
               </div>
             )}
           </div>
-          <div className={cn("re-icon-wrapper flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-xl shadow-sm", iconBg)}>
-            <Icon className={cn("h-6 w-6 sm:h-7 sm:w-7", iconColor)} />
+          <div className={cn("re-icon-wrapper flex h-10 w-10 shrink-0 items-center justify-center rounded-lg shadow-sm", iconBg)}>
+            <Icon className={cn("h-5 w-5", iconColor)} />
           </div>
         </div>
         {progress !== undefined && (
-          <div className="mt-6">
-            <div className="flex justify-between stat-trend mb-2" style={{ fontSize: '11px', fontWeight: '500', lineHeight: '1.4' }}>
+          <div className="mt-4">
+            <div className="flex justify-between stat-trend mb-1" style={{ fontSize: '11px', fontWeight: '500', lineHeight: '1.4' }}>
               <span className="truncate">Progress</span>
               <span className="shrink-0 font-semibold">{progress}%</span>
             </div>
-            <div className="re-progress-bar h-3 w-full rounded-full overflow-hidden">
+            <div className="re-progress-bar h-2 w-full rounded-full overflow-hidden">
               <div
                 className={cn("h-full rounded-full transition-all duration-500", getProgressClass())}
                 style={{ width: `${Math.min(progress, 100)}%` }}

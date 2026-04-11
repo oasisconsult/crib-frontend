@@ -46,19 +46,21 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Upcoming inspections */}
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3 pb-4">
-            <ClipboardList className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="card-title" style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.3' }}>Upcoming Inspections</CardTitle>
+        <Card className="dashboard-card">
+          <CardHeader className="dashboard-card-header">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="card-title" style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.3' }}>Upcoming Inspections</CardTitle>
+            </div>
             {inspections.length > 0 && (
-              <Badge variant="secondary" className="ml-auto">{inspections.length}</Badge>
+              <Badge variant="secondary" className="badge">{inspections.length}</Badge>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="dashboard-card-content">
             {inspections.length === 0 ? (
               <p className="text-sm text-muted-foreground">No scheduled inspections.</p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="card-list">
                 {inspections.slice(0, 5).map((insp: any) => (
                   <li key={insp.id} className="flex items-center justify-between text-sm">
                     <span className="font-medium truncate">{insp.property_name ?? "â"}</span>
@@ -71,19 +73,21 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
         </Card>
 
         {/* Open maintenance issues */}
-        <Card>
-          <CardHeader className="flex flex-row items-center gap-3 pb-4">
-            <Wrench className="h-5 w-5 text-muted-foreground" />
-            <CardTitle className="card-title" style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.3' }}>Open Maintenance Requests</CardTitle>
+        <Card className="dashboard-card">
+          <CardHeader className="dashboard-card-header">
+            <div className="flex items-center gap-2">
+              <Wrench className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="card-title" style={{ fontSize: '14px', fontWeight: '600', lineHeight: '1.3' }}>Open Maintenance Requests</CardTitle>
+            </div>
             {openIssues.length > 0 && (
-              <Badge variant="destructive" className="ml-auto">{openIssues.length}</Badge>
+              <Badge variant="destructive" className="badge">{openIssues.length}</Badge>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="dashboard-card-content">
             {openIssues.length === 0 ? (
               <p className="text-sm text-muted-foreground">No open issues.</p>
             ) : (
-              <ul className="space-y-3">
+              <ul className="card-list">
                 {openIssues.slice(0, 5).map((issue: any) => (
                   <li key={issue.id} className="flex items-center justify-between text-sm">
                     <span className="font-medium truncate">{issue.title ?? "Untitled"}</span>
