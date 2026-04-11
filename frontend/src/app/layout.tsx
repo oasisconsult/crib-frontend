@@ -10,6 +10,7 @@ import { MSWProvider } from "@/components/providers/MSWProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { CookieConsentBanner } from "@/components/common/CookieConsentBanner";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { performanceMonitor } from "@/lib/performance";
 
 const inter = Inter({
   subsets: ["latin"],

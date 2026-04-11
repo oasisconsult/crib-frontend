@@ -11,7 +11,16 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "analyze:bundle": "node scripts/analyze-bundle.js",
+    "analyze:deps": "npx depcheck",
+    "optimize": "npm run analyze:bundle && npm run analyze:deps",
+    "docker:dev": "docker-compose -f docker-compose.local.yml up --build frontend",
+    "docker:dev:detach": "docker-compose -f docker-compose.local.yml up -d --build frontend",
+    "docker:prod": "docker-compose -f docker-compose.prod.yml up --build frontend",
+    "docker:stop": "docker-compose -f docker-compose.local.yml down && docker-compose -f docker-compose.prod.yml down",
+    "docker:logs": "docker-compose -f docker-compose.local.yml logs -f frontend",
+    "docker:clean": "docker-compose -f docker-compose.local.yml down -v && docker system prune -f"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
