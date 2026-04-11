@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import React from "react";
 import {
   ChevronUp,
   ChevronDown,
@@ -39,7 +40,7 @@ interface DataTableProps<T> {
 
 type SortDir = "asc" | "desc" | null;
 
-export function DataTable<T extends object>({
+export const DataTable = React.memo(function DataTable<T extends object>({
   data,
   columns,
   loading,
@@ -264,4 +265,4 @@ export function DataTable<T extends object>({
       )}
     </div>
   );
-}
+});

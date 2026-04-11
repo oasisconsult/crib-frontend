@@ -9,6 +9,7 @@ import { ToastProvider } from "@/components/providers/ToastProvider";
 import { MSWProvider } from "@/components/providers/MSWProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { CookieConsentBanner } from "@/components/common/CookieConsentBanner";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,15 +25,17 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <MSWProvider>
-          <QueryClientProvider client={queryClient}>
-            <ThemeProvider>
-              {children}
-              <ToastProvider />
-              <CookieConsentBanner />
-            </ThemeProvider>
-          </QueryClientProvider>
-        </MSWProvider>
+        <ErrorBoundary title="Application Error" description="Something went wrong with the application.">
+          <MSWProvider>
+            <QueryClientProvider client={queryClient}>
+              <ThemeProvider>
+                {children}
+                <ToastProvider />
+                <CookieConsentBanner />
+              </ThemeProvider>
+            </QueryClientProvider>
+          </MSWProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

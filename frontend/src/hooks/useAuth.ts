@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { useAppStore } from "@/store/useAppStore";
 import { tokenStore, msUntilTimestamp } from "@/lib/auth";
 import { emitAudit } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 import { apiClient } from "@/services/api/client";
 import type { User } from "@/types";
 
@@ -184,7 +185,7 @@ export function useAuth() {
       const nowSec = Math.floor(Date.now() / 1000);
       const expiresIn = session.expiresAt - nowSec;
 
-      console.debug("[auth] token expires in", expiresIn, "s");
+      logger.debug("Token expires", { expiresIn, context: "auth" });
 
       if (expiresIn <= 0) {
         // Expired — refresh before hitting the backend
@@ -221,7 +222,7 @@ export function useAuth() {
             const status = (err as { response?: { status?: number } })?.response
               ?.status;
 
-            console.error("[auth] /me failed:", status, err);
+            logger.error("API /me failed", err as Error, { status, endpoint: "/me" });
             // resolveAuth(null);
           }
           return;

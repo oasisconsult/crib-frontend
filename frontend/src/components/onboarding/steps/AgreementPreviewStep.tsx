@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ChevronDown, FileText } from "lucide-react";
+import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { usePreviewAgreement } from "@/hooks/useOnboardingFlow";
@@ -78,7 +79,17 @@ export function AgreementPreviewStep({ token, preview: initialPreview, onNext }:
             onScroll={handleScroll}
             className="h-[70vh] min-h-[400px] overflow-y-auto rounded-lg border bg-white dark:bg-zinc-950 shadow-inner"
             style={{ scrollBehavior: "smooth" }}
-            dangerouslySetInnerHTML={{ __html: preview.renderedHtml }}
+            dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(preview.renderedHtml, {
+                ALLOWED_TAGS: [
+                  'p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li', 
+                  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                  'div', 'span', 'table', 'thead', 'tbody', 'tr', 'th', 'td'
+                ],
+                ALLOWED_ATTR: ['class', 'style'],
+                ALLOW_DATA_ATTR: false
+              })
+            }}
           />
         ) : (
           /* Fallback: plain text summary if HTML not available (older snapshot) */

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { Plus, LayoutGrid, List, ChevronRight, BedDouble, Bath, Maximize2 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -40,7 +41,7 @@ const ALL_STATUSES: UnitStatus[] = ["available", "occupied", "reserved", "mainte
 
 // ── Grid card ─────────────────────────────────────────────────────────────────
 
-function UnitCard({ unit, selected, onSelect, onClick }: {
+const UnitCard = React.memo(function UnitCard({ unit, selected, onSelect, onClick }: {
   unit: Unit; selected: boolean; onSelect: () => void; onClick: () => void;
 }) {
   const styles = STATUS_STYLES[unit.status];
@@ -90,11 +91,11 @@ function UnitCard({ unit, selected, onSelect, onClick }: {
       </div>
     </div>
   );
-}
+});
 
 // ── List row ──────────────────────────────────────────────────────────────────
 
-function UnitRow({ unit, selected, onSelect, onClick }: {
+const UnitRow = React.memo(function UnitRow({ unit, selected, onSelect, onClick }: {
   unit: Unit; selected: boolean; onSelect: () => void; onClick: () => void;
 }) {
   const styles = STATUS_STYLES[unit.status];
@@ -147,7 +148,7 @@ function UnitRow({ unit, selected, onSelect, onClick }: {
       </td>
     </tr>
   );
-}
+});
 
 // ── Main component ────────────────────────────────────────────────────────────
 

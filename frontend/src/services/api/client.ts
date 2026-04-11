@@ -20,6 +20,8 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 import { tokenStore } from "@/lib/auth";
+import type { ApiErrorResponse } from "@/types/api";
+import { isAuthenticationError } from "@/types/api";
 
 // Always relative — hits the BFF proxy at /api/v1/*
 const BASE_URL = "";
@@ -98,16 +100,16 @@ function createApiClient(): AxiosInstance {
         try {
           const res = await fetch("/api/auth/refresh", { method: "POST" });
           if (!res.ok) {
-            let errBody: unknown = null;
+            let errBody: ApiErrorResponse | null = null;
             try {
               errBody = await res.json();
             } catch {
               // ignore
             }
 
-            const errCode =
-              (errBody as { error?: unknown } | null)?.error ??
-              (errBody as { code?: unknown } | null)?.code;
+            const errCode = errBody && isAuthenticationError(errBody) 
+              ? errBody.error.code 
+              : (typeof errBody?.error === 'string' ? errBody.error : errBody?.code);
 
             // If the session has no refresh token (common until Logto is configured
             // to issue refresh tokens), treat as non-fatal: don't redirect to /login.

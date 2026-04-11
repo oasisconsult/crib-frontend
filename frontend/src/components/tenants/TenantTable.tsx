@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserPlus, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable, type Column } from "@/components/common/DataTable";
+import { VirtualList } from "@/components/common/VirtualList";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -14,70 +14,45 @@ import { formatDate, formatPhone, getInitials } from "@/utils/formatters";
 import { useTenants } from "@/hooks/useTenants";
 import type { Tenant } from "@/types";
 
-const COLUMNS: Column<Tenant>[] = [
-  {
-    key: "firstName",
-    header: "Tenant",
-    sortable: true,
-    render: (t) => (
-      <div className="flex items-center gap-3">
-        <Avatar className="h-8 w-8">
-          <AvatarFallback className="text-xs">
-            {getInitials(`${t.firstName} ${t.lastName}`)}
-          </AvatarFallback>
-        </Avatar>
+const renderTenant = (tenant: Tenant) => (
+  <div className="border-b hover:bg-muted/50 cursor-pointer transition-colors p-4">
+    <div className="flex items-center gap-3">
+      <Avatar className="h-8 w-8">
+        <AvatarFallback className="text-xs">
+          {getInitials(`${tenant.firstName} ${tenant.lastName}`)}
+        </AvatarFallback>
+      </Avatar>
+      <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-4 items-center">
         <div>
-          <p className="font-medium text-sm">{t.firstName} {t.lastName}</p>
-          <p className="text-xs text-muted-foreground">{t.email}</p>
+          <p className="font-medium text-sm">{tenant.firstName} {tenant.lastName}</p>
+          <p className="text-xs text-muted-foreground">{tenant.email}</p>
+        </div>
+        <div className="hidden sm:block">
+          <div className="flex items-center gap-2">
+            <StatusBadge state={tenant.onboardingState} domain="onboarding" />
+            {(tenant.onboardingState === "invited" || tenant.onboardingState === "started" || tenant.onboardingState === "submitted") && (
+              <OnboardingProgress state={tenant.onboardingState} compact />
+            )}
+          </div>
+        </div>
+        <div className="hidden sm:block text-sm">
+          {formatPhone(tenant.phone)}
+        </div>
+        <div className="hidden sm:block">
+          <span className={`text-xs font-medium capitalize ${
+            tenant.status === "active" ? "text-emerald-600" :
+            tenant.status === "blacklisted" ? "text-red-600" : "text-muted-foreground"
+          }`}>
+            {tenant.status}
+          </span>
+        </div>
+        <div className="hidden sm:block text-sm text-muted-foreground">
+          {formatDate(tenant.createdAt)}
         </div>
       </div>
-    ),
-  },
-  {
-    key: "onboardingState",
-    header: "Onboarding",
-    render: (t) => (
-      <div className="flex items-center gap-2">
-        <StatusBadge state={t.onboardingState} domain="onboarding" />
-        {(t.onboardingState === "invited" || t.onboardingState === "started" || t.onboardingState === "submitted") && (
-          <OnboardingProgress state={t.onboardingState} compact />
-        )}
-      </div>
-    ),
-  },
-  {
-    key: "phone",
-    header: "Phone",
-    render: (t) => (
-      <span className="text-sm text-muted-foreground">{formatPhone(t.phone)}</span>
-    ),
-  },
-  {
-    key: "currentUnitId",
-    header: "Unit",
-    render: (t) => (
-      <span className="text-sm">{t.currentUnitId ? `Unit #${t.currentUnitId.slice(-4)}` : "—"}</span>
-    ),
-  },
-  {
-    key: "status",
-    header: "Status",
-    render: (t) => (
-      <span className={`text-xs font-medium capitalize ${
-        t.status === "active" ? "text-emerald-600" :
-        t.status === "blacklisted" ? "text-red-600" : "text-muted-foreground"
-      }`}>
-        {t.status}
-      </span>
-    ),
-  },
-  {
-    key: "createdAt",
-    header: "Added",
-    sortable: true,
-    render: (t) => <span className="text-sm text-muted-foreground">{formatDate(t.createdAt)}</span>,
-  },
-];
+    </div>
+  </div>
+);
 
 export function TenantTable() {
   const router = useRouter();
@@ -115,15 +90,24 @@ export function TenantTable() {
         </div>
       </div>
 
-      <DataTable
-        data={filtered}
-        columns={COLUMNS}
+      <VirtualList
+        items={filtered}
         loading={isLoading}
-        rowKey={(t) => t.id}
-        onRowClick={(t) => router.push(`/tenants/${t.id}`)}
-        selectable
-        emptyTitle="No tenants yet"
-        emptyDescription="Invite your first tenant to get started"
+        renderItem={(tenant) => renderTenant(tenant)}
+        getItemKey={(tenant) => tenant.id}
+        height="600px"
+        estimateSize={80}
+        emptyState={
+          <div className="text-center py-12">
+            <p className="text-lg font-medium mb-2">No tenants yet</p>
+            <p className="text-sm text-muted-foreground mb-4">Invite your first tenant to get started</p>
+            <Button onClick={() => setInviteOpen(true)} size="sm">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite Your First Tenant
+            </Button>
+          </div>
+        }
+        onItemClick={(tenant) => router.push(`/tenants/${tenant.id}`)}
       />
 
       <InviteModal open={inviteOpen} onOpenChange={setInviteOpen} />
