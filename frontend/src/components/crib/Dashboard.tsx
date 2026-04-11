@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+// import { motion } from "framer-motion";
 import { Card } from "./Card";
 import { Button } from "./Button";
 import { PropertyCard } from "./PropertyCard";
@@ -192,11 +192,8 @@ export function Dashboard() {
         {/* Main Content */}
         <main className="flex-1 p-6 space-y-6">
           {/* Header */}
-          <motion.div
+          <div
             className="flex items-center justify-between"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
           >
             <div>
               <h1 className="text-2xl font-semibold text-text-dark">Dashboard</h1>
@@ -206,31 +203,25 @@ export function Dashboard() {
               <Plus className="w-4 h-4 mr-2" />
               Add Property
             </Button>
-          </motion.div>
+          </div>
 
           {/* Metrics Row */}
           <div className="flex flex-col lg:flex-row gap-6">
             {metrics.map((metric, index) => (
-              <motion.div
+              <div
                 key={metric.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
                 className="flex-1"
               >
                 <MetricCard {...metric} />
-              </motion.div>
+              </div>
             ))}
           </div>
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Properties Section */}
-            <motion.div
+            <div
               className="lg:col-span-2"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
             >
               <Card className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -239,24 +230,18 @@ export function Dashboard() {
                 </div>
                 <div className="space-y-4">
                   {properties.map((property, index) => (
-                    <motion.div
+                    <div
                       key={property.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.3, delay: 0.3 + index * 0.1 }}
                     >
                       <PropertyCard {...property} />
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               </Card>
-            </motion.div>
+            </div>
 
             {/* Recent Activity */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
+            <div
             >
               <Card className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -271,14 +256,11 @@ export function Dashboard() {
                   className="border-0"
                 />
               </Card>
-            </motion.div>
+            </div>
           </div>
 
           {/* Quick Actions */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
+          <div
           >
             <Card className="p-6">
               <h2 className="text-xl font-medium text-text-dark mb-4">Quick Actions</h2>
@@ -301,7 +283,7 @@ export function Dashboard() {
                 </Button>
               </div>
             </Card>
-          </motion.div>
+          </div>
         </main>
       </div>
     </div>
