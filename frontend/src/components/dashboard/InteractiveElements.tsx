@@ -14,7 +14,8 @@ import {
   MoreVertical,
   Copy,
   Share2,
-  ExternalLink
+  ExternalLink,
+  CheckCircle2
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -408,6 +409,3 @@ export function CopyButton({ text, label = "Copy", className }: CopyButtonProps)
     </Button>
   );
 }
-
-// Add the missing import for CheckCircle2
-import { CheckCircle2 } from "lucide-react";
