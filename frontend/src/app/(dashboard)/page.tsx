@@ -8,7 +8,7 @@ import { PendingRentWidget } from "@/components/dashboard/PendingRentWidget";
 import { 
   PageHeader, 
   DashboardCardSkeleton, 
-  EmptyPropertiesState,
+  EmptyState,
   SearchBar,
   FilterButton,
   ActionButtons
@@ -25,11 +25,11 @@ import {
   Home,
   Users,
   Calendar,
-  FileText
+  FileText,
+  Plus
 } from "lucide-react";
-import { useInspections } from "@/hooks/useInspections";
-import { useMaintenanceIssues } from "@/hooks/useMaintenanceIssues";
-import { cn } from "@/lib/utils";
+import { useInspections, useMaintenanceIssues } from "@/hooks/useInspections";
+import { cn } from "@/utils/cn";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
@@ -175,7 +175,7 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
             {inspectionsLoading ? (
               <DashboardCardSkeleton />
             ) : inspections.length === 0 ? (
-              <EmptyPropertiesState
+              <EmptyState
                 icon={<ClipboardList className="w-8 h-8" />}
                 title="No inspections scheduled"
                 description="You don't have any upcoming inspections."
@@ -226,7 +226,7 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
             {maintenanceLoading ? (
               <DashboardCardSkeleton />
             ) : openIssues.length === 0 ? (
-              <EmptyPropertiesState
+              <EmptyState
                 icon={<Wrench className="w-8 h-8" />}
                 title="No open issues"
                 description="All maintenance requests have been resolved."
