@@ -145,8 +145,8 @@ module.exports = {
     },
   },
   plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography'),
-    require('@tailwindcss/aspect-ratio'),
-  ],
+    try { require('@tailwindcss/forms') } catch (e) { null },
+    try { require('@tailwindcss/typography') } catch (e) { null },
+    try { require('@tailwindcss/aspect-ratio') } catch (e) { null },
+  ].filter(Boolean),
 }
