@@ -232,24 +232,24 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="min-h-screen flex">
       {/* ── LEFT — Sign-in form ───────────────────────────────── */}
-      <div className="flex flex-1 flex-col items-center justify-center p-8 lg:p-12 bg-background lg:w-1/2 lg:flex-none">
-        <div className="w-full max-w-sm">
+      <div className="flex flex-1 flex-col items-center justify-center p-8 lg:p-12 bg-white">
+        <div className="w-full max-w-md">
           {/* Logo */}
-          <div className="flex items-center gap-2.5 mb-10">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Building2 className="h-4.5 w-4.5" />
+          <div className="flex items-center gap-3 mb-8">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white">
+              <Building2 className="h-5 w-5" />
             </div>
-            <span className="text-xl font-bold tracking-tight">Crib</span>
+            <span className="text-2xl font-bold text-gray-900">Crib</span>
           </div>
 
           {/* Heading */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
               {IS_MOCK ? "Choose your account" : "Welcome back"}
             </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">
+            <p className="text-gray-600">
               {IS_MOCK
                 ? "Select a role to explore the dashboard."
                 : "Sign in to your Crib account to continue."}
@@ -262,26 +262,26 @@ export default function LoginPage() {
           ) : (
             <>
               <Button
-                className="w-full h-11 text-sm font-semibold shadow-md"
+                className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
                 size="lg"
                 onClick={handleLogin}
                 disabled={loading}
               >
                 {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
                 ) : (
-                  <Building2 className="h-4 w-4" />
+                  <Building2 className="h-5 w-5 mr-2" />
                 )}
                 {loading ? "Redirecting…" : "Continue with Logto"}
               </Button>
 
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-border" />
+                  <div className="w-full border-t border-gray-200" />
                 </div>
                 <div className="relative flex justify-center">
-                  <span className="flex items-center gap-1.5 bg-background px-3 text-xs text-muted-foreground">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="flex items-center gap-1.5 bg-white px-3 text-xs text-gray-500">
+                    <ShieldCheck className="h-3.5 w-3.5 text-green-500" />
                     Secured by Logto OIDC
                   </span>
                 </div>
@@ -292,9 +292,9 @@ export default function LoginPage() {
                   (label) => (
                     <div
                       key={label}
-                      className="flex items-center justify-center rounded-lg border border-border bg-muted/40 px-2 py-2.5 text-center"
+                      className="flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 px-2 py-2.5 text-center"
                     >
-                      <span className="text-[10px] font-medium text-muted-foreground leading-tight">
+                      <span className="text-[10px] font-medium text-gray-600 leading-tight">
                         {label}
                       </span>
                     </div>
@@ -307,27 +307,27 @@ export default function LoginPage() {
           {/* Footer links */}
           {!IS_MOCK && (
             <>
-              <p className="text-center text-sm text-muted-foreground">
+              <p className="text-center text-sm text-gray-600">
                 Don&apos;t have an account?{" "}
                 <a
                   href="/signup"
-                  className="font-medium text-primary hover:underline underline-offset-4"
+                  className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   Sign up free
                 </a>
               </p>
-              <p className="mt-6 text-center text-[11px] text-muted-foreground/70 leading-relaxed">
+              <p className="mt-6 text-center text-[11px] text-gray-500 leading-relaxed">
                 By continuing, you agree to our{" "}
                 <a
                   href="/terms"
-                  className="underline underline-offset-2 hover:text-muted-foreground"
+                  className="underline hover:text-gray-700"
                 >
                   Terms of Service
                 </a>{" "}
                 and{" "}
                 <a
                   href="/privacy"
-                  className="underline underline-offset-2 hover:text-muted-foreground"
+                  className="underline hover:text-gray-700"
                 >
                   Privacy Policy
                 </a>
@@ -342,7 +342,7 @@ export default function LoginPage() {
         className={cn(
           "hidden lg:flex flex-col justify-between overflow-hidden",
           "flex-1 min-h-screen p-12",
-          "bg-[radial-gradient(ellipse_at_top_right,_#312e81_0%,_#1e1b4b_40%,_#0f0a2e_100%)]",
+          "bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700",
         )}
       >
         {/* Mesh glow */}
@@ -350,8 +350,8 @@ export default function LoginPage() {
           className="pointer-events-none absolute inset-0 opacity-20"
           style={{
             backgroundImage: `
-              radial-gradient(circle at 80% 20%, rgba(139,92,246,0.45) 0%, transparent 50%),
-              radial-gradient(circle at 20% 80%, rgba(99,102,241,0.3) 0%, transparent 50%)
+              radial-gradient(circle at 80% 20%, rgba(255,255,255,0.15) 0%, transparent 50%),
+              radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%)
             `,
           }}
           aria-hidden="true"
@@ -359,9 +359,9 @@ export default function LoginPage() {
 
         {/* Top badge */}
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/10 px-3 py-1">
-            <Star className="h-3 w-3 text-yellow-400 fill-yellow-400" />
-            <span className="text-xs font-medium text-violet-200">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1">
+            <Star className="h-3 w-3 text-yellow-300 fill-yellow-300" />
+            <span className="text-xs font-medium text-white">
               Uganda&apos;s #1 Property Platform
             </span>
           </div>
@@ -373,11 +373,11 @@ export default function LoginPage() {
             <h2 className="text-4xl font-extrabold text-white leading-tight tracking-tight">
               Stop chasing rent.
               <br />
-              <span className="bg-gradient-to-r from-violet-300 to-indigo-300 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-blue-200 to-indigo-200 bg-clip-text text-transparent">
                 Start growing your portfolio.
               </span>
             </h2>
-            <p className="text-base text-white/60 max-w-sm leading-relaxed">
+            <p className="text-base text-white/80 max-w-sm leading-relaxed">
               Crib handles rent collection, tenant onboarding, lease management,
               and analytics — so you can focus on what matters.
             </p>
@@ -387,10 +387,10 @@ export default function LoginPage() {
           <ul className="space-y-3.5">
             {BENEFITS.map((b) => (
               <li key={b.text} className="flex items-center gap-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-500/20 border border-violet-400/20">
-                  <b.icon className="h-3.5 w-3.5 text-violet-300" />
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/20 border border-white/20">
+                  <b.icon className="h-3.5 w-3.5 text-white" />
                 </div>
-                <span className="text-sm text-white/75">{b.text}</span>
+                <span className="text-sm text-white/90">{b.text}</span>
               </li>
             ))}
           </ul>
@@ -400,10 +400,10 @@ export default function LoginPage() {
             {STATS.map((s) => (
               <div
                 key={s.label}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center backdrop-blur-sm"
+                className="rounded-xl border border-white/20 bg-white/10 px-3 py-3 text-center backdrop-blur-sm"
               >
                 <p className="text-xl font-bold text-white">{s.value}</p>
-                <p className="text-[11px] text-white/50 mt-0.5 leading-tight">
+                <p className="text-[11px] text-white/70 mt-0.5 leading-tight">
                   {s.label}
                 </p>
               </div>
@@ -411,29 +411,29 @@ export default function LoginPage() {
           </div>
 
           {/* Testimonial */}
-          <div className="rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm p-4 space-y-3">
+          <div className="rounded-xl border border-white/20 bg-white/10 backdrop-blur-sm p-4 space-y-3">
             <div className="flex gap-0.5">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Star
                   key={i}
-                  className="h-3.5 w-3.5 text-yellow-400 fill-yellow-400"
+                  className="h-3.5 w-3.5 text-yellow-300 fill-yellow-300"
                 />
               ))}
             </div>
-            <p className="text-sm text-white/70 leading-relaxed italic">
+            <p className="text-sm text-white/80 leading-relaxed italic">
               &ldquo;Before Crib I was using WhatsApp and Excel. Now I manage 18
-              units from my phone and collect rent on the 1st of every month
+              units from my phone and collect rent on 1st of every month
               without calling a single tenant.&rdquo;
             </p>
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-400 to-indigo-400 text-white text-xs font-bold">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-indigo-400 text-white text-xs font-bold">
                 JK
               </div>
               <div>
-                <p className="text-xs font-semibold text-white/90">
+                <p className="text-xs font-semibold text-white/95">
                   James Kizito
                 </p>
-                <p className="text-[11px] text-white/45">
+                <p className="text-[11px] text-white/60">
                   Landlord · 18 units · Kampala
                 </p>
               </div>
@@ -442,7 +442,7 @@ export default function LoginPage() {
         </div>
 
         {/* Footer */}
-        <p className="relative z-10 text-xs text-white/25">
+        <p className="relative z-10 text-xs text-white/40">
           © {new Date().getFullYear()} Crib. All rights reserved.
         </p>
       </div>

@@ -49,7 +49,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md hover:border-primary/30 transition-all duration-200 group"
+      className="cursor-pointer hover:shadow-lg hover:border-gray-300 transition-all duration-200 group bg-white border border-gray-200"
       onClick={onClick}
     >
       {/* Cover image or placeholder */}
@@ -58,59 +58,69 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
         <img
           src={property.coverImage}
           alt={property.name}
-          className="w-full h-32 object-cover rounded-t-lg"
+          className="w-full h-40 object-cover rounded-t-xl"
         />
       ) : (
-        <div className="w-full h-24 rounded-t-lg bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center">
-          <Building2 className="h-8 w-8 text-primary/30" />
+        <div className="w-full h-40 rounded-t-xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
+          <Building2 className="h-12 w-12 text-blue-600" />
         </div>
       )}
 
-      <CardHeader className="pb-2 pt-3">
-        <div className="flex items-start justify-between gap-2">
-          <CardTitle className="text-base leading-tight group-hover:text-primary transition-colors">
-            {property.name}
-          </CardTitle>
-          <span className={cn("text-xs font-medium rounded-full px-2 py-0.5 capitalize shrink-0", STATUS_STYLES[property.status])}>
+      <CardHeader className="pb-3 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <CardTitle className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+              {property.name}
+            </CardTitle>
+            <CardDescription className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+              <MapPin className="h-4 w-4 shrink-0" />
+              {property.address.city}, {property.address.country}
+            </CardDescription>
+          </div>
+          <span className={cn("text-xs font-medium rounded-full px-3 py-1 capitalize shrink-0", STATUS_STYLES[property.status])}>
             {property.status}
           </span>
         </div>
-        <CardDescription className="flex items-center gap-1 text-xs mt-0.5">
-          <MapPin className="h-3 w-3 shrink-0" />
-          {property.address.city}, {property.address.country}
-        </CardDescription>
-        <Badge variant="secondary" className="text-xs capitalize w-fit mt-1">
+        <Badge variant="secondary" className="text-sm bg-gray-100 text-gray-700 capitalize w-fit">
           {TYPE_LABELS[property.type] ?? property.type}
         </Badge>
       </CardHeader>
 
-      <CardContent className="pt-0 pb-4">
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">Units</p>
-            <div className="flex items-center gap-1 font-medium">
-              <Home className="h-3.5 w-3.5 text-muted-foreground" />
+      <CardContent className="pt-0 pb-5">
+        <div className="grid grid-cols-3 gap-4 text-sm">
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500">Total Units</p>
+            <div className="flex items-center gap-2 font-semibold text-gray-900">
+              <Home className="h-4 w-4 text-gray-400" />
               {property.totalUnits}
             </div>
           </div>
-          <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">Occupied</p>
-            <p className="font-medium text-indigo-600 dark:text-indigo-400">
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500">Occupied</p>
+            <p className="font-semibold text-blue-600">
               {property.occupiedUnits}/{property.totalUnits}
             </p>
           </div>
-          <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">Occupancy</p>
-            <p className={cn("font-medium", occupancyPct >= 80 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground")}>
+          <div className="space-y-1">
+            <p className="text-xs text-gray-500">Occupancy</p>
+            <p className={cn("font-semibold", occupancyPct >= 80 ? "text-green-600" : "text-gray-900")}>
               {occupancyPct}%
             </p>
           </div>
         </div>
-        <div className="mt-3 pt-3 border-t">
-          <p className="text-xs text-muted-foreground mb-0.5">Monthly Revenue</p>
-          <p className="font-semibold text-base">
-            {formatCurrency(property.monthlyRevenue, property.currency || "UGX")}
-          </p>
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">Monthly Revenue</p>
+              <p className="text-xl font-bold text-gray-900">
+                {formatCurrency(property.monthlyRevenue, property.currency || "UGX")}
+              </p>
+            </div>
+            <div className="flex items-center text-green-600">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              <span className="text-sm font-medium">+12%</span>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -230,32 +240,35 @@ export default function PropertiesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Properties</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold text-gray-900">Properties</h1>
+          <p className="text-base text-gray-600 mt-1">
             {data?.total ?? 0} properties in your portfolio
           </p>
         </div>
-        <Button onClick={() => router.push("/properties/new")}>
-          <Plus className="h-4 w-4" />
+        <Button 
+          onClick={() => router.push("/properties/new")}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
+        >
+          <Plus className="h-5 w-5 mr-2" />
           Add Property
         </Button>
       </div>
 
       {/* Toolbar */}
-      <div className="flex gap-2 items-center flex-wrap">
+      <div className="flex gap-3 items-center flex-wrap bg-white p-4 rounded-lg border border-gray-200">
         <FilterBar
           search={search}
           onSearchChange={setSearch}
           placeholder="Search by name or city..."
-          className="flex-1 min-w-[180px]"
+          className="flex-1 min-w-[200px] bg-gray-50 border-gray-300"
         />
 
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as PropertyType | "all")}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-10 rounded-lg border-gray-300 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All types</option>
           {ALL_TYPES.map((t) => (
@@ -266,7 +279,7 @@ export default function PropertiesPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as PropertyStatus | "all")}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          className="h-10 rounded-lg border-gray-300 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All statuses</option>
           {ALL_STATUSES.map((s) => (
@@ -275,22 +288,24 @@ export default function PropertiesPage() {
         </select>
 
         {/* View toggle */}
-        <div className="flex items-center gap-1 rounded-lg border p-1">
+        <div className="flex items-center gap-2 rounded-lg bg-gray-100 p-1">
           <Button
             variant={viewMode === "grid" ? "default" : "ghost"}
-            size="icon-sm"
+            size="sm"
             onClick={() => setViewMode("grid")}
             aria-label="Grid view"
+            className={viewMode === "grid" ? "bg-blue-600 text-white" : "text-gray-600"}
           >
-            <LayoutGrid className="h-3.5 w-3.5" />
+            <LayoutGrid className="h-4 w-4" />
           </Button>
           <Button
             variant={viewMode === "list" ? "default" : "ghost"}
-            size="icon-sm"
+            size="sm"
             onClick={() => setViewMode("list")}
             aria-label="List view"
+            className={viewMode === "list" ? "bg-blue-600 text-white" : "text-gray-600"}
           >
-            <List className="h-3.5 w-3.5" />
+            <List className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -328,24 +343,24 @@ export default function PropertiesPage() {
           }
         />
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {properties.map((property) => (
             <PropertyCard key={property.id} property={property} onClick={() => navigate(property)} />
           ))}
         </div>
       ) : (
         /* List view */
-        <div className="rounded-lg border overflow-hidden">
+        <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/40">
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">Property</th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden sm:table-cell">Type</th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">Units</th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden lg:table-cell">Occupancy</th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">Revenue / mo</th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">Status</th>
-                <th className="py-2.5 px-4 w-8" />
+              <tr className="border-b bg-gray-50">
+                <th className="py-3 px-4 text-left font-semibold text-gray-900">Property</th>
+                <th className="py-3 px-4 text-left font-semibold text-gray-900 hidden sm:table-cell">Type</th>
+                <th className="py-3 px-4 text-left font-semibold text-gray-900 hidden md:table-cell">Units</th>
+                <th className="py-3 px-4 text-left font-semibold text-gray-900 hidden lg:table-cell">Occupancy</th>
+                <th className="py-3 px-4 text-left font-semibold text-gray-900 hidden md:table-cell">Revenue / mo</th>
+                <th className="py-3 px-4 text-left font-semibold text-gray-900">Status</th>
+                <th className="py-3 px-4 w-8" />
               </tr>
             </thead>
             <tbody>

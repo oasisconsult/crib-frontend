@@ -15,17 +15,17 @@ import { useTenants } from "@/hooks/useTenants";
 import type { Tenant } from "@/types";
 
 const renderTenant = (tenant: Tenant) => (
-  <div className="border-b hover:bg-muted/50 cursor-pointer transition-colors p-4">
-    <div className="flex items-center gap-3">
-      <Avatar className="h-8 w-8">
-        <AvatarFallback className="text-xs">
+  <div className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors p-4">
+    <div className="flex items-center gap-4">
+      <Avatar className="h-10 w-10">
+        <AvatarFallback className="text-sm font-medium bg-blue-600 text-white">
           {getInitials(`${tenant.firstName} ${tenant.lastName}`)}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-4 items-center">
         <div>
-          <p className="font-medium text-sm">{tenant.firstName} {tenant.lastName}</p>
-          <p className="text-xs text-muted-foreground">{tenant.email}</p>
+          <p className="font-semibold text-base text-gray-900">{tenant.firstName} {tenant.lastName}</p>
+          <p className="text-sm text-gray-600">{tenant.email}</p>
         </div>
         <div className="hidden sm:block">
           <div className="flex items-center gap-2">
@@ -39,14 +39,14 @@ const renderTenant = (tenant: Tenant) => (
           {formatPhone(tenant.phone)}
         </div>
         <div className="hidden sm:block">
-          <span className={`text-xs font-medium capitalize ${
-            tenant.status === "active" ? "text-emerald-600" :
-            tenant.status === "blacklisted" ? "text-red-600" : "text-muted-foreground"
+          <span className={`text-sm font-medium capitalize px-3 py-1 rounded-full ${
+            tenant.status === "active" ? "bg-green-100 text-green-700" :
+            tenant.status === "blacklisted" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
           }`}>
             {tenant.status}
           </span>
         </div>
-        <div className="hidden sm:block text-sm text-muted-foreground">
+        <div className="hidden sm:block text-sm text-gray-600">
           {formatDate(tenant.createdAt)}
         </div>
       </div>
@@ -70,21 +70,29 @@ export function TenantTable() {
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <FilterBar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder="Search tenants..."
-          className="flex-1"
-        />
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm">
-            <Mail className="h-4 w-4" />
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Tenants</h1>
+          <p className="text-base text-gray-600 mt-1">
+            Manage tenants, onboarding, and documents
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            <Mail className="h-4 w-4 mr-2" />
             Bulk Message
           </Button>
-          <Button onClick={() => setInviteOpen(true)} size="sm">
-            <UserPlus className="h-4 w-4" />
+          <Button 
+            onClick={() => setInviteOpen(true)} 
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
             Invite Tenant
           </Button>
         </div>
@@ -98,11 +106,18 @@ export function TenantTable() {
         height="600px"
         estimateSize={80}
         emptyState={
-          <div className="text-center py-12">
-            <p className="text-lg font-medium mb-2">No tenants yet</p>
-            <p className="text-sm text-muted-foreground mb-4">Invite your first tenant to get started</p>
-            <Button onClick={() => setInviteOpen(true)} size="sm">
-              <UserPlus className="h-4 w-4 mr-2" />
+          <div className="text-center py-16 bg-white rounded-lg">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <UserPlus className="h-6 w-6 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No tenants yet</h3>
+            <p className="text-base text-gray-600 mb-4">Invite your first tenant to get started</p>
+            <Button 
+              onClick={() => setInviteOpen(true)} 
+              size="lg"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
+            >
+              <UserPlus className="h-5 w-5 mr-2" />
               Invite Your First Tenant
             </Button>
           </div>

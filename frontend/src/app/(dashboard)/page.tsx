@@ -82,16 +82,16 @@ function KPIDashboardCards() {
         const TrendIcon = kpi.trend.positive ? TrendingUp : TrendingDown;
         
         return (
-          <div key={index} className="re-dashboard-card">
+          <div key={index} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="re-dashboard-card-title">{kpi.title}</p>
-                <p className="re-dashboard-card-value">{kpi.value}</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">{kpi.title}</p>
+                <p className="text-2xl font-bold text-gray-900 mb-2">{kpi.value}</p>
                 <div className={cn(
-                  "re-dashboard-card-trend",
-                  kpi.trend.positive ? "re-trend-up" : "re-trend-down"
+                  "flex items-center text-sm",
+                  kpi.trend.positive ? "text-green-600" : "text-red-600"
                 )}>
-                  <TrendIcon className="w-4 h-4" />
+                  <TrendIcon className="w-4 h-4 mr-1" />
                   {kpi.trend.value}
                 </div>
               </div>
@@ -156,22 +156,22 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Upcoming inspections */}
-        <Card className="re-card">
-          <CardHeader className="re-card-header">
+        <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <CardHeader className="px-6 pt-6 pb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                 <ClipboardList className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <CardTitle className="re-h3">Upcoming Inspections</CardTitle>
-                <p className="re-caption text-text-secondary">Scheduled and in-progress</p>
+                <CardTitle className="text-lg font-semibold text-gray-900">Upcoming Inspections</CardTitle>
+                <p className="text-sm text-gray-600">Scheduled and in-progress</p>
               </div>
             </div>
             {inspections.length > 0 && (
-              <Badge className="re-badge re-badge-info">{inspections.length}</Badge>
+              <Badge className="bg-blue-100 text-blue-700 px-2 py-1 text-xs font-medium">{inspections.length}</Badge>
             )}
           </CardHeader>
-          <CardContent className="re-card-content">
+          <CardContent className="px-6 pb-6">
             {inspectionsLoading ? (
               <DashboardCardSkeleton />
             ) : inspections.length === 0 ? (
@@ -190,12 +190,12 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
                 {inspections.slice(0, 5).map((insp: any) => (
                   <div key={insp.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1">
-                      <p className="re-body font-medium">{insp.property_name ?? "Unknown Property"}</p>
-                      <p className="re-caption text-text-secondary">{insp.date}</p>
+                      <p className="text-sm font-medium text-gray-900">{insp.property_name ?? "Unknown Property"}</p>
+                      <p className="text-xs text-gray-600">{insp.date}</p>
                     </div>
                     <Badge className={cn(
-                      "re-badge",
-                      insp.status === "scheduled" ? "re-badge-warning" : "re-badge-info"
+                      "px-2 py-1 text-xs font-medium",
+                      insp.status === "scheduled" ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700"
                     )}>
                       {insp.status}
                     </Badge>
@@ -207,22 +207,22 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
         </Card>
 
         {/* Open maintenance issues */}
-        <Card className="re-card">
-          <CardHeader className="re-card-header">
+        <Card className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <CardHeader className="px-6 pt-6 pb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                 <Wrench className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <CardTitle className="re-h3">Open Maintenance Requests</CardTitle>
-                <p className="re-caption text-text-secondary">Requiring attention</p>
+                <CardTitle className="text-lg font-semibold text-gray-900">Open Maintenance Requests</CardTitle>
+                <p className="text-sm text-gray-600">Requiring attention</p>
               </div>
             </div>
             {openIssues.length > 0 && (
-              <Badge className="re-badge re-badge-error">{openIssues.length}</Badge>
+              <Badge className="bg-red-100 text-red-700 px-2 py-1 text-xs font-medium">{openIssues.length}</Badge>
             )}
           </CardHeader>
-          <CardContent className="re-card-content">
+          <CardContent className="px-6 pb-6">
             {maintenanceLoading ? (
               <DashboardCardSkeleton />
             ) : openIssues.length === 0 ? (
@@ -241,16 +241,16 @@ function MaintenanceDashboard({ firstName }: { firstName: string }) {
                 {openIssues.slice(0, 5).map((issue: any) => (
                   <div key={issue.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div className="flex-1">
-                      <p className="re-body font-medium">{issue.title ?? "Untitled Issue"}</p>
-                      <p className="re-caption text-text-secondary">{issue.property}</p>
+                      <p className="text-sm font-medium text-gray-900">{issue.title ?? "Untitled Issue"}</p>
+                      <p className="text-xs text-gray-600">{issue.property}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {(issue.priority === "high" || issue.priority === "urgent") && (
                         <AlertCircle className="w-4 h-4 text-red-500" />
                       )}
                       <Badge className={cn(
-                        "re-badge",
-                        issue.status === "open" ? "re-badge-error" : "re-badge-warning"
+                        "px-2 py-1 text-xs font-medium",
+                        issue.status === "open" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"
                       )}>
                         {issue.status}
                       </Badge>
