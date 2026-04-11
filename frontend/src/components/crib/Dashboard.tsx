@@ -34,7 +34,7 @@ function MetricCard({ title, value, trend, positive, icon }: MetricCardProps) {
 
   return (
     <Card className="p-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
             {icon}
@@ -46,7 +46,7 @@ function MetricCard({ title, value, trend, positive, icon }: MetricCardProps) {
         </div>
       </div>
       <div className={cn(
-        "flex items-center text-sm",
+        "flex items-center text-sm mt-4",
         positive ? "text-success" : "text-danger"
       )}>
         <TrendIcon className="w-4 h-4 mr-1" />
@@ -209,13 +209,14 @@ export function Dashboard() {
           </motion.div>
 
           {/* Metrics Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="flex flex-col lg:flex-row gap-6">
             {metrics.map((metric, index) => (
               <motion.div
                 key={metric.title}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
+                className="flex-1"
               >
                 <MetricCard {...metric} />
               </motion.div>
