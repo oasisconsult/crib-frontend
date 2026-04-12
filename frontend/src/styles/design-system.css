@@ -7,72 +7,70 @@
    Fonts: Poppins (headings) + Inter (body)
    ====================================================================== */
 
-/* ── shadcn/ui CSS variable layer (consumed by Tailwind + components) ── */
-@layer base {
-  :root {
-    /* Backgrounds */
-    --background: 240 7% 95%;          /* #F1F1F5 — page canvas */
-    --foreground: 240 14% 15%;         /* #171725 — primary text */
+/* ── shadcn/ui CSS variables (consumed by Tailwind + components) ── */
+:root {
+  /* Backgrounds */
+  --background: 240 7% 95%;          /* #F1F1F5 — page canvas */
+  --foreground: 240 14% 15%;         /* #171725 — primary text */
 
-    /* Card */
-    --card: 0 0% 100%;                 /* #FFFFFF */
-    --card-foreground: 240 14% 15%;
+  /* Card */
+  --card: 0 0% 100%;                 /* #FFFFFF */
+  --card-foreground: 240 14% 15%;
 
-    /* Popover */
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 14% 15%;
+  /* Popover */
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 14% 15%;
 
-    /* Primary — brand blue */
-    --primary: 220 100% 50%;           /* #0062FF */
-    --primary-foreground: 0 0% 100%;
+  /* Primary — brand blue */
+  --primary: 220 100% 50%;           /* #0062FF */
+  --primary-foreground: 0 0% 100%;
 
-    /* Secondary — muted blue-gray */
-    --secondary: 220 14% 94%;          /* #EDF0F7 */
-    --secondary-foreground: 240 14% 15%;
+  /* Secondary — muted blue-gray */
+  --secondary: 220 14% 94%;          /* #EDF0F7 */
+  --secondary-foreground: 240 14% 15%;
 
-    /* Muted */
-    --muted: 220 14% 94%;
-    --muted-foreground: 220 5% 41%;    /* #696974 */
+  /* Muted */
+  --muted: 220 14% 94%;
+  --muted-foreground: 220 5% 41%;    /* #696974 */
 
-    /* Accent */
-    --accent: 220 100% 95%;            /* light blue tint */
-    --accent-foreground: 220 100% 50%;
+  /* Accent */
+  --accent: 220 100% 95%;            /* light blue tint */
+  --accent-foreground: 220 100% 50%;
 
-    /* Destructive */
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+  /* Destructive */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
 
-    /* Borders */
-    --border: 220 13% 91%;             /* #E8EAF0 */
-    --input: 220 13% 91%;
-    --ring: 220 100% 50%;              /* #0062FF focus ring */
+  /* Borders */
+  --border: 220 13% 91%;             /* #E8EAF0 */
+  --input: 220 13% 91%;
+  --ring: 220 100% 50%;              /* #0062FF focus ring */
 
-    /* Border radius */
-    --radius: 0.625rem;                /* 10px */
-  }
+  /* Border radius */
+  --radius: 0.625rem;                /* 10px */
+}
 
-  /* Dark mode overrides (matching dark screenshot ref) */
-  .dark {
-    --background: 240 14% 10%;
-    --foreground: 0 0% 95%;
-    --card: 240 14% 13%;
-    --card-foreground: 0 0% 95%;
-    --popover: 240 14% 13%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 220 100% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 10% 18%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 240 10% 18%;
-    --muted-foreground: 220 5% 60%;
-    --accent: 240 10% 20%;
-    --accent-foreground: 0 0% 95%;
-    --destructive: 0 62% 50%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 240 10% 20%;
-    --input: 240 10% 20%;
-    --ring: 220 100% 60%;
-  }
+/* Dark mode overrides */
+.dark {
+  --background: 240 14% 10%;
+  --foreground: 0 0% 95%;
+  --card: 240 14% 13%;
+  --card-foreground: 0 0% 95%;
+  --popover: 240 14% 13%;
+  --popover-foreground: 0 0% 95%;
+  --primary: 220 100% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 10% 18%;
+  --secondary-foreground: 0 0% 95%;
+  --muted: 240 10% 18%;
+  --muted-foreground: 220 5% 60%;
+  --accent: 240 10% 20%;
+  --accent-foreground: 0 0% 95%;
+  --destructive: 0 62% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 10% 20%;
+  --input: 240 10% 20%;
+  --ring: 220 100% 60%;
 }
 
 /* ── Design tokens (semantic aliases) ─────────────────────────────────── */
