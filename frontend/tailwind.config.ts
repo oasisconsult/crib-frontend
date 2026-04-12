@@ -49,6 +49,14 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Real estate brand colours (from design system screenshots)
+        brand: {
+          blue: "#0062FF",    // Primary brand blue
+          navy: "#171725",    // Sidebar / dark nav
+          gray: "#696974",    // Secondary text
+          light: "#F1F1F5",   // Page background
+          white: "#FFFFFF",
+        },
         // Domain colours
         lease: {
           draft: "#94a3b8",
@@ -89,7 +97,9 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["Inter var", "Inter", ...fontFamily.sans],
+        sans: ["var(--font-poppins)", "var(--font-inter)", "Inter", ...fontFamily.sans],
+        heading: ["var(--font-poppins)", "Poppins", ...fontFamily.sans],
+        body: ["var(--font-inter)", "Inter", ...fontFamily.sans],
         mono: ["JetBrains Mono", ...fontFamily.mono],
       },
       keyframes: {

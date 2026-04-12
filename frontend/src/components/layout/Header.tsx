@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Search, Menu, Sun, Moon, Monitor, LogOut } from "lucide-react";
+import { Bell, Search, Menu, LogOut, Settings, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUIStore } from "@/store/useUIStore";
@@ -19,24 +19,24 @@ import {
 import { PropertySwitcher } from "./PropertySwitcher";
 
 export function Header() {
-  const { setMobileNavOpen, theme, setTheme, setCommandPaletteOpen } = useUIStore();
+  const { setMobileNavOpen, setCommandPaletteOpen } = useUIStore();
   const user = useAppStore((s) => s.user);
   const { logout } = useAuth();
 
-  const themeIcon = theme === "dark" ? Moon : theme === "light" ? Sun : Monitor;
-  const ThemeIcon = themeIcon;
-
-  const cycleTheme = () => {
-    setTheme(theme === "system" ? "light" : theme === "light" ? "dark" : "system");
-  };
-
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b bg-background/95 backdrop-blur px-4 md:px-6">
+    <header
+      className="sticky top-0 z-40 flex h-16 items-center gap-3 px-4 md:px-6 border-b"
+      style={{
+        background: "#FFFFFF",
+        borderColor: "rgba(0,0,0,0.06)",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+      }}
+    >
       {/* Mobile menu */}
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden"
+        className="md:hidden text-[#696974] hover:text-[#171725] hover:bg-[#F1F1F5]"
         onClick={() => setMobileNavOpen(true)}
         aria-label="Open navigation menu"
       >
@@ -49,65 +49,88 @@ export function Header() {
       </div>
 
       {/* Search trigger */}
-      <Button
-        variant="outline"
-        className="hidden md:flex flex-1 max-w-sm items-center gap-2 text-muted-foreground justify-start px-3 h-9"
+      <button
+        className="hidden md:flex flex-1 max-w-[380px] items-center gap-2 h-10 px-3 rounded-[8px] text-sm border transition-colors text-[#696974] cursor-pointer"
+        style={{
+          background: "#F1F1F5",
+          borderColor: "rgba(0,0,0,0.08)",
+        }}
         onClick={() => setCommandPaletteOpen(true)}
         aria-label="Open search"
       >
-        <Search className="h-4 w-4" />
-        <span className="text-sm">Search...</span>
-        <kbd className="ml-auto text-xs bg-muted rounded px-1.5 py-0.5">⌘K</kbd>
-      </Button>
+        <Search className="h-4 w-4 shrink-0" />
+        <span className="flex-1 text-left">Search properties, tenants...</span>
+        <kbd className="text-xs font-mono bg-white border border-gray-200 rounded px-1.5 py-0.5 text-[#696974]">
+          ⌘K
+        </kbd>
+      </button>
 
       <div className="ml-auto flex items-center gap-2">
-        {/* Theme toggle */}
+        {/* Notifications */}
         <Button
           variant="ghost"
           size="icon"
-          onClick={cycleTheme}
-          aria-label={`Current theme: ${theme}. Click to change`}
+          className="relative text-[#696974] hover:text-[#171725] hover:bg-[#F1F1F5] h-9 w-9 rounded-[8px]"
+          aria-label="Notifications"
+          asChild
         >
-          <ThemeIcon className="h-4.5 w-4.5" />
-        </Button>
-
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" aria-label="Notifications" asChild>
           <Link href="/notifications">
-            <Bell className="h-4.5 w-4.5" />
+            <Bell className="h-5 w-5" />
+            {/* Notification dot */}
+            <span
+              className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full border-2 border-white"
+              style={{ background: "#FC5A5A" }}
+            />
           </Link>
         </Button>
 
         {/* User menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-9 w-9 rounded-full p-0" aria-label="User menu">
-              <Avatar className="h-8 w-8">
+            <button
+              className="flex items-center gap-2 h-9 px-2 rounded-[8px] hover:bg-[#F1F1F5] transition-colors"
+              aria-label="User menu"
+            >
+              <Avatar className="h-7 w-7">
                 <AvatarImage src={user?.avatar} alt={user?.name} />
-                <AvatarFallback>{getInitials(user?.name ?? "U")}</AvatarFallback>
+                <AvatarFallback
+                  className="text-xs font-semibold text-white"
+                  style={{ background: "#0062FF" }}
+                >
+                  {getInitials(user?.name ?? "U")}
+                </AvatarFallback>
               </Avatar>
-            </Button>
+              <div className="hidden md:flex flex-col items-start">
+                <span className="text-sm font-semibold text-[#171725] leading-tight">
+                  {user?.name ?? "User"}
+                </span>
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 text-[#696974] hidden md:block" />
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent align="end" className="w-56 rounded-xl border-[rgba(0,0,0,0.08)] shadow-lg">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-0.5">
-                <span className="font-medium">{user?.name ?? "User"}</span>
-                <span className="text-xs text-muted-foreground font-normal">{user?.email}</span>
+                <span className="font-semibold text-sm text-[#171725]">{user?.name ?? "User"}</span>
+                <span className="text-xs text-[#696974] font-normal">{user?.email}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/settings">Settings</Link>
+              <Link href="/settings" className="gap-2 cursor-pointer">
+                <Settings className="h-4 w-4 text-[#696974]" />
+                Settings
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive cursor-pointer"
+              className="gap-2 text-red-500 focus:text-red-500 cursor-pointer"
               onSelect={(e) => {
                 e.preventDefault();
                 logout();
               }}
             >
-              <LogOut className="mr-2 h-4 w-4" />
+              <LogOut className="h-4 w-4" />
               Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
