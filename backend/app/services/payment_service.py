@@ -53,7 +53,7 @@ from app.services.payment_allocation_service import (
     allocate_payment,
     reverse_allocations,
 )
-from app.services.wallet_service import credit_wallet
+from app.services.wallet_service import credit_wallet, debit_wallet
 
 
 # ── Serialisers ────────────────────────────────────────────────────────────────
@@ -96,6 +96,10 @@ def _payment_out(p: Payment) -> PaymentOut:
         status=p.status if isinstance(p.status, str) else p.status.value,
         paid_at=p.paid_at.isoformat() if p.paid_at else None,
         notes=p.notes,
+        failure_reason=p.failure_reason,
+        retry_count=p.retry_count or 0,
+        predicted_failure_score=p.predicted_failure_score,
+        recommended_channel=p.recommended_channel,
         created_at=p.created_at.isoformat(),
         updated_at=p.updated_at.isoformat(),
     )
@@ -395,7 +399,7 @@ async def create_payment(
         method=body.method,
         reference=body.reference,
         idempotency_key=body.idempotency_key,
-        status=PaymentStatus.pending,
+        status=PaymentStatus.initiated,   # v4: all payments start at initiated
         paid_at=body.paid_at or now,
         notes=body.notes,
     )
@@ -470,17 +474,23 @@ async def confirm_payment(
     lease = await _get_lease_checked(lease_id, org_id, db)
     p = await _get_payment(payment_id, lease_id, db)
 
-    if p.status != PaymentStatus.pending:
+    from app.services.payment_state_machine import can_be_confirmed, advance_to_completed, is_success
+    current = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
+    if is_success(current):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Payment is already confirmed (status: '{p.status}')",
+        )
+    if not can_be_confirmed(current):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot confirm a payment with status '{p.status}'",
         )
 
-    # 1. Mark confirmed
-    p.status = PaymentStatus.confirmed
+    # 1. Set paid_at before running state machine transitions
     if not p.paid_at:
         p.paid_at = datetime.now(timezone.utc)
-    await db.flush()
+        await db.flush()
 
     # 2. Handle deposit payments — credit amount_held directly
     if p.category == PaymentCategory.deposit:
@@ -539,6 +549,9 @@ async def confirm_payment(
             description=f"Payment confirmed via {p.method}",
         )
 
+    # Advance payment through reconciled → allocated → completed via state machine
+    await advance_to_completed(p, db)
+
     await db.refresh(p, attribute_names=["status", "paid_at", "updated_at"])
 
     # ── Onboarding side-effect: advance lease if all onboarding payments confirmed ──
@@ -577,21 +590,28 @@ async def refund_payment(
       2. Reverse all PaymentAllocation rows (decrement schedule.amount_paid,
          revert paid schedules to pending).
       3. If it was a deposit payment: decrement deposit.amount_held.
-      4. Write a debit ledger entry (reversal).
+      4. Reverse any overpayment wallet credit that was applied at confirm time.
+      5. Write a debit ledger entry (reversal).
     """
-    await _get_lease_checked(lease_id, org_id, db)
+    lease = await _get_lease_checked(lease_id, org_id, db)
     p = await _get_payment(payment_id, lease_id, db)
 
-    if p.status != PaymentStatus.confirmed:
+    from app.services.payment_state_machine import can_be_refunded, transition as sm_transition
+    current = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
+    if not can_be_refunded(current):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only confirmed payments can be refunded",
+            detail=f"Only completed payments can be refunded (current: '{p.status}')",
         )
 
-    # 1. Mark refunded
-    p.status = PaymentStatus.refunded
+    # 1. Mark refunded via state machine
+    await sm_transition(p, PaymentStatus.refunded, db, reason="Refund requested", actor="refund_payment")
 
-    # 2. Reverse schedule allocations
+    # 2. Reverse schedule allocations; returns how much was NOT allocated
+    #    (i.e. the overpayment that was credited to the wallet at confirm time)
+    from app.services.payment_allocation_service import get_overpayment_for_payment
+    overpayment = await get_overpayment_for_payment(db, payment_id=p.id)
+
     await reverse_allocations(db, payment_id=p.id, lease_id=lease_id)
 
     # 3. Reverse deposit credit
@@ -603,7 +623,34 @@ async def refund_payment(
             deposit.amount_held = max(0.0, float(deposit.amount_held) - float(p.amount))
             await db.flush()
 
-    # 4. Debit ledger entry (reversal)
+    # 4. Reverse wallet overpayment credit (if any was applied at confirm time)
+    if overpayment > 0 and lease.tenant_id:
+        from app.models.wallet import TenantWallet
+        wallet = await db.scalar(
+            select(TenantWallet).where(TenantWallet.tenant_id == lease.tenant_id)
+        )
+        if wallet and float(wallet.balance) >= overpayment:
+            await debit_wallet(
+                db,
+                tenant_id=lease.tenant_id,
+                organisation_id=org_id,
+                amount=overpayment,
+                reference_type="refund_reversal",
+                reference_id=p.id,
+                description=f"Wallet overpayment reversal for refunded payment {p.id}",
+            )
+            await create_ledger_entry(
+                db,
+                organisation_id=org_id,
+                lease_id=lease_id,
+                entry_type="debit",
+                amount=overpayment,
+                reference_type="refund_reversal",
+                reference_id=p.id,
+                description=f"Wallet overpayment reversed on refund of payment {p.id}",
+            )
+
+    # 5. Debit ledger entry (full payment reversal)
     await create_ledger_entry(
         db,
         organisation_id=org_id,
@@ -994,19 +1041,32 @@ async def confirm_payment_by_org(
     )
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
-    if p.status != PaymentStatus.pending:
+
+    from app.services.payment_state_machine import can_be_confirmed, advance_to_completed, is_success as _is_success
+    _current = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
+    if _is_success(_current):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Payment is already confirmed (status: '{p.status}')",
+        )
+    if not can_be_confirmed(_current):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot confirm a payment with status '{p.status}'",
         )
-    p.status = PaymentStatus.confirmed
+
+    if not p.paid_at:
+        p.paid_at = datetime.now(timezone.utc)
+        await db.flush()
+
     if p.rent_schedule_id:
         schedule = await _get_schedule(p.rent_schedule_id, p.lease_id, db)
         schedule.amount_paid = float(schedule.amount_paid) + float(p.amount)
         if float(schedule.amount_paid) >= float(schedule.amount_due) + float(schedule.late_fee_applied):
             schedule.status = RentScheduleStatus.paid
             schedule.paid_at = datetime.now(timezone.utc)
-    await db.flush()
+
+    await advance_to_completed(p, db)
     await db.refresh(p, attribute_names=["status", "updated_at"])
     return _payment_out(p)
 
@@ -1021,12 +1081,16 @@ async def refund_payment_by_org(
     )
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
-    if p.status != PaymentStatus.confirmed:
+
+    from app.services.payment_state_machine import can_be_refunded as _can_refund, transition as _sm_transition
+    _cur = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
+    if not _can_refund(_cur):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only confirmed payments can be refunded",
+            detail=f"Only completed payments can be refunded (current: '{p.status}')",
         )
-    p.status = PaymentStatus.refunded
+    await _sm_transition(p, PaymentStatus.refunded, db, reason="Refund requested", actor="refund_payment_by_org")
+
     if p.rent_schedule_id:
         schedule = await _get_schedule(p.rent_schedule_id, p.lease_id, db)
         schedule.amount_paid = max(0.0, float(schedule.amount_paid) - float(p.amount))

@@ -57,13 +57,21 @@ export default function PaymentsPage() {
 
   const allPayments = data?.data ?? [];
 
+  const IN_PROGRESS_STATES = new Set([
+    "initiated", "predicted", "routed", "pending",
+    "reconciled", "allocated", "retry_scheduled",
+  ]);
+  const SUCCESS_STATES = new Set(["confirmed", "completed"]);
+  const FAILED_STATES = new Set(["failed", "permanently_failed", "predicted_failure"]);
+
   const payments = allPayments.filter((p) => {
     const state = p.state as string;
     const tabMatch =
       tab === "all" ||
-      (tab === "pending" && state === "pending") ||
-      (tab === "confirmed" && state === "confirmed") ||
-      (tab === "failed" && state === "failed");
+      (tab === "pending"   && IN_PROGRESS_STATES.has(state)) ||
+      (tab === "confirmed" && SUCCESS_STATES.has(state)) ||
+      (tab === "failed"    && FAILED_STATES.has(state)) ||
+      (tab === "refunded"  && state === "refunded");
     const searchMatch =
       !search || (p.reference ?? "").toLowerCase().includes(search.toLowerCase());
     return tabMatch && searchMatch;

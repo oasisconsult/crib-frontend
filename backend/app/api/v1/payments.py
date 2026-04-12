@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_org_access
 from app.core.database import get_db
 from app.schemas.payment import (
+    ChannelCostEstimateOut,
     DepositOut,
     DepositReturn,
     LateFeeOut,
@@ -40,6 +41,8 @@ from app.schemas.payment import (
     LedgerPageOut,
     PaymentAllocationOut,
     PaymentCreate,
+    PaymentDecisionOut,
+    PaymentEstimateRequest,
     PaymentOut,
     RentScheduleOut,
 )
@@ -212,6 +215,71 @@ async def list_payment_allocations(
         )
         for a in allocations
     ]
+
+
+# ── Adaptive payment endpoints (v4 skill) ─────────────────────────────────────
+
+# NOTE: /payments/estimate must be registered BEFORE /{pid} to avoid UUID matching.
+
+@router.post(
+    "/{lease_id}/payments/estimate",
+    response_model=PaymentDecisionOut,
+)
+async def estimate_payment(
+    lease_id: uuid.UUID,
+    body: PaymentEstimateRequest,
+    current_user=_read,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return cost estimates and recommended channel for a payment.
+
+    Accepts an optional tenant_id to enable per-tenant failure prediction.
+    Safe to call before creating a payment — no state is mutated.
+    """
+    from app.services.adaptive_payment_service import recommend_channel
+
+    tenant_id = uuid.UUID(body.tenant_id) if body.tenant_id else None
+    decision = await recommend_channel(
+        amount=body.amount,
+        org_id=current_user.org_id,
+        db=db,
+        tenant_id=tenant_id,
+        currency=body.currency,
+    )
+    return PaymentDecisionOut(
+        recommended_channel=decision["recommended_channel"],
+        predicted_failure_score=decision["predicted_failure_score"],
+        retry_strategy=decision["retry_strategy"],
+        cost_estimates=[
+            ChannelCostEstimateOut(**e) for e in decision["cost_estimates"]
+        ],
+        explain=decision["explain"],
+    )
+
+
+@router.post(
+    "/{lease_id}/payments/{payment_id}/retry",
+    response_model=PaymentOut,
+)
+async def retry_payment(
+    lease_id: uuid.UUID,
+    payment_id: uuid.UUID,
+    current_user=_write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retry a failed payment.
+
+    Resets status → pending, increments retry_count, clears failure_reason.
+    Max retries controlled by org.settings.payments.maxRetries (default 3).
+    After this call, confirm the payment to process it.
+    """
+    from app.services.adaptive_payment_service import retry_payment as svc_retry
+    from app.services.payment_service import _payment_out
+
+    payment = await svc_retry(payment_id, lease_id, current_user.org_id, db)
+    return _payment_out(payment)
 
 
 # ── Late Fees ──────────────────────────────────────────────────────────────────

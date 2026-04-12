@@ -183,7 +183,7 @@ class TestPayments:
         assert resp.status_code == 201
         body = resp.json()
         assert body["amount"] == 500_000.0
-        assert body["status"] == "pending"
+        assert body["status"] == "initiated"  # v4: all payments start at initiated
 
     async def test_create_payment_idempotency(self, client: AsyncClient, active_lease, schedule):
         payload = {
@@ -234,7 +234,7 @@ class TestPayments:
             headers=auth_headers("manager-1"),
         )
         assert resp.status_code == 200
-        assert resp.json()["status"] == "confirmed"
+        assert resp.json()["status"] == "completed"  # v4: confirm advances to completed
 
         # Verify schedule is now paid
         await db_session.refresh(schedule, attribute_names=["status", "amount_paid"])

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { CreditCard, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,10 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useSubmitOnboardingPayments } from "@/hooks/useOnboardingFlow";
+import { usePaymentEstimate } from "@/hooks/usePayments";
+import { CostComparisonCard } from "@/components/payments/CostComparisonCard";
 import type { AgreementPreview, OnboardingPaymentItem, OnboardingPaymentMethod } from "@/types/onboarding";
 
 interface Props {
   token: string;
+  leaseId: string;
+  tenantId?: string;
   preview: AgreementPreview;
   onNext: () => void;
   onBack: () => void;
@@ -31,9 +35,18 @@ function useStableIdempotencyKeys() {
   return { depositKey, rentKey };
 }
 
-export function PaymentStep({ token, preview, onNext, onBack }: Props) {
+export function PaymentStep({ token, leaseId, tenantId, preview, onNext, onBack }: Props) {
   const [method, setMethod] = useState<OnboardingPaymentMethod>("mobile_money_mtn");
   const [reference, setReference] = useState("");
+  const [showEstimate, setShowEstimate] = useState(false);
+
+  // Fetch cost estimate for the total due amount
+  const { data: decision } = usePaymentEstimate(
+    leaseId,
+    preview.totalDueAtOnboarding > 0
+      ? { amount: preview.totalDueAtOnboarding, currency: preview.currency, tenantId }
+      : null,
+  );
   const { mutate: submitPayments, isPending, isError, error } = useSubmitOnboardingPayments(token);
   const { depositKey, rentKey } = useStableIdempotencyKeys();
 
@@ -121,6 +134,25 @@ export function PaymentStep({ token, preview, onNext, onBack }: Props) {
             <span className="text-emerald-700 dark:text-emerald-400">{fmt(preview.totalDueAtOnboarding)}</span>
           </div>
         </div>
+
+        {/* Adaptive cost estimate (collapsed by default) */}
+        {decision && (
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-medium hover:underline"
+              onClick={() => setShowEstimate((v) => !v)}
+            >
+              💡 Recommended: {decision.recommendedChannel.replace(/_/g, " ")}
+              {" "}· {showEstimate ? "Hide" : "Compare channel costs"}
+            </button>
+            {showEstimate && (
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <CostComparisonCard decision={decision} currency={preview.currency} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Payment method */}
         <div className="space-y-2">

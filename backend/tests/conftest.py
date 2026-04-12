@@ -33,6 +33,23 @@ _db_base, _db_sep, _db_name = settings.database_url.rpartition("/")
 TEST_DATABASE_URL = f"{_db_base}/crib_test"
 
 
+# ── Event loop (pytest-asyncio 0.21.x requires session-scoped override) ───────
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Provide a single event loop for the entire test session.
+
+    Required because test_engine is session-scoped: pytest-asyncio 0.21.x
+    defaults the event_loop fixture to function scope, which causes a
+    ScopeMismatch when session-scoped async fixtures try to use it.
+    """
+    import asyncio
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
+    yield loop
+    loop.close()
+
+
 # ── Database ──────────────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture(scope="session")
@@ -62,7 +79,12 @@ async def test_engine():
             "DO $$ BEGIN CREATE TYPE rent_schedule_status_enum AS ENUM ('pending','paid','overdue','waived'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE payment_category_enum AS ENUM ('rent','deposit','late_fee','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE payment_method_enum AS ENUM ('cash','bank_transfer','mobile_money_mtn','mobile_money_airtel','other'); EXCEPTION WHEN duplicate_object THEN null; END $$",
-            "DO $$ BEGIN CREATE TYPE payment_status_enum AS ENUM ('pending','confirmed','failed','refunded'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            # v4 state machine values added alongside legacy values
+            "DO $$ BEGIN CREATE TYPE payment_status_enum AS ENUM ("
+            "'pending','confirmed','failed','refunded',"
+            "'initiated','predicted','routed','reconciled','allocated','completed',"
+            "'predicted_failure','retry_scheduled','permanently_failed'"
+            "); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE deposit_status_enum AS ENUM ('held','partially_returned','fully_returned','forfeited'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE inspection_type_enum AS ENUM ('move_in','move_out','routine','maintenance','complaint'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE inspection_state_enum AS ENUM ('scheduled','in_progress','completed','approved','failed','cancelled'); EXCEPTION WHEN duplicate_object THEN null; END $$",

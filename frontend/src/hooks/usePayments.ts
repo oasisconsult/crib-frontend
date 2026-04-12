@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { paymentsApi, analyticsApi } from "@/services/api/payments";
 import { toast } from "@/store/useUIStore";
-import type { Payment, QueryParams } from "@/types";
+import type { Payment, PaymentDecision, PaymentEstimateRequest, QueryParams } from "@/types";
 
 export function usePayments(params?: QueryParams) {
   return useQuery({
@@ -37,7 +37,10 @@ export function useReconcilePayment() {
 export function useRentSchedule(leaseId: string) {
   return useQuery({
     queryKey: queryKeys.payments.rentSchedule(leaseId),
-    queryFn: () => paymentsApi.listRentSchedules({ leaseId }),
+    queryFn: () =>
+      paymentsApi.listRentSchedules({
+        filters: [{ field: "leaseId", operator: "eq", value: leaseId }],
+      }),
     enabled: !!leaseId,
   });
 }
@@ -82,8 +85,8 @@ export function useRecordPayment() {
 export function useWaiveLateFee() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      paymentsApi.waiveLateFee(id, reason),
+    mutationFn: ({ leaseId, id, reason }: { leaseId: string; id: string; reason: string }) =>
+      paymentsApi.waiveLateFee(leaseId, id, reason),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.payments.lateFees() });
       toast.success("Late fee waived");
@@ -170,5 +173,42 @@ export function useCashFlowData(months = 6) {
   return useQuery({
     queryKey: queryKeys_dashboard.cashFlow(months),
     queryFn: () => analyticsApi.getCashFlow(months),
+  });
+}
+
+// ── Adaptive payment hooks (v4 skill) ─────────────────────────────────────────
+
+/**
+ * Get cost estimates + recommended channel for a payment before initiating it.
+ * Safe to call at any time — does not mutate state.
+ */
+export function usePaymentEstimate(
+  leaseId: string,
+  request: PaymentEstimateRequest | null,
+) {
+  return useQuery<PaymentDecision>({
+    queryKey: ["payments", leaseId, "estimate", request],
+    queryFn: () => paymentsApi.estimate(leaseId, request!),
+    enabled: !!leaseId && !!request && request.amount > 0,
+    staleTime: 60_000,   // estimates are stable for 1 min
+    retry: false,        // don't retry — UI should degrade gracefully
+  });
+}
+
+/**
+ * Retry a failed payment.
+ * Resets the payment to pending and increments retry_count.
+ * After success, the caller should confirm the payment.
+ */
+export function useRetryPayment(leaseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (paymentId: string) => paymentsApi.retry(leaseId, paymentId),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: queryKeys.payments.detail(updated.id) });
+      qc.invalidateQueries({ queryKey: queryKeys.payments.all() });
+      toast.success("Payment queued for retry");
+    },
+    onError: () => toast.error("Failed to retry payment"),
   });
 }

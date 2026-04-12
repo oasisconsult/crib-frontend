@@ -257,26 +257,61 @@ async def _send_rent_reminders_async() -> dict:
                 schedules = result.scalars().all()
 
                 for s in schedules:
-                    org_id = str(s.organisation_id)
-                    if org_id not in org_cache:
+                    org_id_str = str(s.organisation_id)
+                    if org_id_str not in org_cache:
                         org = await db.scalar(
                             select(Organisation).where(Organisation.id == s.organisation_id)
                         )
                         payment_settings = (org.settings or {}).get("payments", {}) if org else {}
-                        org_cache[org_id] = payment_settings.get("reminderDaysBefore", 3)
+                        org_cache[org_id_str] = payment_settings.get("reminderDaysBefore", 3)
 
-                    days_before = org_cache[org_id]
+                    days_before = org_cache[org_id_str]
                     reminder_date = s.due_date - timedelta(days=days_before)
 
                     if reminder_date == today:
-                        # Notification logic will be wired in Sprint 6 (notifications domain)
                         log.info(
                             "rent_reminder_due",
                             lease_id=str(s.lease_id),
                             due_date=str(s.due_date),
                             schedule_id=str(s.id),
                         )
+                        # Resolve tenant details for the notification
+                        from app.models.lease import Lease
+                        from app.models.tenant import Tenant
+                        from app.models.notification import Notification, NotificationState
+
+                        lease = await db.scalar(
+                            select(Lease).where(Lease.id == s.lease_id)
+                        )
+                        tenant = None
+                        if lease and lease.tenant_id:
+                            tenant = await db.scalar(
+                                select(Tenant).where(Tenant.id == lease.tenant_id)
+                            )
+
+                        now_utc = datetime.now(timezone.utc)
+                        notif = Notification(
+                            organisation_id=s.organisation_id,
+                            tenant_id=lease.tenant_id if lease else None,
+                            channel="in_app",
+                            trigger="rent_due",
+                            recipient_name=f"{tenant.first_name} {tenant.last_name}" if tenant else "Tenant",
+                            recipient_email=tenant.email if tenant else None,
+                            recipient_phone=tenant.phone if tenant else None,
+                            subject="Rent due reminder",
+                            body=(
+                                f"Your rent of {float(s.amount_due):,.0f} is due on {s.due_date}. "
+                                f"Please ensure payment is made on time to avoid late fees."
+                            ),
+                            state=NotificationState.queued,
+                            queued_at=now_utc,
+                            lease_id=s.lease_id,
+                            created_at=now_utc,
+                        )
+                        db.add(notif)
                         sent += 1
+
+                await db.flush()
 
     finally:
         await engine.dispose()
@@ -342,7 +377,7 @@ async def _poll_mobile_money_async(provider_name: str) -> dict:
                 pname = ProviderName(provider_name)
                 updated = await sync_pending_transactions(db, provider_name=pname)
 
-                # Now match any newly-received transactions
+                # Match any newly-received transactions
                 from sqlalchemy import select
                 result = await db.execute(
                     select(MobileMoneyTransaction).where(
@@ -355,6 +390,20 @@ async def _poll_mobile_money_async(provider_name: str) -> dict:
                     payment = await match_transaction(db, txn)
                     if payment:
                         matched += 1
+
+                # Propagate failed/expired provider status → Payment.failed
+                from app.integrations.payments.service import _propagate_provider_failure
+                failed_result = await db.execute(
+                    select(MobileMoneyTransaction).where(
+                        MobileMoneyTransaction.provider == provider_name,
+                        MobileMoneyTransaction.status.in_(["failed", "expired"]),
+                        MobileMoneyTransaction.reference_id.isnot(None),
+                    )
+                )
+                for txn in failed_result.scalars().all():
+                    await _propagate_provider_failure(
+                        db, txn, reason=f"{provider_name} transaction {txn.status}"
+                    )
     finally:
         await engine.dispose()
 

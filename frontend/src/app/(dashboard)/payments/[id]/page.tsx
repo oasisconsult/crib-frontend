@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CreditCard,
-  Banknote,
   Calendar,
   FileText,
   CheckCircle2,
   Clock,
   AlertTriangle,
-  Receipt,
+  RotateCcw,
   Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,6 @@ import { usePayment, useReconcilePayment } from "@/hooks/usePayments";
 import { useLease } from "@/hooks/useLeases";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
-import type { PaymentState } from "@/types/states";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -33,10 +31,22 @@ interface Props {
 // ── State config ──────────────────────────────────────────────────────────────
 
 const STATE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
-  pending:     { label: "Pending",     color: "text-amber-700",   bg: "bg-amber-100 dark:bg-amber-950/40",   icon: Clock         },
-  confirmed:   { label: "Confirmed",   color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-950/40", icon: CheckCircle2  },
-  failed:      { label: "Failed",      color: "text-red-700",     bg: "bg-red-100 dark:bg-red-950/40",       icon: AlertTriangle },
-  refunded:    { label: "Refunded",    color: "text-orange-700",  bg: "bg-orange-100 dark:bg-orange-950/40", icon: Receipt       },
+  // v4 happy path
+  initiated:          { label: "Initiated",      color: "text-slate-600",   bg: "bg-slate-100 dark:bg-slate-900/40",    icon: Clock         },
+  predicted:          { label: "Analysed",        color: "text-indigo-700",  bg: "bg-indigo-100 dark:bg-indigo-950/40",  icon: Clock         },
+  routed:             { label: "Routed",          color: "text-blue-700",    bg: "bg-blue-100 dark:bg-blue-950/40",      icon: Clock         },
+  pending:            { label: "Processing",      color: "text-amber-700",   bg: "bg-amber-100 dark:bg-amber-950/40",    icon: Clock         },
+  reconciled:         { label: "Reconciled",      color: "text-teal-700",    bg: "bg-teal-100 dark:bg-teal-950/40",      icon: CheckCircle2  },
+  allocated:          { label: "Allocated",       color: "text-violet-700",  bg: "bg-violet-100 dark:bg-violet-950/40",  icon: CheckCircle2  },
+  completed:          { label: "Completed",       color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-950/40", icon: CheckCircle2  },
+  // v4 failure paths
+  predicted_failure:  { label: "Blocked",         color: "text-orange-700",  bg: "bg-orange-100 dark:bg-orange-950/40",  icon: AlertTriangle },
+  retry_scheduled:    { label: "Retry Scheduled", color: "text-amber-700",   bg: "bg-amber-100 dark:bg-amber-950/40",    icon: Clock         },
+  permanently_failed: { label: "Failed",          color: "text-red-700",     bg: "bg-red-100 dark:bg-red-950/40",        icon: AlertTriangle },
+  // legacy
+  confirmed:          { label: "Confirmed",       color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-950/40", icon: CheckCircle2  },
+  failed:             { label: "Failed",          color: "text-red-700",     bg: "bg-red-100 dark:bg-red-950/40",        icon: AlertTriangle },
+  refunded:           { label: "Refunded",        color: "text-orange-700",  bg: "bg-orange-100 dark:bg-orange-950/40",  icon: RotateCcw     },
 };
 
 // ── Method label ──────────────────────────────────────────────────────────────
@@ -100,7 +110,9 @@ export default function PaymentDetailPage({ params }: Props) {
 
   const stateCfg    = STATE_CONFIG[payment.state] ?? STATE_CONFIG.pending;
   const StateIcon   = stateCfg.icon;
-  const canReconcile = payment.state === "pending";
+  const IN_PROGRESS = new Set(["initiated", "predicted", "routed", "pending", "reconciled", "allocated", "retry_scheduled"]);
+  const SUCCESS_STATES = new Set(["confirmed", "completed"]);
+  const canReconcile = IN_PROGRESS.has(payment.state as string);
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -168,7 +180,7 @@ export default function PaymentDetailPage({ params }: Props) {
               <span className="text-muted-foreground">Reference</span>
               <span className="font-mono text-xs flex items-center">
                 {payment.reference}
-                <CopyButton value={payment.reference} />
+                <CopyButton value={payment.reference ?? ""} />
               </span>
             </div>
             <Separator />
@@ -235,9 +247,9 @@ export default function PaymentDetailPage({ params }: Props) {
                 {[
                   { label: "Created",    done: true },
                   { label: "Paid",       done: !!payment.paidAt },
-                  { label: "Confirmed",  done: payment.state === "confirmed" },
+                  { label: "Completed",  done: SUCCESS_STATES.has(payment.state as string) },
                   { label: "Refunded",   done: payment.state === "refunded" },
-                ].map((s, i, arr) => (
+                ].map((s, i) => (
                   <div key={s.label} className="flex items-center gap-1">
                     {i > 0 && <div className={cn("h-px w-4 shrink-0", s.done ? "bg-emerald-400" : "bg-border")} />}
                     <div className="flex flex-col items-center gap-0.5">

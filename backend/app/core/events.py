@@ -16,9 +16,11 @@ Consumers read from these streams via XREADGROUP and acknowledge with XACK.
 Stream retention is capped at MAXLEN 50_000 (approximate, using ~ trimming).
 
 Events published by the payment domain:
-  payment.confirmed   — a Payment moved to confirmed status
-  payment.refunded    — a Payment moved to refunded status
-  payment.failed      — a Payment moved to failed status
+  payment.confirmed       — a Payment moved to confirmed status
+  payment.refunded        — a Payment moved to refunded status
+  payment.failed          — a Payment moved to failed/permanently_failed status
+  payment.state_changed   — v4 state machine transition (any → any)
+  payment.retry_scheduled — a Payment queued for retry
   mobile_money.received   — MobileMoneyTransaction status → received
   mobile_money.matched    — MobileMoneyTransaction linked to a Payment
   mobile_money.unmatched  — MobileMoneyTransaction could not be matched
@@ -204,6 +206,75 @@ async def emit_wallet_credited(
             "amount": amount,
             "new_balance": new_balance,
             "reference_type": reference_type,
+        },
+        organisation_id=organisation_id,
+    )
+
+
+async def emit_payment_failed(
+    *,
+    payment_id: str,
+    lease_id: str,
+    organisation_id: str,
+    amount: float,
+    failure_reason: str,
+) -> None:
+    await publish_event(
+        STREAM_PAYMENTS,
+        "payment.failed",
+        {
+            "payment_id": payment_id,
+            "lease_id": lease_id,
+            "amount": amount,
+            "failure_reason": failure_reason,
+        },
+        organisation_id=organisation_id,
+    )
+
+
+async def emit_payment_retry_scheduled(
+    *,
+    payment_id: str,
+    lease_id: str,
+    organisation_id: str,
+    retry_count: int,
+    predicted_failure_score: float,
+) -> None:
+    await publish_event(
+        STREAM_PAYMENTS,
+        "payment.retry_scheduled",
+        {
+            "payment_id": payment_id,
+            "lease_id": lease_id,
+            "retry_count": retry_count,
+            "predicted_failure_score": predicted_failure_score,
+        },
+        organisation_id=organisation_id,
+    )
+
+
+async def emit_payment_state_changed(
+    *,
+    payment_id: str,
+    lease_id: str,
+    organisation_id: str,
+    from_state: str,
+    to_state: str,
+    reason: str | None = None,
+) -> None:
+    """
+    Emitted by the v4 state machine on every validated transition.
+    Downstream consumers can filter on `to_state` for specific reactions.
+    """
+    await publish_event(
+        STREAM_PAYMENTS,
+        "payment.state_changed",
+        {
+            "payment_id": payment_id,
+            "lease_id": lease_id,
+            "from_state": from_state,
+            "to_state": to_state,
+            "reason": reason,
         },
         organisation_id=organisation_id,
     )

@@ -87,11 +87,12 @@ async def get_dashboard_stats(org_id: uuid.UUID, db: AsyncSession) -> dict:
     )
     tenants_row = tenants_result.one()
 
-    # Monthly revenue (confirmed payments this calendar month)
+    # Monthly revenue (confirmed/completed payments this calendar month)
+    _success_statuses = [PaymentStatus.confirmed, PaymentStatus.completed]
     monthly_rev = await db.scalar(
         select(func.sum(Payment.amount)).where(
             Payment.organisation_id == org_id,
-            Payment.status == PaymentStatus.confirmed,
+            Payment.status.in_(_success_statuses),
             func.date_trunc("month", Payment.paid_at) == func.date_trunc(
                 "month", func.now()
             ),
@@ -120,11 +121,20 @@ async def get_dashboard_stats(org_id: uuid.UUID, db: AsyncSession) -> dict:
         if (confirmed_mtd + overdue_total) > 0 else 100.0
     )
 
-    # Pending payments (pending payment records)
+    # In-progress payments (all non-terminal states)
+    _in_progress_statuses = [
+        PaymentStatus.initiated,
+        PaymentStatus.predicted,
+        PaymentStatus.routed,
+        PaymentStatus.pending,
+        PaymentStatus.reconciled,
+        PaymentStatus.allocated,
+        PaymentStatus.retry_scheduled,
+    ]
     pending_payments = await db.scalar(
         select(func.count(Payment.id)).where(
             Payment.organisation_id == org_id,
-            Payment.status == PaymentStatus.pending,
+            Payment.status.in_(_in_progress_statuses),
         )
     ) or 0
 
@@ -225,11 +235,11 @@ async def get_revenue_series(
             )
         ) or 0
 
-        # Collected = confirmed payments in that month
+        # Collected = confirmed/completed payments in that month
         collected = await db.scalar(
             select(func.coalesce(func.sum(Payment.amount), 0)).where(
                 Payment.organisation_id == org_id,
-                Payment.status == PaymentStatus.confirmed,
+                Payment.status.in_([PaymentStatus.confirmed, PaymentStatus.completed]),
                 func.extract("year", Payment.paid_at) == year,
                 func.extract("month", Payment.paid_at) == month,
             )
@@ -269,7 +279,7 @@ async def get_cashflow_series(
         inflow = await db.scalar(
             select(func.coalesce(func.sum(Payment.amount), 0)).where(
                 Payment.organisation_id == org_id,
-                Payment.status == PaymentStatus.confirmed,
+                Payment.status.in_([PaymentStatus.confirmed, PaymentStatus.completed]),
                 func.extract("year", Payment.paid_at) == year,
                 func.extract("month", Payment.paid_at) == month,
             )

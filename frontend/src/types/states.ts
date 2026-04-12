@@ -116,27 +116,56 @@ export const RENT_TRANSITIONS: Record<
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
 export type PaymentState =
-  | "pending"
+  // v4 happy path
+  | "initiated"
+  | "predicted"
+  | "routed"
+  | "pending"        // shared: awaiting provider confirmation
+  | "reconciled"
+  | "allocated"
+  | "completed"      // v4 terminal success
+  // v4 failure paths
+  | "predicted_failure"
+  | "retry_scheduled"
+  | "permanently_failed"
+  // legacy (kept for backward compat)
   | "confirmed"
   | "failed"
   | "refunded";
 
 export type PaymentEvent =
   | "PAYMENT_RECORDED"
+  | "PAYMENT_PREDICTED"
+  | "PAYMENT_ROUTED"
   | "PAYMENT_PROCESSING"
   | "PAYMENT_CONFIRMED"
   | "PAYMENT_FAILED"
   | "PAYMENT_RECONCILED"
+  | "PAYMENT_ALLOCATED"
+  | "PAYMENT_COMPLETED"
+  | "PAYMENT_RETRY_SCHEDULED"
+  | "PAYMENT_PERMANENTLY_FAILED"
+  | "PAYMENT_PREDICTION_BLOCKED"
   | "PAYMENT_REFUNDED";
 
 export const PAYMENT_TRANSITIONS: Record<
   PaymentState,
   Partial<Record<PaymentEvent, PaymentState>>
 > = {
-  pending: { PAYMENT_CONFIRMED: "confirmed", PAYMENT_FAILED: "failed" },
-  confirmed: { PAYMENT_REFUNDED: "refunded" },
-  failed: { PAYMENT_PROCESSING: "pending" }, // retry
-  refunded: {},
+  initiated:          { PAYMENT_PREDICTED: "predicted", PAYMENT_ROUTED: "routed", PAYMENT_PROCESSING: "pending", PAYMENT_PREDICTION_BLOCKED: "predicted_failure" },
+  predicted:          { PAYMENT_ROUTED: "routed", PAYMENT_PROCESSING: "pending", PAYMENT_PREDICTION_BLOCKED: "predicted_failure" },
+  routed:             { PAYMENT_PROCESSING: "pending", PAYMENT_RETRY_SCHEDULED: "retry_scheduled" },
+  pending:            { PAYMENT_RECONCILED: "reconciled", PAYMENT_RETRY_SCHEDULED: "retry_scheduled", PAYMENT_PERMANENTLY_FAILED: "permanently_failed", PAYMENT_CONFIRMED: "confirmed", PAYMENT_COMPLETED: "completed" },
+  reconciled:         { PAYMENT_ALLOCATED: "allocated", PAYMENT_PERMANENTLY_FAILED: "permanently_failed" },
+  allocated:          { PAYMENT_COMPLETED: "completed", PAYMENT_PERMANENTLY_FAILED: "permanently_failed" },
+  completed:          { PAYMENT_REFUNDED: "refunded" },
+  predicted_failure:  { PAYMENT_ROUTED: "routed" },
+  retry_scheduled:    { PAYMENT_ROUTED: "routed", PAYMENT_PROCESSING: "pending", PAYMENT_PERMANENTLY_FAILED: "permanently_failed" },
+  permanently_failed: {},
+  // legacy
+  confirmed:          { PAYMENT_REFUNDED: "refunded", PAYMENT_COMPLETED: "completed" },
+  failed:             { PAYMENT_RETRY_SCHEDULED: "retry_scheduled", PAYMENT_PERMANENTLY_FAILED: "permanently_failed" },
+  refunded:           {},
 };
 
 // ─── Late Fee ─────────────────────────────────────────────────────────────────
@@ -344,10 +373,22 @@ export const ONBOARDING_STATE_DISPLAY: Record<OnboardingState, StateDisplayConfi
 };
 
 export const PAYMENT_STATE_DISPLAY: Record<PaymentState, StateDisplayConfig> = {
-  pending: { label: "Processing", color: "text-amber-700", bgColor: "bg-amber-100" },
-  confirmed: { label: "Confirmed", color: "text-emerald-700", bgColor: "bg-emerald-100" },
-  failed: { label: "Failed", color: "text-red-700", bgColor: "bg-red-100" },
-  refunded: { label: "Refunded", color: "text-orange-700", bgColor: "bg-orange-100" },
+  // v4 happy path
+  initiated:          { label: "Initiated",         color: "text-slate-600",   bgColor: "bg-slate-100"   },
+  predicted:          { label: "Analysed",           color: "text-indigo-700",  bgColor: "bg-indigo-100"  },
+  routed:             { label: "Routed",             color: "text-blue-700",    bgColor: "bg-blue-100"    },
+  pending:            { label: "Processing",         color: "text-amber-700",   bgColor: "bg-amber-100"   },
+  reconciled:         { label: "Reconciled",         color: "text-teal-700",    bgColor: "bg-teal-100"    },
+  allocated:          { label: "Allocated",          color: "text-violet-700",  bgColor: "bg-violet-100"  },
+  completed:          { label: "Completed",          color: "text-emerald-700", bgColor: "bg-emerald-100" },
+  // v4 failure paths
+  predicted_failure:  { label: "Blocked",            color: "text-orange-700",  bgColor: "bg-orange-100"  },
+  retry_scheduled:    { label: "Retry Scheduled",    color: "text-amber-700",   bgColor: "bg-amber-100"   },
+  permanently_failed: { label: "Failed",             color: "text-red-700",     bgColor: "bg-red-100"     },
+  // legacy
+  confirmed:          { label: "Confirmed",          color: "text-emerald-700", bgColor: "bg-emerald-100" },
+  failed:             { label: "Failed",             color: "text-red-700",     bgColor: "bg-red-100"     },
+  refunded:           { label: "Refunded",           color: "text-orange-700",  bgColor: "bg-orange-100"  },
 };
 
 export const RENT_STATE_DISPLAY: Record<RentState, StateDisplayConfig> = {

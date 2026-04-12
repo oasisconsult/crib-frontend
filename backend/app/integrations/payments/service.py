@@ -86,6 +86,41 @@ async def initiate_mobile_payment(
     return txn
 
 
+async def _propagate_provider_failure(
+    db: AsyncSession,
+    txn: MobileMoneyTransaction,
+    reason: str,
+) -> None:
+    """
+    When a MobileMoneyTransaction is marked failed/expired, find the linked
+    Payment (via txn.reference_id) and mark it failed with the given reason.
+    Skips silently if no linked payment exists or it is already non-pending.
+    """
+    if not txn.reference_id:
+        return
+
+    from app.models.payment import Payment, PaymentStatus
+
+    try:
+        payment_id = uuid.UUID(str(txn.reference_id))
+    except (ValueError, AttributeError):
+        return
+
+    payment = await db.scalar(select(Payment).where(Payment.id == payment_id))
+    if not payment or payment.status != PaymentStatus.pending:
+        return
+
+    from app.services.adaptive_payment_service import mark_payment_failed
+    await mark_payment_failed(payment, failure_reason=reason, db=db)
+
+    log.info(
+        "gateway.failure_propagated",
+        payment_id=str(payment.id),
+        external_id=txn.external_id,
+        reason=reason,
+    )
+
+
 async def handle_webhook_event(
     db: AsyncSession,
     event: WebhookEvent,
@@ -131,10 +166,10 @@ async def handle_webhook_event(
     if event.status == ProviderStatus.received:
         txn.status = "received"
         txn.received_at = datetime.now(timezone.utc)
-    elif event.status == ProviderStatus.failed:
-        txn.status = "failed"
-    elif event.status == ProviderStatus.expired:
-        txn.status = "expired"
+    elif event.status in (ProviderStatus.failed, ProviderStatus.expired):
+        txn.status = event.status.value
+        # Propagate failure to the originating Payment (if one was linked)
+        await _propagate_provider_failure(db, txn, reason=f"Provider {event.provider} reported {event.status.value}")
 
     # Update phone number in case it was missing when request was sent
     if event.phone_number and not txn.phone_number:

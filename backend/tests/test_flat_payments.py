@@ -176,7 +176,7 @@ async def test_create_payment_flat(client: AsyncClient, active_lease, schedule):
     body = r.json()
     assert body["leaseId"] == str(active_lease.id)
     assert body["amount"] == 400000.0
-    assert body["status"] == "pending"
+    assert body["status"] == "initiated"  # v4: all payments start at initiated
 
 
 @pytest.mark.asyncio
@@ -224,7 +224,7 @@ async def test_confirm_payment_flat(client: AsyncClient, db_session, org, active
 
     r = await client.patch(f"/api/v1/payments/{p.id}/confirm", headers=auth_headers("manager-1"))
     assert r.status_code == 200
-    assert r.json()["status"] == "confirmed"
+    assert r.json()["status"] == "completed"  # v4: confirm advances to completed
 
 
 @pytest.mark.asyncio

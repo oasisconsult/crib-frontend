@@ -19,7 +19,7 @@ import enum
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Enum, Float, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -51,10 +51,26 @@ class PaymentMethod(str, enum.Enum):
 
 
 class PaymentStatus(str, enum.Enum):
-    pending   = "pending"
-    confirmed = "confirmed"
-    failed    = "failed"
-    refunded  = "refunded"
+    # ── Legacy states (kept for backward compatibility) ───────────────────────
+    pending   = "pending"    # awaiting provider / manual confirmation
+    confirmed = "confirmed"  # legacy terminal success (= completed for old records)
+    failed    = "failed"     # legacy terminal failure (= permanently_failed for old records)
+    refunded  = "refunded"   # terminal: payment reversed
+
+    # ── v4 Extended state machine states ─────────────────────────────────────
+    # Happy path:
+    initiated         = "initiated"          # payment created, not yet analyzed
+    predicted         = "predicted"          # failure prediction score assigned
+    routed            = "routed"             # channel recommended & selected
+    # pending                               # (shared) sent to provider, awaiting callback
+    reconciled        = "reconciled"         # provider confirmed receipt
+    allocated         = "allocated"          # funds distributed across schedules
+    completed         = "completed"          # terminal success, all accounting done
+
+    # Failure paths:
+    predicted_failure = "predicted_failure"  # high failure score, blocked before attempt
+    retry_scheduled   = "retry_scheduled"    # transient failure, retry queued
+    permanently_failed = "permanently_failed" # max retries exceeded or unrecoverable
 
 
 class DepositStatus(str, enum.Enum):
@@ -171,6 +187,15 @@ class Payment(TimestampedBase):
     )
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
+
+    # ── Adaptive payment fields (v4 skill) ────────────────────────────────────
+    # Populated when a payment fails or is retried via mobile money
+    failure_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    retry_count: Mapped[int] = mapped_column(Integer(), nullable=False, default=0, server_default="0")
+
+    # Populated by the adaptive routing engine before payment is initiated
+    predicted_failure_score: Mapped[float | None] = mapped_column(Float(), nullable=True)
+    recommended_channel: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Relationships
     rent_schedule: Mapped["RentSchedule | None"] = relationship(

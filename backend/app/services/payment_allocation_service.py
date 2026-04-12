@@ -94,6 +94,33 @@ async def get_allocations_for_payment(
     return list(result.scalars().all())
 
 
+async def get_overpayment_for_payment(
+    db: AsyncSession,
+    payment_id: uuid.UUID,
+) -> float:
+    """
+    Return the overpayment amount for a given payment.
+
+    Overpayment = payment.amount - sum(allocation.amount_applied).
+    This is the amount that was credited to the tenant's wallet at confirm time.
+    Returns 0 if no allocations exist (deposit/manual payments, etc.).
+    """
+    from sqlalchemy import func
+    from app.models.payment import Payment as P
+
+    payment = await db.scalar(select(P).where(P.id == payment_id))
+    if not payment:
+        return 0.0
+
+    allocated = await db.scalar(
+        select(func.coalesce(func.sum(PaymentAllocation.amount_applied), 0)).where(
+            PaymentAllocation.payment_id == payment_id
+        )
+    )
+    overpayment = round(float(payment.amount) - float(allocated or 0), 2)
+    return max(0.0, overpayment)
+
+
 async def reverse_allocations(
     db: AsyncSession,
     payment_id: uuid.UUID,

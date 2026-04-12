@@ -477,7 +477,7 @@ async def submit_onboarding_payments(
                 Payment.idempotency_key == item.idempotency_key,
             )
         )
-        if existing and existing.status != PaymentStatus.failed:
+        if existing and existing.status not in (PaymentStatus.failed, PaymentStatus.permanently_failed):
             payment_outs.append(_payment_dict(existing))
             new_payment_ids.append(str(existing.id))
             continue
@@ -545,8 +545,11 @@ async def _maybe_secure_payment(lease: Lease, db: AsyncSession) -> None:
         select(Payment).where(Payment.id.in_(ids))
     )).scalars().all()
 
+    # Accept both legacy `confirmed` and v4 `completed` as terminal success
+    _terminal_success = {PaymentStatus.confirmed, PaymentStatus.completed}
     all_confirmed = bool(payments) and all(
-        p.status == PaymentStatus.confirmed for p in payments
+        (p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)) in _terminal_success
+        for p in payments
     )
     if all_confirmed and lease.status != LeaseStatus.payment_secured:
         lease.status = LeaseStatus.payment_secured
@@ -575,12 +578,14 @@ async def confirm_onboarding_payment(
 
     p_uuid = uuid.UUID(payment_id)
 
-    # Only confirm if still pending
+    # Only confirm if in a confirmable state
     p = await db.scalar(select(Payment).where(Payment.id == p_uuid, Payment.lease_id == lease.id))
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found.")
 
-    if p.status == PaymentStatus.pending:
+    from app.services.payment_state_machine import can_be_confirmed
+    p_status = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
+    if can_be_confirmed(p_status):
         await payment_service.confirm_payment(
             payment_id=p_uuid,
             lease_id=lease.id,
@@ -642,8 +647,10 @@ async def confirm_all_onboarding_payments(
         select(Payment).where(Payment.id.in_(ids))
     )).scalars().all()
 
+    from app.services.payment_state_machine import can_be_confirmed as _can_confirm
     for p in payments_list:
-        if p.status == PaymentStatus.pending:
+        p_status = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
+        if _can_confirm(p_status):
             await payment_service.confirm_payment(
                 payment_id=p.id,
                 lease_id=lease.id,

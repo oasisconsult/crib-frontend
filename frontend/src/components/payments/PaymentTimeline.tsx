@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate, formatRelative } from "@/utils/formatters";
 import { usePaymentAllocations } from "@/hooks/usePayments";
+import { RetrySuggestionBanner } from "./RetrySuggestionBanner";
 import { cn } from "@/utils/cn";
 import type { Payment, RentSchedule } from "@/types";
 
@@ -34,10 +35,22 @@ const STATUS_CONFIG: Record<
   string,
   { icon: React.ElementType; color: string; label: string }
 > = {
-  confirmed: { icon: CheckCircle2, color: "text-emerald-500", label: "Confirmed" },
-  pending:   { icon: Clock,         color: "text-amber-500",   label: "Pending"   },
-  failed:    { icon: XCircle,       color: "text-red-500",     label: "Failed"    },
-  refunded:  { icon: RefreshCw,     color: "text-slate-500",   label: "Refunded"  },
+  // v4 happy path
+  initiated:          { icon: Clock,        color: "text-slate-400",   label: "Initiated"      },
+  predicted:          { icon: Clock,        color: "text-indigo-500",  label: "Analysed"       },
+  routed:             { icon: Clock,        color: "text-blue-500",    label: "Routed"         },
+  pending:            { icon: Clock,        color: "text-amber-500",   label: "Processing"     },
+  reconciled:         { icon: CheckCircle2, color: "text-teal-500",    label: "Reconciled"     },
+  allocated:          { icon: CheckCircle2, color: "text-violet-500",  label: "Allocated"      },
+  completed:          { icon: CheckCircle2, color: "text-emerald-500", label: "Completed"      },
+  // v4 failure paths
+  predicted_failure:  { icon: XCircle,     color: "text-orange-500",  label: "Blocked"        },
+  retry_scheduled:    { icon: RefreshCw,   color: "text-amber-500",   label: "Retry Scheduled"},
+  permanently_failed: { icon: XCircle,     color: "text-red-500",     label: "Failed"         },
+  // legacy
+  confirmed:          { icon: CheckCircle2, color: "text-emerald-500", label: "Confirmed"      },
+  failed:             { icon: XCircle,      color: "text-red-500",     label: "Failed"         },
+  refunded:           { icon: RefreshCw,    color: "text-slate-500",   label: "Refunded"       },
 };
 
 // ── Method config ─────────────────────────────────────────────────────────────
@@ -106,16 +119,19 @@ interface PaymentRowProps {
   leaseId: string;
   schedules?: RentSchedule[];
   isLast: boolean;
+  onRetried?: (updated: Payment) => void;
 }
 
-function PaymentRow({ payment, leaseId, schedules, isLast }: PaymentRowProps) {
+function PaymentRow({ payment, leaseId, schedules, isLast, onRetried }: PaymentRowProps) {
   const [expanded, setExpanded] = useState(false);
 
-  const statusCfg =
-    STATUS_CONFIG[(payment as any).status ?? payment.state] ?? STATUS_CONFIG.pending;
+  const paymentStatus = (payment as any).status ?? payment.state;
+  const statusCfg = STATUS_CONFIG[paymentStatus] ?? STATUS_CONFIG.pending;
   const StatusIcon = statusCfg.icon;
   const MethodIcon = METHOD_ICON[(payment.method as string) ?? "other"] ?? CreditCard;
-  const isConfirmed = (payment as any).status === "confirmed" || payment.state === "confirmed";
+  const isConfirmed = paymentStatus === "confirmed" || paymentStatus === "completed";
+  const isFailed = paymentStatus === "failed" || paymentStatus === "permanently_failed" || paymentStatus === "predicted_failure";
+  const isRetryable = paymentStatus === "failed" || paymentStatus === "retry_scheduled";
 
   return (
     <div className="relative flex gap-3">
@@ -136,7 +152,7 @@ function PaymentRow({ payment, leaseId, schedules, isLast }: PaymentRowProps) {
       <div className="flex-1 min-w-0 pb-4">
         <button
           className="w-full text-left"
-          onClick={() => isConfirmed && setExpanded((e) => !e)}
+          onClick={() => (isConfirmed || isFailed || isRetryable) && setExpanded((e) => !e)}
           aria-expanded={expanded}
         >
           <div className="flex items-start justify-between gap-2">
@@ -148,22 +164,30 @@ function PaymentRow({ payment, leaseId, schedules, isLast }: PaymentRowProps) {
                 {formatDate(payment.paidAt ?? payment.createdAt)} ·{" "}
                 {formatRelative(payment.paidAt ?? payment.createdAt)}
               </p>
+              {/* Failure reason inline hint */}
+              {isFailed && payment.failureReason && !expanded && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 truncate">
+                  {payment.failureReason}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <MethodIcon className="h-3.5 w-3.5 text-muted-foreground" />
               <Badge
                 variant={
-                  isConfirmed
-                    ? "success"
-                    : payment.state === "pending" || (payment as any).status === "pending"
-                    ? "warning"
-                    : "destructive"
+                  isConfirmed ? "success"
+                  : isFailed ? "destructive"
+                  : isRetryable ? "warning"
+                  : "secondary"
                 }
                 className="text-xs"
               >
                 {statusCfg.label}
+                {isFailed && (payment.retryCount ?? 0) > 0 && (
+                  <span className="ml-1 opacity-70">#{payment.retryCount}</span>
+                )}
               </Badge>
-              {isConfirmed && (
+              {(isConfirmed || isFailed || isRetryable) && (
                 <span className="text-muted-foreground">
                   {expanded ? (
                     <ChevronUp className="h-3.5 w-3.5" />
@@ -176,13 +200,22 @@ function PaymentRow({ payment, leaseId, schedules, isLast }: PaymentRowProps) {
           </div>
         </button>
 
-        {/* Expanded allocation detail */}
+        {/* Expanded: allocation detail for confirmed, retry banner for failed */}
         {expanded && isConfirmed && (
           <AllocationDetail
             leaseId={leaseId}
             paymentId={payment.id}
             schedules={schedules}
           />
+        )}
+        {expanded && (isFailed || isRetryable) && (
+          <div className="mt-2">
+            <RetrySuggestionBanner
+              payment={payment}
+              leaseId={leaseId}
+              onRetried={onRetried}
+            />
+          </div>
         )}
       </div>
     </div>
@@ -196,6 +229,8 @@ interface PaymentTimelineProps {
   payments: Payment[];
   schedules?: RentSchedule[];
   isLoading?: boolean;
+  /** Called after a failed payment is successfully retried. */
+  onRetried?: (updated: Payment) => void;
 }
 
 export function PaymentTimeline({
@@ -203,6 +238,7 @@ export function PaymentTimeline({
   payments,
   schedules,
   isLoading,
+  onRetried,
 }: PaymentTimelineProps) {
   if (isLoading) {
     return (
@@ -248,6 +284,7 @@ export function PaymentTimeline({
           leaseId={leaseId}
           schedules={schedules}
           isLast={i === sorted.length - 1}
+          onRetried={onRetried}
         />
       ))}
     </div>

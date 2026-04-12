@@ -106,6 +106,11 @@ class PaymentOut(CamelModel):
     status: str
     paid_at: str | None
     notes: str | None
+    # Adaptive fields
+    failure_reason: str | None = None
+    retry_count: int = 0
+    predicted_failure_score: float | None = None
+    recommended_channel: str | None = None
     created_at: str
     updated_at: str
 
@@ -243,6 +248,29 @@ class WalletTransactionOut(CamelModel):
 
 
 WalletTransactionPageOut = PaginatedResponse[WalletTransactionOut]
+
+
+# ── Adaptive Payment (v4 skill) ────────────────────────────────────────────────
+
+class ChannelCostEstimateOut(CamelModel):
+    channel: str
+    fee_percent: float
+    fee_amount: float
+    total_amount: float
+
+
+class PaymentEstimateRequest(CamelModel):
+    amount: float = Field(gt=0)
+    currency: str = "UGX"
+    tenant_id: str | None = None   # optional — enables per-tenant failure prediction
+
+
+class PaymentDecisionOut(CamelModel):
+    recommended_channel: str
+    predicted_failure_score: float
+    retry_strategy: str            # none | immediate | delayed | next_day
+    cost_estimates: list[ChannelCostEstimateOut]
+    explain: str
 
 
 # ── Mobile Money ───────────────────────────────────────────────────────────────

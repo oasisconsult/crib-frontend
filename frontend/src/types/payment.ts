@@ -22,6 +22,34 @@ export interface Payment {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  // Adaptive payment fields (v4 skill)
+  failureReason?: string | null;
+  retryCount?: number;
+  predictedFailureScore?: number | null;
+  recommendedChannel?: string | null;
+}
+
+// ── Adaptive payment types (v4 skill) ─────────────────────────────────────────
+
+export interface ChannelCostEstimate {
+  channel: string;
+  feePercent: number;
+  feeAmount: number;
+  totalAmount: number;
+}
+
+export interface PaymentDecision {
+  recommendedChannel: string;
+  predictedFailureScore: number;
+  retryStrategy: "none" | "immediate" | "delayed" | "next_day";
+  costEstimates: ChannelCostEstimate[];
+  explain: string;
+}
+
+export interface PaymentEstimateRequest {
+  amount: number;
+  currency?: string;
+  tenantId?: string;
 }
 
 export interface RentSchedule {

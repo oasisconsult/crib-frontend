@@ -1,11 +1,12 @@
-import { apiGet, apiPost, apiPut, apiPatch } from "./client";
+import { apiGet, apiPost, apiPatch } from "./client";
 import type {
   Payment,
+  PaymentDecision,
+  PaymentEstimateRequest,
   RentSchedule,
   LateFee,
   Deposit,
   LedgerEntry,
-  LedgerEntryV2,
   LedgerPage,
   PaymentAllocation,
   TenantWallet,
@@ -81,6 +82,19 @@ export const paymentsApi = {
     return mapPayment(raw);
   },
 
+  // Retry a failed payment — resets to pending, increments retry_count
+  retry: async (leaseId: string, paymentId: string) => {
+    const raw = await apiPost<Record<string, unknown>>(
+      `/leases/${leaseId}/payments/${paymentId}/retry`,
+      {}
+    );
+    return mapPayment(raw);
+  },
+
+  // Cost estimate + adaptive channel recommendation (does not mutate state)
+  estimate: (leaseId: string, data: PaymentEstimateRequest) =>
+    apiPost<PaymentDecision>(`/leases/${leaseId}/payments/estimate`, data),
+
   // Rent schedules
   listRentSchedules: (params?: QueryParams) =>
     apiGet<PaginatedResponse<RentSchedule>>(`/rent-schedules`, mapQueryParamsToBackend(params)),
@@ -118,6 +132,10 @@ export const paymentsApi = {
 
   getWalletTransactions: (tenantId: string, page = 1, pageSize = 20) =>
     apiGet<WalletTransactionPage>(`/tenants/${tenantId}/wallet/transactions`, { page, pageSize }),
+
+  // Waive a late fee — PATCH /leases/{leaseId}/late-fees/{feeId}/waive
+  waiveLateFee: (leaseId: string, feeId: string, reason: string) =>
+    apiPatch(`/leases/${leaseId}/late-fees/${feeId}/waive`, { reason }),
 
   // Mobile money reconciliation
   getMobileMoneyTransactions: (params?: {
