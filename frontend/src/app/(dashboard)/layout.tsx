@@ -44,7 +44,14 @@ export default function DashboardLayout({
       <AuthInitializer />
 
       <AuthGate>
-        <div className="flex h-screen overflow-hidden" style={{ background: "#F1F1F5" }}>
+        {/* WCAG 2.4.1 — skip link lets keyboard users bypass repeated navigation */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[9999] focus:bg-primary focus:text-primary-foreground focus:px-4 focus:py-2 focus:rounded-[8px] focus:text-sm focus:font-medium focus:shadow-lg"
+        >
+          Skip to main content
+        </a>
+        <div className="flex h-screen overflow-hidden bg-background">
           <Sidebar />
           <MobileNav />
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">
@@ -52,8 +59,8 @@ export default function DashboardLayout({
             <OfflineBanner />
             <main
               id="main-content"
-              className="flex-1 overflow-y-auto"
-              style={{ padding: "24px 28px", background: "#F1F1F5" }}
+              className="flex-1 overflow-y-auto bg-background"
+              style={{ padding: "24px 28px" }}
             >
               {children}
             </main>

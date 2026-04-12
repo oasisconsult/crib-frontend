@@ -10,68 +10,75 @@
    Calibrated to: background #F8FAFC · card #FFFFFF · primary #0062FF
    ─────────────────────────────────────────────────────────────────────── */
 
+/* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
 :root {
-  /* Canvas */
-  --background:       210 40% 98%;    /* #F8FAFC  slate-50 */
-  --foreground:       222 47% 11%;    /* #0F172A  slate-900 */
-
-  /* Cards & surfaces */
-  --card:             0 0% 100%;      /* #FFFFFF */
-  --card-foreground:  222 47% 11%;
-
-  /* Overlays */
-  --popover:          0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-
-  /* Primary brand — #0062FF */
-  --primary:          221 100% 50%;
-  --primary-foreground: 0 0% 100%;
-
-  /* Secondary surfaces */
-  --secondary:        210 40% 96%;    /* #F1F5F9  slate-100 */
+  --background:           0 0% 98%;        /* #FAFAFA — nearly white */
+  --foreground:           222 47% 11%;     /* #0F172A */
+  --card:                 0 0% 100%;       /* #FFFFFF */
+  --card-foreground:      222 47% 11%;
+  --popover:              0 0% 100%;
+  --popover-foreground:   222 47% 11%;
+  --primary:              221 100% 50%;    /* #0062FF */
+  --primary-foreground:   0 0% 100%;
+  --secondary:            210 40% 96%;     /* #F1F5F9 */
   --secondary-foreground: 222 47% 11%;
-
-  /* Muted text and backgrounds */
-  --muted:            210 40% 96%;    /* #F1F5F9 */
-  --muted-foreground: 215 16% 47%;    /* #64748B  slate-500 */
-
-  /* Accent (hover states) */
-  --accent:           221 100% 97%;   /* #EEF4FF  tinted blue */
-  --accent-foreground: 221 100% 50%;
-
-  /* Destructive */
-  --destructive:      0 72% 51%;      /* #DC2626 */
+  --muted:                210 40% 96%;     /* #F1F5F9 */
+  --muted-foreground:     215 16% 47%;     /* #64748B */
+  --accent:               221 100% 97%;    /* #EEF4FF */
+  --accent-foreground:    221 100% 50%;
+  --destructive:          0 72% 51%;       /* #DC2626 */
   --destructive-foreground: 0 0% 100%;
+  --border:               214 32% 91%;     /* #E2E8F0 */
+  --input:                214 32% 91%;
+  --ring:                 221 100% 50%;    /* #0062FF */
+  --radius:               0.5rem;
 
-  /* Borders & inputs */
-  --border:           214 32% 91%;    /* #E2E8F0  slate-200 */
-  --input:            214 32% 91%;
-  --ring:             221 100% 50%;   /* #0062FF  — focus ring color */
+  /* Header */
+  --header:               0 0% 100%;       /* #FFFFFF */
 
-  /* Geometry */
-  --radius:           0.5rem;         /* 8px — used by calc() in Tailwind */
+  /* Sidebar — WHITE in light mode (TailAdmin style) */
+  --sidebar:              0 0% 100%;       /* #FFFFFF */
+  --sidebar-foreground:   215 16% 47%;     /* #64748B inactive */
+  --sidebar-border:       214 32% 91%;     /* #E2E8F0 */
+  --sidebar-active-bg:    221 100% 97%;    /* #EEF4FF */
+  --sidebar-active-fg:    221 100% 50%;    /* #0062FF */
+  --sidebar-hover-bg:     210 40% 98%;     /* #F8FAFC */
+  --sidebar-section-fg:   215 20% 65%;     /* #94A3B8 */
 }
 
+/* ── DARK MODE ──────────────────────────────────────────────────────────── */
 .dark {
-  --background:       222 47% 8%;
-  --foreground:       210 40% 98%;
-  --card:             222 47% 11%;
-  --card-foreground:  210 40% 98%;
-  --popover:          222 47% 11%;
-  --popover-foreground: 210 40% 98%;
-  --primary:          221 100% 62%;
-  --primary-foreground: 0 0% 100%;
-  --secondary:        217 33% 17%;
-  --secondary-foreground: 210 40% 98%;
-  --muted:            217 33% 17%;
-  --muted-foreground: 215 20% 65%;
-  --accent:           217 33% 20%;
-  --accent-foreground: 221 100% 70%;
-  --destructive:      0 62% 50%;
+  --background:           222 47% 7%;      /* #0B1120 */
+  --foreground:           210 40% 96%;     /* #F1F5F9 */
+  --card:                 222 47% 10%;     /* #111827 */
+  --card-foreground:      210 40% 96%;
+  --popover:              222 47% 10%;
+  --popover-foreground:   210 40% 96%;
+  --primary:              221 100% 60%;    /* #3385FF */
+  --primary-foreground:   0 0% 100%;
+  --secondary:            217 33% 15%;     /* #172033 */
+  --secondary-foreground: 210 40% 96%;
+  --muted:                217 33% 15%;
+  --muted-foreground:     215 20% 55%;     /* #7A8BA6 */
+  --accent:               217 33% 18%;     /* #1A2840 */
+  --accent-foreground:    221 100% 70%;
+  --destructive:          0 65% 52%;
   --destructive-foreground: 0 0% 100%;
-  --border:           217 33% 20%;
-  --input:            217 33% 20%;
-  --ring:             221 100% 62%;
+  --border:               217 33% 18%;     /* #1C2D42 */
+  --input:                217 33% 18%;
+  --ring:                 221 100% 60%;
+
+  /* Header */
+  --header:               222 47% 9%;      /* #0E1629 */
+
+  /* Sidebar — DARK NAVY in dark mode */
+  --sidebar:              222 47% 8%;      /* #0D1524 */
+  --sidebar-foreground:   215 20% 55%;     /* muted white */
+  --sidebar-border:       217 33% 15%;
+  --sidebar-active-bg:    221 100% 50%;    /* #0062FF solid */
+  --sidebar-active-fg:    0 0% 100%;       /* white */
+  --sidebar-hover-bg:     217 33% 13%;
+  --sidebar-section-fg:   217 33% 35%;
 }
 
 /* ─── SEMANTIC BRAND TOKENS ─────────────────────────────────────────────────

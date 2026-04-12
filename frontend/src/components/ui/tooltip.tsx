@@ -18,7 +18,8 @@ const TooltipContent = React.forwardRef<
       sideOffset={sideOffset}
       className={cn(
         "z-50 overflow-hidden rounded-[6px]",
-        "bg-[#0F172A] text-white",
+        // High-contrast dark tooltip satisfies WCAG 1.4.3 in both modes (foreground on background)
+        "bg-foreground text-background",
         "px-2.5 py-1.5 text-[12px] font-medium leading-tight",
         "shadow-[0_4px_12px_rgba(15,23,42,0.20)]",
         "animate-in fade-in-0 zoom-in-95",

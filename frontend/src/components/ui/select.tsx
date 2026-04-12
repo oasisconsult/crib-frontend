@@ -18,22 +18,23 @@ const SelectTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "flex h-9 w-full items-center justify-between gap-2",
-      "rounded-[8px] border border-[#E2E8F0] bg-white",
-      "px-3 text-sm text-[#0F172A]",
+      "rounded-[8px] border border-input bg-background",
+      "px-3 text-sm text-foreground",
       "transition-[border-color,box-shadow] duration-150",
-      "placeholder:text-[#94A3B8]",
-      "focus:outline-none focus:border-[#0062FF] focus:ring-2 focus:ring-[#0062FF]/10",
-      "disabled:cursor-not-allowed disabled:bg-[#F8FAFC] disabled:text-[#94A3B8]",
-      "data-[placeholder]:text-[#94A3B8]",
+      "placeholder:text-muted-foreground/60",
+      // WCAG 2.4.7 — visible focus indicator
+      "focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/20",
+      "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground",
+      "data-[placeholder]:text-muted-foreground/60",
       "[&>span]:line-clamp-1",
-      error && "border-[#DC2626] focus:border-[#DC2626] focus:ring-[#DC2626]/10",
+      error && "border-destructive focus:border-destructive focus:ring-destructive/20",
       className,
     )}
     {...props}
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-3.5 w-3.5 text-[#94A3B8] shrink-0" />
+      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -46,10 +47,10 @@ const SelectScrollUpButton = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.ScrollUpButton
     ref={ref}
-    className={cn("flex cursor-default items-center justify-center py-1 text-[#64748B]", className)}
+    className={cn("flex cursor-default items-center justify-center py-1 text-muted-foreground", className)}
     {...props}
   >
-    <ChevronUp className="h-3.5 w-3.5" />
+    <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
   </SelectPrimitive.ScrollUpButton>
 ));
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
@@ -60,10 +61,10 @@ const SelectScrollDownButton = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.ScrollDownButton
     ref={ref}
-    className={cn("flex cursor-default items-center justify-center py-1 text-[#64748B]", className)}
+    className={cn("flex cursor-default items-center justify-center py-1 text-muted-foreground", className)}
     {...props}
   >
-    <ChevronDown className="h-3.5 w-3.5" />
+    <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
   </SelectPrimitive.ScrollDownButton>
 ));
 SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
@@ -78,8 +79,9 @@ const SelectContent = React.forwardRef<
       ref={ref}
       className={cn(
         "relative z-50 max-h-80 min-w-[8rem] overflow-hidden",
-        "rounded-[10px] border border-[#E2E8F0] bg-white",
+        "rounded-[10px] border border-border bg-popover text-popover-foreground",
         "shadow-[0_4px_16px_rgba(15,23,42,0.10),0_1px_4px_rgba(15,23,42,0.06)]",
+        "dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),0_1px_4px_rgba(0,0,0,0.3)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -113,7 +115,7 @@ const SelectLabel = React.forwardRef<
   <SelectPrimitive.Label
     ref={ref}
     className={cn(
-      "px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#94A3B8]",
+      "px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground",
       className,
     )}
     {...props}
@@ -130,17 +132,17 @@ const SelectItem = React.forwardRef<
     ref={ref}
     className={cn(
       "relative flex w-full cursor-default select-none items-center",
-      "rounded-[6px] py-2 pl-3 pr-8 text-sm text-[#0F172A]",
+      "rounded-[6px] py-2 pl-3 pr-8 text-sm text-foreground",
       "outline-none",
-      "focus:bg-[#F1F5F9] focus:text-[#0F172A]",
-      "data-[state=checked]:text-[#0062FF] data-[state=checked]:font-medium",
+      "focus:bg-accent focus:text-accent-foreground",
+      "data-[state=checked]:text-primary data-[state=checked]:font-medium",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       className,
     )}
     {...props}
   >
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-    <span className="absolute right-2.5 flex h-3.5 w-3.5 items-center justify-center text-[#0062FF]">
+    <span className="absolute right-2.5 flex h-3.5 w-3.5 items-center justify-center text-primary" aria-hidden="true">
       <SelectPrimitive.ItemIndicator>
         <Check className="h-3.5 w-3.5" />
       </SelectPrimitive.ItemIndicator>

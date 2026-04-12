@@ -11,15 +11,16 @@ const Label = React.forwardRef<
   <LabelPrimitive.Root
     ref={ref}
     className={cn(
-      "text-sm font-medium text-[#0F172A] leading-none",
+      "text-sm font-medium text-foreground leading-none",
       "peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
       className,
     )}
     {...props}
   >
     {children}
+    {/* WCAG 3.3.2 — required indicator is supplementary; aria-required on the input is the machine-readable signal */}
     {required && (
-      <span className="ml-0.5 text-[#DC2626]" aria-hidden="true">*</span>
+      <span className="ml-0.5 text-destructive" aria-hidden="true">*</span>
     )}
   </LabelPrimitive.Root>
 ));

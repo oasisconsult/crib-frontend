@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { CheckCircle, Clock } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { CheckCircle, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useSubmitOnboarding, useSaveOnboardingDraft } from "@/hooks/useTenants";
+import { usePreviewAgreement } from "@/hooks/useOnboardingFlow";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -116,6 +117,30 @@ export function OnboardingWizard({
   const [paymentStep, setPaymentStep] = useState<OnboardingStep>(initialPaymentStep);
   const [preview, setPreview] = useState<AgreementPreview | null>(initialPreview);
   const [termsAcceptedAt, setTermsAcceptedAt] = useState<string | null>(initialTermsAcceptedAt);
+
+  // Sync preview when the parent refetches flow status (e.g. after accepting terms
+  // the query invalidates and data.agreementPreview arrives with the snapshot).
+  // Only update if the incoming snapshot is newer — avoids overwriting a just-fetched one.
+  const initialPreviewRef = useRef(initialPreview);
+  useEffect(() => {
+    if (initialPreview && initialPreview !== initialPreviewRef.current) {
+      initialPreviewRef.current = initialPreview;
+      setPreview(initialPreview);
+    }
+  }, [initialPreview]);
+
+  // Auto-fetch preview when we land on the payment step with no preview loaded.
+  // This covers the resume case: terms_accepted → payment, but snapshot wasn't
+  // in the initial flow response (or user navigated here without going through
+  // AgreementPreviewStep in this session).
+  const { mutate: fetchPreviewForPayment, isPending: isFetchingPreview } = usePreviewAgreement(token);
+  const hasFetchedPreviewRef = useRef(false);
+  useEffect(() => {
+    if (paymentStep === "payment" && !preview && !hasFetchedPreviewRef.current) {
+      hasFetchedPreviewRef.current = true;
+      fetchPreviewForPayment(undefined, { onSuccess: setPreview });
+    }
+  }, [paymentStep, preview, fetchPreviewForPayment]);
 
   // ── Profile form ──────────────────────────────────────────────────────────
   const draft = tenant.onboardingDraft;
@@ -363,13 +388,16 @@ export function OnboardingWizard({
             <AgreementPreviewStep
               token={token}
               preview={preview}
-              onNext={() => setPaymentStep("terms_acceptance")}
+              onNext={(loadedPreview) => {
+                setPreview(loadedPreview);
+                setPaymentStep("terms_acceptance");
+              }}
             />
           )}
 
-          {/* All other payment steps are narrower — centred at max-w-xl */}
+          {/* All other payment steps — centred at max-w-2xl to match the stepper width */}
           {paymentStep !== "agreement_preview" && (
-            <div className="max-w-xl mx-auto space-y-6">
+            <div className="max-w-2xl mx-auto space-y-6">
               {paymentStep === "terms_acceptance" && (
                 <TermsAcceptanceStep
                   token={token}
@@ -378,13 +406,40 @@ export function OnboardingWizard({
                 />
               )}
 
-              {paymentStep === "payment" && preview && (
-                <PaymentStep
-                  token={token}
-                  preview={preview}
-                  onNext={() => setPaymentStep("payment_pending")}
-                  onBack={() => setPaymentStep("terms_acceptance")}
-                />
+              {paymentStep === "payment" && (
+                preview
+                  ? (
+                    <PaymentStep
+                      token={token}
+                      leaseId={invite.leaseId!}
+                      tenantId={tenant.id}
+                      preview={preview}
+                      onNext={() => setPaymentStep("payment_pending")}
+                      onBack={() => setPaymentStep("terms_acceptance")}
+                    />
+                  ) : isFetchingPreview ? (
+                    <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
+                      <Loader2 className="h-7 w-7 animate-spin" />
+                      <p className="text-sm">Loading payment details…</p>
+                    </div>
+                  ) : (
+                    /* Fallback: fetch failed — let user retry via back */
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-6 text-center space-y-3">
+                      <p className="text-sm text-destructive font-medium">
+                        Unable to load payment details.
+                      </p>
+                      <button
+                        type="button"
+                        className="text-sm text-primary hover:underline"
+                        onClick={() => {
+                          hasFetchedPreviewRef.current = false;
+                          fetchPreviewForPayment(undefined, { onSuccess: setPreview });
+                        }}
+                      >
+                        Try again
+                      </button>
+                    </div>
+                  )
               )}
 
               {paymentStep === "payment_pending" && (

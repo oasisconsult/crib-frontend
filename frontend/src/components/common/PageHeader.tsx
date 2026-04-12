@@ -14,17 +14,12 @@ interface PageHeaderProps {
 }
 
 /**
- * PageHeader
+ * PageHeader — uniform page title across all dashboard routes.
  *
- * Drop this at the top of every page route so all pages share the same
- * typography and spacing contract. Never hard-code h1 + p tags in page files.
- *
- * @example
- * <PageHeader
- *   title="Properties"
- *   description="24 properties in your portfolio"
- *   actions={<Button><Plus className="h-4 w-4" /> Add Property</Button>}
- * />
+ * WCAG compliance:
+ * - Uses <h1> so screen readers announce the page title (2.4.6 Headings and Labels)
+ * - Breadcrumb wrapped in <nav aria-label="Breadcrumb"> (1.3.1 Info and Relationships)
+ * - Colour tokens from CSS variables — adapts to dark mode automatically
  */
 export function PageHeader({
   title,
@@ -36,20 +31,20 @@ export function PageHeader({
   return (
     <div className={cn("flex flex-col gap-1 pb-5", className)}>
       {breadcrumb && (
-        <div className="flex items-center gap-1.5 text-xs text-[#94A3B8] mb-1">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
           {breadcrumb}
         </div>
       )}
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1
-            className="text-[20px] font-semibold tracking-[-0.02em] text-[#0F172A] leading-tight"
+            className="text-[20px] font-semibold tracking-[-0.02em] text-foreground leading-tight"
             style={{ fontFamily: "var(--font-poppins, 'Poppins', system-ui, sans-serif)" }}
           >
             {title}
           </h1>
           {description && (
-            <p className="text-sm text-[#64748B] leading-snug">{description}</p>
+            <p className="text-sm text-muted-foreground leading-snug">{description}</p>
           )}
         </div>
         {actions && (
@@ -64,7 +59,8 @@ export function PageHeader({
 
 export function Breadcrumb({ children }: { children: React.ReactNode }) {
   return (
-    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-[#94A3B8]">
+    // WCAG 1.3.1 — nav landmark with label identifies this as breadcrumb navigation
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-xs text-muted-foreground">
       {children}
     </nav>
   );
@@ -81,17 +77,23 @@ export function BreadcrumbItem({
     return (
       <a
         href={href}
-        className="hover:text-[#64748B] transition-colors"
+        className="hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded"
       >
         {children}
       </a>
     );
   }
-  return <span className="text-[#0F172A] font-medium">{children}</span>;
+  // Current page — aria-current="page" for screen readers (WCAG 1.3.1)
+  return (
+    <span className="text-foreground font-medium" aria-current="page">
+      {children}
+    </span>
+  );
 }
 
 export function BreadcrumbSeparator() {
-  return <span className="text-[#CBD5E1]">/</span>;
+  // Decorative — hidden from AT (WCAG 1.1.1)
+  return <span className="text-border" aria-hidden="true">/</span>;
 }
 
 /* ── Section header — inside cards/panels ───────────────────────────────── */
@@ -107,9 +109,10 @@ export function SectionHeader({ title, description, action, className }: Section
   return (
     <div className={cn("flex items-center justify-between gap-4", className)}>
       <div>
-        <h2 className="text-sm font-semibold text-[#0F172A] tracking-[-0.01em]">{title}</h2>
+        {/* h2 for card/panel sections — maintains heading hierarchy below h1 PageHeader */}
+        <h2 className="text-sm font-semibold text-foreground tracking-[-0.01em]">{title}</h2>
         {description && (
-          <p className="text-xs text-[#64748B] mt-0.5">{description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}

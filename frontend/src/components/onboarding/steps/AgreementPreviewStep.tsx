@@ -11,7 +11,8 @@ import type { AgreementPreview } from "@/types/onboarding";
 interface Props {
   token: string;
   preview: AgreementPreview | null;
-  onNext: () => void;
+  /** Called with the loaded preview so the parent wizard can store it. */
+  onNext: (preview: AgreementPreview) => void;
 }
 
 export function AgreementPreviewStep({ token, preview: initialPreview, onNext }: Props) {
@@ -145,7 +146,7 @@ export function AgreementPreviewStep({ token, preview: initialPreview, onNext }:
 
         <Button
           className="w-full"
-          onClick={onNext}
+          onClick={() => onNext(preview)}
           disabled={!scrolledToBottom}
         >
           {scrolledToBottom

@@ -67,28 +67,26 @@ export function Sidebar() {
         className={cn(
           "hidden md:flex flex-col flex-shrink-0",
           "transition-[width] duration-200 ease-out",
+          "bg-[hsl(var(--sidebar))] border-r border-[hsl(var(--sidebar-border))]",
           sidebarCollapsed ? "w-[64px]" : "w-[240px]",
         )}
-        style={{ background: "#0F172A", minHeight: "100vh" }}
+        style={{ minHeight: "100vh" }}
         aria-label="Main navigation"
       >
         {/* ── Logo ──────────────────────────────────────────────────── */}
         <div
           className={cn(
             "flex h-[60px] items-center shrink-0",
-            "border-b border-white/[0.07]",
+            "border-b border-[hsl(var(--sidebar-border))]",
             sidebarCollapsed ? "justify-center px-4" : "px-4 gap-2.5",
           )}
         >
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] text-white"
-            style={{ background: "#0062FF" }}
-          >
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#0062FF] text-white">
             <Building2 className="h-4 w-4" />
           </div>
           {!sidebarCollapsed && (
             <span
-              className="text-[15px] font-bold text-white tracking-[-0.01em]"
+              className="text-[15px] font-bold text-[hsl(var(--sidebar-active-fg))] tracking-[-0.01em] dark:text-white"
               style={{ fontFamily: "var(--font-poppins,'Poppins',sans-serif)" }}
             >
               CRIB
@@ -97,7 +95,7 @@ export function Sidebar() {
         </div>
 
         {/* ── Nav ───────────────────────────────────────────────────── */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2" aria-label="Sidebar navigation">
+        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2" aria-label="Sidebar navigation">
           {visibleItems.map((item) => {
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -111,16 +109,21 @@ export function Sidebar() {
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-2.5",
-                  "mx-2 px-2.5 py-2 rounded-[7px]",
+                  "px-2.5 py-2 rounded-[7px]",
                   "text-[13.5px] font-medium",
                   "transition-[background,color] duration-100",
                   isActive
-                    ? "bg-[#0062FF] text-white font-semibold"
-                    : "text-white/50 hover:bg-white/[0.07] hover:text-white/90",
-                  sidebarCollapsed && "justify-center px-0 mx-2",
+                    ? "bg-[hsl(var(--sidebar-active-bg))] text-[hsl(var(--sidebar-active-fg))] font-semibold"
+                    : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[#0F172A] dark:hover:text-white",
+                  sidebarCollapsed && "justify-center px-0 mx-auto w-10",
                 )}
               >
-                <Icon className="h-[18px] w-[18px] shrink-0" />
+                <Icon
+                  className={cn(
+                    "h-[18px] w-[18px] shrink-0",
+                    isActive ? "text-[hsl(var(--sidebar-active-fg))]" : "text-[hsl(var(--sidebar-foreground))]",
+                  )}
+                />
                 {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                 {!sidebarCollapsed && item.badge && (
                   <span className="ml-auto h-4.5 min-w-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
@@ -133,7 +136,7 @@ export function Sidebar() {
             return (
               <div key={item.href}>
                 {showSection && (
-                  <p className="mt-5 mb-1 px-4 text-[10px] font-bold tracking-[0.1em] uppercase text-white/25">
+                  <p className="mt-5 mb-1 px-2.5 text-[10px] font-bold tracking-[0.1em] uppercase text-[hsl(var(--sidebar-section-fg))]">
                     {item.section}
                   </p>
                 )}
@@ -151,13 +154,13 @@ export function Sidebar() {
         </nav>
 
         {/* ── User profile strip ────────────────────────────────────── */}
-        <div className="shrink-0 border-t border-white/[0.07]">
+        <div className="shrink-0 border-t border-[hsl(var(--sidebar-border))]">
           {/* Collapse toggle */}
           <button
             onClick={toggleSidebar}
             className={cn(
-              "w-full flex items-center justify-center h-9 mt-1 mx-0",
-              "text-white/30 hover:text-white/60 transition-colors",
+              "w-full flex items-center justify-center h-9 mt-1",
+              "text-[hsl(var(--sidebar-section-fg))] hover:text-[hsl(var(--sidebar-foreground))] transition-colors",
             )}
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
@@ -167,32 +170,41 @@ export function Sidebar() {
           </button>
 
           {/* User info */}
-          {!sidebarCollapsed && (
+          {!sidebarCollapsed ? (
             <div className="px-3 pb-3">
-              <div className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 hover:bg-white/[0.05] group cursor-pointer transition-colors">
-                {/* Avatar */}
-                <div
-                  className="h-7 w-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-white"
-                  style={{ background: "#0062FF" }}
-                >
+              <div className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 hover:bg-[hsl(var(--sidebar-hover-bg))] group cursor-pointer transition-colors">
+                <div className="h-7 w-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-white bg-[#0062FF]">
                   {getInitials(user?.name ?? "U")}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12.5px] font-semibold text-white/90 truncate leading-tight">
+                  <p className="text-[12.5px] font-semibold text-[#0F172A] dark:text-white/90 truncate leading-tight">
                     {user?.name ?? "User"}
                   </p>
-                  <p className="text-[11px] text-white/35 truncate leading-tight">
+                  <p className="text-[11px] text-[hsl(var(--sidebar-section-fg))] truncate leading-tight">
                     {user?.email ?? ""}
                   </p>
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); logout(); }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-white/40 hover:text-white/80 p-0.5"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-[hsl(var(--sidebar-section-fg))] hover:text-red-500 p-0.5"
                   aria-label="Sign out"
                 >
                   <LogOut className="h-3.5 w-3.5" />
                 </button>
               </div>
+            </div>
+          ) : (
+            <div className="pb-2 flex justify-center">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-[#0062FF] cursor-pointer">
+                    {getInitials(user?.name ?? "U")}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs font-medium">
+                  {user?.name ?? "User"}
+                </TooltipContent>
+              </Tooltip>
             </div>
           )}
         </div>

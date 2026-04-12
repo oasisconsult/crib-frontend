@@ -17,7 +17,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-[#0F172A]/50 backdrop-blur-[2px]",
+      "fixed inset-0 z-50 bg-foreground/40 backdrop-blur-[2px]",
       "data-[state=open]:animate-in data-[state=closed]:animate-out",
       "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
@@ -38,8 +38,9 @@ const DialogContent = React.forwardRef<
       className={cn(
         "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
         "w-full max-w-lg",
-        "bg-white rounded-[14px] border border-[#E2E8F0]",
+        "bg-card text-card-foreground rounded-[14px] border border-border",
         "shadow-[0_24px_48px_rgba(15,23,42,0.16),0_8px_16px_rgba(15,23,42,0.08)]",
+        "dark:shadow-[0_24px_48px_rgba(0,0,0,0.5),0_8px_16px_rgba(0,0,0,0.3)]",
         "outline-none",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -51,13 +52,18 @@ const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
+      {/* WCAG 2.1 — close button is keyboard accessible with sr-only label */}
       <DialogPrimitive.Close
-        className="absolute right-4 top-4 h-7 w-7 rounded-[6px] flex items-center justify-center
-                   text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F1F5F9]
-                   transition-colors focus:outline-none focus:ring-2 focus:ring-[#0062FF]"
+        className={cn(
+          "absolute right-4 top-4 h-7 w-7 rounded-[6px]",
+          "flex items-center justify-center",
+          "text-muted-foreground hover:text-foreground hover:bg-muted",
+          "transition-colors",
+          "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-card",
+        )}
       >
-        <X className="h-3.5 w-3.5" />
-        <span className="sr-only">Close</span>
+        <X className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className="sr-only">Close dialog</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
@@ -66,10 +72,7 @@ DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
-      "px-6 pt-6 pb-4 border-b border-[#F1F5F9]",
-      className,
-    )}
+    className={cn("px-6 pt-6 pb-4 border-b border-border", className)}
     {...props}
   />
 );
@@ -84,7 +87,7 @@ const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   <div
     className={cn(
       "flex flex-row items-center justify-end gap-2 px-6 py-4",
-      "border-t border-[#F1F5F9] bg-[#F8FAFC] rounded-b-[14px]",
+      "border-t border-border bg-muted/40 rounded-b-[14px]",
       className,
     )}
     {...props}
@@ -99,7 +102,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-base font-semibold text-[#0F172A] tracking-[-0.01em] leading-tight",
+      "text-base font-semibold text-foreground tracking-[-0.01em] leading-tight",
       className,
     )}
     {...props}
@@ -113,7 +116,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-[#64748B] mt-1 leading-relaxed", className)}
+    className={cn("text-sm text-muted-foreground mt-1 leading-relaxed", className)}
     {...props}
   />
 ));

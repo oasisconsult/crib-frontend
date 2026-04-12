@@ -11,20 +11,23 @@ const inputBase = [
   "flex w-full",
   "h-9",
   "rounded-[8px]",
-  "border border-[#E2E8F0]",
-  "bg-white",
+  "border border-input",
+  "bg-background",
   "px-3",
-  "text-sm text-[#0F172A]",
-  "placeholder:text-[#94A3B8]",
+  "text-sm text-foreground",
+  "placeholder:text-muted-foreground/60",
   "transition-[border-color,box-shadow] duration-150",
+  // WCAG 2.4.7 — visible focus indicator with ring offset for separation
   "focus-visible:outline-none",
-  "focus-visible:border-[#0062FF]",
-  "focus-visible:ring-2 focus-visible:ring-[#0062FF]/10",
-  "disabled:cursor-not-allowed disabled:bg-[#F8FAFC] disabled:text-[#94A3B8] disabled:border-[#E2E8F0]",
-  "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-[#0F172A]",
+  "focus-visible:border-primary",
+  "focus-visible:ring-2 focus-visible:ring-ring/20",
+  // Disabled state
+  "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:border-border",
+  "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
 ].join(" ");
 
-const inputError = "border-[#DC2626] focus-visible:border-[#DC2626] focus-visible:ring-[#DC2626]/10";
+// WCAG 1.3.1 — error state uses both color AND border change (not color alone)
+const inputError = "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20";
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, leftIcon, rightIcon, error, ...props }, ref) => {
@@ -32,7 +35,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       return (
         <div className="relative flex items-center">
           {leftIcon && (
-            <span className="pointer-events-none absolute left-3 flex items-center text-[#94A3B8] [&>svg]:size-4">
+            // aria-hidden — decorative icon; the input's placeholder/label provides the accessible name
+            <span className="pointer-events-none absolute left-3 flex items-center text-muted-foreground [&>svg]:size-4" aria-hidden="true">
               {leftIcon}
             </span>
           )}
@@ -40,11 +44,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={type}
             className={cn(inputBase, error && inputError, leftIcon && "pl-9", rightIcon && "pr-9", className)}
             ref={ref}
-            aria-invalid={error}
+            aria-invalid={error || undefined}
             {...props}
           />
           {rightIcon && (
-            <span className="absolute right-3 flex items-center text-[#94A3B8] [&>svg]:size-4">
+            <span className="absolute right-3 flex items-center text-muted-foreground [&>svg]:size-4" aria-hidden="true">
               {rightIcon}
             </span>
           )}
@@ -57,7 +61,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         type={type}
         className={cn(inputBase, error && inputError, className)}
         ref={ref}
-        aria-invalid={error}
+        aria-invalid={error || undefined}
         {...props}
       />
     );
