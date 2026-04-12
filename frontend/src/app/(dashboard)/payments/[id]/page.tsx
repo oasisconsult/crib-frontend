@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   RotateCcw,
   Copy,
+  // Receipt,
+  FileText as Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,23 +32,91 @@ interface Props {
 
 // ── State config ──────────────────────────────────────────────────────────────
 
-const STATE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ElementType }> = {
+const STATE_CONFIG: Record<
+  string,
+  { label: string; color: string; bg: string; icon: React.ElementType }
+> = {
   // v4 happy path
-  initiated:          { label: "Initiated",      color: "text-slate-600",   bg: "bg-slate-100 dark:bg-slate-900/40",    icon: Clock         },
-  predicted:          { label: "Analysed",        color: "text-indigo-700",  bg: "bg-indigo-100 dark:bg-indigo-950/40",  icon: Clock         },
-  routed:             { label: "Routed",          color: "text-blue-700",    bg: "bg-blue-100 dark:bg-blue-950/40",      icon: Clock         },
-  pending:            { label: "Processing",      color: "text-amber-700",   bg: "bg-amber-100 dark:bg-amber-950/40",    icon: Clock         },
-  reconciled:         { label: "Reconciled",      color: "text-teal-700",    bg: "bg-teal-100 dark:bg-teal-950/40",      icon: CheckCircle2  },
-  allocated:          { label: "Allocated",       color: "text-violet-700",  bg: "bg-violet-100 dark:bg-violet-950/40",  icon: CheckCircle2  },
-  completed:          { label: "Completed",       color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-950/40", icon: CheckCircle2  },
+  initiated: {
+    label: "Initiated",
+    color: "text-slate-600",
+    bg: "bg-slate-100 dark:bg-slate-900/40",
+    icon: Clock,
+  },
+  predicted: {
+    label: "Analysed",
+    color: "text-indigo-700",
+    bg: "bg-indigo-100 dark:bg-indigo-950/40",
+    icon: Clock,
+  },
+  routed: {
+    label: "Routed",
+    color: "text-blue-700",
+    bg: "bg-blue-100 dark:bg-blue-950/40",
+    icon: Clock,
+  },
+  pending: {
+    label: "Processing",
+    color: "text-amber-700",
+    bg: "bg-amber-100 dark:bg-amber-950/40",
+    icon: Clock,
+  },
+  reconciled: {
+    label: "Reconciled",
+    color: "text-teal-700",
+    bg: "bg-teal-100 dark:bg-teal-950/40",
+    icon: CheckCircle2,
+  },
+  allocated: {
+    label: "Allocated",
+    color: "text-violet-700",
+    bg: "bg-violet-100 dark:bg-violet-950/40",
+    icon: CheckCircle2,
+  },
+  completed: {
+    label: "Completed",
+    color: "text-emerald-700",
+    bg: "bg-emerald-100 dark:bg-emerald-950/40",
+    icon: CheckCircle2,
+  },
   // v4 failure paths
-  predicted_failure:  { label: "Blocked",         color: "text-orange-700",  bg: "bg-orange-100 dark:bg-orange-950/40",  icon: AlertTriangle },
-  retry_scheduled:    { label: "Retry Scheduled", color: "text-amber-700",   bg: "bg-amber-100 dark:bg-amber-950/40",    icon: Clock         },
-  permanently_failed: { label: "Failed",          color: "text-red-700",     bg: "bg-red-100 dark:bg-red-950/40",        icon: AlertTriangle },
+  predicted_failure: {
+    label: "Blocked",
+    color: "text-orange-700",
+    bg: "bg-orange-100 dark:bg-orange-950/40",
+    icon: AlertTriangle,
+  },
+  retry_scheduled: {
+    label: "Retry Scheduled",
+    color: "text-amber-700",
+    bg: "bg-amber-100 dark:bg-amber-950/40",
+    icon: Clock,
+  },
+  permanently_failed: {
+    label: "Failed",
+    color: "text-red-700",
+    bg: "bg-red-100 dark:bg-red-950/40",
+    icon: AlertTriangle,
+  },
   // legacy
-  confirmed:          { label: "Confirmed",       color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-950/40", icon: CheckCircle2  },
-  failed:             { label: "Failed",          color: "text-red-700",     bg: "bg-red-100 dark:bg-red-950/40",        icon: AlertTriangle },
-  refunded:           { label: "Refunded",        color: "text-orange-700",  bg: "bg-orange-100 dark:bg-orange-950/40",  icon: RotateCcw     },
+  confirmed: {
+    label: "Confirmed",
+    color: "text-emerald-700",
+    bg: "bg-emerald-100 dark:bg-emerald-950/40",
+    icon: CheckCircle2,
+  },
+  failed: {
+    label: "Failed",
+    color: "text-red-700",
+    bg: "bg-red-100 dark:bg-red-950/40",
+    icon: AlertTriangle,
+  },
+  refunded: {
+    label: "Refunded",
+    color: "text-orange-700",
+    bg: "bg-orange-100 dark:bg-orange-950/40",
+    icon: RotateCcw,
+  },
 };
 
 // ── Method label ──────────────────────────────────────────────────────────────
@@ -54,13 +124,13 @@ const STATE_CONFIG: Record<string, { label: string; color: string; bg: string; i
 function methodLabel(method?: string | null): string {
   if (!method) return "—";
   const MAP: Record<string, string> = {
-    mobile_money_mtn:    "MTN Mobile Money",
+    mobile_money_mtn: "MTN Mobile Money",
     mobile_money_airtel: "Airtel Money",
-    bank_transfer:       "Bank Transfer",
-    card:                "Card",
-    cash:                "Cash",
-    direct_debit:        "Direct Debit",
-    cheque:              "Cheque",
+    bank_transfer: "Bank Transfer",
+    card: "Card",
+    cash: "Cash",
+    direct_debit: "Direct Debit",
+    cheque: "Cheque",
   };
   return MAP[method] ?? method.replace(/_/g, " ");
 }
@@ -76,7 +146,10 @@ function CopyButton({ value }: { value: string }) {
   return (
     <button
       type="button"
-      onClick={() => { navigator.clipboard.writeText(value); toast.success("Copied"); }}
+      onClick={() => {
+        navigator.clipboard.writeText(value);
+        toast.success("Copied");
+      }}
       className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
       title="Copy"
     >
@@ -89,13 +162,13 @@ function CopyButton({ value }: { value: string }) {
 
 export default function PaymentDetailPage({ params }: Props) {
   const { id } = use(params);
-  const router  = useRouter();
+  const router = useRouter();
 
   const { data: payment, isLoading } = usePayment(id);
   const { mutate: reconcile, isPending: reconciling } = useReconcilePayment();
 
   // Related data — only fetch when IDs are known
-  const { data: lease }    = useLease(payment?.leaseId ?? "");
+  const { data: lease } = useLease(payment?.leaseId ?? "");
 
   if (isLoading) return <PageSkeleton />;
   if (!payment) {
@@ -103,14 +176,24 @@ export default function PaymentDetailPage({ params }: Props) {
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <CreditCard className="h-12 w-12 text-muted-foreground" />
         <p className="text-sm font-medium">Payment not found</p>
-        <Button variant="outline" size="sm" onClick={() => router.back()}>Go back</Button>
+        <Button variant="outline" size="sm" onClick={() => router.back()}>
+          Go back
+        </Button>
       </div>
     );
   }
 
-  const stateCfg    = STATE_CONFIG[payment.state] ?? STATE_CONFIG.pending;
-  const StateIcon   = stateCfg.icon;
-  const IN_PROGRESS = new Set(["initiated", "predicted", "routed", "pending", "reconciled", "allocated", "retry_scheduled"]);
+  const stateCfg = STATE_CONFIG[payment.state] ?? STATE_CONFIG.pending;
+  const StateIcon = stateCfg.icon;
+  const IN_PROGRESS = new Set([
+    "initiated",
+    "predicted",
+    "routed",
+    "pending",
+    "reconciled",
+    "allocated",
+    "retry_scheduled",
+  ]);
   const SUCCESS_STATES = new Set(["confirmed", "completed"]);
   const canReconcile = IN_PROGRESS.has(payment.state as string);
 
@@ -124,11 +207,16 @@ export default function PaymentDetailPage({ params }: Props) {
           </Button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold tracking-tight font-mono">{payment.reference}</h1>
-              <span className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
-                stateCfg.color, stateCfg.bg,
-              )}>
+              <h1 className="text-xl font-bold tracking-tight font-mono">
+                {payment.reference}
+              </h1>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                  stateCfg.color,
+                  stateCfg.bg,
+                )}
+              >
                 <StateIcon className="h-3 w-3" />
                 {stateCfg.label}
               </span>
@@ -155,13 +243,22 @@ export default function PaymentDetailPage({ params }: Props) {
       {/* ── Amount hero ──────────────────────────────────────── */}
       <div className="rounded-xl border bg-gradient-to-br from-emerald-50 to-background dark:from-emerald-950/20 dark:to-background p-6 flex items-center justify-between gap-4">
         <div>
-          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Amount</p>
+          <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+            Amount
+          </p>
           <p className="text-4xl font-bold text-emerald-600 mt-1">
             {formatCurrency(payment.amount, payment.currency)}
           </p>
-          <p className="text-sm text-muted-foreground mt-1 capitalize">{categoryLabel(payment)}</p>
+          <p className="text-sm text-muted-foreground mt-1 capitalize">
+            {categoryLabel(payment)}
+          </p>
         </div>
-        <div className={cn("h-16 w-16 rounded-2xl flex items-center justify-center shrink-0", stateCfg.bg)}>
+        <div
+          className={cn(
+            "h-16 w-16 rounded-2xl flex items-center justify-center shrink-0",
+            stateCfg.bg,
+          )}
+        >
           <StateIcon className={cn("h-8 w-8", stateCfg.color)} />
         </div>
       </div>
@@ -245,19 +342,33 @@ export default function PaymentDetailPage({ params }: Props) {
             <div className="pt-2">
               <div className="flex items-center gap-2">
                 {[
-                  { label: "Created",    done: true },
-                  { label: "Paid",       done: !!payment.paidAt },
-                  { label: "Completed",  done: SUCCESS_STATES.has(payment.state as string) },
-                  { label: "Refunded",   done: payment.state === "refunded" },
+                  { label: "Created", done: true },
+                  { label: "Paid", done: !!payment.paidAt },
+                  {
+                    label: "Completed",
+                    done: SUCCESS_STATES.has(payment.state as string),
+                  },
+                  { label: "Refunded", done: payment.state === "refunded" },
                 ].map((s, i) => (
                   <div key={s.label} className="flex items-center gap-1">
-                    {i > 0 && <div className={cn("h-px w-4 shrink-0", s.done ? "bg-emerald-400" : "bg-border")} />}
+                    {i > 0 && (
+                      <div
+                        className={cn(
+                          "h-px w-4 shrink-0",
+                          s.done ? "bg-emerald-400" : "bg-border",
+                        )}
+                      />
+                    )}
                     <div className="flex flex-col items-center gap-0.5">
-                      <div className={cn(
-                        "h-2 w-2 rounded-full",
-                        s.done ? "bg-emerald-500" : "bg-muted-foreground/30",
-                      )} />
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">{s.label}</span>
+                      <div
+                        className={cn(
+                          "h-2 w-2 rounded-full",
+                          s.done ? "bg-emerald-500" : "bg-muted-foreground/30",
+                        )}
+                      />
+                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                        {s.label}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -301,12 +412,13 @@ export default function PaymentDetailPage({ params }: Props) {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <p className="text-muted-foreground leading-relaxed">{payment.notes}</p>
+              <p className="text-muted-foreground leading-relaxed">
+                {payment.notes}
+              </p>
             </CardContent>
           </Card>
         )}
       </div>
-
     </div>
   );
 }
