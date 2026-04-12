@@ -7,35 +7,44 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   error?: boolean;
 }
 
+const inputBase = [
+  "flex w-full",
+  "h-9",
+  "rounded-[8px]",
+  "border border-[#E2E8F0]",
+  "bg-white",
+  "px-3",
+  "text-sm text-[#0F172A]",
+  "placeholder:text-[#94A3B8]",
+  "transition-[border-color,box-shadow] duration-150",
+  "focus-visible:outline-none",
+  "focus-visible:border-[#0062FF]",
+  "focus-visible:ring-2 focus-visible:ring-[#0062FF]/10",
+  "disabled:cursor-not-allowed disabled:bg-[#F8FAFC] disabled:text-[#94A3B8] disabled:border-[#E2E8F0]",
+  "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-[#0F172A]",
+].join(" ");
+
+const inputError = "border-[#DC2626] focus-visible:border-[#DC2626] focus-visible:ring-[#DC2626]/10";
+
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, leftIcon, rightIcon, error, ...props }, ref) => {
     if (leftIcon || rightIcon) {
       return (
         <div className="relative flex items-center">
           {leftIcon && (
-            <span className="absolute left-3 flex items-center text-muted-foreground pointer-events-none">
+            <span className="pointer-events-none absolute left-3 flex items-center text-[#94A3B8] [&>svg]:size-4">
               {leftIcon}
             </span>
           )}
           <input
             type={type}
-            className={cn(
-              "flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors",
-              "file:border-0 file:bg-transparent file:text-sm file:font-medium",
-              "placeholder:text-muted-foreground",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-              error && "border-destructive focus-visible:ring-destructive",
-              leftIcon && "pl-9",
-              rightIcon && "pr-9",
-              className,
-            )}
+            className={cn(inputBase, error && inputError, leftIcon && "pl-9", rightIcon && "pr-9", className)}
             ref={ref}
             aria-invalid={error}
             {...props}
           />
           {rightIcon && (
-            <span className="absolute right-3 flex items-center text-muted-foreground">
+            <span className="absolute right-3 flex items-center text-[#94A3B8] [&>svg]:size-4">
               {rightIcon}
             </span>
           )}
@@ -46,15 +55,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         type={type}
-        className={cn(
-          "flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors",
-          "file:border-0 file:bg-transparent file:text-sm file:font-medium",
-          "placeholder:text-muted-foreground",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          error && "border-destructive focus-visible:ring-destructive",
-          className,
-        )}
+        className={cn(inputBase, error && inputError, className)}
         ref={ref}
         aria-invalid={error}
         {...props}

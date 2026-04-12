@@ -2,390 +2,334 @@
 
 import Link from "next/link";
 import {
-  Building2,
-  Users,
-  DollarSign,
-  FileText,
-  TrendingUp,
-  TrendingDown,
-  Plus,
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  AlertTriangle,
-  Wrench,
-  CreditCard,
-  MapPin,
-  MoreHorizontal,
+  Building2, Users, DollarSign, FileText, TrendingUp, TrendingDown,
+  Plus, ArrowRight, CreditCard, Wrench, MapPin, ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { PageHeader } from "@/components/common/PageHeader";
+import { Button } from "@/components/ui/button";
 
-// ── KPI Card ────────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────
+   KPI CARD
+   ───────────────────────────────────────────────────────────────────────── */
 
 interface KpiCardProps {
   label: string;
   value: string;
   change: string;
-  changePositive: boolean;
+  positive: boolean;
   icon: React.ReactNode;
+  iconColor: string;
   iconBg: string;
+  href?: string;
 }
 
-function KpiCard({ label, value, change, changePositive, icon, iconBg }: KpiCardProps) {
-  return (
-    <div
-      className="rounded-xl p-5 flex flex-col gap-3 border"
-      style={{
-        background: "#FFFFFF",
-        borderColor: "rgba(0,0,0,0.06)",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-      }}
-    >
-      <div className="flex items-start justify-between">
+function KpiCard({ label, value, change, positive, icon, iconColor, iconBg, href }: KpiCardProps) {
+  const TrendIcon = positive ? TrendingUp : TrendingDown;
+  const inner = (
+    <div className="bg-white rounded-[12px] border border-[#E2E8F0] p-5 flex flex-col gap-4 group
+                    shadow-[0_1px_3px_rgba(15,23,42,0.06),0_1px_2px_rgba(15,23,42,0.04)]
+                    hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)] transition-shadow duration-200">
+      {/* Top row */}
+      <div className="flex items-center justify-between">
         <div
-          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+          className="h-10 w-10 rounded-[8px] flex items-center justify-center shrink-0"
           style={{ background: iconBg }}
         >
-          {icon}
+          <span style={{ color: iconColor }}>{icon}</span>
         </div>
         <span
           className={cn(
-            "flex items-center gap-0.5 text-xs font-semibold",
-            changePositive ? "text-[#00A878]" : "text-[#E02020]",
+            "flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-[4px]",
+            positive
+              ? "bg-[#ECFDF5] text-[#059669]"
+              : "bg-[#FEF2F2] text-[#DC2626]",
           )}
         >
-          {changePositive ? (
-            <TrendingUp className="h-3 w-3" />
-          ) : (
-            <TrendingDown className="h-3 w-3" />
-          )}
+          <TrendIcon className="h-3 w-3" />
           {change}
         </span>
       </div>
+      {/* Value + label */}
       <div>
         <p
-          className="text-2xl font-bold leading-tight"
-          style={{
-            fontFamily: "var(--font-poppins, 'Poppins', sans-serif)",
-            color: "#171725",
-          }}
+          className="text-[28px] font-bold text-[#0F172A] leading-none tracking-[-0.03em]"
+          style={{ fontFamily: "var(--font-poppins,'Poppins',sans-serif)" }}
         >
           {value}
         </p>
-        <p className="text-xs font-medium mt-0.5 uppercase tracking-wide" style={{ color: "#696974" }}>
+        <p className="text-xs font-medium text-[#64748B] mt-1.5 uppercase tracking-[0.05em]">
           {label}
         </p>
       </div>
     </div>
   );
+
+  if (href) {
+    return <Link href={href} className="block">{inner}</Link>;
+  }
+  return inner;
 }
 
-// ── Activity item ────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────
+   ACTIVITY FEED ITEM
+   ───────────────────────────────────────────────────────────────────────── */
 
-const ACTIVITY_ICON_MAP: Record<string, { icon: React.ReactNode; bg: string; color: string }> = {
-  payment:     { icon: <CreditCard className="h-4 w-4" />,  bg: "#EEF4FF", color: "#0062FF" },
-  maintenance: { icon: <Wrench className="h-4 w-4" />,      bg: "#FFF8E7", color: "#E5A800" },
-  tenant:      { icon: <Users className="h-4 w-4" />,       bg: "#E8FFF7", color: "#00A878" },
-  alert:       { icon: <AlertTriangle className="h-4 w-4" />, bg: "#FFF0F0", color: "#E02020" },
+type ActivityType = "payment" | "maintenance" | "tenant" | "alert";
+type ActivityStatus = "completed" | "pending" | "overdue";
+
+const ACTIVITY_META: Record<ActivityType, { bg: string; color: string; icon: React.ReactNode }> = {
+  payment:     { bg: "#EEF4FF", color: "#0062FF", icon: <CreditCard className="h-3.5 w-3.5" /> },
+  maintenance: { bg: "#FFFBEB", color: "#D97706", icon: <Wrench className="h-3.5 w-3.5" /> },
+  tenant:      { bg: "#ECFDF5", color: "#059669", icon: <Users className="h-3.5 w-3.5" /> },
+  alert:       { bg: "#FEF2F2", color: "#DC2626", icon: <FileText className="h-3.5 w-3.5" /> },
+};
+
+const STATUS_BADGE: Record<ActivityStatus, { label: string; className: string }> = {
+  completed: { label: "Done",    className: "bg-[#ECFDF5] text-[#059669]" },
+  pending:   { label: "Pending", className: "bg-[#FFFBEB] text-[#D97706]" },
+  overdue:   { label: "Overdue", className: "bg-[#FEF2F2] text-[#DC2626]" },
 };
 
 interface Activity {
   id: string;
-  type: keyof typeof ACTIVITY_ICON_MAP;
+  type: ActivityType;
   description: string;
   time: string;
-  status: "completed" | "pending" | "overdue";
+  status: ActivityStatus;
 }
 
-function ActivityItem({ activity }: { activity: Activity }) {
-  const meta = ACTIVITY_ICON_MAP[activity.type] ?? ACTIVITY_ICON_MAP.payment;
-
-  const statusConfig = {
-    completed: { label: "Completed", bg: "#E8FFF7", color: "#00A878" },
-    pending:   { label: "Pending",   bg: "#FFF8E7", color: "#E5A800" },
-    overdue:   { label: "Overdue",   bg: "#FFF0F0", color: "#E02020" },
-  }[activity.status];
+function ActivityRow({ item }: { item: Activity }) {
+  const meta   = ACTIVITY_META[item.type];
+  const status = STATUS_BADGE[item.status];
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b last:border-b-0" style={{ borderColor: "rgba(0,0,0,0.05)" }}>
+    <div className="flex items-start gap-3 py-3 border-b border-[#F1F5F9] last:border-0">
       <div
-        className="h-8 w-8 shrink-0 rounded-[8px] flex items-center justify-center"
+        className="h-7 w-7 rounded-[7px] flex items-center justify-center shrink-0 mt-0.5"
         style={{ background: meta.bg, color: meta.color }}
       >
         {meta.icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-[#171725] leading-snug truncate">{activity.description}</p>
-        <p className="text-xs text-[#696974] mt-0.5">{activity.time}</p>
+        <p className="text-[13px] text-[#0F172A] leading-snug">{item.description}</p>
+        <p className="text-[11px] text-[#94A3B8] mt-0.5">{item.time}</p>
       </div>
-      <span
-        className="shrink-0 text-xs font-semibold rounded-full px-2.5 py-0.5"
-        style={{ background: statusConfig.bg, color: statusConfig.color }}
-      >
-        {statusConfig.label}
+      <span className={cn("text-[11px] font-semibold rounded-[4px] px-2 py-0.5 shrink-0", status.className)}>
+        {status.label}
       </span>
     </div>
   );
 }
 
-// ── Property row ─────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────
+   PROPERTY ROW
+   ───────────────────────────────────────────────────────────────────────── */
 
-interface Property {
-  id: string;
-  name: string;
-  location: string;
-  units: number;
-  occupied: number;
-  revenue: string;
-}
+interface Property { id: string; name: string; location: string; units: number; occupied: number; revenue: string; }
 
-function PropertyRow({ property }: { property: Property }) {
-  const occupancyPct = Math.round((property.occupied / property.units) * 100);
-  const occupancyColor = occupancyPct >= 85 ? "#00A878" : occupancyPct >= 60 ? "#E5A800" : "#E02020";
+function PropertyRow({ p }: { p: Property }) {
+  const pct = Math.round((p.occupied / p.units) * 100);
+  const barColor = pct >= 85 ? "#059669" : pct >= 60 ? "#D97706" : "#DC2626";
 
   return (
-    <div
-      className="flex items-center gap-4 py-3 border-b last:border-b-0 hover:bg-[#F1F1F5]/60 px-4 -mx-4 rounded-lg transition-colors cursor-pointer"
-      style={{ borderColor: "rgba(0,0,0,0.05)" }}
-    >
-      {/* Icon */}
-      <div className="h-9 w-9 shrink-0 rounded-[8px] flex items-center justify-center" style={{ background: "#EEF4FF" }}>
-        <Building2 className="h-4 w-4 text-[#0062FF]" />
+    <div className="flex items-center gap-3 py-3 px-5 border-b border-[#F1F5F9] last:border-0
+                    hover:bg-[#F8FAFC] transition-colors cursor-pointer group">
+      <div className="h-8 w-8 rounded-[7px] bg-[#EEF4FF] flex items-center justify-center shrink-0">
+        <Building2 className="h-3.5 w-3.5 text-[#0062FF]" />
       </div>
-
-      {/* Name & location */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#171725] truncate">{property.name}</p>
-        <p className="text-xs text-[#696974] flex items-center gap-1 mt-0.5">
-          <MapPin className="h-3 w-3 shrink-0" />
-          {property.location}
+        <p className="text-[13px] font-semibold text-[#0F172A] truncate group-hover:text-[#0062FF] transition-colors">
+          {p.name}
+        </p>
+        <p className="text-[11px] text-[#94A3B8] flex items-center gap-1 mt-0.5">
+          <MapPin className="h-2.5 w-2.5 shrink-0" />{p.location}
         </p>
       </div>
-
-      {/* Units */}
-      <div className="hidden sm:block text-center w-16">
-        <p className="text-sm font-semibold text-[#171725]">{property.units}</p>
-        <p className="text-[10px] text-[#696974] uppercase tracking-wide">Units</p>
-      </div>
-
-      {/* Occupancy */}
-      <div className="hidden md:block w-28">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-semibold" style={{ color: occupancyColor }}>{occupancyPct}%</span>
-          <span className="text-xs text-[#696974]">{property.occupied}/{property.units}</span>
+      {/* Occupancy bar */}
+      <div className="hidden md:flex flex-col gap-1 w-24 shrink-0">
+        <div className="flex justify-between text-[10px] font-medium">
+          <span style={{ color: barColor }}>{pct}%</span>
+          <span className="text-[#94A3B8]">{p.occupied}/{p.units}</span>
         </div>
-        <div className="h-1.5 rounded-full bg-[#F1F1F5] overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${occupancyPct}%`, background: occupancyColor }}
-          />
+        <div className="h-1.5 bg-[#F1F5F9] rounded-full overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${pct}%`, background: barColor }} />
         </div>
       </div>
-
       {/* Revenue */}
-      <div className="hidden sm:block text-right w-24">
-        <p className="text-sm font-semibold text-[#171725]">{property.revenue}</p>
-        <p className="text-[10px] text-[#696974] uppercase tracking-wide">Revenue</p>
+      <div className="hidden sm:block text-right shrink-0">
+        <p className="text-[13px] font-semibold text-[#0F172A]">{p.revenue}</p>
+        <p className="text-[10px] text-[#94A3B8] mt-0.5">/ month</p>
       </div>
     </div>
   );
 }
 
-// ── Quick action button ───────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────
+   QUICK ACTION
+   ───────────────────────────────────────────────────────────────────────── */
 
 function QuickAction({ icon, label, href, color, bg }: {
-  icon: React.ReactNode;
-  label: string;
-  href: string;
-  color: string;
-  bg: string;
+  icon: React.ReactNode; label: string; href: string; color: string; bg: string;
 }) {
   return (
     <Link
       href={href}
-      className="flex flex-col items-center gap-2 p-4 rounded-xl border hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group"
-      style={{ background: "#FFFFFF", borderColor: "rgba(0,0,0,0.06)" }}
+      className="flex items-center gap-3 p-3 rounded-[10px] border border-[#E2E8F0] bg-white
+                 hover:border-[#CBD5E1] hover:shadow-[0_2px_8px_rgba(15,23,42,0.07)]
+                 transition-all duration-150 group"
     >
-      <div className="h-10 w-10 rounded-xl flex items-center justify-center" style={{ background: bg, color }}>
+      <div className="h-8 w-8 rounded-[7px] flex items-center justify-center shrink-0"
+           style={{ background: bg, color }}>
         {icon}
       </div>
-      <span className="text-xs font-semibold text-[#171725] text-center leading-tight">{label}</span>
+      <span className="text-[13px] font-medium text-[#0F172A] group-hover:text-[#0062FF] transition-colors">
+        {label}
+      </span>
+      <ArrowUpRight className="h-3.5 w-3.5 text-[#CBD5E1] group-hover:text-[#0062FF] ml-auto transition-colors" />
     </Link>
   );
 }
 
-// ── Main Dashboard component ──────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────────────────
+   DASHBOARD PAGE
+   ───────────────────────────────────────────────────────────────────────── */
 
 export function Dashboard() {
-  const kpiCards: KpiCardProps[] = [
+  const kpis: KpiCardProps[] = [
     {
       label: "Total Properties",
       value: "24",
       change: "+2 this month",
-      changePositive: true,
+      positive: true,
       iconBg: "#EEF4FF",
-      icon: <Building2 className="h-5 w-5 text-[#0062FF]" />,
+      iconColor: "#0062FF",
+      icon: <Building2 className="h-5 w-5" />,
+      href: "/properties",
     },
     {
       label: "Occupancy Rate",
       value: "87%",
       change: "+3% vs last month",
-      changePositive: true,
-      iconBg: "#E8FFF7",
-      icon: <Users className="h-5 w-5 text-[#00A878]" />,
+      positive: true,
+      iconBg: "#ECFDF5",
+      iconColor: "#059669",
+      icon: <Users className="h-5 w-5" />,
+      href: "/tenants",
     },
     {
       label: "Monthly Revenue",
-      value: "UGX 124.5M",
+      value: "124.5M",
       change: "+8.3% vs last month",
-      changePositive: true,
+      positive: true,
       iconBg: "#EEF4FF",
-      icon: <DollarSign className="h-5 w-5 text-[#0062FF]" />,
+      iconColor: "#0062FF",
+      icon: <DollarSign className="h-5 w-5" />,
+      href: "/payments",
     },
     {
       label: "Outstanding Rent",
-      value: "UGX 8.45M",
-      change: "-12% from yesterday",
-      changePositive: true,
-      iconBg: "#FFF8E7",
-      icon: <FileText className="h-5 w-5 text-[#E5A800]" />,
+      value: "8.45M",
+      change: "-12% yesterday",
+      positive: true,
+      iconBg: "#FFFBEB",
+      iconColor: "#D97706",
+      icon: <FileText className="h-5 w-5" />,
+      href: "/payments",
     },
   ];
 
-  const recentActivity: Activity[] = [
-    {
-      id: "1",
-      type: "payment",
-      description: "John Doe paid rent for Sunset Apartments — Jan 2026",
-      time: "2 hours ago",
-      status: "completed",
-    },
-    {
-      id: "2",
-      type: "maintenance",
-      description: "Leaking tap reported in Building A, Unit 4B",
-      time: "4 hours ago",
-      status: "pending",
-    },
-    {
-      id: "3",
-      type: "tenant",
-      description: "New tenant Sarah Kato onboarded — Oak Street",
-      time: "Yesterday, 3:14 PM",
-      status: "completed",
-    },
-    {
-      id: "4",
-      type: "alert",
-      description: "Riverside Complex — Rent overdue for 3 units",
-      time: "2 days ago",
-      status: "overdue",
-    },
+  const activities: Activity[] = [
+    { id: "1", type: "payment",     description: "John Doe paid rent — Sunset Apartments, Jan 2026", time: "2 hours ago",          status: "completed" },
+    { id: "2", type: "maintenance", description: "Leaking tap reported — Building A, Unit 4B",        time: "4 hours ago",          status: "pending"   },
+    { id: "3", type: "tenant",      description: "Sarah Kato onboarded — Oak Street Property",        time: "Yesterday, 3:14 PM",   status: "completed" },
+    { id: "4", type: "alert",       description: "Riverside Complex — 3 units rent overdue",          time: "2 days ago",           status: "overdue"   },
+    { id: "5", type: "payment",     description: "Deposit received — Nakasero Heights, Unit 2A",      time: "2 days ago",           status: "completed" },
   ];
 
   const properties: Property[] = [
-    { id: "1", name: "Sunset Apartments", location: "Kampala, UG", units: 12, occupied: 11, revenue: "UGX 18.5M" },
-    { id: "2", name: "Oak Street Property", location: "Entebbe, UG", units: 8, occupied: 7, revenue: "UGX 12M" },
-    { id: "3", name: "Riverside Complex", location: "Jinja, UG", units: 24, occupied: 20, revenue: "UGX 35M" },
-    { id: "4", name: "Nakasero Heights", location: "Kampala, UG", units: 6, occupied: 4, revenue: "UGX 9.6M" },
+    { id: "1", name: "Sunset Apartments",  location: "Kampala, UG",  units: 12, occupied: 11, revenue: "UGX 18.5M" },
+    { id: "2", name: "Oak Street Property",location: "Entebbe, UG",  units: 8,  occupied: 7,  revenue: "UGX 12M"   },
+    { id: "3", name: "Riverside Complex",  location: "Jinja, UG",    units: 24, occupied: 20, revenue: "UGX 35M"   },
+    { id: "4", name: "Nakasero Heights",   location: "Kampala, UG",  units: 6,  occupied: 4,  revenue: "UGX 9.6M"  },
   ];
 
   return (
-    <div className="space-y-6">
-      {/* ── Page header ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1
-            className="text-xl font-bold text-[#171725]"
-            style={{ fontFamily: "var(--font-poppins, 'Poppins', sans-serif)" }}
-          >
-            Dashboard
-          </h1>
-          <p className="text-sm text-[#696974] mt-0.5">
-            Welcome back! Here&apos;s what&apos;s happening today.
-          </p>
-        </div>
-        <Link
-          href="/properties/new"
-          className="flex items-center gap-2 h-9 px-4 rounded-[8px] text-sm font-semibold text-white transition-all hover:shadow-md"
-          style={{ background: "#0062FF" }}
-        >
-          <Plus className="h-4 w-4" />
-          Add Property
-        </Link>
-      </div>
+    <div className="space-y-5">
+      {/* Header */}
+      <PageHeader
+        title="Dashboard"
+        description="Welcome back — here's what's happening across your portfolio."
+        actions={
+          <Button asChild size="default">
+            <Link href="/properties/new">
+              <Plus className="h-4 w-4" />
+              Add Property
+            </Link>
+          </Button>
+        }
+      />
 
-      {/* ── KPI cards ── */}
+      {/* KPI row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {kpiCards.map((card) => (
-          <KpiCard key={card.label} {...card} />
-        ))}
+        {kpis.map((k) => <KpiCard key={k.label} {...k} />)}
       </div>
 
-      {/* ── Middle row: properties + activity ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
-        {/* Properties list — 3 cols */}
-        <div
-          className="lg:col-span-3 rounded-xl border"
-          style={{ background: "#FFFFFF", borderColor: "rgba(0,0,0,0.06)", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
-        >
-          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
-            <h2 className="text-sm font-bold text-[#171725]" style={{ fontFamily: "var(--font-poppins, 'Poppins', sans-serif)" }}>
-              Properties Overview
-            </h2>
+      {/* Middle row */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+        {/* Properties — 3 cols */}
+        <div className="lg:col-span-3 bg-white rounded-[12px] border border-[#E2E8F0]
+                        shadow-[0_1px_3px_rgba(15,23,42,0.06),0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#F1F5F9]">
+            <div>
+              <h2 className="text-[13.5px] font-semibold text-[#0F172A] tracking-[-0.01em]">
+                Properties
+              </h2>
+              <p className="text-[11px] text-[#94A3B8] mt-0.5">Live occupancy snapshot</p>
+            </div>
             <Link
               href="/properties"
-              className="flex items-center gap-1 text-xs font-semibold text-[#0062FF] hover:underline"
+              className="flex items-center gap-1 text-[12px] font-semibold text-[#0062FF] hover:underline"
             >
               View all <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="px-5 py-2">
-            {properties.map((p) => (
-              <PropertyRow key={p.id} property={p} />
-            ))}
+          <div>
+            {properties.map((p) => <PropertyRow key={p.id} p={p} />)}
           </div>
         </div>
 
         {/* Activity — 2 cols */}
-        <div
-          className="lg:col-span-2 rounded-xl border"
-          style={{ background: "#FFFFFF", borderColor: "rgba(0,0,0,0.06)", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
-        >
-          <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
-            <h2 className="text-sm font-bold text-[#171725]" style={{ fontFamily: "var(--font-poppins, 'Poppins', sans-serif)" }}>
-              Recent Activity
-            </h2>
-            <span className="flex items-center gap-1 text-xs font-semibold text-[#696974]">
-              <Clock className="h-3 w-3" /> Today
-            </span>
+        <div className="lg:col-span-2 bg-white rounded-[12px] border border-[#E2E8F0]
+                        shadow-[0_1px_3px_rgba(15,23,42,0.06),0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#F1F5F9]">
+            <div>
+              <h2 className="text-[13.5px] font-semibold text-[#0F172A] tracking-[-0.01em]">
+                Activity
+              </h2>
+              <p className="text-[11px] text-[#94A3B8] mt-0.5">Last 48 hours</p>
+            </div>
           </div>
-          <div className="px-5 py-2">
-            {recentActivity.map((a) => (
-              <ActivityItem key={a.id} activity={a} />
-            ))}
+          <div className="px-5 py-1">
+            {activities.map((a) => <ActivityRow key={a.id} item={a} />)}
           </div>
         </div>
       </div>
 
-      {/* ── Quick actions ── */}
-      <div
-        className="rounded-xl border"
-        style={{ background: "#FFFFFF", borderColor: "rgba(0,0,0,0.06)", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
-      >
-        <div className="px-5 py-4 border-b" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
-          <h2
-            className="text-sm font-bold text-[#171725]"
-            style={{ fontFamily: "var(--font-poppins, 'Poppins', sans-serif)" }}
-          >
+      {/* Quick actions */}
+      <div className="bg-white rounded-[12px] border border-[#E2E8F0]
+                      shadow-[0_1px_3px_rgba(15,23,42,0.06),0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="px-5 py-3.5 border-b border-[#F1F5F9]">
+          <h2 className="text-[13.5px] font-semibold text-[#0F172A] tracking-[-0.01em]">
             Quick Actions
           </h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-5">
-          <QuickAction href="/properties/new"  icon={<Building2 className="h-5 w-5" />} label="Add Property"    color="#0062FF" bg="#EEF4FF" />
-          <QuickAction href="/tenants"          icon={<Users className="h-5 w-5" />}     label="Add Tenant"      color="#00A878" bg="#E8FFF7" />
-          <QuickAction href="/leases/new"       icon={<FileText className="h-5 w-5" />}  label="New Lease"       color="#8B5CF6" bg="#F3EEFF" />
-          <QuickAction href="/maintenance"      icon={<Wrench className="h-5 w-5" />}    label="Maintenance"     color="#E5A800" bg="#FFF8E7" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4">
+          <QuickAction href="/properties/new"  icon={<Building2 className="h-4 w-4" />} label="Add Property"  color="#0062FF" bg="#EEF4FF" />
+          <QuickAction href="/tenants"          icon={<Users className="h-4 w-4" />}     label="Add Tenant"    color="#059669" bg="#ECFDF5" />
+          <QuickAction href="/leases/new"       icon={<FileText className="h-4 w-4" />}  label="Create Lease"  color="#7C3AED" bg="#F5F3FF" />
+          <QuickAction href="/maintenance"      icon={<Wrench className="h-4 w-4" />}    label="Maintenance"   color="#D97706" bg="#FFFBEB" />
         </div>
       </div>
     </div>

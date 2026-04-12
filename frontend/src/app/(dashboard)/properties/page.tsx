@@ -15,6 +15,7 @@ import { formatCurrency } from "@/utils/formatters";
 import { useProperties } from "@/hooks/useProperties";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/utils/cn";
+import { PageHeader } from "@/components/common/PageHeader";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
 
 const STATUS_STYLES: Record<PropertyStatus, string> = {
@@ -239,73 +240,47 @@ export default function PropertiesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Properties</h1>
-          <p className="text-base text-gray-600 mt-1">
-            {data?.total ?? 0} properties in your portfolio
-          </p>
-        </div>
-        <Button 
-          onClick={() => router.push("/properties/new")}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
-        >
-          <Plus className="h-5 w-5 mr-2" />
-          Add Property
-        </Button>
-      </div>
+      <PageHeader
+        title="Properties"
+        description={`${data?.total ?? 0} properties in your portfolio`}
+        actions={
+          <Button onClick={() => router.push("/properties/new")}>
+            <Plus className="h-4 w-4" />
+            Add Property
+          </Button>
+        }
+      />
 
       {/* Toolbar */}
-      <div className="flex gap-3 items-center flex-wrap bg-white p-4 rounded-lg border border-gray-200">
+      <div className="flex gap-2.5 items-center flex-wrap bg-white px-4 py-3 rounded-[10px] border border-[#E2E8F0] shadow-[0_1px_3px_rgba(15,23,42,0.05)]">
         <FilterBar
           search={search}
           onSearchChange={setSearch}
           placeholder="Search by name or city..."
-          className="flex-1 min-w-[200px] bg-gray-50 border-gray-300"
+          className="flex-1 min-w-[200px]"
         />
-
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as PropertyType | "all")}
-          className="h-10 rounded-lg border-gray-300 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="h-9 rounded-[8px] border border-[#E2E8F0] bg-white px-3 text-sm text-[#0F172A] focus:outline-none focus:border-[#0062FF] focus:ring-2 focus:ring-[#0062FF]/10"
         >
           <option value="all">All types</option>
-          {ALL_TYPES.map((t) => (
-            <option key={t} value={t}>{TYPE_LABELS[t]}</option>
-          ))}
+          {ALL_TYPES.map((t) => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
         </select>
-
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as PropertyStatus | "all")}
-          className="h-10 rounded-lg border-gray-300 bg-white px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="h-9 rounded-[8px] border border-[#E2E8F0] bg-white px-3 text-sm text-[#0F172A] focus:outline-none focus:border-[#0062FF] focus:ring-2 focus:ring-[#0062FF]/10"
         >
           <option value="all">All statuses</option>
-          {ALL_STATUSES.map((s) => (
-            <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-          ))}
+          {ALL_STATUSES.map((s) => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
         </select>
-
-        {/* View toggle */}
-        <div className="flex items-center gap-2 rounded-lg bg-gray-100 p-1">
-          <Button
-            variant={viewMode === "grid" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("grid")}
-            aria-label="Grid view"
-            className={viewMode === "grid" ? "bg-blue-600 text-white" : "text-gray-600"}
-          >
-            <LayoutGrid className="h-4 w-4" />
+        <div className="flex items-center gap-1 rounded-[8px] bg-[#F1F5F9] p-1">
+          <Button variant={viewMode === "grid" ? "default" : "ghost"} size="icon-sm" onClick={() => setViewMode("grid")} aria-label="Grid view">
+            <LayoutGrid className="h-3.5 w-3.5" />
           </Button>
-          <Button
-            variant={viewMode === "list" ? "default" : "ghost"}
-            size="sm"
-            onClick={() => setViewMode("list")}
-            aria-label="List view"
-            className={viewMode === "list" ? "bg-blue-600 text-white" : "text-gray-600"}
-          >
-            <List className="h-4 w-4" />
+          <Button variant={viewMode === "list" ? "default" : "ghost"} size="icon-sm" onClick={() => setViewMode("list")} aria-label="List view">
+            <List className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
@@ -350,17 +325,17 @@ export default function PropertiesPage() {
         </div>
       ) : (
         /* List view */
-        <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
+        <div className="rounded-[12px] border border-[#E2E8F0] overflow-hidden bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)]">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="py-3 px-4 text-left font-semibold text-gray-900">Property</th>
-                <th className="py-3 px-4 text-left font-semibold text-gray-900 hidden sm:table-cell">Type</th>
-                <th className="py-3 px-4 text-left font-semibold text-gray-900 hidden md:table-cell">Units</th>
-                <th className="py-3 px-4 text-left font-semibold text-gray-900 hidden lg:table-cell">Occupancy</th>
-                <th className="py-3 px-4 text-left font-semibold text-gray-900 hidden md:table-cell">Revenue / mo</th>
-                <th className="py-3 px-4 text-left font-semibold text-gray-900">Status</th>
-                <th className="py-3 px-4 w-8" />
+              <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                <th className="py-2.5 px-4 text-left text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">Property</th>
+                <th className="py-2.5 px-4 text-left text-[11px] font-semibold uppercase tracking-wider text-[#64748B] hidden sm:table-cell">Type</th>
+                <th className="py-2.5 px-4 text-left text-[11px] font-semibold uppercase tracking-wider text-[#64748B] hidden md:table-cell">Units</th>
+                <th className="py-2.5 px-4 text-left text-[11px] font-semibold uppercase tracking-wider text-[#64748B] hidden lg:table-cell">Occupancy</th>
+                <th className="py-2.5 px-4 text-left text-[11px] font-semibold uppercase tracking-wider text-[#64748B] hidden md:table-cell">Revenue / mo</th>
+                <th className="py-2.5 px-4 text-left text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">Status</th>
+                <th className="py-2.5 px-4 w-8" />
               </tr>
             </thead>
             <tbody>

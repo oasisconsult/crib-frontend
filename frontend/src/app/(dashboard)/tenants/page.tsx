@@ -1,16 +1,15 @@
 "use client";
 
 import { TenantTable } from "@/components/tenants/TenantTable";
+import { PageHeader } from "@/components/common/PageHeader";
 
 export default function TenantsPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Tenants</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Manage tenants, onboarding, and documents
-        </p>
-      </div>
+    <div className="space-y-5">
+      <PageHeader
+        title="Tenants"
+        description="Manage tenants, onboarding, and documents"
+      />
       <TenantTable />
     </div>
   );
