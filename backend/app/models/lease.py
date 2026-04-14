@@ -85,6 +85,9 @@ class Lease(TimestampedBase):
     deposit_paid: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
     deposit_paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # ── Advance payment override (set at lease creation; None → use system default) ──
+    advance_months: Mapped[int | None] = mapped_column(SmallInteger(), nullable=True)
+
     # ── Billing rules (copied from effective rules at draft creation) ───────────
     rent_day_of_month: Mapped[int] = mapped_column(SmallInteger(), nullable=False, default=1)
     grace_period_days: Mapped[int] = mapped_column(SmallInteger(), nullable=False, default=5)

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { User, Bell, Palette, Shield, Save } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, Bell, Palette, Shield, Save, Building2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/useAppStore";
 import { useUIStore } from "@/store/useUIStore";
 import { toast } from "@/store/useUIStore";
+import { useSystemSettings, useUpdateSetting } from "@/hooks/useSettings";
 
 export default function SettingsPage() {
   const user = useAppStore((s) => s.user);
@@ -23,6 +24,34 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [timezone, setTimezone] = useState(user?.timezone ?? "Africa/Kampala");
   const [saving, setSaving] = useState(false);
+
+  // ── Agency settings ────────────────────────────────────────────────────────
+  const { data: systemSettings, isLoading: loadingSettings } = useSystemSettings();
+  const { mutate: updateSetting, isPending: savingAgency } = useUpdateSetting();
+
+  const agencySettings = systemSettings?.agency ?? [];
+  const getAgencyValue = (key: string) =>
+    agencySettings.find((s) => s.key === key)?.value ?? "";
+
+  const [agencyName,  setAgencyName]  = useState("");
+  const [agencyPhone, setAgencyPhone] = useState("");
+  const [agencyEmail, setAgencyEmail] = useState("");
+
+  // Hydrate once settings load
+  useEffect(() => {
+    if (agencySettings.length > 0) {
+      setAgencyName(getAgencyValue("agency.name"));
+      setAgencyPhone(getAgencyValue("agency.contact_phone"));
+      setAgencyEmail(getAgencyValue("agency.contact_email"));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [systemSettings]);
+
+  function handleSaveAgency() {
+    updateSetting({ key: "agency.name",          value: agencyName });
+    updateSetting({ key: "agency.contact_phone", value: agencyPhone });
+    updateSetting({ key: "agency.contact_email", value: agencyEmail });
+  }
 
   const [notifs, setNotifs] = useState({
     emailPayments: true,
@@ -79,10 +108,14 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
+          </TabsTrigger>
+          <TabsTrigger value="agency" className="gap-2">
+            <Building2 className="h-4 w-4" />
+            <span className="hidden sm:inline">Agency</span>
           </TabsTrigger>
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />
@@ -169,6 +202,70 @@ export default function SettingsPage() {
                   Save changes
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ── Agency ── */}
+        <TabsContent value="agency" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Agency / Landlord Details</CardTitle>
+              <CardDescription>
+                These details appear on tenancy agreements and tenant-facing communications.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loadingSettings ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading settings…
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="agencyName">Agency / Landlord Name</Label>
+                    <Input
+                      id="agencyName"
+                      value={agencyName}
+                      onChange={(e) => setAgencyName(e.target.value)}
+                      placeholder="e.g. GeoBox Properties Ltd"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Shown as the landlord name on all tenancy agreements
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="agencyPhone">Contact Phone</Label>
+                    <Input
+                      id="agencyPhone"
+                      type="tel"
+                      value={agencyPhone}
+                      onChange={(e) => setAgencyPhone(e.target.value)}
+                      placeholder="+256 700 000000"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Landlord contact phone printed in the signature block of tenancy agreements
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="agencyEmail">Contact Email</Label>
+                    <Input
+                      id="agencyEmail"
+                      type="email"
+                      value={agencyEmail}
+                      onChange={(e) => setAgencyEmail(e.target.value)}
+                      placeholder="contact@yourcompany.com"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={handleSaveAgency} loading={savingAgency}>
+                      <Save className="h-4 w-4" />
+                      Save agency details
+                    </Button>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

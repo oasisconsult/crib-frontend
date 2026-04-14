@@ -146,6 +146,17 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
     ("platform.max_upload_mb",      "10",       "platform","Max Upload Size (MB)",
      "Maximum file upload size in megabytes.", "integer", False, True),
 
+    # ── Agency / Landlord branding ────────────────────────────────────────────
+    ("agency.name",          "",  "agency", "Agency / Landlord Name",
+     "Business name or landlord name shown on tenancy agreements and correspondence.",
+     "string", False, False),
+    ("agency.contact_phone", "",  "agency", "Agency Contact Phone",
+     "Phone number shown on tenancy agreements (E.164 or local format, e.g. +256 700 000000).",
+     "string", False, False),
+    ("agency.contact_email", "",  "agency", "Agency Contact Email",
+     "Email address shown on tenancy agreements and tenant-facing communications.",
+     "string", False, False),
+
     # ── Features ─────────────────────────────────────────────────────────────
     ("features.esignature_enabled", "true",     "features","E-Signature Enabled",
      "Enable the DocuSign-style e-signature flow for lease signing.", "boolean", False, True),

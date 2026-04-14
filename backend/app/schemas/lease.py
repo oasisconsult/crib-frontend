@@ -26,6 +26,8 @@ class LeaseCreate(CamelModel):
     deposit_amount: float | None = None
     deposit_paid: bool = False
     notes: str | None = None
+    # Advance rent months required at signing (None → falls back to unit/property/system default)
+    advance_months: int | None = Field(default=None, ge=1, le=12)
     # Optional billing rule overrides (fall back to property rules when absent)
     rent_day_of_month: int | None = Field(default=None, ge=1, le=28)
     grace_period_days: int | None = Field(default=None, ge=0)
@@ -88,6 +90,7 @@ class LeaseOut(CamelModel):
     deposit_paid: bool
     deposit_paid_at: str | None
     # billing rules
+    advance_months: int | None
     rent_day_of_month: int
     grace_period_days: int
     late_fee_type: str

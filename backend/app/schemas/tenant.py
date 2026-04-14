@@ -35,6 +35,10 @@ class TenantUpdate(CamelModel):
     phone: str | None = None
     date_of_birth: str | None = None
     nationality: str | None = None
+    nin: str | None = None
+    whatsapp_number: str | None = None
+    mobile_money_provider: str | None = None
+    mobile_money_number: str | None = None
     status: str | None = None
     emergency_contact: EmergencyContactSchema | None = None
     notes: str | None = None
@@ -60,6 +64,10 @@ class TenantOnboardingSubmit(CamelModel):
     phone: str | None = None
     date_of_birth: str | None = None
     nationality: str | None = None
+    nin: str | None = None                           # National Identification Number
+    whatsapp_number: str | None = None               # WhatsApp / contact number
+    mobile_money_provider: str | None = None         # mtn | airtel
+    mobile_money_number: str | None = None           # Mobile money account number
     emergency_contact: EmergencyContactSchema | None = None
     gdpr_consent: bool = Field(default=False)
     documents: list[OnboardingDocumentSubmit] = Field(default_factory=list)
@@ -91,6 +99,10 @@ class TenantOut(CamelModel):
     phone: str | None
     date_of_birth: str | None
     nationality: str | None
+    nin: str | None
+    whatsapp_number: str | None
+    mobile_money_provider: str | None
+    mobile_money_number: str | None
     status: str
     onboarding_state: str
     onboarding_token: str | None

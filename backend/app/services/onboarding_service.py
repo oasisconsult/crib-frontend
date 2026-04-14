@@ -139,9 +139,11 @@ async def _auto_confirm_enabled(db: AsyncSession, method: str) -> bool:
 
 
 async def _advance_payment_months(
-    unit: Unit, prop: Property, db: AsyncSession
+    unit: Unit, prop: Property, db: AsyncSession, lease: "Lease | None" = None
 ) -> int:
-    """Effective advance months: unit rules → property rules → system setting."""
+    """Effective advance months: lease override → unit rules → property rules → system setting."""
+    if lease is not None and lease.advance_months is not None:
+        return max(1, lease.advance_months)
     rules = unit.rules or prop.rules or {}
     if "advancePaymentMonths" in rules:
         return int(rules["advancePaymentMonths"])
@@ -333,7 +335,7 @@ async def preview_agreement(token: str, db: AsyncSession) -> AgreementPreviewOut
         )
 
     unit, prop = await _get_unit_and_property(lease, db)
-    advance_months = await _advance_payment_months(unit, prop, db)
+    advance_months = await _advance_payment_months(unit, prop, db, lease=lease)
 
     # Idempotent / read-only for all post-preview statuses — return stored snapshot with fresh HTML
     _post_preview_statuses = {
@@ -860,9 +862,18 @@ async def _render_agreement_html(
     from app.core.agreement_template import render_agreement
     from app.models.organisation import Organisation
 
-    # Resolve landlord name: org name (agency) or individual owner name
+    # Resolve landlord name: agency setting → org name → fallback
+    agency_name = await _get_setting("agency.name", "", db)
     org = await db.get(Organisation, lease.organisation_id)
-    landlord_name = org.name if org else "Landlord"
+    landlord_name = agency_name.strip() or (org.name if org else "Landlord")
+
+    # Resolve contact phones from system settings
+    agency_phone = await _get_setting("agency.contact_phone", "", db)
+
+    # Tenant contact: prefer WhatsApp, fall back to phone
+    tenant_contact_phone = (
+        tenant.whatsapp_number or tenant.phone or ""
+    )
 
     # Build property address string from JSONB
     addr = prop.address or {}
@@ -890,6 +901,8 @@ async def _render_agreement_html(
         landlord_name=landlord_name,
         tenant_name=f"{tenant.first_name} {tenant.last_name}",
         tenant_nin=tenant.nin or "N/A",
+        tenant_contact_phone=tenant_contact_phone,
+        landlord_contact_phone=agency_phone,
         property_address=property_address or prop.name,
         unit_name=unit.name,
         start_date=_fmt_date(lease.start_date),
@@ -903,7 +916,7 @@ async def _render_agreement_html(
         late_fee_type=lease.late_fee_type,
         late_fee_value=float(lease.late_fee_value),
         agreement_date=f"{now.day} {now.strftime('%B %Y')}",
-        advance_months=await _advance_payment_months(unit, prop, db),
+        advance_months=await _advance_payment_months(unit, prop, db, lease=lease),
         tenant_signature_data_url=tenant_signature_data_url,
         tenant_signed_at=tenant_signed_at,
         landlord_signature_data_url=landlord_signature_data_url,

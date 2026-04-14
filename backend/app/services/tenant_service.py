@@ -93,6 +93,10 @@ def _tenant_out(tenant: Tenant) -> TenantOut:
         phone=tenant.phone,
         date_of_birth=tenant.date_of_birth,
         nationality=tenant.nationality,
+        nin=tenant.nin,
+        whatsapp_number=tenant.whatsapp_number,
+        mobile_money_provider=tenant.mobile_money_provider,
+        mobile_money_number=tenant.mobile_money_number,
         status=tenant.status.value,
         onboarding_state=tenant.onboarding_state.value,
         onboarding_token=tenant.onboarding_token,
@@ -330,6 +334,14 @@ async def submit_onboarding(
     tenant.phone = body.phone
     tenant.date_of_birth = body.date_of_birth
     tenant.nationality = body.nationality
+    if body.nin is not None:
+        tenant.nin = body.nin
+    if body.whatsapp_number is not None:
+        tenant.whatsapp_number = body.whatsapp_number
+    if body.mobile_money_provider is not None:
+        tenant.mobile_money_provider = body.mobile_money_provider
+    if body.mobile_money_number is not None:
+        tenant.mobile_money_number = body.mobile_money_number
     if body.emergency_contact:
         tenant.emergency_contact = body.emergency_contact.model_dump(by_alias=True)
 

@@ -157,6 +157,9 @@ _TEMPLATE_SRC = """<!DOCTYPE html>
         <td>{{ currency }} {{ monthly_rent }} ({{ monthly_rent_words }} Uganda Shillings only)</td></tr>
     <tr><td>Security Deposit</td>
         <td>{{ currency }} {{ deposit_amount }} ({{ deposit_amount_words }} Uganda Shillings only)</td></tr>
+    <tr><td>Advance Rent</td>
+        <td>{{ advance_months }} month{{ advance_months_plural }} &mdash;
+            {{ currency }} {{ advance_rent_amount }} ({{ advance_rent_words }} Uganda Shillings only)</td></tr>
     <tr><td>Rent Due Date</td>
         <td>{{ rent_day_of_month }}{{ rent_day_suffix }} of each calendar month</td></tr>
     <tr><td>Grace Period</td><td>{{ grace_period_days }} days</td></tr>
@@ -409,7 +412,7 @@ year first above written.</p>
       <p style="margin-top:10px;">
         Name: <strong>{{ tenant_name }}</strong><br/>
         NIN: {{ tenant_nin }}<br/>
-        Contact Phone: ___________________________<br/>
+        Contact Phone: {% if tenant_contact_phone %}<strong>{{ tenant_contact_phone }}</strong>{% else %}___________________________{% endif %}<br/>
         Date: {{ tenant_signed_at if tenant_signed_at else '___________________________' }}
       </p>
     </div>
@@ -427,7 +430,7 @@ year first above written.</p>
       <p style="margin-top:10px;">
         Name: <strong>{{ landlord_signer_name }}</strong><br/>
         Organisation: {{ landlord_name }}<br/>
-        Contact Phone: ___________________________<br/>
+        Contact Phone: {% if landlord_contact_phone %}<strong>{{ landlord_contact_phone }}</strong>{% else %}___________________________{% endif %}<br/>
         Date: {{ landlord_signed_at if landlord_signed_at else '___________________________' }}
       </p>
     </div>
@@ -456,6 +459,8 @@ def render_agreement(
     landlord_name: str,
     tenant_name: str,
     tenant_nin: str,
+    tenant_contact_phone: str = "",
+    landlord_contact_phone: str = "",
     property_address: str,
     unit_name: str,
     start_date: str,
@@ -500,6 +505,8 @@ def render_agreement(
         landlord_name=landlord_name,
         tenant_name=tenant_name,
         tenant_nin=tenant_nin or "N/A",
+        tenant_contact_phone=tenant_contact_phone or "",
+        landlord_contact_phone=landlord_contact_phone or "",
         property_address=property_address,
         unit_name=unit_name,
         start_date=start_date,
@@ -516,6 +523,8 @@ def render_agreement(
         late_fee_description=late_fee_description,
         advance_months=advance_months,
         advance_months_plural="s" if advance_months != 1 else "",
+        advance_rent_amount=format_amount(monthly_rent * advance_months),
+        advance_rent_words=number_to_words(monthly_rent * advance_months),
         agreement_date=agreement_date,
         tenant_sig_html=tenant_sig_html,
         landlord_sig_html=landlord_sig_html,

@@ -86,6 +86,7 @@ def _lease_out(
         deposit_amount=float(lease.deposit_amount) if lease.deposit_amount is not None else None,
         deposit_paid=lease.deposit_paid,
         deposit_paid_at=_d(lease.deposit_paid_at),
+        advance_months=lease.advance_months,
         rent_day_of_month=lease.rent_day_of_month,
         grace_period_days=lease.grace_period_days,
         late_fee_type=lease.late_fee_type,
@@ -177,6 +178,7 @@ async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -
         late_fee_type=body.late_fee_type or rules.get("lateFeeType", "flat"),
         late_fee_value=body.late_fee_value if body.late_fee_value is not None else rules.get("lateFeeValue", 0),
         notice_period_days=body.notice_period_days if body.notice_period_days is not None else rules.get("noticePeriodDays", 30),
+        advance_months=body.advance_months,  # None → system/unit/property fallback at preview time
     )
     db.add(lease)
     await db.flush()

@@ -21,6 +21,8 @@ export interface SettingsByCategory {
   whatsapp: SystemSetting[];
   platform: SystemSetting[];
   features: SystemSetting[];
+  agency: SystemSetting[];
+  payments: SystemSetting[];
 }
 
 export interface ConnectionTestResult {

@@ -46,6 +46,10 @@ const profileSchema = z.object({
   phone: z.string().min(7, "Valid phone number required"),
   dateOfBirth: z.string().optional(),
   nationality: z.string().optional(),
+  nin: z.string().optional(),
+  whatsappNumber: z.string().optional(),
+  mobileMoneyProvider: z.enum(["mtn", "airtel", ""]).optional(),
+  mobileMoneyNumber: z.string().optional(),
 });
 
 type ProfileValues = z.infer<typeof profileSchema>;
@@ -147,11 +151,15 @@ export function OnboardingWizard({
   const form = useForm<ProfileValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      firstName:   tenant.firstName ?? "",
-      lastName:    tenant.lastName ?? "",
-      phone:       draft?.phone       ?? tenant.phone       ?? "",
-      dateOfBirth: draft?.dateOfBirth ?? tenant.dateOfBirth ?? "",
-      nationality: draft?.nationality ?? tenant.nationality ?? "",
+      firstName:           tenant.firstName ?? "",
+      lastName:            tenant.lastName ?? "",
+      phone:               draft?.phone             ?? tenant.phone             ?? "",
+      dateOfBirth:         draft?.dateOfBirth        ?? tenant.dateOfBirth        ?? "",
+      nationality:         draft?.nationality        ?? tenant.nationality        ?? "",
+      nin:                 draft?.nin                ?? (tenant as any).nin               ?? "",
+      whatsappNumber:      draft?.whatsappNumber     ?? (tenant as any).whatsappNumber    ?? "",
+      mobileMoneyProvider: draft?.mobileMoneyProvider ?? (tenant as any).mobileMoneyProvider ?? "",
+      mobileMoneyNumber:   draft?.mobileMoneyNumber  ?? (tenant as any).mobileMoneyNumber  ?? "",
     },
   });
 
@@ -167,8 +175,8 @@ export function OnboardingWizard({
   const persistDraft = useCallback(
     (toStep: ProfileStep) => {
       if (toStep === "submitted") return;
-      const { phone, dateOfBirth, nationality } = form.getValues();
-      saveDraft({ token, draft: { step: toStep, phone, dateOfBirth, nationality } });
+      const { phone, dateOfBirth, nationality, nin, whatsappNumber, mobileMoneyProvider, mobileMoneyNumber } = form.getValues();
+      saveDraft({ token, draft: { step: toStep, phone, dateOfBirth, nationality, nin, whatsappNumber, mobileMoneyProvider, mobileMoneyNumber } });
     },
     [form, saveDraft, token],
   );
@@ -181,12 +189,16 @@ export function OnboardingWizard({
 
   // ── Profile submission ────────────────────────────────────────────────────
   const handleFinalSubmit = () => {
-    const { firstName, lastName, phone, dateOfBirth, nationality } = form.getValues();
+    const { firstName, lastName, phone, dateOfBirth, nationality, nin, whatsappNumber, mobileMoneyProvider, mobileMoneyNumber } = form.getValues();
     submit(
       {
         token,
         data: {
           firstName, lastName, email: tenant.email, phone, dateOfBirth, nationality,
+          nin: nin || undefined,
+          whatsappNumber: whatsappNumber || undefined,
+          mobileMoneyProvider: mobileMoneyProvider || undefined,
+          mobileMoneyNumber: mobileMoneyNumber || undefined,
           gdprConsent: true,
           documents: uploadedDocs.map((r) => ({
             type: "other" as const, name: r.name, url: r.url,
@@ -282,6 +294,37 @@ export function OnboardingWizard({
                     {form.formState.errors.phone && (
                       <p className="text-xs text-destructive">{form.formState.errors.phone.message}</p>
                     )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="whatsappNumber">WhatsApp / Contact Number</Label>
+                    <Input id="whatsappNumber" type="tel" placeholder="+256 700 000000" {...form.register("whatsappNumber")} />
+                    <p className="text-xs text-muted-foreground">Used as your contact number on the tenancy agreement</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="nin">National ID Number (NIN)</Label>
+                    <Input id="nin" placeholder="e.g. CM12345678ABCDE" {...form.register("nin")} />
+                    <p className="text-xs text-muted-foreground">Your NIN will appear on the tenancy agreement</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Mobile Money</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="mobileMoneyProvider" className="text-xs text-muted-foreground">Provider</Label>
+                        <select
+                          id="mobileMoneyProvider"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          {...form.register("mobileMoneyProvider")}
+                        >
+                          <option value="">Select provider</option>
+                          <option value="mtn">MTN Mobile Money</option>
+                          <option value="airtel">Airtel Money</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="mobileMoneyNumber" className="text-xs text-muted-foreground">Number</Label>
+                        <Input id="mobileMoneyNumber" type="tel" placeholder="+256 770 000000" {...form.register("mobileMoneyNumber")} />
+                      </div>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">

@@ -182,6 +182,7 @@ export default function NewLeasePage() {
   // ── Section 4: Financial terms ────────────────────────────────────────────
   const [monthlyRent,     setMonthlyRent]     = useState(0);
   const [depositAmount,   setDepositAmount]   = useState(0);
+  const [advanceMonths,   setAdvanceMonths]   = useState(1);
   const [currency,        setCurrency]        = useState("UGX");
   const [paymentDueDay,   setPaymentDueDay]   = useState(1);
   const [noticePeriodDays, setNoticePeriodDays] = useState(30);
@@ -216,6 +217,7 @@ export default function NewLeasePage() {
           endDate: isRolling ? undefined : endDate,
           monthlyRent,
           depositAmount,
+          advanceMonths,
           currency,
           paymentDueDay,
           noticePeriodDays,
@@ -509,6 +511,37 @@ export default function NewLeasePage() {
             </div>
 
             <div className="space-y-1.5">
+              <Label htmlFor="advanceMonths">
+                Advance Rent Months
+              </Label>
+              <div className="flex items-center gap-3">
+                <Select
+                  value={String(advanceMonths)}
+                  onValueChange={(v) => setAdvanceMonths(parseInt(v))}
+                >
+                  <SelectTrigger id="advanceMonths" className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1,2,3,4,5,6].map((m) => (
+                      <SelectItem key={m} value={String(m)}>
+                        {m} month{m !== 1 ? "s" : ""} in advance
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {monthlyRent > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    = {formatCurrency(monthlyRent * advanceMonths, currency)} due at signing
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Rent paid upfront at lease signing, before occupancy begins
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
               <Label htmlFor="currency">Currency</Label>
               <Select value={currency} onValueChange={setCurrency}>
                 <SelectTrigger id="currency" className="w-32">
@@ -632,6 +665,10 @@ export default function NewLeasePage() {
               <div className="flex justify-between text-muted-foreground">
                 <span>Deposit</span>
                 <span className="text-foreground font-medium">{formatCurrency(depositAmount, currency)}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Advance Rent</span>
+                <span className="text-foreground font-medium">{advanceMonths} month{advanceMonths !== 1 ? "s" : ""} ({formatCurrency(monthlyRent * advanceMonths, currency)})</span>
               </div>
             </div>
           </div>

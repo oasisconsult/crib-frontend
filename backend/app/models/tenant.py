@@ -105,6 +105,11 @@ class Tenant(TimestampedBase):
         UUID(as_uuid=True), nullable=True
     )
 
+    # ── Contact / payment details (captured during onboarding) ────────────────
+    whatsapp_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    mobile_money_provider: Mapped[str | None] = mapped_column(String(20), nullable=True)  # mtn | airtel
+    mobile_money_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
     # ── Additional info ───────────────────────────────────────────────────────
     emergency_contact: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
