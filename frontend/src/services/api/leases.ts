@@ -154,6 +154,10 @@ export const leasesApi = {
     return toLeaseModel(raw);
   },
 
+  // Pre-sign agreement (manager signs before tenant)
+  presignAgreement: (id: string, signatureDataUrl: string) =>
+    apiPost<Record<string, unknown>>(`/leases/${id}/agreement/presign`, { signatureDataUrl }),
+
   // Generate PDF
   generateDocument: (id: string) =>
     apiPost<{ url: string }>(`/leases/${id}/document`),

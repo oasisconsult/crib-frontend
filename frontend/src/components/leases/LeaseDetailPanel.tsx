@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   FileText, Calendar, CreditCard, Building2,
-  Send, CheckCircle, XCircle, AlertTriangle, Download, Loader2, Copy, Link,
+  Send, CheckCircle, XCircle, AlertTriangle, Download, Loader2, Copy, Link, Edit,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { LeaseWorkflowStepper } from "./WorkflowStepper";
 import { TerminateModal } from "./TerminateModal";
+import { PresignAgreementModal } from "./PresignAgreementModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments } from "@/hooks/useLeases";
 import { leasesApi } from "@/services/api/leases";
@@ -28,6 +29,7 @@ interface LeaseDetailPanelProps {
 export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
+  const [presignOpen, setPresignOpen] = useState(false);
   const [pendingEvent, setPendingEvent] = useState<string | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | undefined>(lease.documentUrl);
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -106,6 +108,17 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <Link className="h-3.5 w-3.5" />}
                 Resend Link
+              </Button>
+            )}
+            {/* Pre-sign agreement — manager signs before sending to tenant */}
+            {["draft", "onboarding_started", "agreement_previewed", "terms_accepted", "payment_pending", "payment_secured"].includes(lease.state) && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPresignOpen(true)}
+              >
+                <Edit className="h-3.5 w-3.5" />
+                Pre-sign Agreement
               </Button>
             )}
             {/* Confirm onboarding payments — unblocks tenant to sign the agreement */}
@@ -320,6 +333,13 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         open={terminateOpen}
         onOpenChange={setTerminateOpen}
         leaseId={lease.id}
+      />
+
+      {/* Pre-sign agreement modal */}
+      <PresignAgreementModal
+        leaseId={lease.id}
+        open={presignOpen}
+        onOpenChange={setPresignOpen}
       />
     </div>
   );

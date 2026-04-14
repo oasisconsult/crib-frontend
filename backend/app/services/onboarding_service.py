@@ -737,7 +737,27 @@ async def sign_agreement(
     lease.signed_at = now
     lease.status = LeaseStatus.agreement_signed
 
-    # Create TenancyAgreement record with tenant signature
+    # Check for landlord pre-signature (manager signed before sending to tenant)
+    existing_ta_result = await db.execute(
+        select(TenancyAgreement).where(TenancyAgreement.lease_id == lease.id)
+    )
+    existing_ta = existing_ta_result.scalar_one_or_none()
+
+    landlord_sig_url = existing_ta.landlord_signature_data_url if existing_ta else None
+    landlord_signed_at_str = (
+        f"{existing_ta.landlord_signed_at.day} {existing_ta.landlord_signed_at.strftime('%B %Y %H:%M')} UTC"
+        if existing_ta and existing_ta.landlord_signed_at else None
+    )
+    landlord_signer_name = existing_ta.landlord_signer_name if existing_ta else None
+
+    # Determine final agreement status: fully_executed if landlord already pre-signed
+    final_status = (
+        TenancyAgreementStatus.fully_executed
+        if landlord_sig_url
+        else TenancyAgreementStatus.tenant_signed
+    )
+
+    # Create TenancyAgreement record (or update existing pre-sign record)
     rendered_html = await _render_agreement_html(
         lease=lease,
         tenant=tenant,
@@ -746,15 +766,24 @@ async def sign_agreement(
         db=db,
         tenant_signature_data_url=body.signature_data_url,
         tenant_signed_at=f"{now.day} {now.strftime('%B %Y %H:%M')} UTC",
+        landlord_signature_data_url=landlord_sig_url,
+        landlord_signed_at=landlord_signed_at_str,
+        landlord_signer_name=landlord_signer_name,
     )
-    ta = TenancyAgreement(
-        lease_id=lease.id,
-        rendered_html=rendered_html,
-        status=TenancyAgreementStatus.tenant_signed,
-        tenant_signature_data_url=body.signature_data_url,
-        tenant_signed_at=now,
-    )
-    db.add(ta)
+    if existing_ta:
+        existing_ta.rendered_html = rendered_html
+        existing_ta.status = final_status
+        existing_ta.tenant_signature_data_url = body.signature_data_url
+        existing_ta.tenant_signed_at = now
+    else:
+        ta = TenancyAgreement(
+            lease_id=lease.id,
+            rendered_html=rendered_html,
+            status=final_status,
+            tenant_signature_data_url=body.signature_data_url,
+            tenant_signed_at=now,
+        )
+        db.add(ta)
     await db.flush()
 
     # Auto-activate immediately after signing
@@ -884,6 +913,95 @@ async def _render_agreement_html(
 
 
 # ── Countersign (manager) ─────────────────────────────────────────────────────
+
+async def presign_agreement(
+    lease_id: str,
+    signature_data_url: str,
+    signer_id: str,
+    signer_name: str,
+    db: AsyncSession,
+) -> dict:
+    """
+    Manager/landlord pre-signs the agreement before it is sent to the tenant.
+
+    Creates (or updates) a TenancyAgreement record at 'draft' status with the
+    landlord's signature stored.  When the tenant later signs during onboarding,
+    sign_agreement() detects the pre-signature and immediately advances the
+    agreement to 'fully_executed'.
+
+    Available for any non-terminal lease (draft through payment_secured).
+    Idempotent: calling again replaces the previous pre-signature.
+    """
+    lease_uuid = uuid.UUID(lease_id)
+    result = await db.execute(select(Lease).where(Lease.id == lease_uuid))
+    lease = result.scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found.")
+
+    _terminal = {LeaseStatus.active, LeaseStatus.expired, LeaseStatus.terminated}
+    if lease.status in _terminal:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Cannot pre-sign a '{lease.status.value}' lease. "
+                "Use countersign for active leases."
+            ),
+        )
+
+    now = datetime.now(timezone.utc)
+
+    ta_result = await db.execute(
+        select(TenancyAgreement).where(TenancyAgreement.lease_id == lease_uuid)
+    )
+    ta = ta_result.scalar_one_or_none()
+
+    # Render the agreement HTML with landlord signature (tenant sig pending)
+    tenant = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id)) if lease.tenant_id else None
+    unit, prop = await _get_unit_and_property(lease, db)
+
+    def _fmt_dt(dt) -> str:
+        return f"{dt.day} {dt.strftime('%B %Y %H:%M')} UTC"
+
+    rendered_html = await _render_agreement_html(
+        lease=lease,
+        tenant=tenant,
+        unit=unit,
+        prop=prop,
+        db=db,
+        landlord_signature_data_url=signature_data_url,
+        landlord_signed_at=_fmt_dt(now),
+        landlord_signer_name=signer_name,
+        # Carry through any existing tenant signature (shouldn't exist yet, but be safe)
+        tenant_signature_data_url=ta.tenant_signature_data_url if ta else None,
+        tenant_signed_at=_fmt_dt(ta.tenant_signed_at) if ta and ta.tenant_signed_at else None,
+    )
+
+    if ta:
+        ta.landlord_signature_data_url = signature_data_url
+        ta.landlord_signed_at = now
+        ta.landlord_signer_id = signer_id
+        ta.landlord_signer_name = signer_name
+        ta.rendered_html = rendered_html
+        # Upgrade status: if tenant already signed, execute immediately
+        if ta.tenant_signed_at:
+            ta.status = TenancyAgreementStatus.fully_executed
+    else:
+        ta = TenancyAgreement(
+            lease_id=lease.id,
+            rendered_html=rendered_html,
+            status=TenancyAgreementStatus.draft,
+            landlord_signature_data_url=signature_data_url,
+            landlord_signed_at=now,
+            landlord_signer_id=signer_id,
+            landlord_signer_name=signer_name,
+        )
+        db.add(ta)
+
+    await db.flush()
+    await db.refresh(ta)
+    log.info("onboarding.agreement_presigned", lease_id=lease_id, signer_id=signer_id)
+    return _tenancy_agreement_dict(ta)
+
 
 async def countersign_agreement(
     lease_id: str,

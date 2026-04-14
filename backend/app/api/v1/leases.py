@@ -28,7 +28,7 @@ from app.schemas.lease import (
     LeaseTerminate,
     LeaseUpdate,
 )
-from app.schemas.onboarding import CountersignBody, OnboardingPaymentOut, TenancyAgreementOut
+from app.schemas.onboarding import CountersignBody, OnboardingPaymentOut, PresignBody, TenancyAgreementOut
 from app.schemas.tenant import TenantInviteOut
 from app.services import lease_service as svc
 from app.services import onboarding_service as onb_svc
@@ -192,6 +192,28 @@ async def confirm_onboarding_payments(
     return await onb_svc.confirm_all_onboarding_payments(
         lease_id=lease_id,
         org_id=current_user.org_id,
+        db=db,
+    )
+
+
+@router.post("/{lease_id}/agreement/presign", response_model=TenancyAgreementOut)
+async def presign_agreement(
+    lease_id: uuid.UUID,
+    body: PresignBody,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Manager/landlord pre-signs the agreement before sending it to the tenant.
+    Creates a TenancyAgreement record at 'draft' status with the landlord
+    signature stored.  When the tenant signs during onboarding the agreement
+    immediately becomes 'fully_executed'.
+    """
+    return await onb_svc.presign_agreement(
+        lease_id=str(lease_id),
+        signature_data_url=body.signature_data_url,
+        signer_id=current_user.sub,
+        signer_name=current_user.profile.display_name or current_user.sub,
         db=db,
     )
 

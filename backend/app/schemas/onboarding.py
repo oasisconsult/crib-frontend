@@ -118,6 +118,13 @@ class OnboardingFlowStatus(CamelModel):
 
 # ── Countersign (manager) ─────────────────────────────────────────────────────
 
+class PresignBody(CamelModel):
+    """Body for manager pre-signing the agreement before it goes to the tenant."""
+    signature_data_url: str = Field(
+        description="Base64-encoded PNG of the manager/landlord's signature."
+    )
+
+
 class CountersignBody(CamelModel):
     """Body for manager countersigning the tenancy agreement."""
     signature_data_url: str = Field(

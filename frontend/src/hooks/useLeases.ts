@@ -88,6 +88,19 @@ export function useSendOnboarding() {
   });
 }
 
+export function usePresignAgreement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, signatureDataUrl }: { id: string; signatureDataUrl: string }) =>
+      leasesApi.presignAgreement(id, signatureDataUrl),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+      toast.success("Agreement pre-signed — tenant will sign during onboarding");
+    },
+    onError: () => toast.error("Failed to pre-sign agreement"),
+  });
+}
+
 export function useSignLease() {
   const qc = useQueryClient();
   return useMutation({
