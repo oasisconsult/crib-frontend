@@ -86,8 +86,9 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 mt-5">
-            {/* Resend onboarding link — regenerates the token if the tenant lost or the link expired */}
-            {lease.state === "draft" && lease.tenantId && (
+            {/* Resend onboarding link — regenerates the token if the tenant lost or the link expired.
+                Available for any in-progress onboarding state (draft through payment_secured). */}
+            {["draft", "onboarding_started", "agreement_previewed", "terms_accepted", "payment_pending", "payment_secured"].includes(lease.state) && lease.tenantId && (
               <Button
                 size="sm"
                 variant="outline"

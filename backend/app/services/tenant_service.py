@@ -431,6 +431,9 @@ async def resend_invite(
     Generate a fresh invite token for a tenant who has not yet completed
     onboarding (states: invited, started, rejected).
 
+    - Carries the lease_id forward from the most recent invite that had one,
+      so a tenant mid-flow (e.g. at the signing step) resumes exactly where
+      they left off rather than restarting from scratch.
     - Marks any existing pending invites as expired.
     - For a rejected tenant, resets the onboarding state back to invited
       so they can start fresh.
@@ -448,15 +451,25 @@ async def resend_invite(
             ),
         )
 
-    # Expire all existing pending invites for this tenant
-    existing = await db.execute(
-        select(TenantInvite).where(
-            TenantInvite.tenant_id == tenant_id,
-            TenantInvite.status == InviteStatus.pending,
-        )
+    # Find all invites (pending or expired) so we can carry lease_id forward.
+    # Order descending by sent_at — most recent invite wins.
+    all_invites_result = await db.execute(
+        select(TenantInvite)
+        .where(TenantInvite.tenant_id == tenant_id)
+        .order_by(TenantInvite.sent_at.desc())
     )
-    for old_invite in existing.scalars().all():
-        old_invite.status = InviteStatus.expired
+    all_invites = all_invites_result.scalars().all()
+
+    # Expire any that are still pending
+    for inv in all_invites:
+        if inv.status == InviteStatus.pending:
+            inv.status = InviteStatus.expired
+
+    # Carry lease_id forward from the most recent invite that had one
+    previous_lease_id = next(
+        (inv.lease_id for inv in all_invites if inv.lease_id is not None),
+        None,
+    )
 
     now = datetime.now(timezone.utc)
     token = secrets.token_urlsafe(48)
@@ -466,6 +479,7 @@ async def resend_invite(
         organisation_id=org_id,
         property_id=tenant.current_property_id,
         unit_id=tenant.current_unit_id,
+        lease_id=previous_lease_id,
         email=tenant.email,
         name=f"{tenant.first_name} {tenant.last_name}",
         token=token,
@@ -516,10 +530,17 @@ async def send_onboarding_link(
     if not lease:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found.")
 
-    if lease.status not in (LeaseStatus.draft, LeaseStatus.onboarding_started):
+    # Allow any mid-onboarding lease status — the invite link can be resent
+    # at any point before the lease is fully executed or terminated.
+    _terminal_statuses = (
+        LeaseStatus.active,
+        LeaseStatus.expired,
+        LeaseStatus.terminated,
+    )
+    if lease.status in _terminal_statuses:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Onboarding link can only be sent for a draft lease (current: {lease.status.value}).",
+            detail=f"Cannot resend onboarding link for a '{lease.status.value}' lease.",
         )
 
     if not lease.tenant_id:
@@ -530,13 +551,12 @@ async def send_onboarding_link(
 
     tenant = await _get_tenant(lease.tenant_id, org_id, db)
 
-    if tenant.onboarding_state not in (OnboardingState.approved, OnboardingState.activated):
+    # Allow any non-activated onboarding state — including 'started' (mid-flow
+    # with an expired link) and 'approved' (fresh link for a newly approved tenant).
+    if tenant.onboarding_state == OnboardingState.activated:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                f"Tenant must be approved before receiving an onboarding link "
-                f"(current state: {tenant.onboarding_state.value})."
-            ),
+            detail="Tenant onboarding is already complete.",
         )
 
     # Expire existing pending invites for this tenant
