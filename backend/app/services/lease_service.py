@@ -445,124 +445,61 @@ async def generate_lease_document(
     db: AsyncSession,
 ) -> str:
     """
-    Generate an HTML lease agreement document, persist it to local storage,
+    Generate the full HTML lease agreement document, persist it to local storage,
     and return the URL to access it.
 
-    The URL points to GET /api/v1/upload/local/... which is served by the
-    local storage endpoint in uploads.py.
+    Uses the same Jinja2 template as the onboarding flow preview so the
+    downloaded document is identical to what the tenant reviewed and signed.
+    Signatures are included if the TenancyAgreement record exists.
+
+    The URL points to GET /api/v1/upload/local/... served by uploads.py.
     """
+    from app.models.tenancy_agreement import TenancyAgreement
+    from app.services.onboarding_service import _render_agreement_html
+
     lease = await _get_lease(lease_id, org_id, db)
 
-    # Load related records (best-effort — fallback to IDs if not found)
-    tenant_name = str(lease.tenant_id) if lease.tenant_id else "—"
-    tenant_email = ""
+    # Load related records
+    tenant = None
     if lease.tenant_id:
-        t = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
-        if t:
-            tenant_name = f"{t.first_name or ''} {t.last_name or ''}".strip() or tenant_email
-            tenant_email = t.email or ""
+        tenant = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
 
-    prop_name = str(lease.property_id)
-    unit_name = str(lease.unit_id) if lease.unit_id else "—"
+    unit = None
     if lease.unit_id:
-        u = await db.scalar(select(Unit).where(Unit.id == lease.unit_id))
-        if u:
-            unit_name = u.name
+        unit = await db.scalar(select(Unit).where(Unit.id == lease.unit_id))
+
+    prop = None
     if lease.property_id:
-        p = await db.scalar(select(Property).where(Property.id == lease.property_id))
-        if p:
-            prop_name = p.name
+        prop = await db.scalar(select(Property).where(Property.id == lease.property_id))
 
-    currency = lease.currency or "UGX"
-    monthly_rent = float(lease.monthly_rent)
-    deposit = float(lease.deposit_amount) if lease.deposit_amount else 0.0
-    generated_at = datetime.now(timezone.utc).strftime("%d %B %Y")
+    if not tenant or not unit or not prop:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Lease is missing tenant, unit, or property — cannot generate document.",
+        )
 
-    late_fee_str = (
-        f"{currency} {float(lease.late_fee_value):,.0f}"
-        if lease.late_fee_type == "flat"
-        else f"{float(lease.late_fee_value):.1f}% of amount due"
-    ) if lease.late_fee_value else "—"
+    # Pull signatures from the TenancyAgreement if one exists
+    ta = await db.scalar(
+        select(TenancyAgreement).where(TenancyAgreement.lease_id == lease.id)
+    )
 
-    html = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tenancy Agreement — {prop_name} {unit_name}</title>
-<style>
-  body {{ font-family: Georgia, serif; max-width: 800px; margin: 40px auto; padding: 0 24px; color: #111; line-height: 1.6; }}
-  h1 {{ font-size: 1.5rem; text-align: center; margin-bottom: 4px; }}
-  .subtitle {{ text-align: center; color: #555; font-size: 0.9rem; margin-bottom: 32px; }}
-  table {{ width: 100%; border-collapse: collapse; margin: 16px 0; }}
-  td {{ padding: 8px 12px; border: 1px solid #ddd; vertical-align: top; }}
-  td:first-child {{ font-weight: bold; width: 40%; background: #f9f9f9; }}
-  h2 {{ font-size: 1.1rem; margin-top: 28px; border-bottom: 1px solid #ccc; padding-bottom: 4px; }}
-  .footer {{ margin-top: 48px; font-size: 0.8rem; color: #888; text-align: center; border-top: 1px solid #eee; padding-top: 12px; }}
-  .sig-block {{ margin-top: 48px; display: flex; gap: 60px; }}
-  .sig-line {{ flex: 1; border-top: 1px solid #333; padding-top: 4px; font-size: 0.85rem; color: #555; }}
-  @media print {{ body {{ margin: 20px; }} }}
-</style>
-</head>
-<body>
-<h1>RESIDENTIAL TENANCY AGREEMENT</h1>
-<p class="subtitle">Generated {generated_at} &nbsp;·&nbsp; Reference: {str(lease.id)[:8].upper()}</p>
+    def _fmt_dt(dt) -> str | None:
+        if dt is None:
+            return None
+        return f"{dt.day} {dt.strftime('%B %Y %H:%M')} UTC"
 
-<h2>1. Parties</h2>
-<table>
-  <tr><td>Tenant</td><td>{tenant_name}{f' &lt;{tenant_email}&gt;' if tenant_email else ''}</td></tr>
-  <tr><td>Property</td><td>{prop_name}</td></tr>
-  <tr><td>Unit</td><td>{unit_name}</td></tr>
-</table>
-
-<h2>2. Tenancy Period</h2>
-<table>
-  <tr><td>Start date</td><td>{lease.start_date}</td></tr>
-  <tr><td>End date</td><td>{lease.end_date or 'Rolling (month-to-month)'}</td></tr>
-  <tr><td>Type</td><td>{'Periodic / Rolling' if lease.end_date is None else 'Fixed term'}</td></tr>
-</table>
-
-<h2>3. Financial Terms</h2>
-<table>
-  <tr><td>Monthly rent</td><td>{currency} {monthly_rent:,.0f}</td></tr>
-  <tr><td>Security deposit</td><td>{currency} {deposit:,.0f}</td></tr>
-  <tr><td>Rent due day</td><td>Day {lease.rent_day_of_month} of each month</td></tr>
-  <tr><td>Grace period</td><td>{lease.grace_period_days} days</td></tr>
-  <tr><td>Late fee</td><td>{late_fee_str}</td></tr>
-</table>
-
-<h2>4. Notice &amp; Termination</h2>
-<table>
-  <tr><td>Notice period</td><td>{lease.notice_period_days} days written notice required by either party to end the tenancy.</td></tr>
-</table>
-
-<h2>5. General Conditions</h2>
-<p>The tenant agrees to:</p>
-<ul>
-  <li>Pay rent on time as specified above.</li>
-  <li>Keep the property in good condition and report any damage promptly.</li>
-  <li>Not sublet the property without written landlord consent.</li>
-  <li>Allow the landlord reasonable access for inspections with prior notice.</li>
-  <li>Vacate the property at the end of the tenancy period.</li>
-</ul>
-
-<h2>6. Signatures</h2>
-<div class="sig-block">
-  <div>
-    <div class="sig-line">Tenant: {tenant_name}</div>
-    <div class="sig-line" style="margin-top:40px">Date: _______________</div>
-  </div>
-  <div>
-    <div class="sig-line">Landlord / Agent</div>
-    <div class="sig-line" style="margin-top:40px">Date: _______________</div>
-  </div>
-</div>
-
-<div class="footer">
-  Lease ID: {lease.id} &nbsp;·&nbsp; Status: {lease.status.value if hasattr(lease.status, 'value') else lease.status} &nbsp;·&nbsp; Generated by Crib
-</div>
-</body>
-</html>"""
+    html = await _render_agreement_html(
+        lease=lease,
+        tenant=tenant,
+        unit=unit,
+        prop=prop,
+        db=db,
+        tenant_signature_data_url=ta.tenant_signature_data_url if ta else None,
+        tenant_signed_at=_fmt_dt(ta.tenant_signed_at) if ta else None,
+        landlord_signature_data_url=ta.landlord_signature_data_url if ta else None,
+        landlord_signed_at=_fmt_dt(ta.landlord_signed_at) if ta else None,
+        landlord_signer_name=ta.landlord_signer_name if ta else None,
+    )
 
     # Persist to local uploads directory
     upload_dir = os.path.join(os.getcwd(), "uploads")
