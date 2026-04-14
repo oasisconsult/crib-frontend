@@ -102,3 +102,5 @@ class LeaseOut(CamelModel):
     notes: str | None
     created_at: str
     updated_at: str
+    # Signature status — populated from TenancyAgreement when available
+    signatures: list[dict] = []

@@ -28,6 +28,7 @@ log = structlog.get_logger(__name__)
 from app.models.lease import Lease, LeaseStatus
 from app.models.property import Property, Unit, UnitStatus
 from app.models.tenant import OnboardingState, Tenant, TenantStatus
+from app.models.tenancy_agreement import TenancyAgreement
 from app.schemas.lease import (
     LeaseActivate,
     LeaseCreate,
@@ -40,13 +41,35 @@ from app.schemas.lease import (
 
 # ── Serialiser ─────────────────────────────────────────────────────────────────
 
-def _lease_out(lease: Lease) -> LeaseOut:
+def _lease_out(
+    lease: Lease,
+    agreement: TenancyAgreement | None = None,
+    tenant_name: str | None = None,
+) -> LeaseOut:
     def _d(v) -> str | None:
         if v is None:
             return None
         if isinstance(v, datetime):
             return v.isoformat()
         return str(v)           # date → ISO string
+
+    # Build signatures list from TenancyAgreement when available
+    signatures: list[dict] = []
+    if agreement:
+        signatures.append({
+            "party": "tenant",
+            "name": tenant_name or "",
+            "status": "signed" if agreement.tenant_signed_at else "pending",
+            "signedAt": _d(agreement.tenant_signed_at),
+            "signatureDataUrl": agreement.tenant_signature_data_url,
+        })
+        signatures.append({
+            "party": "landlord",
+            "name": agreement.landlord_signer_name or "",
+            "status": "signed" if agreement.landlord_signed_at else "pending",
+            "signedAt": _d(agreement.landlord_signed_at),
+            "signatureDataUrl": agreement.landlord_signature_data_url,
+        })
 
     return LeaseOut(
         id=str(lease.id),
@@ -76,6 +99,7 @@ def _lease_out(lease: Lease) -> LeaseOut:
         notes=lease.notes,
         created_at=lease.created_at.isoformat(),
         updated_at=lease.updated_at.isoformat(),
+        signatures=signatures,
     )
 
 
@@ -179,7 +203,20 @@ async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -
 
 async def get_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> LeaseOut:
     lease = await _get_lease(lease_id, org_id, db)
-    return _lease_out(lease)
+
+    # Fetch TenancyAgreement (exists only after tenant signs)
+    agreement = await db.scalar(
+        select(TenancyAgreement).where(TenancyAgreement.lease_id == lease.id)
+    )
+
+    # Fetch tenant display name for the signatures block
+    tenant_name: str | None = None
+    if lease.tenant_id:
+        t = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
+        if t:
+            tenant_name = f"{t.first_name or ''} {t.last_name or ''}".strip() or t.email
+
+    return _lease_out(lease, agreement=agreement, tenant_name=tenant_name)
 
 
 async def list_leases(

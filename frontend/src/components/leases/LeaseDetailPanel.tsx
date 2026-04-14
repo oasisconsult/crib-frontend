@@ -258,11 +258,17 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {lease.signatures.map((sig) => (
+            {(lease.signatures.length > 0
+              ? lease.signatures
+              : [
+                  { party: "tenant" as const, name: lease.tenantId ? "Tenant" : "—", status: "pending" as const, signedAt: undefined },
+                  { party: "landlord" as const, name: "Landlord / Manager", status: "pending" as const, signedAt: undefined },
+                ]
+            ).map((sig) => (
               <div key={sig.party} className="flex items-center justify-between text-sm">
                 <div>
                   <p className="font-medium capitalize">{sig.party}</p>
-                  <p className="text-xs text-muted-foreground">{sig.name}</p>
+                  {sig.name && <p className="text-xs text-muted-foreground">{sig.name}</p>}
                   {sig.signedAt && (
                     <p className="text-xs text-muted-foreground">{formatDate(sig.signedAt)}</p>
                   )}
@@ -270,7 +276,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                 <Badge
                   variant={
                     sig.status === "signed" ? "success" :
-                    sig.status === "declined" ? "destructive" : "warning"
+                    sig.status === "declined" ? "destructive" : "secondary"
                   }
                 >
                   {sig.status}
