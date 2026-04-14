@@ -302,11 +302,14 @@ async def advance_to_completed(
     db: AsyncSession,
 ) -> Payment:
     """
-    Advance a payment through the full confirm flow:
-        (any in-progress) → reconciled → allocated → completed
+    Advance a payment through the full confirm flow to `completed`.
 
-    This is called internally by `confirm_payment` after the allocation and
-    wallet operations are done. Each step is a discrete machine transition.
+    Handles payments that may still be early in the pipeline (initiated,
+    predicted, routed) by stepping them forward through `pending` first,
+    then continuing the standard reconciled → allocated → completed path.
+
+    Called internally by `confirm_payment` after allocation and wallet ops.
+    Each step is a discrete validated state-machine transition.
     """
     current = payment.status if isinstance(payment.status, PaymentStatus) else PaymentStatus(payment.status)
 
@@ -314,8 +317,18 @@ async def advance_to_completed(
     if is_success(current):
         return payment
 
+    # Step early-stage payments up to `pending` first so the reconcile
+    # transition below (pending → reconciled) is always valid.
+    # initiated → pending  (shortest bypass; skip prediction/routing for direct confirmations)
+    # predicted → pending  (skip routing)
+    # routed    → pending
+    if current in {PaymentStatus.initiated, PaymentStatus.predicted, PaymentStatus.routed}:
+        await transition(payment, PaymentStatus.pending, db,
+                         reason="Direct confirmation bypass", actor="confirm_payment")
+        current = PaymentStatus.pending
+
     # Reconciled: provider has confirmed funds received
-    if current not in {PaymentStatus.reconciled, PaymentStatus.allocated}:
+    if current == PaymentStatus.pending:
         await transition(payment, PaymentStatus.reconciled, db, reason="Provider reconciled", actor="confirm_payment")
         current = PaymentStatus.reconciled
 
