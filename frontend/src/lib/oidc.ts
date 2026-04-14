@@ -100,7 +100,7 @@ export class OidcError extends Error {
  */
 export function extractRoles(accessToken: string): UserRole[] {
   const claims = decodeJwt(accessToken);
-  if (!claims) return ["owner"];
+  if (!claims) return ["tenant"];
 
   const globalRoles: string[] = claims.roles ?? [];
   const orgRoles: string[] = claims.organization_roles ?? [];
@@ -119,7 +119,7 @@ export function extractRoles(accessToken: string): UserRole[] {
     }
   }
 
-  if (result.length === 0) result.push("owner");
+  if (result.length === 0) result.push("tenant");
 
   // Sort by priority so index 0 is always the highest role
   return result.sort((a, b) => ROLE_PRIORITY.indexOf(a) - ROLE_PRIORITY.indexOf(b));
