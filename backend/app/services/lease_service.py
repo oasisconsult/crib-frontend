@@ -45,6 +45,8 @@ def _lease_out(
     lease: Lease,
     agreement: TenancyAgreement | None = None,
     tenant_name: str | None = None,
+    unit_name: str | None = None,
+    property_name: str | None = None,
 ) -> LeaseOut:
     def _d(v) -> str | None:
         if v is None:
@@ -101,6 +103,9 @@ def _lease_out(
         created_at=lease.created_at.isoformat(),
         updated_at=lease.updated_at.isoformat(),
         signatures=signatures,
+        tenant_name=tenant_name,
+        unit_name=unit_name,
+        property_name=property_name,
     )
 
 
@@ -211,14 +216,28 @@ async def get_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) ->
         select(TenancyAgreement).where(TenancyAgreement.lease_id == lease.id)
     )
 
-    # Fetch tenant display name for the signatures block
+    # Fetch display names for UI (avoids extra round-trips)
     tenant_name: str | None = None
+    unit_name: str | None = None
+    property_name: str | None = None
+
     if lease.tenant_id:
         t = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
         if t:
             tenant_name = f"{t.first_name or ''} {t.last_name or ''}".strip() or t.email
 
-    return _lease_out(lease, agreement=agreement, tenant_name=tenant_name)
+    if lease.unit_id:
+        u = await db.scalar(select(Unit).where(Unit.id == lease.unit_id))
+        if u:
+            unit_name = u.name
+
+    if lease.property_id:
+        p = await db.scalar(select(Property).where(Property.id == lease.property_id))
+        if p:
+            property_name = p.name
+
+    return _lease_out(lease, agreement=agreement, tenant_name=tenant_name,
+                      unit_name=unit_name, property_name=property_name)
 
 
 async def list_leases(
@@ -248,8 +267,37 @@ async def list_leases(
     result = await db.execute(q)
     leases = result.scalars().all()
 
+    # Batch-fetch display names to avoid N+1 queries
+    tenant_ids  = {l.tenant_id  for l in leases if l.tenant_id}
+    unit_ids    = {l.unit_id    for l in leases if l.unit_id}
+    property_ids = {l.property_id for l in leases if l.property_id}
+
+    tenant_map:   dict[uuid.UUID, str] = {}
+    unit_map:     dict[uuid.UUID, str] = {}
+    property_map: dict[uuid.UUID, str] = {}
+
+    if tenant_ids:
+        rows = (await db.execute(select(Tenant).where(Tenant.id.in_(tenant_ids)))).scalars().all()
+        tenant_map = {t.id: (f"{t.first_name or ''} {t.last_name or ''}".strip() or t.email) for t in rows}
+
+    if unit_ids:
+        rows = (await db.execute(select(Unit).where(Unit.id.in_(unit_ids)))).scalars().all()
+        unit_map = {u.id: u.name for u in rows}
+
+    if property_ids:
+        rows = (await db.execute(select(Property).where(Property.id.in_(property_ids)))).scalars().all()
+        property_map = {p.id: p.name for p in rows}
+
     return {
-        "data": [_lease_out(l) for l in leases],
+        "data": [
+            _lease_out(
+                l,
+                tenant_name=tenant_map.get(l.tenant_id) if l.tenant_id else None,
+                unit_name=unit_map.get(l.unit_id) if l.unit_id else None,
+                property_name=property_map.get(l.property_id) if l.property_id else None,
+            )
+            for l in leases
+        ],
         "total": total,
         "page": page,
         "pageSize": page_size,

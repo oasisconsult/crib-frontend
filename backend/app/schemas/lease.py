@@ -107,3 +107,7 @@ class LeaseOut(CamelModel):
     updated_at: str
     # Signature status — populated from TenancyAgreement when available
     signatures: list[dict] = []
+    # Denormalised display names (avoids extra round-trips in the UI)
+    tenant_name: str | None = None
+    unit_name: str | None = None
+    property_name: str | None = None

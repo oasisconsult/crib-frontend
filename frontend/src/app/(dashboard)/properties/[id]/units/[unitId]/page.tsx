@@ -43,6 +43,8 @@ import {
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { useUnit, useProperty, useUpdateUnit } from "@/hooks/useProperties";
+import { useTenant } from "@/hooks/useTenants";
+import { useLease } from "@/hooks/useLeases";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
 import type { Unit, UnitStatus, UnitType } from "@/types";
@@ -369,6 +371,8 @@ export default function UnitDetailPage({ params }: Props) {
   const router = useRouter();
   const { data: unit, isLoading } = useUnit(propertyId, unitId);
   const { data: property } = useProperty(propertyId);
+  const { data: currentTenant } = useTenant(unit?.currentTenantId ?? "");
+  const { data: currentLease } = useLease(unit?.currentLeaseId ?? "");
   const { can } = usePermissions();
   const canEdit = can("properties:write");
   const [editing, setEditing] = useState(false);
@@ -497,8 +501,8 @@ export default function UnitDetailPage({ params }: Props) {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Unit ID</span>
-                  <span className="font-mono text-xs">{unit.id}</span>
+                  <span className="text-muted-foreground">Ref</span>
+                  <span className="font-mono text-xs text-muted-foreground">#{unit.id.slice(-6).toUpperCase()}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">
@@ -553,28 +557,30 @@ export default function UnitDetailPage({ params }: Props) {
                 {unit.status === "occupied" && unit.currentTenantId ? (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Tenant ID</span>
+                      <span className="text-muted-foreground">Tenant</span>
                       <Button
                         variant="link"
                         size="sm"
                         className="h-auto p-0 text-sm"
                         onClick={() => router.push(`/tenants/${unit.currentTenantId}`)}
                       >
-                        {unit.currentTenantId}
+                        {currentTenant
+                          ? `${currentTenant.firstName} ${currentTenant.lastName}`
+                          : `#${unit.currentTenantId.slice(-6)}`}
                       </Button>
                     </div>
                     {unit.currentLeaseId && (
                       <>
                         <Separator />
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Lease ID</span>
+                          <span className="text-muted-foreground">Lease</span>
                           <Button
                             variant="link"
                             size="sm"
                             className="h-auto p-0 text-sm"
                             onClick={() => router.push(`/leases/${unit.currentLeaseId}`)}
                           >
-                            {unit.currentLeaseId}
+                            {currentLease?.reference ?? `#${unit.currentLeaseId.slice(-6)}`}
                           </Button>
                         </div>
                       </>

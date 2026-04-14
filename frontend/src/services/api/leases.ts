@@ -51,6 +51,9 @@ function toLeaseModel(raw: Record<string, unknown>): Lease {
     terminationReason: (raw.terminationReason as string) ?? undefined,
     renewedFromLeaseId: (raw.renewalOfLeaseId as string) ?? undefined,
     notes: (raw.notes as string) ?? undefined,
+    tenantName: (raw.tenantName as string) ?? undefined,
+    unitName: (raw.unitName as string) ?? undefined,
+    propertyName: (raw.propertyName as string) ?? undefined,
   };
 }
 

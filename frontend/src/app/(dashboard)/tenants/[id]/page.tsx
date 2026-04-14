@@ -18,6 +18,9 @@ import {
   RefreshCw,
   Copy,
   ExternalLink,
+  Fingerprint,
+  MessageCircle,
+  Banknote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -67,6 +70,11 @@ function EditForm({
   const [nationality, setNationality] = useState(tenant.nationality ?? "");
   const [status,      setStatus]      = useState<TenantStatus>(tenant.status);
   const [notes,       setNotes]       = useState(tenant.notes ?? "");
+  // Identity & payment
+  const [nin,                  setNin]                  = useState(tenant.nin ?? "");
+  const [whatsappNumber,       setWhatsappNumber]       = useState(tenant.whatsappNumber ?? "");
+  const [mobileMoneyProvider,  setMobileMoneyProvider]  = useState<"mtn" | "airtel" | "">(tenant.mobileMoneyProvider ?? "");
+  const [mobileMoneyNumber,    setMobileMoneyNumber]    = useState(tenant.mobileMoneyNumber ?? "");
   // Emergency contact
   const [ecName,         setEcName]         = useState(tenant.emergencyContact?.name ?? "");
   const [ecRelationship, setEcRelationship] = useState(tenant.emergencyContact?.relationship ?? "");
@@ -81,6 +89,10 @@ function EditForm({
       nationality: nationality || undefined,
       status,
       notes: notes || undefined,
+      nin: nin || undefined,
+      whatsappNumber: whatsappNumber || undefined,
+      mobileMoneyProvider: (mobileMoneyProvider as "mtn" | "airtel") || undefined,
+      mobileMoneyNumber: mobileMoneyNumber || undefined,
       emergencyContact: ecName
         ? { name: ecName, relationship: ecRelationship, phone: ecPhone }
         : undefined,
@@ -117,6 +129,34 @@ function EditForm({
             <div className="space-y-1.5">
               <Label htmlFor="nationality">Nationality</Label>
               <Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="e.g. Ugandan" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="nin">NIN</Label>
+              <Input id="nin" value={nin} onChange={(e) => setNin(e.target.value)} placeholder="e.g. CM90100000ABCD" />
+              <p className="text-xs text-muted-foreground">National Identification Number — appears on tenancy agreement</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="whatsappNumber">WhatsApp / Contact Number</Label>
+              <Input id="whatsappNumber" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} placeholder="+256 700 000000" type="tel" />
+              <p className="text-xs text-muted-foreground">Used as contact phone on the tenancy agreement</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="mmProvider">Mobile Money Provider</Label>
+              <Select value={mobileMoneyProvider} onValueChange={(v) => setMobileMoneyProvider(v as "mtn" | "airtel" | "")}>
+                <SelectTrigger id="mmProvider"><SelectValue placeholder="Select provider" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="mtn">MTN Mobile Money</SelectItem>
+                  <SelectItem value="airtel">Airtel Money</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="mmNumber">Mobile Money Number</Label>
+              <Input id="mmNumber" value={mobileMoneyNumber} onChange={(e) => setMobileMoneyNumber(e.target.value)} placeholder="+256 770 000000" type="tel" />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -520,6 +560,40 @@ export default function TenantDetailPage({ params }: Props) {
                     </div>
                   </>
                 )}
+                {tenant.nin && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-2 text-sm">
+                      <Fingerprint className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">NIN:</span>
+                      <span className="font-mono">{tenant.nin}</span>
+                    </div>
+                  </>
+                )}
+                {tenant.whatsappNumber && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-2 text-sm">
+                      <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">WhatsApp:</span>
+                      <a href={`tel:${tenant.whatsappNumber}`} className="hover:underline">{tenant.whatsappNumber}</a>
+                    </div>
+                  </>
+                )}
+                {tenant.mobileMoneyNumber && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-2 text-sm">
+                      <Banknote className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Mobile Money:</span>
+                      <span>
+                        {tenant.mobileMoneyProvider === "mtn" ? "MTN" : tenant.mobileMoneyProvider === "airtel" ? "Airtel" : ""}
+                        {tenant.mobileMoneyProvider && " — "}
+                        {tenant.mobileMoneyNumber}
+                      </span>
+                    </div>
+                  </>
+                )}
                 {tenant.status && (
                   <>
                     <Separator />
@@ -600,8 +674,8 @@ export default function TenantDetailPage({ params }: Props) {
                 </div>
                 <Separator />
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tenant ID</span>
-                  <span className="font-mono text-xs">{tenant.id.slice(-8)}</span>
+                  <span className="text-muted-foreground">Ref</span>
+                  <span className="font-mono text-xs text-muted-foreground">#{tenant.id.slice(-6).toUpperCase()}</span>
                 </div>
                 {tenant.tags.length > 0 && (
                   <>

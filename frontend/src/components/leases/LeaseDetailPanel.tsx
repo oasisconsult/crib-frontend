@@ -274,7 +274,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
             {(lease.signatures.length > 0
               ? lease.signatures
               : [
-                  { party: "tenant" as const, name: lease.tenantId ? "Tenant" : "—", status: "pending" as const, signedAt: undefined },
+                  { party: "tenant" as const, name: lease.tenantName ?? (lease.tenantId ? "Tenant" : "—"), status: "pending" as const, signedAt: undefined },
                   { party: "landlord" as const, name: "Landlord / Manager", status: "pending" as const, signedAt: undefined },
                 ]
             ).map((sig) => (

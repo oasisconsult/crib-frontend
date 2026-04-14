@@ -46,6 +46,9 @@ export interface Inspection {
   maintenanceIssueIds: string[];
   createdAt: string;
   updatedAt: string;
+  // Denormalised display names
+  unitName?: string;
+  propertyName?: string;
 }
 
 export interface MaintenanceIssue {

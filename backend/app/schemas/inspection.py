@@ -84,6 +84,9 @@ class InspectionOut(CamelModel):
     landlord_signed_at: str | None
     created_at: str
     updated_at: str
+    # Denormalised display names
+    unit_name: str | None = None
+    property_name: str | None = None
 
 
 # ── Maintenance ────────────────────────────────────────────────────────────────

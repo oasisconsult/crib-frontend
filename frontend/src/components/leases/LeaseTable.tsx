@@ -41,13 +41,21 @@ const COLUMNS: Column<Lease>[] = [
     key: "tenantId",
     header: "Tenant",
     render: (lease) => (
-      <span className="text-sm">Tenant #{lease.tenantId.slice(-4)}</span>
+      <span className="text-sm">{lease.tenantName ?? `Tenant #${lease.tenantId.slice(-4)}`}</span>
     ),
   },
   {
     key: "unitId",
     header: "Unit",
-    render: (lease) => <span className="text-sm">Unit #{lease.unitId.slice(-4)}</span>,
+    render: (lease) => (
+      <span className="text-sm">
+        {lease.unitName
+          ? lease.propertyName
+            ? `${lease.propertyName} — ${lease.unitName}`
+            : lease.unitName
+          : `Unit #${lease.unitId.slice(-4)}`}
+      </span>
+    ),
   },
   {
     key: "terms",

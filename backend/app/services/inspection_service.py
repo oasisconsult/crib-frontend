@@ -28,6 +28,7 @@ from app.models.inspection import (
     INSPECTION_TRANSITIONS,
     MAINTENANCE_TRANSITIONS,
 )
+from app.models.property import Property, Unit
 from app.schemas.inspection import (
     InspectionCreate,
     InspectionOut,
@@ -41,7 +42,7 @@ from app.schemas.inspection import (
 
 # ── Serialisers ────────────────────────────────────────────────────────────────
 
-def _insp_out(i: Inspection) -> InspectionOut:
+def _insp_out(i: Inspection, unit_name: str | None = None, property_name: str | None = None) -> InspectionOut:
     def _s(v) -> str | None:
         if v is None:
             return None
@@ -74,6 +75,8 @@ def _insp_out(i: Inspection) -> InspectionOut:
         landlord_signed_at=_s(i.landlord_signed_at),
         created_at=i.created_at.isoformat(),
         updated_at=i.updated_at.isoformat(),
+        unit_name=unit_name,
+        property_name=property_name,
     )
 
 
@@ -190,9 +193,32 @@ async def list_inspections(
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(Inspection.scheduled_date.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(q)
+    inspections = result.scalars().all()
+
+    # Batch-fetch display names to avoid N+1 queries
+    unit_ids     = {i.unit_id     for i in inspections if i.unit_id}
+    property_ids = {i.property_id for i in inspections if i.property_id}
+
+    unit_map:     dict[uuid.UUID, str] = {}
+    property_map: dict[uuid.UUID, str] = {}
+
+    if unit_ids:
+        rows = (await db.execute(select(Unit).where(Unit.id.in_(unit_ids)))).scalars().all()
+        unit_map = {u.id: u.name for u in rows}
+
+    if property_ids:
+        rows = (await db.execute(select(Property).where(Property.id.in_(property_ids)))).scalars().all()
+        property_map = {p.id: p.name for p in rows}
 
     return {
-        "data": [_insp_out(i) for i in result.scalars().all()],
+        "data": [
+            _insp_out(
+                i,
+                unit_name=unit_map.get(i.unit_id) if i.unit_id else None,
+                property_name=property_map.get(i.property_id) if i.property_id else None,
+            )
+            for i in inspections
+        ],
         "total": total,
         "page": page,
         "pageSize": page_size,

@@ -33,7 +33,15 @@ const COLUMNS: Column<Inspection>[] = [
   {
     key: "unitId",
     header: "Unit",
-    render: (i) => <span className="text-sm">Unit #{i.unitId.slice(-4)}</span>,
+    render: (i) => (
+      <span className="text-sm">
+        {i.unitName
+          ? i.propertyName
+            ? `${i.propertyName} — ${i.unitName}`
+            : i.unitName
+          : `Unit #${i.unitId.slice(-4)}`}
+      </span>
+    ),
   },
   {
     key: "scheduledDate",

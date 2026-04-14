@@ -66,6 +66,10 @@ export interface Lease {
   // Related
   renewedFromLeaseId?: string;
   notes?: string;
+  // Denormalised display names from API
+  tenantName?: string;
+  unitName?: string;
+  propertyName?: string;
 }
 
 export interface LeaseAuditEntry {

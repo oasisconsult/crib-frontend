@@ -43,6 +43,11 @@ export interface Tenant {
   phone: string;
   dateOfBirth?: string;
   nationality?: string;
+  // Identity & payment
+  nin?: string;
+  whatsappNumber?: string;
+  mobileMoneyProvider?: "mtn" | "airtel";
+  mobileMoneyNumber?: string;
   // Status
   status: TenantStatus;
   onboardingState: OnboardingState;

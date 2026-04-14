@@ -15,6 +15,8 @@ import {
   EyeOff,
   Save,
   FlaskConical,
+  Building2,
+  Banknote,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -231,11 +233,13 @@ function TestButton({
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 const CATEGORY_TABS = [
-  { id: "storage",  label: "Storage",  icon: HardDrive },
-  { id: "email",    label: "Email",    icon: Mail      },
+  { id: "agency",   label: "Agency",   icon: Building2    },
+  { id: "storage",  label: "Storage",  icon: HardDrive    },
+  { id: "email",    label: "Email",    icon: Mail         },
   { id: "sms",      label: "SMS",      icon: MessageSquare },
-  { id: "platform", label: "Platform", icon: Globe     },
-  { id: "features", label: "Features", icon: ToggleLeft },
+  { id: "payments", label: "Payments", icon: Banknote     },
+  { id: "platform", label: "Platform", icon: Globe        },
+  { id: "features", label: "Features", icon: ToggleLeft   },
 ] as const;
 
 type CategoryId = typeof CATEGORY_TABS[number]["id"];
@@ -243,7 +247,7 @@ type CategoryId = typeof CATEGORY_TABS[number]["id"];
 export function SettingsPanel() {
   const [data, setData] = useState<SettingsByCategory | null>(null);
   const [loading, setLoading] = useState(true);
-  const [cat, setCat] = useState<CategoryId>("storage");
+  const [cat, setCat] = useState<CategoryId>("agency");
 
   useEffect(() => {
     settingsApi.getAll()
@@ -302,6 +306,16 @@ export function SettingsPanel() {
             </TabsTrigger>
           ))}
         </TabsList>
+
+        {/* Agency */}
+        <TabsContent value="agency" className="mt-4">
+          <SettingsSection
+            title="Agency / Landlord Details"
+            description="Name and contact info printed on tenancy agreements and tenant communications."
+            settings={data.agency ?? []}
+            onSave={handleSave}
+          />
+        </TabsContent>
 
         {/* Storage */}
         <TabsContent value="storage" className="mt-4 space-y-4">
@@ -362,6 +376,16 @@ export function SettingsPanel() {
                 }}
               />
             }
+          />
+        </TabsContent>
+
+        {/* Payments */}
+        <TabsContent value="payments" className="mt-4">
+          <SettingsSection
+            title="Payment Defaults"
+            description="Advance rent months, grace periods, and late fee defaults applied to new leases."
+            settings={data.payments ?? []}
+            onSave={handleSave}
           />
         </TabsContent>
 
