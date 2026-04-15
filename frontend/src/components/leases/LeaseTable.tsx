@@ -17,10 +17,10 @@ import { LeaseWorkflowStepper } from "./WorkflowStepper";
 const TABS: { value: string; label: string; states: LeaseState[] }[] = [
   { value: "all", label: "All", states: [] },
   { value: "active", label: "Active", states: ["active"] },
-  { value: "pending", label: "Pending", states: ["pending"] },
+  { value: "pending", label: "Pending", states: ["payment_pending", "payment_secured", "agreement_signed"] },
   { value: "draft", label: "Drafts", states: ["draft"] },
-  { value: "notice", label: "Notice", states: ["notice"] },
-  { value: "closed", label: "Closed / Terminated", states: ["closed", "terminated"] },
+  { value: "notice", label: "Notice", states: ["onboarding_started", "agreement_previewed", "terms_accepted"] },
+  { value: "closed", label: "Closed / Terminated", states: ["expired", "terminated"] },
 ];
 
 const COLUMNS: Column<Lease>[] = [

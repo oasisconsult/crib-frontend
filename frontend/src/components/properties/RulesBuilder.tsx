@@ -48,7 +48,7 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving }: Rul
   const { mutate: saveRules, isPending: savingProperty } = useUpdatePropertyRules();
   const isPending = isSaving ?? savingProperty;
 
-  const defaultValues = schemaToDefaultValues(DEFAULT_RULE_SCHEMA, initialRules) as PropertyRules;
+  const defaultValues = schemaToDefaultValues(DEFAULT_RULE_SCHEMA, initialRules) as unknown as PropertyRules;
 
   const { register, handleSubmit, watch, control, formState: { errors, isDirty } } = useForm<PropertyRules>({
     resolver: zodResolver(rulesSchema),
@@ -56,8 +56,8 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving }: Rul
   });
 
   const values = watch();
-  const visibleFields = getVisibleFields(DEFAULT_RULE_SCHEMA.fields, values as Record<string, unknown>);
-  const conflicts = detectRuleConflicts(values as Record<string, unknown>);
+  const visibleFields = getVisibleFields(DEFAULT_RULE_SCHEMA.fields, values as unknown as Record<string, unknown>);
+  const conflicts = detectRuleConflicts(values as unknown as Record<string, unknown>);
 
   const onSubmit = (data: PropertyRules) => {
     if (onSave) {

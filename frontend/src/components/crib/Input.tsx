@@ -25,7 +25,7 @@ export function Input({
   error = false,
   label
 }: InputProps) {
-  const { theme } = useTheme();
+  const { resolved: theme } = useTheme();
 
   return (
     <div className="space-y-2">

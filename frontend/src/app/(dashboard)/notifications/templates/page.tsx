@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/common/EmptyState";
 import { TemplateEditor } from "@/components/notifications/TemplateEditor";
 import { useNotificationTemplates } from "@/hooks/useNotifications";
+import type { NotificationTemplate } from "@/types";
 
 const CHANNEL_ICONS: Record<string, string> = {
   email: "✉️",
@@ -21,7 +22,7 @@ export default function NotificationTemplatesPage() {
   const [creating, setCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const templates = data?.data ?? [];
+  const templates: NotificationTemplate[] = data ?? [];
 
   if (creating || editingId) {
     return (
@@ -35,7 +36,7 @@ export default function NotificationTemplatesPage() {
           </Button>
         </div>
         <TemplateEditor
-          templateId={editingId ?? undefined}
+          template={editingId ? templates.find((t) => t.id === editingId) : undefined}
           onSaved={() => { setCreating(false); setEditingId(null); }}
         />
       </div>

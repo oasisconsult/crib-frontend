@@ -85,12 +85,12 @@ const COLUMNS: Column<LedgerEntry>[] = [
 ];
 
 interface LedgerViewProps {
-  tenantId: string;
+  leaseId: string;
   tenantName?: string;
 }
 
-export function LedgerView({ tenantId, tenantName }: LedgerViewProps) {
-  const { data: entries, isLoading } = useLedger(tenantId);
+export function LedgerView({ leaseId, tenantName }: LedgerViewProps) {
+  const { data: entries, isLoading } = useLedger(leaseId);
 
   const currentBalance = entries?.[entries.length - 1]?.balance ?? 0;
 

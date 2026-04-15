@@ -12,6 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileUpload } from "@/components/common/FileUpload";
 import type { UploadResult } from "@/services/api/uploads";
 import { ESignatureCanvas } from "./ESignatureCanvas";
@@ -310,15 +311,18 @@ export function OnboardingWizard({
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label htmlFor="mobileMoneyProvider" className="text-xs text-muted-foreground">Provider</Label>
-                        <select
-                          id="mobileMoneyProvider"
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          {...form.register("mobileMoneyProvider")}
+                        <Select
+                          value={form.watch("mobileMoneyProvider") ?? ""}
+                          onValueChange={(v) => form.setValue("mobileMoneyProvider", v as "mtn" | "airtel" | "")}
                         >
-                          <option value="">Select provider</option>
-                          <option value="mtn">MTN Mobile Money</option>
-                          <option value="airtel">Airtel Money</option>
-                        </select>
+                          <SelectTrigger id="mobileMoneyProvider">
+                            <SelectValue placeholder="Select provider" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mtn">MTN Mobile Money</SelectItem>
+                            <SelectItem value="airtel">Airtel Money</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="mobileMoneyNumber" className="text-xs text-muted-foreground">Number</Label>

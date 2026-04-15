@@ -39,8 +39,8 @@ const STATE_CONFIG: Record<
   // v4 happy path
   initiated: {
     label: "Initiated",
-    color: "text-slate-600",
-    bg: "bg-slate-100 dark:bg-slate-900/40",
+    color: "text-muted-foreground",
+    bg: "bg-muted/60 dark:bg-muted/30",
     icon: Clock,
   },
   predicted: {
@@ -151,9 +151,10 @@ function CopyButton({ value }: { value: string }) {
         toast.success("Copied");
       }}
       className="ml-1 text-muted-foreground hover:text-foreground transition-colors"
+      aria-label="Copy to clipboard"
       title="Copy"
     >
-      <Copy className="h-3.5 w-3.5" />
+      <Copy className="h-3.5 w-3.5" aria-hidden="true" />
     </button>
   );
 }

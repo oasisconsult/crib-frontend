@@ -3,7 +3,7 @@ import { queryKeys } from "@/lib/queryClient";
 import { inspectionsApi } from "@/services/api/inspections";
 import { toast } from "@/store/useUIStore";
 import type { QueryParams, MaintenanceIssue, Inspection } from "@/types";
-import type { MaintenanceEvent } from "@/types/states";
+import type { MaintenanceEvent, InspectionEvent } from "@/types/states";
 
 export function useInspections(params?: QueryParams) {
   return useQuery({
@@ -53,7 +53,7 @@ export function useTransitionInspection() {
       payload,
     }: {
       id: string;
-      event: string;
+      event: InspectionEvent;
       payload?: Record<string, unknown>;
     }) => inspectionsApi.transition(id, event, payload),
     onSuccess: (_, { id }) => {
@@ -64,7 +64,7 @@ export function useTransitionInspection() {
 }
 
 export function useMaintenanceIssues(inspectionId?: string) {
-  const params = inspectionId ? { inspectionId } : undefined;
+  const params = inspectionId ? { inspectionId } as QueryParams : undefined;
   return useQuery({
     queryKey: queryKeys.maintenance.list(params),
     queryFn: () => inspectionsApi.listMaintenance(params),

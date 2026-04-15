@@ -11,7 +11,6 @@ import { useState } from "react";
 import { Building2, ChevronDown, Loader2, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppStore } from "@/store/useAppStore";
-import { tokenStore, decodeJwt } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,13 +27,9 @@ interface OrgOption {
 }
 
 function getOrgsFromToken(): OrgOption[] {
-  const token = tokenStore.get();
-  if (!token) return [];
-  const claims = decodeJwt(token);
-  const orgIds: string[] = claims?.organizations ?? [];
-  // Logto doesn't embed org names in the token — use IDs as labels until
-  // the app fetches org details from the backend.
-  return orgIds.map((id) => ({ id, name: id }));
+  // Token is in an httpOnly cookie (BFF pattern) — not accessible from JS.
+  // Org list is populated via user profile from the backend.
+  return [];
 }
 
 export function OrgSwitcher() {

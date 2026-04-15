@@ -63,6 +63,8 @@ export interface Lease {
   finalAgreementSnapshot?: Record<string, unknown>;
   onboardingCompletedAt?: string;
   onboardingPaymentIds?: string[];
+  // Advance payment
+  advanceMonths?: number;
   // Related
   renewedFromLeaseId?: string;
   notes?: string;

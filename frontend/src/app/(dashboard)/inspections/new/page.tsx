@@ -48,7 +48,6 @@ export default function NewInspectionPage() {
 
     create(
       {
-        state: "scheduled" as const,
         type: type as "routine",
         propertyId,
         unitId: unitId || propertyId,
@@ -60,9 +59,7 @@ export default function NewInspectionPage() {
         photoUrls: [],
         videoUrls: [],
         maintenanceIssueIds: [],
-        notes: notes || undefined,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        summary: notes || undefined,
       },
       { onSuccess: () => router.push("/inspections") },
     );

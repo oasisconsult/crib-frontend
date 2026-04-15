@@ -60,7 +60,7 @@ function IssueCard({ issue }: { issue: MaintenanceIssue }) {
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium">{issue.title}</p>
           <PriorityBadge priority={issue.priority} />
-          <StatusBadge state={issue.state as "open"} domain="maintenance" />
+          <StatusBadge state={issue.state} domain="maintenance" />
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{issue.description}</p>
         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
@@ -90,7 +90,6 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
     if (!propertyId || !title) return;
     create(
       {
-        state: "open" as const,
         propertyId,
         unitId: undefined,
         reportedBy: "landlord",
@@ -101,8 +100,6 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
         priority: priority as "medium",
         reportedAt: new Date().toISOString(),
         photoUrls: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       },
       { onSuccess: onClose },
     );
@@ -173,14 +170,14 @@ export default function MaintenancePage() {
   const filtered = issues.filter((i) => {
     const tabMatch =
       tab === "all" ||
-      (tab === "open" && (i.state === "open" || i.state === "in_progress")) ||
+      (tab === "open" && (i.state === "reported" || i.state === "assigned" || i.state === "in_progress")) ||
       (tab === "resolved" && (i.state === "resolved" || i.state === "closed"));
     const searchMatch = !search || i.title.toLowerCase().includes(search.toLowerCase());
     return tabMatch && searchMatch;
   });
 
-  const openCount = issues.filter((i) => i.state === "open" || i.state === "in_progress").length;
-  const urgentCount = issues.filter((i) => i.priority === "urgent" || (i.priority === "high" && i.state === "open")).length;
+  const openCount = issues.filter((i) => i.state === "reported" || i.state === "assigned" || i.state === "in_progress").length;
+  const urgentCount = issues.filter((i) => i.priority === "urgent" || (i.priority === "high" && (i.state === "reported" || i.state === "assigned"))).length;
 
   return (
     <div className="space-y-6">

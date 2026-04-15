@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn } from '@/utils/cn';
 import {
   Home,
   Building,
@@ -94,7 +94,7 @@ export function Sidebar({ className, isMobile = false, onClose }: SidebarProps) 
           return (
             <Link
               key={item.name}
-              href={item.href}
+              href={item.href as any}
               onClick={isMobile ? onClose : undefined}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
@@ -149,7 +149,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
             return (
               <Link
                 key={item.name}
-                href={item.href}
+                href={item.href as any}
                 className={cn(
                   "flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium transition-colors",
                   isActive

@@ -40,7 +40,7 @@ interface DataTableProps<T> {
 
 type SortDir = "asc" | "desc" | null;
 
-export const DataTable = React.memo(function DataTable<T extends object>({
+function DataTableInner<T extends object>({
   data,
   columns,
   loading,
@@ -265,4 +265,6 @@ export const DataTable = React.memo(function DataTable<T extends object>({
       )}
     </div>
   );
-});
+}
+
+export const DataTable = React.memo(DataTableInner) as typeof DataTableInner;

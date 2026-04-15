@@ -76,7 +76,7 @@ function KpiCard({ label, value, change, positive, icon, iconColor, iconBg, href
 
   if (href) {
     return (
-      <Link href={href} className="block" aria-label={`${label}: ${value}, ${change}`}>
+      <Link href={href as any} className="block" aria-label={`${label}: ${value}, ${change}`}>
         {inner}
       </Link>
     );
@@ -190,7 +190,7 @@ function QuickAction({ icon, label, href, iconClass, bgClass }: {
 }) {
   return (
     <Link
-      href={href}
+      href={href as any}
       className={cn(
         "flex items-center gap-3 p-3 rounded-[10px] border border-border bg-card",
         "hover:border-border/80 hover:shadow-[0_2px_8px_rgba(15,23,42,0.07)]",

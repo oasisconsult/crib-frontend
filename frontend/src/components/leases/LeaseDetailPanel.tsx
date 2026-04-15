@@ -231,6 +231,16 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
             <DetailRow label="Monthly Rent" value={formatCurrency(lease.terms.monthlyRent, lease.terms.currency)} />
             <Separator />
             <DetailRow label="Deposit" value={formatCurrency(lease.terms.depositAmount, lease.terms.currency)} />
+            {lease.advanceMonths != null && (
+              <>
+                <Separator />
+                <DetailRow
+                  label="Advance Rent"
+                  value={`${lease.advanceMonths} month${lease.advanceMonths !== 1 ? "s" : ""} (${formatCurrency(lease.terms.monthlyRent * lease.advanceMonths, lease.terms.currency)})`}
+                />
+              </>
+            )}
+            <Separator />
             <DetailRow
               label="Late Fee"
               value={

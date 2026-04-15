@@ -76,6 +76,7 @@ function PermissionMatrix({
                           : "bg-muted text-muted-foreground hover:bg-muted/80",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
                       )}
+                      aria-label={`${granted ? "Revoke" : "Grant"} ${action} on ${res.name}`}
                       title={`${granted ? "Revoke" : "Grant"} ${action} on ${res.name}`}
                     >
                       {isLoading ? (
@@ -305,7 +306,7 @@ export function RbacPanel() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted">
-          <Shield className="h-4.5 w-4.5 text-muted-foreground" />
+          <Shield className="h-5 w-5 text-muted-foreground" />
         </div>
         <div>
           <h2 className="text-base font-semibold">Access Control</h2>

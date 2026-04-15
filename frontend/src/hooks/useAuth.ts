@@ -85,7 +85,7 @@ export function useAuth() {
 
   // ── Silent refresh ────────────────────────────────────────────────────────
   const silentRefresh = useCallback(async (): Promise<string | null> => {
-    if (IS_MOCK) return tokenStore.get();
+    if (IS_MOCK) return null; // mock mode — no real token needed, all calls are intercepted
 
     const inflight = tokenStore.getRefreshPromise();
     if (inflight) return inflight;

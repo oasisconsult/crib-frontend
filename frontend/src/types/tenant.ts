@@ -29,6 +29,10 @@ export interface OnboardingDraft {
   phone?: string;
   dateOfBirth?: string;
   nationality?: string;
+  nin?: string;
+  whatsappNumber?: string;
+  mobileMoneyProvider?: "mtn" | "airtel" | "";
+  mobileMoneyNumber?: string;
   emergencyContact?: EmergencyContact;
 }
 
@@ -88,6 +92,10 @@ export interface OnboardingSubmitPayload {
   phone?: string;
   dateOfBirth?: string;
   nationality?: string;
+  nin?: string;
+  whatsappNumber?: string;
+  mobileMoneyProvider?: "mtn" | "airtel" | "";
+  mobileMoneyNumber?: string;
   gdprConsent: boolean;
   documents: OnboardingDocumentPayload[];
 }

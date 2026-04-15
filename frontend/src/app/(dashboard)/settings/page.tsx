@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Bell, Palette, Shield, Save, Building2, Loader2 } from "lucide-react";
+import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,7 +122,7 @@ export default function SettingsPage() {
             <span className="hidden sm:inline">Notifications</span>
           </TabsTrigger>
           <TabsTrigger value="appearance" className="gap-2">
-            <Palette className="h-4 w-4" />
+            <Paintbrush className="h-4 w-4" />
             <span className="hidden sm:inline">Appearance</span>
           </TabsTrigger>
           <TabsTrigger value="security" className="gap-2">
@@ -349,20 +349,25 @@ export default function SettingsPage() {
               <div className="space-y-3">
                 <Label>Theme</Label>
                 <div className="grid grid-cols-3 gap-3">
-                  {(["light", "dark", "system"] as const).map((t) => (
+                  {(
+                    [
+                      { value: "light",  icon: Sun,     label: "Light"  },
+                      { value: "dark",   icon: Moon,    label: "Dark"   },
+                      { value: "system", icon: Monitor, label: "System" },
+                    ] as const
+                  ).map(({ value, icon: Icon, label }) => (
                     <button
-                      key={t}
-                      onClick={() => setTheme(t)}
-                      className={`rounded-lg border-2 p-3 text-sm font-medium capitalize transition-colors ${
-                        theme === t
-                          ? "border-primary bg-primary/5"
-                          : "border-border hover:border-muted-foreground/50"
+                      key={value}
+                      onClick={() => setTheme(value)}
+                      aria-pressed={theme === value}
+                      className={`flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
+                        theme === value
+                          ? "border-primary bg-primary/5 text-primary"
+                          : "border-border text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground"
                       }`}
                     >
-                      {t === "light" && "☀️ "}
-                      {t === "dark" && "🌙 "}
-                      {t === "system" && "💻 "}
-                      {t}
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                      {label}
                     </button>
                   ))}
                 </div>

@@ -212,12 +212,12 @@ export default function NewLeasePage() {
         propertyId,
         unitId,
         reference: `LSE-${Date.now().toString(36).toUpperCase()}`,
+        advanceMonths,
         terms: {
           startDate,
           endDate: isRolling ? undefined : endDate,
           monthlyRent,
           depositAmount,
-          advanceMonths,
           currency,
           paymentDueDay,
           noticePeriodDays,

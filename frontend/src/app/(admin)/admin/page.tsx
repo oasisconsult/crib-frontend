@@ -24,6 +24,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { PermissionGate } from "@/components/common/PermissionGate";
@@ -359,15 +361,16 @@ export default function AdminPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">Anonymise Tenant Data</p>
+                  <Label htmlFor="anonymise-tenant-id" className="text-sm font-medium">Anonymise Tenant Data</Label>
                   <p className="text-xs text-muted-foreground">
                     Permanently redacts a tenant&apos;s personal information. Complies with Art. 22 of the Uganda Data Protection and Privacy Act.
                   </p>
                   <div className="flex gap-2">
-                    <input
+                    <Input
+                      id="anonymise-tenant-id"
                       type="text"
                       placeholder="Tenant ID (e.g. tenant-3)..."
-                      className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex-1"
                     />
                     <Button variant="destructive" size="sm">
                       Anonymise
@@ -378,15 +381,16 @@ export default function AdminPage() {
                 <Separator />
 
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">Export User Data</p>
+                  <Label htmlFor="export-user-id" className="text-sm font-medium">Export User Data</Label>
                   <p className="text-xs text-muted-foreground">
                     Generate a full data export for a user (right to portability).
                   </p>
                   <div className="flex gap-2">
-                    <input
+                    <Input
+                      id="export-user-id"
                       type="text"
                       placeholder="User ID or email..."
-                      className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex-1"
                     />
                     <Button variant="outline" size="sm">
                       Export

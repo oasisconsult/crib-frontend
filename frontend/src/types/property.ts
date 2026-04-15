@@ -36,6 +36,7 @@ export interface Property {
   rules: PropertyRules;
   landlordId: string;
   coverImage?: string;
+  images?: string[];
   totalUnits: number;
   occupiedUnits: number;
   occupancyRate: number;

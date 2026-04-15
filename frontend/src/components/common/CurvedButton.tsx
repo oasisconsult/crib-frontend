@@ -159,7 +159,7 @@ const CurvedButton = forwardRef<HTMLButtonElement, CurvedButtonProps>(
 
     if (asChild) {
       return (
-        <div ref={ref} className={cn(
+        <div ref={ref as React.Ref<HTMLDivElement>} className={cn(
           "inline-flex",
           getCurveClass(),
           getVariantClass(),
@@ -167,7 +167,7 @@ const CurvedButton = forwardRef<HTMLButtonElement, CurvedButtonProps>(
           fullWidth && "w-full",
           disabled && "opacity-50 cursor-not-allowed",
           className
-        )} {...props}>
+        )}>
           <div className="flex items-center justify-center">
             {renderContent()}
           </div>

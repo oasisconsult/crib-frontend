@@ -33,7 +33,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className = "", collapsed = false, onToggle }: SidebarProps) {
-  const { theme, toggleTheme } = useTheme();
+  const { resolved: theme, setPreference } = useTheme();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const navItems: NavItem[] = [
@@ -112,7 +112,7 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
           {/* Theme toggle */}
           <Button
             variant="ghost"
-            onClick={toggleTheme}
+            onClick={() => setPreference(theme === "dark" ? "light" : "dark")}
             className="w-full justify-start"
           >
             {theme === "dark" ? (

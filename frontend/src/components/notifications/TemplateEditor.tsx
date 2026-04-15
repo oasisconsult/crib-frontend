@@ -91,7 +91,7 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
   const onSubmit = (values: FormValues) => {
     const payload = { ...values, landlordId: "landlord-1", variables: TEMPLATE_VARIABLES };
     if (template) {
-      update({ id: template.id, data: payload }, { onSuccess: onSaved });
+      update({ id: template.id, data: payload as Partial<NotificationTemplate> }, { onSuccess: onSaved });
     } else {
       create(payload as Parameters<typeof create>[0], { onSuccess: onSaved });
     }

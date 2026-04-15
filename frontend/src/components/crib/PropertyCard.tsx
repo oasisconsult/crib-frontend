@@ -25,7 +25,7 @@ export function PropertyCard({
   trend = "+12%",
   className = "" 
 }: PropertyCardProps) {
-  const { theme } = useTheme();
+  const { resolved: theme } = useTheme();
   const occupancyRate = Math.round((occupied / units) * 100);
 
   return (

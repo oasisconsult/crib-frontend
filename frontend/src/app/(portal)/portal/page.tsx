@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download,
-  Phone, Building2, Banknote, CreditCard as CardIcon,
+  Smartphone, Building2, Banknote, CreditCard as CardIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,11 +30,11 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 // ─── Pay Rent Dialog ─────────────────────────────────────────────────────────
 
 const PAYMENT_METHODS = [
-  { id: "mtn_momo",    label: "MTN Mobile Money", icon: Phone,     color: "text-yellow-600" },
-  { id: "airtel_money",label: "Airtel Money",      icon: Phone,     color: "text-red-500" },
-  { id: "bank_transfer",label: "Bank Transfer",    icon: Building2, color: "text-blue-600" },
-  { id: "cash",        label: "Cash",              icon: Banknote,  color: "text-emerald-600" },
-  { id: "card",        label: "Card",              icon: CardIcon,  color: "text-violet-600" },
+  { id: "mtn_momo",    label: "MTN Mobile Money", icon: Smartphone, color: "text-yellow-600" },
+  { id: "airtel_money",label: "Airtel Money",      icon: Smartphone, color: "text-red-500" },
+  { id: "bank_transfer",label: "Bank Transfer",    icon: Building2,  color: "text-blue-600" },
+  { id: "cash",        label: "Cash",              icon: Banknote,   color: "text-emerald-600" },
+  { id: "card",        label: "Card",              icon: CardIcon,   color: "text-violet-600" },
 ];
 
 interface PayDialogProps {
@@ -50,19 +50,15 @@ function PayDialog({ lease, onClose }: PayDialogProps) {
   function handlePay() {
     if (!method) return;
     mutate({
+      state: "initiated",
       category: "rent",
       method: method as Payment["method"],
-      tenantId: lease.tenantId,
-      landlordId: lease.landlordId,
       leaseId: lease.id,
-      propertyId: lease.propertyId,
-      unitId: lease.unitId,
       amount: lease.terms.monthlyRent,
       currency: lease.terms.currency,
-      dueDate: new Date().toISOString().slice(0, 10),
       reference: ref || `PAY-${Date.now()}`,
-      externalReference: ref || undefined,
-    } as Omit<Payment, "id" | "createdAt" | "updatedAt" | "state">);
+      notes: ref ? `External ref: ${ref}` : undefined,
+    } as Omit<Payment, "id" | "createdAt" | "updatedAt">);
   }
 
   if (isSuccess) {
@@ -84,8 +80,8 @@ function PayDialog({ lease, onClose }: PayDialogProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground">Pay Rent</h3>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
-          <X className="h-4 w-4" />
+        <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground transition-colors">
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
 
@@ -141,14 +137,12 @@ function PayDialog({ lease, onClose }: PayDialogProps) {
 
 function PaymentDetailSheet({ payment, onClose }: { payment: Payment; onClose: () => void }) {
   const rows: [string, string][] = [
-    ["Reference", payment.reference],
+    ["Reference", payment.reference ?? "—"],
     ["Category", payment.category],
     ["Method", payment.method ?? "—"],
     ["Amount", formatCurrency(payment.amount, payment.currency)],
-    ["Due date", formatDate(payment.dueDate)],
     ["Paid at", payment.paidAt ? formatDate(payment.paidAt) : "—"],
     ["Status", payment.state],
-    ["External ref", payment.externalReference ?? "—"],
     ["Notes", payment.notes ?? "—"],
   ];
 
@@ -407,7 +401,8 @@ export default function TenantPortalPage() {
   const myLease = allLeases.find((l) => l.tenantId === userId) ?? allLeases[0];
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
-  const myPayments = allPayments.filter((p) => p.tenantId === userId);
+  const myPayments = allPayments.filter((p) => !myLease || p.leaseId === myLease.id);
+  const hasOverdueRent = (schedulesData?.data ?? []).some((s) => s.state === "overdue");
   const myMaintenance = allMaintenance.filter((m) => (m as any).reportedBy === userId);
   const openRequests = myMaintenance.filter((m) => !["resolved", "closed"].includes(m.state));
 
@@ -475,7 +470,7 @@ export default function TenantPortalPage() {
             <TabsTrigger value="payments" className="gap-1.5">
               <CreditCard className="h-3.5 w-3.5" />
               Payments
-              {myPayments.some((p) => p.state === "overdue") && (
+              {hasOverdueRent && (
                 <span className="ml-1 flex h-2 w-2 rounded-full bg-destructive" />
               )}
             </TabsTrigger>
@@ -500,9 +495,9 @@ export default function TenantPortalPage() {
               {[
                 {
                   label: "Rent Status",
-                  value: myPayments.some((p) => p.state === "overdue") ? "Overdue" : "Up to date",
-                  color: myPayments.some((p) => p.state === "overdue") ? "text-destructive" : "text-emerald-600",
-                  icon: myPayments.some((p) => p.state === "overdue") ? AlertCircle : CheckCircle2,
+                  value: hasOverdueRent ? "Overdue" : "Up to date",
+                  color: hasOverdueRent ? "text-destructive" : "text-emerald-600",
+                  icon: hasOverdueRent ? AlertCircle : CheckCircle2,
                 },
                 { label: "Next Payment", value: nextPaymentDate, color: "text-foreground", icon: Clock },
                 { label: "Open Requests", value: String(openRequests.length), color: "text-foreground", icon: Wrench },
@@ -558,7 +553,7 @@ export default function TenantPortalPage() {
                       >
                         <div className="text-left">
                           <p className="font-mono font-medium">{last.reference}</p>
-                          <p className="text-xs text-muted-foreground">{formatDate(last.dueDate)}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(last.paidAt ?? last.createdAt)}</p>
                         </div>
                         <div className="flex items-center gap-2">
                           <StatusBadge state={last.state} domain="payment" />

@@ -20,7 +20,7 @@ interface TableProps<T> {
 }
 
 export function Table<T>({ data, columns, className = "", loading = false, empty = "No data available" }: TableProps<T>) {
-  const { theme } = useTheme();
+  const { resolved: theme } = useTheme();
 
   if (loading) {
     return (

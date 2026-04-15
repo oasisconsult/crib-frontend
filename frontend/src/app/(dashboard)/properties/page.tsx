@@ -21,13 +21,13 @@ import type { Property, PropertyStatus, PropertyType } from "@/types";
 // WCAG 1.4.1 — status is always shown as text label; colour is supplementary
 const STATUS_STYLES: Record<PropertyStatus, string> = {
   active:      "bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300",
-  inactive:    "bg-slate-100 text-slate-700 dark:bg-slate-800/40 dark:text-slate-300",
+  inactive:    "bg-muted text-muted-foreground",
   maintenance: "bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300",
 };
 
 const STATUS_DOT: Record<PropertyStatus, string> = {
   active:      "bg-emerald-500",
-  inactive:    "bg-slate-400",
+  inactive:    "bg-muted-foreground",
   maintenance: "bg-amber-500",
 };
 

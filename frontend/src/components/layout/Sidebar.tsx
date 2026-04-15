@@ -105,7 +105,7 @@ export function Sidebar() {
 
             const link = (
               <Link
-                href={item.href}
+                href={item.href as any}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-2.5",
