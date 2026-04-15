@@ -417,7 +417,8 @@ function ApproveRejectSection({ tenant }: { tenant: Tenant }) {
           <div className="flex gap-2">
             <Button
               size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
+              variant="success"
+              className="flex-1"
               loading={approving}
               onClick={() => approve(tenant.id)}
             >

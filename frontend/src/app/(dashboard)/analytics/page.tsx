@@ -71,7 +71,7 @@ export default function AnalyticsPage() {
                   "px-3 py-1.5 text-sm font-medium transition-colors",
                   months === m
                     ? "bg-primary text-primary-foreground"
-                    : "bg-background text-muted-foreground hover:bg-muted",
+                    : "bg-background text-foreground/70 hover:bg-muted hover:text-foreground",
                 )}
               >
                 {m}M

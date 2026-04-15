@@ -22,83 +22,56 @@ interface StatCardProps {
 }
 
 function StatCard({ title, value, trend, icon: Icon, color, progress }: StatCardProps) {
-  const getCardClass = () => {
-    switch (color) {
-      case "blue":
-        return "border-blue-200 bg-blue-50";
-      case "green":
-        return "border-green-200 bg-green-50";
-      case "purple":
-        return "border-purple-200 bg-purple-50";
-      case "orange":
-        return "border-orange-200 bg-orange-50";
-      default:
-        return "border-gray-200 bg-gray-50";
-    }
-  };
+  const iconBg = {
+    blue:   "bg-blue-500",
+    green:  "bg-emerald-500",
+    purple: "bg-violet-500",
+    orange: "bg-orange-500",
+    red:    "bg-red-500",
+  }[color] ?? "bg-slate-500";
 
-  const getIconBg = () => {
-    switch (color) {
-      case "blue":
-        return "bg-blue-500";
-      case "green":
-        return "bg-green-500";
-      case "purple":
-        return "bg-purple-500";
-      case "orange":
-        return "bg-orange-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  const getIconColor = () => {
-    return "text-white";
-  };
-
-  const getProgressClass = () => {
-    if (progress === undefined) return "";
-    if (progress >= 80) return "bg-green-500";
-    if (progress >= 60) return "bg-yellow-500";
-    return "bg-red-500";
-  };
+  const progressColor = progress === undefined ? "" :
+    progress >= 80 ? "bg-emerald-500" :
+    progress >= 60 ? "bg-amber-500" :
+    "bg-red-500";
 
   return (
-    <Card className={cn("re-card", getCardClass())}>
-      <CardContent className="re-card-content">
+    <Card>
+      <CardContent className="pt-5 pb-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
-            <p className="re-dashboard-card-title">{title}</p>
-            <p className="re-dashboard-card-value">{value}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{title}</p>
+            <p className="text-2xl font-bold text-foreground mt-1 tabular-nums">{value}</p>
             {trend && (
               <div className={cn(
-                "re-dashboard-card-trend",
-                trend.positive ? "re-trend-up" : "re-trend-down"
+                "mt-1.5 flex items-center gap-1 text-xs font-medium",
+                trend.positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400",
               )}>
                 {trend.positive
-                  ? <TrendingUp className="w-4 h-4" />
-                  : <TrendingDown className="w-4 h-4" />}
-                {trend.value}
+                  ? <TrendingUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  : <TrendingDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+                <span>{trend.value ?? trend.label}</span>
               </div>
             )}
           </div>
           <div className={cn(
-            "re-icon-wrapper flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm",
-            getIconBg()
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+            iconBg,
           )}>
-            <Icon className={cn("h-6 w-6", getIconColor())} />
+            <Icon className="h-5 w-5 text-white" aria-hidden="true" />
           </div>
         </div>
         {progress !== undefined && (
-          <div className="mt-6">
-            <div className="flex justify-between re-dashboard-card-trend mb-2">
-              <span className="truncate">Progress</span>
-              <span className="shrink-0 font-semibold">{progress}%</span>
+          <div className="mt-5">
+            <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
+              <span>Progress</span>
+              <span className="font-semibold text-foreground">{progress}%</span>
             </div>
-            <div className="re-progress-bar h-3 w-full rounded-full overflow-hidden bg-gray-200">
+            <div className="h-2 w-full rounded-full overflow-hidden bg-muted">
               <div
-                className={cn("h-full rounded-full transition-all duration-500", getProgressClass())}
+                className={cn("h-full rounded-full transition-all duration-500", progressColor)}
                 style={{ width: `${Math.min(progress, 100)}%` }}
+                role="presentation"
               />
             </div>
           </div>

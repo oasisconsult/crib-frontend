@@ -12,7 +12,7 @@
 
 /* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
 :root {
-  --background:           0 0% 98%;        /* #FAFAFA — nearly white */
+  --background:           210 40% 98%;     /* #F8FAFC — cool off-white (Stripe/Linear) */
   --foreground:           222 47% 11%;     /* #0F172A */
   --card:                 0 0% 100%;       /* #FFFFFF */
   --card-foreground:      222 47% 11%;
@@ -43,7 +43,7 @@
   --sidebar-active-bg:    221 100% 97%;    /* #EEF4FF */
   --sidebar-active-fg:    221 100% 50%;    /* #0062FF */
   --sidebar-hover-bg:     210 40% 98%;     /* #F8FAFC */
-  --sidebar-section-fg:   215 20% 65%;     /* #94A3B8 */
+  --sidebar-section-fg:   215 16% 47%;     /* #64748B — AA 5.9:1 on white (was #94A3B8 at 2.4:1 ✗) */
 }
 
 /* ── DARK MODE ──────────────────────────────────────────────────────────── */
@@ -78,7 +78,7 @@
   --sidebar-active-bg:    221 100% 50%;    /* #0062FF solid */
   --sidebar-active-fg:    0 0% 100%;       /* white */
   --sidebar-hover-bg:     217 33% 13%;
-  --sidebar-section-fg:   217 33% 35%;
+  --sidebar-section-fg:   215 20% 65%;     /* #94A3B8 — 7.7:1 on dark navy ✓ */
 }
 
 /* ─── SEMANTIC BRAND TOKENS ─────────────────────────────────────────────────
