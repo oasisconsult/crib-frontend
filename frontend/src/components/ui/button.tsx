@@ -22,7 +22,7 @@ const buttonVariants = cva(
       variant: {
         // ── Primary ── filled blue, main CTA
         default: [
-          "bg-primary text-primary-foreground border-primary",
+          "bg-primary text-white border-primary",
           "hover:bg-primary/90 hover:border-primary/90",
           "active:scale-[0.97]",
           "shadow-[0_1px_2px_rgba(0,98,255,0.25)]",
@@ -30,7 +30,7 @@ const buttonVariants = cva(
 
         // ── Destructive ── filled red
         destructive: [
-          "bg-destructive text-destructive-foreground border-destructive",
+          "bg-destructive text-white border-destructive",
           "hover:bg-destructive/90 hover:border-destructive/90",
           "active:scale-[0.97]",
         ].join(" "),

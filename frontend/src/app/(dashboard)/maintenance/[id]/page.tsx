@@ -445,7 +445,7 @@ export default function MaintenanceDetailPage({ params }: Props) {
                         onClick={() => router.push(`/properties/${issue.propertyId}/units/${issue.unitId}`)}
                       >
                         <Home className="h-3.5 w-3.5 mr-1" />
-                        {issue.unitId}
+                        {issue.unitName ?? issue.unitId}
                       </Button>
                     </div>
                   </>

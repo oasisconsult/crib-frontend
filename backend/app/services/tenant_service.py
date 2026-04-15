@@ -26,6 +26,7 @@ from sqlalchemy.orm import selectinload
 log = structlog.get_logger(__name__)
 
 from app.core.state_machine import onboarding_sm
+from app.models.property import Property, Unit
 from app.models.tenant import (
     IdDocumentType,
     InviteStatus,
@@ -66,7 +67,11 @@ def _doc_out(doc: TenantDocument) -> TenantDocumentOut:
     )
 
 
-def _invite_out(invite: TenantInvite) -> TenantInviteOut:
+def _invite_out(
+    invite: TenantInvite,
+    property_name: str | None = None,
+    unit_name: str | None = None,
+) -> TenantInviteOut:
     return TenantInviteOut(
         id=str(invite.id),
         landlord_id=str(invite.organisation_id),
@@ -79,6 +84,8 @@ def _invite_out(invite: TenantInvite) -> TenantInviteOut:
         status=invite.status.value,
         sent_at=invite.sent_at.isoformat(),
         expires_at=invite.expires_at.isoformat(),
+        property_name=property_name,
+        unit_name=unit_name,
     )
 
 
@@ -293,7 +300,17 @@ async def get_onboarding_by_token(token: str, db: AsyncSession) -> dict:
         await db.flush()
         await db.refresh(tenant, attribute_names=["onboarding_state", "updated_at"])
 
-    return {"tenant": _tenant_out(tenant), "invite": _invite_out(invite)}
+    # Resolve property/unit names for display in the onboarding wizard
+    property_name: str | None = None
+    unit_name: str | None = None
+    if invite.property_id:
+        p = await db.scalar(select(Property).where(Property.id == invite.property_id))
+        property_name = p.name if p else None
+    if invite.unit_id:
+        u = await db.scalar(select(Unit).where(Unit.id == invite.unit_id))
+        unit_name = u.name if u else None
+
+    return {"tenant": _tenant_out(tenant), "invite": _invite_out(invite, property_name=property_name, unit_name=unit_name)}
 
 
 async def submit_onboarding(

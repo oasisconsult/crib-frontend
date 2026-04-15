@@ -112,4 +112,7 @@ export interface TenantInvite {
   expiresAt: string;
   sentAt: string;
   status: "pending" | "accepted" | "expired";
+  // Denormalised display names
+  propertyName?: string | null;
+  unitName?: string | null;
 }

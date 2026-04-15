@@ -12,38 +12,38 @@
 
 /* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
 :root {
-  --background:           210 40% 98%;     /* #F8FAFC — cool off-white (Stripe/Linear) */
+  --background:           214 60% 97%;     /* #F0F5FF — clean light blue-white canvas */
   --foreground:           222 47% 11%;     /* #0F172A */
-  --card:                 0 0% 100%;       /* #FFFFFF */
+  --card:                 0 0% 100%;       /* #FFFFFF — pure white cards */
   --card-foreground:      222 47% 11%;
   --popover:              0 0% 100%;
   --popover-foreground:   222 47% 11%;
   --primary:              221 100% 50%;    /* #0062FF */
-  --primary-foreground:   0 0% 100%;
-  --secondary:            210 40% 96%;     /* #F1F5F9 */
+  --primary-foreground:   0 0% 100%;       /* #FFFFFF — white text on primary */
+  --secondary:            214 32% 95%;     /* #EDF2FA — clean light blue-grey */
   --secondary-foreground: 222 47% 11%;
-  --muted:                210 40% 96%;     /* #F1F5F9 */
+  --muted:                214 32% 95%;     /* #EDF2FA */
   --muted-foreground:     215 16% 47%;     /* #64748B */
   --accent:               221 100% 97%;    /* #EEF4FF */
   --accent-foreground:    221 100% 50%;
   --destructive:          0 72% 51%;       /* #DC2626 */
   --destructive-foreground: 0 0% 100%;
-  --border:               214 32% 91%;     /* #E2E8F0 */
-  --input:                214 32% 91%;
+  --border:               214 32% 89%;     /* #DEEAF8 — slightly blue-tinted border */
+  --input:                214 32% 89%;
   --ring:                 221 100% 50%;    /* #0062FF */
   --radius:               0.5rem;
 
   /* Header */
   --header:               0 0% 100%;       /* #FFFFFF */
 
-  /* Sidebar — WHITE in light mode (TailAdmin style) */
+  /* Sidebar — WHITE in light mode */
   --sidebar:              0 0% 100%;       /* #FFFFFF */
   --sidebar-foreground:   215 16% 47%;     /* #64748B inactive */
-  --sidebar-border:       214 32% 91%;     /* #E2E8F0 */
+  --sidebar-border:       214 32% 89%;     /* matches --border */
   --sidebar-active-bg:    221 100% 97%;    /* #EEF4FF */
   --sidebar-active-fg:    221 100% 50%;    /* #0062FF */
-  --sidebar-hover-bg:     210 40% 98%;     /* #F8FAFC */
-  --sidebar-section-fg:   215 16% 47%;     /* #64748B — AA 5.9:1 on white (was #94A3B8 at 2.4:1 ✗) */
+  --sidebar-hover-bg:     214 60% 97%;     /* matches --background */
+  --sidebar-section-fg:   215 16% 47%;     /* #64748B */
 }
 
 /* ── DARK MODE ──────────────────────────────────────────────────────────── */
@@ -105,10 +105,10 @@
   --color-text-disabled:  #CBD5E1;   /* slate-300 */
 
   /* Surfaces */
-  --color-canvas:         #F8FAFC;   /* page background */
-  --color-surface:        #FFFFFF;   /* card / panel */
+  --color-canvas:         #EFF5FF;   /* page background — clean light blue-white */
+  --color-surface:        #FFFFFF;   /* card / panel — pure white */
   --color-surface-raised: #FFFFFF;   /* elevated modals */
-  --color-surface-sunken: #F1F5F9;   /* inset areas */
+  --color-surface-sunken: #EDF2FA;   /* inset areas — subtle blue-grey */
 
   /* Borders */
   --color-border:         #E2E8F0;   /* default */
@@ -129,12 +129,12 @@
   --color-info-subtle:    #F0F9FF;
   --color-info-border:    #BAE6FD;
 
-  /* Shadows — almost flat, just enough depth */
-  --shadow-xs:  0 1px 2px rgba(15,23,42,0.04);
-  --shadow-sm:  0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md:  0 4px 8px rgba(15,23,42,0.06), 0 2px 4px rgba(15,23,42,0.04);
-  --shadow-lg:  0 12px 24px rgba(15,23,42,0.08), 0 4px 8px rgba(15,23,42,0.04);
-  --shadow-xl:  0 24px 40px rgba(15,23,42,0.10), 0 8px 16px rgba(15,23,42,0.06);
+  /* Shadows — crisp white cards on blue-white canvas */
+  --shadow-xs:  0 1px 2px rgba(0,62,255,0.04);
+  --shadow-sm:  0 1px 3px rgba(0,62,255,0.06), 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md:  0 4px 8px rgba(0,62,255,0.07), 0 2px 4px rgba(15,23,42,0.04);
+  --shadow-lg:  0 12px 24px rgba(0,62,255,0.08), 0 4px 8px rgba(15,23,42,0.04);
+  --shadow-xl:  0 24px 40px rgba(0,62,255,0.10), 0 8px 16px rgba(15,23,42,0.06);
 
   /* Geometry */
   --radius-sm:  4px;

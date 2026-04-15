@@ -29,7 +29,7 @@ function KpiCard({ label, value, change, positive, icon, iconColor, iconBg, href
   const inner = (
     <div
       className={cn(
-        "bg-card rounded-[12px] border border-border p-5 flex flex-col gap-4",
+        "bg-white rounded-[12px] border border-border p-5 flex flex-col gap-4",
         "shadow-[0_1px_3px_rgba(15,23,42,0.06),0_1px_2px_rgba(15,23,42,0.04)]",
         "dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]",
         "hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.4)]",
@@ -192,7 +192,7 @@ function QuickAction({ icon, label, href, iconClass, bgClass }: {
     <Link
       href={href as any}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-[10px] border border-border bg-card",
+        "flex items-center gap-3 p-3 rounded-[10px] border border-border bg-white dark:bg-card",
         "hover:border-border/80 hover:shadow-[0_2px_8px_rgba(15,23,42,0.07)]",
         "dark:hover:shadow-[0_2px_8px_rgba(0,0,0,0.3)]",
         "transition-all duration-150 group",
@@ -263,7 +263,7 @@ export function Dashboard() {
         {/* Properties — 3 cols */}
         <section
           aria-labelledby="dash-properties-heading"
-          className="lg:col-span-3 bg-card rounded-[12px] border border-border shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+          className="lg:col-span-3 bg-white rounded-[12px] border border-border shadow-[0_1px_4px_rgba(0,62,255,0.07)] dark:bg-card dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
         >
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
             <div>
@@ -287,7 +287,7 @@ export function Dashboard() {
         {/* Activity — 2 cols */}
         <section
           aria-labelledby="dash-activity-heading"
-          className="lg:col-span-2 bg-card rounded-[12px] border border-border shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+          className="lg:col-span-2 bg-white rounded-[12px] border border-border shadow-[0_1px_4px_rgba(0,62,255,0.07)] dark:bg-card dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
         >
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
             <div>
@@ -305,7 +305,7 @@ export function Dashboard() {
       </div>
 
       {/* Quick actions */}
-      <section aria-labelledby="dash-quickactions-heading" className="bg-card rounded-[12px] border border-border shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]">
+      <section aria-labelledby="dash-quickactions-heading" className="bg-white rounded-[12px] border border-border shadow-[0_1px_4px_rgba(0,62,255,0.07)] dark:bg-card dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]">
         <div className="px-5 py-3.5 border-b border-border">
           <h2 id="dash-quickactions-heading" className="text-[13.5px] font-semibold text-foreground tracking-[-0.01em]">
             Quick Actions

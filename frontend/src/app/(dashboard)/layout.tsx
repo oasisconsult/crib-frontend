@@ -11,14 +11,30 @@ import { useAppStore } from "@/store/useAppStore";
 function AuthGate({ children }: { children: React.ReactNode }) {
   const isAuthInitialized = useAppStore((s) => s.isAuthInitialized);
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
+  const user = useAppStore((s) => s.user);
 
   useEffect(() => {
-    if (isAuthInitialized && !isAuthenticated) {
+    if (!isAuthInitialized) return;
+
+    if (!isAuthenticated) {
       // Use hard navigation instead of router.replace to avoid Next.js RSC
       // prefetch NetworkError when the login page isn't prefetched yet.
       window.location.replace("/login");
+      return;
     }
-  }, [isAuthInitialized, isAuthenticated]);
+
+    // Client-side safety net: pure tenants belong in the portal, not the staff dashboard.
+    // This catches cases where the middleware cookie check runs before cookies are written.
+    if (user) {
+      const userRoles: string[] = (user.roles as string[] | undefined) ?? (user.role ? [user.role as string] : []);
+      const isStaff = ["superadmin", "owner", "manager", "maintenance"].some((r) =>
+        userRoles.includes(r),
+      );
+      if (!isStaff && userRoles.includes("tenant")) {
+        window.location.replace("/portal");
+      }
+    }
+  }, [isAuthInitialized, isAuthenticated, user]);
 
   if (!isAuthInitialized) {
     return (

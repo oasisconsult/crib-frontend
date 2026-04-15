@@ -27,6 +27,8 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.lease import Lease
+from app.models.property import Property, Unit
+from app.models.tenant import Tenant as TenantModel
 from app.models.payment import (
     Deposit,
     DepositStatus,
@@ -994,9 +996,42 @@ async def list_payments_org(
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(Payment.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(q)
+    payments = result.scalars().all()
+
+    # Batch-fetch tenant/unit/property names via lease join
+    lease_ids = {p.lease_id for p in payments}
+    lease_map: dict[uuid.UUID, Lease] = {}
+    tenant_map: dict[uuid.UUID, str] = {}
+    unit_map: dict[uuid.UUID, str] = {}
+    property_map: dict[uuid.UUID, str] = {}
+
+    if lease_ids:
+        leases = (await db.execute(select(Lease).where(Lease.id.in_(lease_ids)))).scalars().all()
+        lease_map = {l.id: l for l in leases}
+
+        tenant_ids  = {l.tenant_id for l in leases if l.tenant_id}
+        unit_ids    = {l.unit_id   for l in leases if l.unit_id}
+        prop_ids    = {l.property_id for l in leases if l.property_id}
+
+        if tenant_ids:
+            tenants = (await db.execute(select(TenantModel).where(TenantModel.id.in_(tenant_ids)))).scalars().all()
+            tenant_map = {t.id: f"{t.first_name} {t.last_name}" for t in tenants}
+        if unit_ids:
+            units = (await db.execute(select(Unit).where(Unit.id.in_(unit_ids)))).scalars().all()
+            unit_map = {u.id: u.name for u in units}
+        if prop_ids:
+            props = (await db.execute(select(Property).where(Property.id.in_(prop_ids)))).scalars().all()
+            property_map = {pr.id: pr.name for pr in props}
+
+    def _enrich(p: Payment) -> PaymentOut:
+        lease = lease_map.get(p.lease_id)
+        tenant_name = tenant_map.get(lease.tenant_id) if lease and lease.tenant_id else None
+        unit_name   = unit_map.get(lease.unit_id)     if lease and lease.unit_id   else None
+        prop_name   = property_map.get(lease.property_id) if lease and lease.property_id else None
+        return _payment_out(p, tenant_name=tenant_name, unit_name=unit_name, property_name=prop_name)
 
     return {
-        "data": [_payment_out(p) for p in result.scalars().all()],
+        "data": [_enrich(p) for p in payments],
         "total": total,
         "page": page,
         "pageSize": page_size,
@@ -1015,7 +1050,21 @@ async def get_payment_by_org(
     )
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
-    return _payment_out(p)
+    tenant_name: str | None = None
+    unit_name: str | None = None
+    property_name: str | None = None
+    lease = await db.scalar(select(Lease).where(Lease.id == p.lease_id))
+    if lease:
+        if lease.tenant_id:
+            t = await db.scalar(select(TenantModel).where(TenantModel.id == lease.tenant_id))
+            tenant_name = f"{t.first_name} {t.last_name}" if t else None
+        if lease.unit_id:
+            u = await db.scalar(select(Unit).where(Unit.id == lease.unit_id))
+            unit_name = u.name if u else None
+        if lease.property_id:
+            pr = await db.scalar(select(Property).where(Property.id == lease.property_id))
+            property_name = pr.name if pr else None
+    return _payment_out(p, tenant_name=tenant_name, unit_name=unit_name, property_name=property_name)
 
 
 async def create_payment_flat(

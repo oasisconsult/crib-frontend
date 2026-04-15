@@ -57,6 +57,9 @@ export interface MaintenanceIssue {
   // Location
   propertyId: string;
   unitId?: string;
+  // Denormalised display names
+  propertyName?: string;
+  unitName?: string;
   // Reporter
   reportedBy: "tenant" | "landlord" | "inspector";
   reportedById: string;

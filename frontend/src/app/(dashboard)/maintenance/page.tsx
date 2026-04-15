@@ -64,8 +64,8 @@ function IssueCard({ issue }: { issue: MaintenanceIssue }) {
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{issue.description}</p>
         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
-          <span>Property: {issue.propertyId}</span>
-          {issue.unitId && <span>· Unit: {issue.unitId}</span>}
+          <span>Property: {issue.propertyName ?? issue.propertyId}</span>
+          {issue.unitId && <span>· Unit: {issue.unitName ?? issue.unitId}</span>}
           <span>· Reported {formatDate(issue.reportedAt ?? issue.createdAt)}</span>
           {issue.resolvedAt && <span>· Resolved {formatDate(issue.resolvedAt)}</span>}
         </div>

@@ -136,6 +136,9 @@ class TenantInviteOut(CamelModel):
     status: str
     sent_at: str
     expires_at: str
+    # Denormalised display names
+    property_name: str | None = None
+    unit_name: str | None = None
 
 
 # ── TenantDocument ────────────────────────────────────────────────────────────

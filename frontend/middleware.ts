@@ -96,11 +96,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  // Redirect pure tenants (no staff role) away from the staff dashboard.
+  // Redirect pure tenants (no staff role) away from ALL staff dashboard routes.
+  // roles.length > 0 guard: if cookies aren't set yet, let the page load normally.
   const isStaff = ["superadmin", "owner", "manager", "maintenance"].some((r) =>
     roles.includes(r),
   );
-  if (pathname === "/" && !isStaff && roles.includes("tenant")) {
+  if (roles.length > 0 && !isStaff && roles.includes("tenant")) {
     return NextResponse.redirect(new URL("/portal", request.url));
   }
 

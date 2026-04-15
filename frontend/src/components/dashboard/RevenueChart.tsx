@@ -27,7 +27,7 @@ const PERIODS = ["6M", "3M", "1M"] as const;
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-border bg-card shadow-lg p-3 text-xs space-y-1.5 min-w-[160px]">
+    <div className="rounded-xl border border-border bg-white dark:bg-card shadow-lg p-3 text-xs space-y-1.5 min-w-[160px]">
       <p className="font-semibold text-foreground">{label}</p>
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-4">

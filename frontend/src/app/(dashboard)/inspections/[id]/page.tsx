@@ -725,7 +725,7 @@ export default function InspectionDetailPage({ params }: Props) {
                 bg: "bg-sky-50 dark:bg-sky-950/30",
               },
             ].map((s) => (
-              <div key={s.label} className="rounded-xl border bg-card p-4">
+              <div key={s.label} className="rounded-xl border bg-white dark:bg-card p-4">
                 <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center mb-2", s.bg)}>
                   <s.icon className={cn("h-4 w-4", s.color)} />
                 </div>

@@ -522,8 +522,10 @@ export function OnboardingWizard({
                     <div>
                       <h2 className="text-xl font-bold">Your Tenancy is Active!</h2>
                       <p className="text-muted-foreground text-sm mt-1">
-                        Welcome home. Your tenancy at <strong>{invite.propertyId}</strong> is
-                        now active. Check your email for your tenancy agreement.
+                        Welcome home. Your tenancy at{" "}
+                        <strong>{invite.propertyName ?? invite.propertyId}</strong>
+                        {invite.unitName && <> — <strong>{invite.unitName}</strong></>}{" "}
+                        is now active. Check your email for your tenancy agreement.
                       </p>
                     </div>
                     <p className="text-xs text-muted-foreground">

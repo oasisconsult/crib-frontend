@@ -10,8 +10,10 @@ import { usePayments } from "@/hooks/usePayments";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/utils/cn";
 
-function TenantAvatar({ id }: { id: string }) {
-  const initials = id.replace(/[^a-z]/gi, "").slice(0, 2).toUpperCase() || "TN";
+function TenantAvatar({ name }: { name?: string | null }) {
+  const initials = name
+    ? name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
+    : "TN";
   return (
     <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary shrink-0">
       {initials}
@@ -90,10 +92,12 @@ export function PendingRentWidget() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">
-                        {payment.reference ?? "Payment"}
+                        {payment.tenantName ?? payment.reference ?? "Payment"}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        Lease {payment.leaseId} · {payment.category?.replace(/_/g, " ")}
+                        {payment.unitName ?? payment.propertyName ?? `Lease …${payment.leaseId.slice(-6)}`}
+                        {" · "}
+                        {payment.category?.replace(/_/g, " ")}
                       </p>
                     </div>
                     <Badge variant={sc.variant} className="text-xs w-fit shrink-0">

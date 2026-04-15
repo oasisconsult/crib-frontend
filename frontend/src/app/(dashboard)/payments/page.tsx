@@ -17,7 +17,19 @@ const COLUMNS: Column<Payment>[] = [
   {
     key: "reference",
     header: "Reference",
-    render: (p) => <span className="font-mono text-xs font-medium">{p.reference}</span>,
+    render: (p) => <span className="font-mono text-xs font-medium">{p.reference ?? "—"}</span>,
+  },
+  {
+    key: "tenantName",
+    header: "Tenant",
+    render: (p) => (
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{p.tenantName ?? "—"}</p>
+        {(p.unitName ?? p.propertyName) && (
+          <p className="text-xs text-muted-foreground truncate">{p.unitName ?? p.propertyName}</p>
+        )}
+      </div>
+    ),
   },
   {
     key: "state",

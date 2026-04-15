@@ -46,10 +46,10 @@ export default function PortalLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-background">
       <AuthInitializer />
       <PortalNav />
-      <main>{children}</main>
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6">{children}</main>
     </div>
   );
 }

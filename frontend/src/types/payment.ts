@@ -27,6 +27,10 @@ export interface Payment {
   retryCount?: number;
   predictedFailureScore?: number | null;
   recommendedChannel?: string | null;
+  // Denormalised display names
+  tenantName?: string | null;
+  unitName?: string | null;
+  propertyName?: string | null;
 }
 
 // ── Adaptive payment types (v4 skill) ─────────────────────────────────────────
