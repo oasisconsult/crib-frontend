@@ -23,6 +23,7 @@ from app.core.database import get_db
 from app.schemas.lease import (
     LeaseActivate,
     LeaseCreate,
+    LeaseNotice,
     LeaseOut,
     LeaseRenewRequest,
     LeaseTerminate,
@@ -151,12 +152,27 @@ async def renew_lease(
 @router.post("/{lease_id}/document", response_model=dict)
 async def generate_document(
     lease_id: uuid.UUID,
-    current_user: CurrentUser = _write,
+    current_user: CurrentUser = _read,   # tenants can generate their own lease doc
     db: AsyncSession = Depends(get_db),
 ):
     """Generate an HTML lease agreement document and return a URL to access it."""
     url = await svc.generate_lease_document(lease_id, current_user.org_id, db)
     return {"url": url}
+
+
+@router.post("/{lease_id}/notice", response_model=LeaseOut)
+async def submit_vacate_notice(
+    lease_id: uuid.UUID,
+    body: LeaseNotice,
+    current_user: CurrentUser = _read,   # tenants submit notice on their own lease
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Tenant submits a notice-to-vacate.
+    Records notice_given_at, notice_vacate_date, and termination_reason on the lease.
+    The lease stays active until the vacate date; the landlord is notified separately.
+    """
+    return await svc.record_vacate_notice(lease_id, body, current_user, db)
 
 
 @router.post("/{lease_id}/send-onboarding", response_model=TenantInviteOut)

@@ -98,6 +98,8 @@ class Lease(TimestampedBase):
     # ── Lifecycle metadata ─────────────────────────────────────────────────────
     signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notice_given_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Planned vacate date supplied by the tenant at the time of notice
+    notice_vacate_date: Mapped[date | None] = mapped_column(Date(), nullable=True)
     terminated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     termination_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
 

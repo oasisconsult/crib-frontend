@@ -826,20 +826,61 @@ async def _activate_via_onboarding(
 
     await db.flush()
 
-    # Create Logto account for the tenant (best-effort — won't block activation if it fails)
+    # ── Logto account + Profile (best-effort — won't block activation if it fails) ──
     from app.models.organisation import Organisation
     org = await db.get(Organisation, lease.organisation_id)
-    if org and not tenant.logto_user_id:
-        from app.services.logto_service import create_tenant_user
-        logto_user_id = await create_tenant_user(
-            email=tenant.email,
-            first_name=tenant.first_name,
-            last_name=tenant.last_name,
-            logto_org_id=org.logto_org_id,
-        )
+    if org:
+        logto_user_id: str | None = tenant.logto_user_id
+
+        # 1. Create Logto user if not already provisioned
+        if not logto_user_id:
+            from app.services.logto_service import create_tenant_user
+            logto_user_id = await create_tenant_user(
+                email=tenant.email,
+                first_name=tenant.first_name,
+                last_name=tenant.last_name,
+                logto_org_id=org.logto_org_id,
+            )
+            if logto_user_id:
+                tenant.logto_user_id = logto_user_id
+                await db.flush()
+
+        # 2. Upsert a Profile row so the tenant can call /me on first login
         if logto_user_id:
-            tenant.logto_user_id = logto_user_id
-            await db.flush()
+            try:
+                from sqlalchemy import select as _select
+                from app.models.profile import Profile
+
+                existing = await db.scalar(
+                    _select(Profile).where(Profile.logto_sub == logto_user_id)
+                )
+                if existing is None:
+                    profile = Profile(
+                        logto_sub=logto_user_id,
+                        logto_org_id=org.logto_org_id,
+                        organisation_id=lease.organisation_id,
+                        role="tenant",
+                        display_name=f"{tenant.first_name} {tenant.last_name}".strip(),
+                        email=tenant.email,
+                        phone=tenant.phone,
+                        tenant_id=tenant.id,
+                        gdpr_consent_given=False,
+                    )
+                    db.add(profile)
+                else:
+                    # Backfill tenant_id if the profile was pre-created without it
+                    if existing.tenant_id is None:
+                        existing.tenant_id = tenant.id
+                    if existing.organisation_id is None:
+                        existing.organisation_id = lease.organisation_id
+                await db.flush()
+                log.info(
+                    "onboarding.profile_upserted",
+                    logto_sub=logto_user_id,
+                    tenant_id=str(tenant.id),
+                )
+            except Exception as exc:  # noqa: BLE001
+                log.warning("onboarding.profile_upsert_failed", error=str(exc))
 
     log.info("onboarding.lease_activated", lease_id=str(lease.id), tenant_id=str(tenant.id))
 

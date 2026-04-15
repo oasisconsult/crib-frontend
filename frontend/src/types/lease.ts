@@ -50,7 +50,11 @@ export interface Lease {
   createdAt: string;
   updatedAt: string;
   activatedAt?: string;
+  noticeGivenAt?: string;       // when tenant submitted notice
+  noticeVacateDate?: string;    // tenant's intended move-out date
+  /** @deprecated use noticeGivenAt */
   noticeDateGiven?: string;
+  /** @deprecated use noticeVacateDate */
   noticeEffectiveDate?: string;
   closedAt?: string;
   terminatedAt?: string;

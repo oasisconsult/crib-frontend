@@ -65,6 +65,18 @@ class LeaseTerminate(CamelModel):
     terminated_at: datetime | None = None  # defaults to now() in service
 
 
+class LeaseNotice(CamelModel):
+    """Tenant-submitted notice to vacate."""
+    vacate_date: date = Field(
+        description="The date the tenant intends to vacate the unit."
+    )
+    reason: str | None = Field(
+        default=None,
+        max_length=1000,
+        description="Optional reason for moving out.",
+    )
+
+
 class LeaseRenewRequest(CamelModel):
     """Override terms for the renewal draft. Omitted fields are copied from the original."""
     start_date: date
@@ -99,6 +111,7 @@ class LeaseOut(CamelModel):
     # lifecycle
     signed_at: str | None
     notice_given_at: str | None
+    notice_vacate_date: str | None
     terminated_at: str | None
     termination_reason: str | None
     renewal_of_lease_id: str | None

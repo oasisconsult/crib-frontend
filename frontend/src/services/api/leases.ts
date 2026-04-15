@@ -47,6 +47,8 @@ function toLeaseModel(raw: Record<string, unknown>): Lease {
     createdAt: raw.createdAt as string,
     updatedAt: raw.updatedAt as string,
     activatedAt: (raw.signedAt as string) ?? undefined,
+    noticeGivenAt: (raw.noticeGivenAt as string) ?? undefined,
+    noticeVacateDate: (raw.noticeVacateDate as string) ?? undefined,
     terminatedAt: (raw.terminatedAt as string) ?? undefined,
     terminationReason: (raw.terminationReason as string) ?? undefined,
     renewedFromLeaseId: (raw.renewalOfLeaseId as string) ?? undefined,
@@ -162,9 +164,18 @@ export const leasesApi = {
   presignAgreement: (id: string, signatureDataUrl: string) =>
     apiPost<Record<string, unknown>>(`/leases/${id}/agreement/presign`, { signatureDataUrl }),
 
-  // Generate PDF
+  // Generate lease document (HTML, printable as PDF)
   generateDocument: (id: string) =>
     apiPost<{ url: string }>(`/leases/${id}/document`),
+
+  // Tenant submits notice to vacate
+  submitNotice: async (id: string, vacateDate: string, reason?: string) => {
+    const raw = await apiPost<Record<string, unknown>>(`/leases/${id}/notice`, {
+      vacateDate,
+      reason: reason ?? null,
+    });
+    return toLeaseModel(raw);
+  },
 
   // Audit log
   getAudit: (id: string) =>

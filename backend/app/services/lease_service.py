@@ -17,6 +17,7 @@ from __future__ import annotations
 import os
 import uuid
 from datetime import datetime, timezone
+from typing import Any
 
 import structlog
 from fastapi import HTTPException, status
@@ -32,6 +33,7 @@ from app.models.tenancy_agreement import TenancyAgreement
 from app.schemas.lease import (
     LeaseActivate,
     LeaseCreate,
+    LeaseNotice,
     LeaseOut,
     LeaseRenewRequest,
     LeaseTerminate,
@@ -96,6 +98,7 @@ def _lease_out(
         notice_period_days=lease.notice_period_days,
         signed_at=_d(lease.signed_at),
         notice_given_at=_d(lease.notice_given_at),
+        notice_vacate_date=str(lease.notice_vacate_date) if lease.notice_vacate_date else None,
         terminated_at=_d(lease.terminated_at),
         termination_reason=lease.termination_reason,
         renewal_of_lease_id=str(lease.renewal_of_lease_id) if lease.renewal_of_lease_id else None,
@@ -443,6 +446,93 @@ async def terminate_lease(
     await _clear_unit_and_tenant(lease, db)
     await db.flush()
     await db.refresh(lease, attribute_names=["status", "terminated_at", "termination_reason", "updated_at"])
+    return _lease_out(lease)
+
+
+async def record_vacate_notice(
+    lease_id: uuid.UUID,
+    body: LeaseNotice,
+    current_user: "Any",
+    db: AsyncSession,
+) -> LeaseOut:
+    """
+    Record a tenant's notice-to-vacate.
+
+    Rules:
+      - Lease must be active.
+      - vacate_date must be at least notice_period_days from today.
+      - If the caller is a tenant, they must own this lease.
+      - Sets notice_given_at + notice_vacate_date; does NOT terminate the lease —
+        that happens when the tenant physically vacates (manager runs terminate/expire).
+    """
+    from datetime import date, timedelta
+
+    # Resolve the org_id: CurrentUser exposes it, or fall back to querying
+    org_id = current_user.org_id
+
+    # For tenants the org_id may be set; allow a cross-org look-up if not
+    lease: Lease | None = None
+    if org_id:
+        lease = await db.scalar(
+            select(Lease).where(Lease.id == lease_id, Lease.organisation_id == org_id)
+        )
+    else:
+        lease = await db.scalar(select(Lease).where(Lease.id == lease_id))
+
+    if not lease:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found.")
+
+    # Tenants may only submit notice for their own lease
+    roles: list[str] = getattr(current_user, "roles", [])
+    is_staff = any(r in roles for r in ("manager", "owner", "superadmin"))
+    if not is_staff and "tenant" in roles:
+        profile_tenant_id = getattr(getattr(current_user, "profile", None), "tenant_id", None)
+        if profile_tenant_id is None or str(lease.tenant_id) != str(profile_tenant_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only submit a notice for your own lease.",
+            )
+
+    if lease.status != LeaseStatus.active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot submit a notice for a lease with status '{lease.status}'. Only active leases accept notice.",
+        )
+
+    if lease.notice_given_at:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A notice to vacate has already been submitted for this lease.",
+        )
+
+    # Validate vacate_date respects notice period
+    today = date.today()
+    min_vacate = today + timedelta(days=lease.notice_period_days)
+    if body.vacate_date < min_vacate:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                f"Vacate date must be at least {lease.notice_period_days} days from today "
+                f"(earliest allowed: {min_vacate.isoformat()})."
+            ),
+        )
+
+    now = datetime.now(timezone.utc)
+    lease.notice_given_at = now
+    lease.notice_vacate_date = body.vacate_date
+    if body.reason:
+        lease.termination_reason = body.reason
+
+    await db.flush()
+    await db.refresh(
+        lease,
+        attribute_names=["notice_given_at", "notice_vacate_date", "termination_reason", "updated_at"],
+    )
+    log.info(
+        "lease.notice_submitted",
+        lease_id=str(lease_id),
+        vacate_date=str(body.vacate_date),
+    )
     return _lease_out(lease)
 
 
