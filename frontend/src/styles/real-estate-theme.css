@@ -208,7 +208,8 @@
 
 /* Component-Specific Styles */
 .re-stat-card {
-  background: linear-gradient(135deg, var(--re-surface-50), var(--re-surface-100));
+ /* background: linear-gradient(135deg, var(--re-surface-50), var(--re-surface-100));*/
+  background: #ffffff;
   border: none;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   transition: all 0.2s ease-in-out;
@@ -216,9 +217,23 @@
   overflow: hidden;
 }
 
-.re-stat-card:hover {
+.re-card,
+.re-form-section,
+.re-table-wrap,
+.re-form-section,
+.re-stat-card,
+.re-card-base {
+  background: #ffffff !important;
+}
+
+/*.re-stat-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}*/
+
+.re-stat-card:hover {
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  transform: translateY(-1px);
 }
 
 .re-stat-card.revenue {
@@ -251,11 +266,18 @@
   --re-icon-color: var(--re-growth-icon);
 }
 
-.re-icon-wrapper {
+/* .re-icon-wrapper {
   background: var(--re-icon-bg);
   transition: transform 0.2s ease-in-out;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+} */
+
+.re-icon-wrapper {
+  background: #f8fafc;
+  border: 1px solid var(--re-border);
+  border-radius: 10px;
+  box-shadow: none;
 }
 
 .re-stat-card:hover .re-icon-wrapper {
@@ -442,7 +464,8 @@ button[data-size="lg"],
 /* Modern Curved Button Styles */
 .re-button-primary {
   background-color: var(--re-property-500);
-  color: white;
+  /* color: white; */
+  color: #ffffff !important;
   border: none;
   border-radius: 50px; /* Fully rounded/pill shape */
   padding: 12px 24px;
@@ -988,9 +1011,12 @@ html .text-xs,
     border: 1px solid var(--re-neutral-300) !important;
   }
   
-  .re-icon-wrapper {
+  /* .re-icon-wrapper {
     background: var(--re-neutral-100) !important;
-  }
+  } */
+   .re-icon-wrapper {
+    background: #f8fafc !important;
+   }
   
   button {
     transform: none !important;
