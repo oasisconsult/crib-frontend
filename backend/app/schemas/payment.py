@@ -113,6 +113,10 @@ class PaymentOut(CamelModel):
     recommended_channel: str | None = None
     created_at: str
     updated_at: str
+    # Denormalised display names
+    tenant_name: str | None = None
+    unit_name: str | None = None
+    property_name: str | None = None
 
 
 # ── Late Fee ───────────────────────────────────────────────────────────────────

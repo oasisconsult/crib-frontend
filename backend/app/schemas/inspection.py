@@ -153,3 +153,6 @@ class MaintenanceOut(CamelModel):
     notes: str | None
     created_at: str
     updated_at: str
+    # Denormalised display names
+    property_name: str | None = None
+    unit_name: str | None = None

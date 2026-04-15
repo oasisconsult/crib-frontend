@@ -80,7 +80,11 @@ def _insp_out(i: Inspection, unit_name: str | None = None, property_name: str | 
     )
 
 
-def _maint_out(m: MaintenanceIssue) -> MaintenanceOut:
+def _maint_out(
+    m: MaintenanceIssue,
+    property_name: str | None = None,
+    unit_name: str | None = None,
+) -> MaintenanceOut:
     def _s(v) -> str | None:
         if v is None:
             return None
@@ -113,6 +117,8 @@ def _maint_out(m: MaintenanceIssue) -> MaintenanceOut:
         notes=m.notes,
         created_at=m.created_at.isoformat(),
         updated_at=m.updated_at.isoformat(),
+        property_name=property_name,
+        unit_name=unit_name,
     )
 
 
@@ -352,9 +358,32 @@ async def list_maintenance(
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(MaintenanceIssue.reported_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(q)
+    issues = result.scalars().all()
+
+    # Batch-fetch display names to avoid N+1 queries
+    unit_ids     = {i.unit_id     for i in issues if i.unit_id}
+    property_ids = {i.property_id for i in issues if i.property_id}
+
+    unit_map:     dict[uuid.UUID, str] = {}
+    property_map: dict[uuid.UUID, str] = {}
+
+    if unit_ids:
+        rows = (await db.execute(select(Unit).where(Unit.id.in_(unit_ids)))).scalars().all()
+        unit_map = {u.id: u.name for u in rows}
+
+    if property_ids:
+        rows = (await db.execute(select(Property).where(Property.id.in_(property_ids)))).scalars().all()
+        property_map = {p.id: p.name for p in rows}
 
     return {
-        "data": [_maint_out(m) for m in result.scalars().all()],
+        "data": [
+            _maint_out(
+                m,
+                property_name=property_map.get(m.property_id) if m.property_id else None,
+                unit_name=unit_map.get(m.unit_id) if m.unit_id else None,
+            )
+            for m in issues
+        ],
         "total": total,
         "page": page,
         "pageSize": page_size,
@@ -362,10 +391,25 @@ async def list_maintenance(
     }
 
 
+async def _maint_names(m: MaintenanceIssue, db: AsyncSession) -> tuple[str | None, str | None]:
+    """Return (property_name, unit_name) for a single maintenance issue."""
+    property_name: str | None = None
+    unit_name: str | None = None
+    if m.property_id:
+        p = await db.scalar(select(Property).where(Property.id == m.property_id))
+        property_name = p.name if p else None
+    if m.unit_id:
+        u = await db.scalar(select(Unit).where(Unit.id == m.unit_id))
+        unit_name = u.name if u else None
+    return property_name, unit_name
+
+
 async def get_maintenance_issue(
     issue_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
 ) -> MaintenanceOut:
-    return _maint_out(await _get_maintenance(issue_id, org_id, db))
+    m = await _get_maintenance(issue_id, org_id, db)
+    pname, uname = await _maint_names(m, db)
+    return _maint_out(m, property_name=pname, unit_name=uname)
 
 
 async def create_maintenance_issue(
@@ -394,7 +438,8 @@ async def create_maintenance_issue(
     db.add(issue)
     await db.flush()
     await db.refresh(issue)
-    return _maint_out(issue)
+    pname, uname = await _maint_names(issue, db)
+    return _maint_out(issue, property_name=pname, unit_name=uname)
 
 
 async def update_maintenance_issue(
@@ -408,7 +453,8 @@ async def update_maintenance_issue(
         setattr(m, field, value)
     await db.flush()
     await db.refresh(m)
-    return _maint_out(m)
+    pname, uname = await _maint_names(m, db)
+    return _maint_out(m, property_name=pname, unit_name=uname)
 
 
 async def transition_maintenance(
@@ -450,4 +496,5 @@ async def transition_maintenance(
 
     await db.flush()
     await db.refresh(m)
-    return _maint_out(m)
+    pname, uname = await _maint_names(m, db)
+    return _maint_out(m, property_name=pname, unit_name=uname)

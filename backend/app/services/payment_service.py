@@ -81,7 +81,12 @@ def _schedule_out(s: RentSchedule) -> RentScheduleOut:
     )
 
 
-def _payment_out(p: Payment) -> PaymentOut:
+def _payment_out(
+    p: Payment,
+    tenant_name: str | None = None,
+    unit_name: str | None = None,
+    property_name: str | None = None,
+) -> PaymentOut:
     return PaymentOut(
         id=str(p.id),
         organisation_id=str(p.organisation_id),
@@ -102,6 +107,9 @@ def _payment_out(p: Payment) -> PaymentOut:
         recommended_channel=p.recommended_channel,
         created_at=p.created_at.isoformat(),
         updated_at=p.updated_at.isoformat(),
+        tenant_name=tenant_name,
+        unit_name=unit_name,
+        property_name=property_name,
     )
 
 
