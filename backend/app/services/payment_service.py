@@ -980,6 +980,7 @@ async def list_payments_org(
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
+    from app.models.lease import Lease
     q = select(Payment).where(Payment.organisation_id == org_id)
     if status_filter:
         q = q.where(Payment.status == status_filter)
@@ -988,7 +989,7 @@ async def list_payments_org(
     if lease_id_filter:
         q = q.where(Payment.lease_id == lease_id_filter)
     if tenant_id_filter:
-        from app.models.lease import Lease
+        # from app.models.lease import Lease
         q = q.join(Lease, Lease.id == Payment.lease_id).where(
             Lease.tenant_id == tenant_id_filter
         )
