@@ -238,6 +238,7 @@ async def create_tenant_user(
                     "primaryEmail": email,
                     "name": f"{first_name} {last_name}",
                     "username": email.split("@")[0].lower(),
+                    "password": _generate_temp_password(),  # Set password during creation
                 },
                 headers=headers,
             )
@@ -262,24 +263,15 @@ async def create_tenant_user(
                     email=email,
                     logto_user_id=logto_user_id,
                 )
+                temp_password = None  # Don't set password for existing users
             else:
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
                 log.info("logto.user_created_new", email=email, logto_user_id=logto_user_id)
                 is_new_user = True
-                temp_password = _generate_temp_password()
+                temp_password = _generate_temp_password()  # Password was set during creation
 
-                # ─ Step 2: Set password for new user ─────────────────────────
-                password_set = await _set_user_password(
-                    client, base, logto_user_id, temp_password, headers
-                )
-                if not password_set:
-                    log.warning(
-                        "logto.set_password_failed",
-                        logto_user_id=logto_user_id,
-                        email=email,
-                    )
-                    temp_password = None
+                log.info("logto.password_set_during_creation", user_id=logto_user_id)
 
             # ─ Step 3: Add user to organisation ──────────────────────────────
             add_resp = await client.post(
@@ -334,32 +326,11 @@ async def _set_user_password(
     headers: dict,
 ) -> bool:
     """
-    Attempt to set a password for a user.
-    Tries PATCH endpoint first, returns True on success.
+    DEPRECATED: Password is now set during user creation.
+    This function is kept for backward compatibility but no longer used.
     """
-    try:
-        # Try PATCH /users/{id} with password field
-        resp = await client.patch(
-            f"{base}/users/{user_id}",
-            json={"password": password},
-            headers=headers,
-        )
-        
-        if resp.status_code in (200, 201, 204):
-            log.info("logto.password_set_success", user_id=user_id)
-            return True
-        
-        # Log the failure for diagnostics
-        log.warning(
-            "logto.password_set_failed",
-            user_id=user_id,
-            status=resp.status_code,
-            response_body=resp.text,
-        )
-        return False
-    except Exception as exc:  # noqa: BLE001
-        log.warning("logto.password_set_exception", user_id=user_id, error=str(exc))
-        return False
+    log.warning("logto.set_user_password_deprecated", user_id=user_id)
+    return True
 
 
 async def _assign_tenant_role(
