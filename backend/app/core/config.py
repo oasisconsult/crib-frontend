@@ -171,7 +171,7 @@ class Settings(BaseSettings):
 
     @property
     def logto_management_api_base(self) -> str:
-        return f"{self.logto_admin_endpoint}api"
+        return f"{self.logto_endpoint}api"
 
 
 @lru_cache
