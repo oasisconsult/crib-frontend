@@ -346,11 +346,18 @@ async def _assign_tenant_role(
     Returns True if successful, False otherwise (but doesn't block provisioning).
     """
     try:
+        log.info("logto.assign_role_start", org_id=org_id, user_id=user_id)
+        
         # Fetch org roles
         roles_resp = await client.get(
             f"{base}/organizations/{org_id}/roles",
             headers=headers,
         )
+        
+        log.info("logto.get_org_roles_response", 
+                org_id=org_id, 
+                status=roles_resp.status_code,
+                response_body=roles_resp.text[:500])  # Truncate for logging
         
         if roles_resp.status_code == 404:
             # Organization roles not found - try to create the tenant role
@@ -363,6 +370,11 @@ async def _assign_tenant_role(
                 },
                 headers=headers,
             )
+            
+            log.info("logto.create_role_response",
+                    org_id=org_id,
+                    status=create_role_resp.status_code,
+                    response_body=create_role_resp.text[:500])
             
             if create_role_resp.status_code not in (200, 201, 204):
                 log.warning(
@@ -386,6 +398,7 @@ async def _assign_tenant_role(
             return False
         else:
             roles = roles_resp.json()
+            log.info("logto.found_org_roles", org_id=org_id, role_count=len(roles))
 
             # Find "tenant" role (case-insensitive)
             tenant_role = next(
@@ -405,6 +418,11 @@ async def _assign_tenant_role(
                     headers=headers,
                 )
                 
+                log.info("logto.create_role_response_existing_org",
+                        org_id=org_id,
+                        status=create_role_resp.status_code,
+                        response_body=create_role_resp.text[:500])
+                
                 if create_role_resp.status_code not in (200, 201, 204):
                     log.warning(
                         "logto.create_tenant_role_failed",
@@ -418,13 +436,26 @@ async def _assign_tenant_role(
                 log.info("logto.tenant_role_created", org_id=org_id, role_id=role_id)
             else:
                 role_id = tenant_role["id"]
+                log.info("logto.tenant_role_found", org_id=org_id, role_id=role_id)
 
         # Assign role to user
+        log.info("logto.assigning_role_to_user", 
+                org_id=org_id, 
+                user_id=user_id, 
+                role_id=role_id)
+        
         assign_resp = await client.post(
             f"{base}/organizations/{org_id}/users/{user_id}/roles",
             json={"organizationRoleIds": [role_id]},
             headers=headers,
         )
+
+        log.info("logto.assign_role_response",
+                org_id=org_id,
+                user_id=user_id,
+                role_id=role_id,
+                status=assign_resp.status_code,
+                response_body=assign_resp.text[:500])
 
         if assign_resp.status_code in (200, 201, 204):
             log.info(
