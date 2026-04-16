@@ -393,6 +393,188 @@ async def test_get_tenant_org_role_id_api_error_returns_none():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# _assign_tenant_role
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_assign_tenant_role_existing_role():
+    """Test role assignment when tenant role already exists."""
+    from app.services.logto_service import _assign_tenant_role
+
+    role_id = "role_tenant_abc"
+    
+    class _RoleClient(_FakeClient):
+        def __init__(self, responses):
+            super().__init__(responses)
+            self.role_assignment_calls = []
+
+        async def post(self, url, **kwargs):
+            self.calls.append(("POST", url))
+            if "roles" in url and "organizationRoleIds" in str(kwargs.get("json", {})):
+                self.role_assignment_calls.append((url, kwargs))
+                return _resp(201, {})
+            return self._find(url)
+
+    client = _RoleClient({
+        "/organizations/org_test/roles": _resp(200, [
+            {"id": role_id, "name": "tenant"}
+        ])
+    })
+
+    with patch("app.services.logto_service.httpx.AsyncClient", return_value=client):
+        result = await _assign_tenant_role(
+            client, "http://logto:3001/api", "org_test", "user_123", {"Authorization": "Bearer tok"}
+        )
+
+    assert result is True
+    assert len(client.role_assignment_calls) == 1
+    url, kwargs = client.role_assignment_calls[0]
+    assert "org_test" in url and "user_123" in url
+    assert kwargs["json"]["organizationRoleIds"] == [role_id]
+
+
+@pytest.mark.asyncio
+async def test_assign_tenant_role_create_new_role():
+    """Test role assignment when tenant role needs to be created."""
+    from app.services.logto_service import _assign_tenant_role
+
+    new_role_id = "role_tenant_new"
+    
+    class _CreateRoleClient(_FakeClient):
+        def __init__(self, responses):
+            super().__init__(responses)
+            self.role_creation_calls = []
+            self.role_assignment_calls = []
+
+        async def post(self, url, **kwargs):
+            self.calls.append(("POST", url))
+            if "roles" in url and "name" in str(kwargs.get("json", {})):
+                self.role_creation_calls.append((url, kwargs))
+                return _resp(201, {"id": new_role_id})
+            if "roles" in url and "organizationRoleIds" in str(kwargs.get("json", {})):
+                self.role_assignment_calls.append((url, kwargs))
+                return _resp(201, {})
+            return self._find(url)
+
+    client = _CreateRoleClient({
+        "/organizations/org_test/roles": _resp(200, [
+            {"id": "role_other", "name": "manager"}
+        ])
+    })
+
+    with patch("app.services.logto_service.httpx.AsyncClient", return_value=client):
+        result = await _assign_tenant_role(
+            client, "http://logto:3001/api", "org_test", "user_123", {"Authorization": "Bearer tok"}
+        )
+
+    assert result is True
+    assert len(client.role_creation_calls) == 1
+    assert len(client.role_assignment_calls) == 1
+    
+    # Check role creation
+    url, kwargs = client.role_creation_calls[0]
+    assert "org_test" in url and "roles" in url
+    assert kwargs["json"]["name"] == "tenant"
+    assert kwargs["json"]["description"] == "Tenant role for property tenants"
+    
+    # Check role assignment
+    url, kwargs = client.role_assignment_calls[0]
+    assert "org_test" in url and "user_123" in url
+    assert kwargs["json"]["organizationRoleIds"] == [new_role_id]
+
+
+@pytest.mark.asyncio
+async def test_assign_tenant_role_organization_not_found():
+    """Test role assignment when organization has no roles (404)."""
+    from app.services.logto_service import _assign_tenant_role
+
+    new_role_id = "role_tenant_created"
+    
+    class _OrgNotFoundClient(_FakeClient):
+        def __init__(self, responses):
+            super().__init__(responses)
+            self.role_creation_calls = []
+            self.role_assignment_calls = []
+
+        async def post(self, url, **kwargs):
+            self.calls.append(("POST", url))
+            if "roles" in url and "name" in str(kwargs.get("json", {})):
+                self.role_creation_calls.append((url, kwargs))
+                return _resp(201, {"id": new_role_id})
+            if "roles" in url and "organizationRoleIds" in str(kwargs.get("json", {})):
+                self.role_assignment_calls.append((url, kwargs))
+                return _resp(201, {})
+            return self._find(url)
+
+    client = _OrgNotFoundClient({
+        "/organizations/org_test/roles": _resp(404, {})
+    })
+
+    with patch("app.services.logto_service.httpx.AsyncClient", return_value=client):
+        result = await _assign_tenant_role(
+            client, "http://logto:3001/api", "org_test", "user_123", {"Authorization": "Bearer tok"}
+        )
+
+    assert result is True
+    assert len(client.role_creation_calls) == 1
+    assert len(client.role_assignment_calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_assign_tenant_role_assignment_fails():
+    """Test that role assignment failure is logged but doesn't prevent user creation."""
+    from app.services.logto_service import _assign_tenant_role
+
+    role_id = "role_tenant_abc"
+    
+    class _AssignmentFailsClient(_FakeClient):
+        async def post(self, url, **kwargs):
+            self.calls.append(("POST", url))
+            if "roles" in url and "organizationRoleIds" in str(kwargs.get("json", {})):
+                return _resp(403, {"error": "Forbidden"})
+            return self._find(url)
+
+    client = _AssignmentFailsClient({
+        "/organizations/org_test/roles": _resp(200, [
+            {"id": role_id, "name": "tenant"}
+        ])
+    })
+
+    with patch("app.services.logto_service.httpx.AsyncClient", return_value=client):
+        result = await _assign_tenant_role(
+            client, "http://logto:3001/api", "org_test", "user_123", {"Authorization": "Bearer tok"}
+        )
+
+    assert result is False  # Assignment failed
+
+
+@pytest.mark.asyncio
+async def test_assign_tenant_role_creation_fails():
+    """Test that role creation failure prevents assignment."""
+    from app.services.logto_service import _assign_tenant_role
+
+    class _CreationFailsClient(_FakeClient):
+        async def post(self, url, **kwargs):
+            self.calls.append(("POST", url))
+            if "roles" in url and "name" in str(kwargs.get("json", {})):
+                return _resp(403, {"error": "Cannot create roles"})
+            return self._find(url)
+
+    client = _CreationFailsClient({
+        "/organizations/org_test/roles": _resp(200, [
+            {"id": "role_other", "name": "manager"}
+        ])
+    })
+
+    with patch("app.services.logto_service.httpx.AsyncClient", return_value=client):
+        result = await _assign_tenant_role(
+            client, "http://logto:3001/api", "org_test", "user_123", {"Authorization": "Bearer tok"}
+        )
+
+    assert result is False  # Role creation failed
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # _send_welcome_email
 # ─────────────────────────────────────────────────────────────────────────────
 
