@@ -267,11 +267,44 @@ async def create_tenant_user(
                     temp_password = None
 
             # 2. Add user to the organisation ──────────────────────────────────
-            add_resp = await client.post(
+            # add_resp = await client.post(
+            #     f"{base}/organizations/{logto_org_id}/users",
+            #     json={"userIds": [logto_user_id]},
+            #     headers=headers,
+            # )
+            # if add_resp.status_code not in (200, 201, 204):
+            #     log.warning(
+            #         "logto.add_to_org_failed",
+            #         user_id=logto_user_id,
+            #         org_id=logto_org_id,
+            #         status=add_resp.status_code,
+            #     )
+
+            # # 3. Assign the org-level 'tenant' role ────────────────────────────
+            # role_id = await _get_tenant_org_role_id(
+            #     logto_org_id, base=base, headers=headers
+            # )
+            # if role_id:
+            #     role_resp = await client.post(
+            #         f"{base}/organizations/{logto_org_id}/users/{logto_user_id}/roles",
+            #         json={"organizationRoleIds": [role_id]},
+            #         headers=headers,
+            #     )
+            #     if role_resp.status_code not in (200, 201, 204):
+            #         log.warning(
+            #             "logto.assign_role_failed",
+            #             user_id=logto_user_id,
+            #             role_id=role_id,
+            #             status=role_resp.status_code,
+            #         )
+            
+            # 1. Add user to org
+            add_resp =await client.post(
                 f"{base}/organizations/{logto_org_id}/users",
                 json={"userIds": [logto_user_id]},
                 headers=headers,
             )
+            
             if add_resp.status_code not in (200, 201, 204):
                 log.warning(
                     "logto.add_to_org_failed",
@@ -280,23 +313,48 @@ async def create_tenant_user(
                     status=add_resp.status_code,
                 )
 
-            # 3. Assign the org-level 'tenant' role ────────────────────────────
-            role_id = await _get_tenant_org_role_id(
-                logto_org_id, base=base, headers=headers
+            # 2. Get org roles
+            roles_resp = await client.get(
+                f"{base}/organizations/{logto_org_id}/roles",
+                headers=headers,
             )
-            if role_id:
-                role_resp = await client.post(
-                    f"{base}/organizations/{logto_org_id}/users/{logto_user_id}/roles",
-                    json={"organizationRoleIds": [role_id]},
-                    headers=headers,
+            
+            if roles_resp.status_code not in (200, 201, 204):
+                log.warning(
+                    "logto.get_org_roles_failed",
+                    org_id=logto_org_id,
+                    status=roles_resp.status_code,
                 )
-                if role_resp.status_code not in (200, 201, 204):
-                    log.warning(
-                        "logto.assign_role_failed",
-                        user_id=logto_user_id,
-                        role_id=role_id,
-                        status=role_resp.status_code,
-                    )
+
+
+            roles_resp.raise_for_status()
+            roles = roles_resp.json()
+
+            # 3. Find "tenant" role
+            tenant_role = next(
+                (r for r in roles if r.get("name") == "tenant"),
+                None
+            )
+
+            if not tenant_role:
+                log.warning("logto.tenant_role_not_found", org_id=logto_org_id)
+                return
+
+            role_id = tenant_role["id"]
+
+            # 4. Assign role to user
+            assign_resp = await client.post(
+                f"{base}/organizations/{logto_org_id}/users/{logto_user_id}/roles",
+                json={"organizationRoleIds": [role_id]},
+                headers=headers,
+            )
+
+            if assign_resp.status_code not in (200, 201, 204):
+                log.warning(
+                    "logto.assign_role_failed",
+                    status=assign_resp.status_code,
+                    body=assign_resp.text,
+                )
 
         log.info(
             "logto.tenant_user_created",
