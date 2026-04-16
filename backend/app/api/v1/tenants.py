@@ -180,6 +180,25 @@ async def resend_invite(
     return await svc.resend_invite(tenant_id, current_user.org_id, db)
 
 
+# ── Resend login credentials ─────────────────────────────────────────────────
+
+@router.post("/{tenant_id}/resend-login", response_model=dict)
+async def resend_login_credentials(
+    tenant_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    (Re-)send login credentials to an activated tenant.
+
+    Creates the tenant's Logto account if it doesn't exist yet, resets their
+    password, and emails them a temporary password with a link to the portal.
+
+    Only allowed for tenants in the 'activated' state.
+    """
+    return await svc.resend_login_credentials(tenant_id, current_user.org_id, db)  # type: ignore[arg-type]
+
+
 # ── Documents ─────────────────────────────────────────────────────────────────
 
 @router.get("/{tenant_id}/documents", response_model=list[TenantDocumentOut])

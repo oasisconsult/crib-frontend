@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     # logto_endpoint (and therefore logto_issuer) as the public browser-accessible URL.
     # Example in docker-compose: LOGTO_JWKS_URI=http://logto:3001/oidc/jwks
     logto_jwks_uri_override: str = ""
+    # Name of the Logto *organisation* role to assign to newly-created tenant users.
+    # Must match a role you have created under Organizations → Roles in the Logto console.
+    logto_tenant_org_role_name: str = "tenant"
+
+    # ── Frontend ──────────────────────────────────────────────────────────────
+    # Base URL that tenants use to reach the app (used in welcome emails).
+    frontend_url: str = "http://localhost:3000"
 
     # ── Settings encryption ───────────────────────────────────────────────────
     # Required in all environments. Generate with:

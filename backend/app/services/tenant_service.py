@@ -532,6 +532,80 @@ async def resend_invite(
     return _invite_out(new_invite)
 
 
+# ── Resend login credentials ─────────────────────────────────────────────────
+
+async def resend_login_credentials(
+    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> dict:
+    """
+    (Re-)send login credentials to an activated tenant.
+
+    - If the tenant has no Logto account yet, creates one first.
+    - Generates a new temporary password in Logto and emails it.
+    - Only allowed for tenants in the 'activated' state.
+
+    Returns {"ok": True, "logto_user_id": "..."} on success.
+    """
+    from app.services.logto_service import create_tenant_user, resend_login_credentials as _resend
+
+    tenant = await _get_tenant(tenant_id, org_id, db)
+
+    if tenant.onboarding_state != OnboardingState.activated:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Cannot send login credentials: tenant must be in 'activated' state "
+                f"(current: '{tenant.onboarding_state.value}')."
+            ),
+        )
+
+    # ── Resolve the owning organisation via the full ownership chain ─────────
+    # Primary: caller's org_id (matches tenant.organisation_id in most cases).
+    # Fallback: walk tenant → current_property → property.organisation_id.
+    logto_user_id = tenant.logto_user_id
+    if not logto_user_id:
+        from app.models.organisation import Organisation
+        from app.models.property import Property
+
+        resolved_org = await db.get(Organisation, org_id)
+        if resolved_org is None and tenant.current_property_id:
+            prop = await db.get(Property, tenant.current_property_id)
+            if prop:
+                resolved_org = await db.get(Organisation, prop.organisation_id)
+
+        if resolved_org:
+            logto_user_id = await create_tenant_user(
+                email=tenant.email,
+                first_name=tenant.first_name,
+                last_name=tenant.last_name,
+                logto_org_id=resolved_org.logto_org_id,
+            )
+            if logto_user_id:
+                tenant.logto_user_id = logto_user_id
+                await db.flush()
+
+        if not logto_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Could not create Logto account. Check M2M credentials in settings.",
+            )
+        # Account was just created — welcome email was already sent by create_tenant_user
+        return {"ok": True, "logto_user_id": logto_user_id}
+
+    # Account already exists — reset password and resend email
+    ok = await _resend(
+        logto_user_id=logto_user_id,
+        email=tenant.email,
+        first_name=tenant.first_name,
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Failed to reset password or send email. Check M2M credentials in settings.",
+        )
+    return {"ok": True, "logto_user_id": logto_user_id}
+
+
 # ── Send onboarding link (with lease linked) ─────────────────────────────────
 
 async def send_onboarding_link(

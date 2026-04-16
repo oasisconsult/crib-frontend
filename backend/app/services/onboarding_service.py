@@ -828,7 +828,21 @@ async def _activate_via_onboarding(
 
     # ── Logto account + Profile (best-effort — won't block activation if it fails) ──
     from app.models.organisation import Organisation
+    from app.models.property import Property
+
+    # Resolution chain: lease.organisation_id → property.organisation_id (fallback)
     org = await db.get(Organisation, lease.organisation_id)
+    if org is None and unit.property_id:
+        prop = await db.get(Property, unit.property_id)
+        if prop:
+            org = await db.get(Organisation, prop.organisation_id)
+            if org:
+                log.warning(
+                    "onboarding.org_resolved_via_property",
+                    lease_org_id=str(lease.organisation_id),
+                    property_id=str(unit.property_id),
+                    resolved_org_id=str(prop.organisation_id),
+                )
     if org:
         logto_user_id: str | None = tenant.logto_user_id
 
@@ -858,7 +872,7 @@ async def _activate_via_onboarding(
                     profile = Profile(
                         logto_sub=logto_user_id,
                         logto_org_id=org.logto_org_id,
-                        organisation_id=lease.organisation_id,
+                        organisation_id=org.id,  # use resolved org (may differ from lease.organisation_id)
                         role="tenant",
                         display_name=f"{tenant.first_name} {tenant.last_name}".strip(),
                         email=tenant.email,
@@ -868,11 +882,13 @@ async def _activate_via_onboarding(
                     )
                     db.add(profile)
                 else:
-                    # Backfill tenant_id if the profile was pre-created without it
+                    # Backfill fields if the profile was pre-created without them
                     if existing.tenant_id is None:
                         existing.tenant_id = tenant.id
                     if existing.organisation_id is None:
-                        existing.organisation_id = lease.organisation_id
+                        existing.organisation_id = org.id
+                    if existing.logto_org_id is None:
+                        existing.logto_org_id = org.logto_org_id
                 await db.flush()
                 log.info(
                     "onboarding.profile_upserted",
