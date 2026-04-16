@@ -55,12 +55,13 @@ async def _get_m2m_token() -> str:
     """Exchange M2M client credentials for a Management API Bearer token."""
     from app.core.config import get_settings
     s = get_settings()
+    url = f"{s.logto_endpoint}oidc/token"
 
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
+            url,
             # OIDC token endpoint is on port 3001 (logto_endpoint), NOT port 3002 (admin console).
             # Resource is the Management API identifier, which lives at logto_admin_api_endpoint/api.
-            f"{s.logto_endpoint}oidc/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": s.logto_m2m_app_id,
@@ -69,6 +70,11 @@ async def _get_m2m_token() -> str:
                 "scope": "all",
             },
         )
+        log.debug("logto.m2m_token_response", status=resp.status_code, response=resp.text)
+        log.info("logto.m2m_token_obtained", status=resp.status_code)
+        log.info("logto_admin_api_endpoint", status=resp.status_code, response=resp.text)
+        log.info("logto.m2m_final_url", url=str(resp.request.url))
+        log.debug("logto.m2m_token_response", status=resp.status_code, response=resp.text)
         resp.raise_for_status()
         return resp.json()["access_token"]
 
