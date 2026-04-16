@@ -346,7 +346,7 @@ async def _set_user_password(
         )
         
         if resp.status_code in (200, 201, 204):
-            log.debug("logto.password_set_success", user_id=user_id)
+            log.info("logto.password_set_success", user_id=user_id)
             return True
         
         # Log the failure for diagnostics
@@ -371,6 +371,7 @@ async def _assign_tenant_role(
 ) -> bool:
     """
     Assign the 'tenant' org role to a user immediately after creation.
+    Creates the role if it doesn't exist.
     Returns True if successful, False otherwise (but doesn't block provisioning).
     """
     try:
@@ -380,7 +381,31 @@ async def _assign_tenant_role(
             headers=headers,
         )
         
-        if roles_resp.status_code not in (200, 201, 204):
+        if roles_resp.status_code == 404:
+            # Organization roles not found - try to create the tenant role
+            log.info("logto.org_roles_not_found_creating_tenant_role", org_id=org_id)
+            create_role_resp = await client.post(
+                f"{base}/organizations/{org_id}/roles",
+                json={
+                    "name": "tenant",
+                    "description": "Tenant role for property tenants"
+                },
+                headers=headers,
+            )
+            
+            if create_role_resp.status_code not in (200, 201, 204):
+                log.warning(
+                    "logto.create_tenant_role_failed",
+                    org_id=org_id,
+                    status=create_role_resp.status_code,
+                    response_body=create_role_resp.text,
+                )
+                return False
+            
+            role_id = create_role_resp.json()["id"]
+            log.info("logto.tenant_role_created", org_id=org_id, role_id=role_id)
+            
+        elif roles_resp.status_code not in (200, 201, 204):
             log.warning(
                 "logto.get_org_roles_failed",
                 org_id=org_id,
@@ -388,24 +413,40 @@ async def _assign_tenant_role(
                 response_body=roles_resp.text,
             )
             return False
+        else:
+            roles = roles_resp.json()
 
-        roles = roles_resp.json()
-
-        # Find "tenant" role (case-insensitive)
-        tenant_role = next(
-            (r for r in roles if r.get("name", "").lower() == "tenant"),
-            None,
-        )
-
-        if not tenant_role:
-            log.warning(
-                "logto.tenant_role_not_found_in_org",
-                org_id=org_id,
-                available_roles=[r.get("name") for r in roles],
+            # Find "tenant" role (case-insensitive)
+            tenant_role = next(
+                (r for r in roles if r.get("name", "").lower() == "tenant"),
+                None,
             )
-            return False
 
-        role_id = tenant_role["id"]
+            if not tenant_role:
+                # Tenant role doesn't exist - create it
+                log.info("logto.tenant_role_not_found_creating", org_id=org_id)
+                create_role_resp = await client.post(
+                    f"{base}/organizations/{org_id}/roles",
+                    json={
+                        "name": "tenant",
+                        "description": "Tenant role for property tenants"
+                    },
+                    headers=headers,
+                )
+                
+                if create_role_resp.status_code not in (200, 201, 204):
+                    log.warning(
+                        "logto.create_tenant_role_failed",
+                        org_id=org_id,
+                        status=create_role_resp.status_code,
+                        response_body=create_role_resp.text,
+                    )
+                    return False
+                
+                role_id = create_role_resp.json()["id"]
+                log.info("logto.tenant_role_created", org_id=org_id, role_id=role_id)
+            else:
+                role_id = tenant_role["id"]
 
         # Assign role to user
         assign_resp = await client.post(
