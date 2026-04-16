@@ -147,29 +147,47 @@ async def test_create_tenant_user_not_configured_returns_none():
 @pytest.mark.asyncio
 async def test_create_tenant_user_happy_path_new_user():
     """
-    New user: 201 from POST /users → set temp password → add to org →
-    assign role → send welcome email → return logto_user_id.
+    New user flow: search for existing → not found → create new user → 
+    set password → add to org → assign tenant role → send welcome email.
     """
     from app.services import logto_service
 
     new_id = "usr_new_abc"
-    fake_role_id = "role_tenant_xyz"
+    role_id = "role_tenant_xyz"
 
-    main_client = _FakeClient({
-        "/users":                          _resp(201, {"id": new_id}),
-        f"/users/{new_id}":               _resp(200, {}),   # PATCH password
-        "/organizations/org_test/users":  _resp(201, {}),   # add to org
-        "roles":                          _resp(201, {}),   # assign role
+    class _NewUserClient(_FakeClient):
+        async def get(self, url, **kwargs):
+            # GET /users (search) returns empty
+            self.calls.append(("GET", url))
+            if "/users" in url and "organizations" not in url:
+                return _resp(200, [])  # No existing user
+            return self._find(url)
+
+        async def post(self, url, **kwargs):
+            self.calls.append(("POST", url))
+            if "/users" in url and "organizations" not in url:
+                return _resp(201, {"id": new_id})  # Create new user
+            if "organizations" in url and "roles" not in url:
+                return _resp(201, {})  # Add to org
+            if "roles" in url:
+                return _resp(201, {})  # Assign role
+            return self._find(url)
+
+        async def patch(self, url, **kwargs):
+            self.calls.append(("PATCH", url))
+            return _resp(200, {})  # Set password
+
+    client = _NewUserClient({
+        "/organizations/org_test/roles": _resp(200, [
+            {"id": role_id, "name": "tenant"}
+        ])
     })
 
     with patch("app.services.logto_service._is_configured", return_value=True), \
          patch("app.services.logto_service._get_m2m_token", new=AsyncMock(return_value="tok")), \
-         patch("app.services.logto_service._get_tenant_org_role_id",
-               new=AsyncMock(return_value=fake_role_id)), \
-         patch("app.services.logto_service._send_welcome_email",
-               new=AsyncMock()) as mock_email, \
+         patch("app.services.logto_service._send_welcome_email", new=AsyncMock()) as mock_email, \
          patch("app.core.config.get_settings", return_value=_mock_settings()), \
-         patch("app.services.logto_service.httpx.AsyncClient", return_value=main_client):
+         patch("app.services.logto_service.httpx.AsyncClient", return_value=client):
 
         result = await logto_service.create_tenant_user(
             email="alice@example.com", first_name="Alice",
@@ -189,43 +207,41 @@ async def test_create_tenant_user_happy_path_new_user():
 # ─────────────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_create_tenant_user_existing_user_no_email():
+async def test_create_tenant_user_existing_user():
     """
-    When POST /users returns 422 (already exists):
-    look up by email, return existing ID, and do NOT send a welcome email.
+    Existing user flow: search for user by email → found → link to existing →
+    add to org → assign role → NO welcome email (not a new user).
     """
     from app.services import logto_service
 
     existing_id = "usr_existing_456"
+    role_id = "role_tenant_xyz"
 
-    conflict_resp = MagicMock()
-    conflict_resp.status_code = 422
-    search_resp = _resp(200, [{"id": existing_id}])
-
-    class _ConflictClient(_FakeClient):
-        async def post(self, url, **kwargs):
-            self.calls.append(("POST", url))
-            if "/users" in url and "organizations" not in url:
-                return conflict_resp
-            return self._find(url)
-
+    class _ExistingUserClient(_FakeClient):
         async def get(self, url, **kwargs):
             self.calls.append(("GET", url))
-            if "/users" in url:
-                return search_resp
+            if "/users" in url and "organizations" not in url:
+                # Search returns existing user
+                return _resp(200, [{"id": existing_id}])
             return self._find(url)
 
-    client = _ConflictClient({
-        "/organizations/org_test/users": _resp(201, {}),
-        "roles":                         _resp(201, {}),
+        async def post(self, url, **kwargs):
+            self.calls.append(("POST", url))
+            if "organizations" in url and "roles" not in url:
+                return _resp(201, {})  # Add to org
+            if "roles" in url:
+                return _resp(201, {})  # Assign role
+            return self._find(url)
+
+    client = _ExistingUserClient({
+        "/organizations/org_test/roles": _resp(200, [
+            {"id": role_id, "name": "tenant"}
+        ])
     })
 
     with patch("app.services.logto_service._is_configured", return_value=True), \
          patch("app.services.logto_service._get_m2m_token", new=AsyncMock(return_value="tok")), \
-         patch("app.services.logto_service._get_tenant_org_role_id",
-               new=AsyncMock(return_value="role_x")), \
-         patch("app.services.logto_service._send_welcome_email",
-               new=AsyncMock()) as mock_email, \
+         patch("app.services.logto_service._send_welcome_email", new=AsyncMock()) as mock_email, \
          patch("app.core.config.get_settings", return_value=_mock_settings()), \
          patch("app.services.logto_service.httpx.AsyncClient", return_value=client):
 
@@ -235,7 +251,63 @@ async def test_create_tenant_user_existing_user_no_email():
         )
 
     assert result == existing_id
-    mock_email.assert_not_called()  # no welcome email for existing users
+    # No welcome email for existing users
+    mock_email.assert_not_called()
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# create_tenant_user — exception swallowed
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_create_tenant_user_continues_on_role_not_found():
+    """
+    Role assignment should not block user creation.
+    If tenant role is not found, user is still created and returned.
+    """
+    from app.services import logto_service
+
+    new_id = "usr_new_abc"
+
+    class _NoRoleClient(_FakeClient):
+        async def get(self, url, **kwargs):
+            self.calls.append(("GET", url))
+            if "/users" in url and "organizations" not in url:
+                return _resp(200, [])  # No existing user
+            if "roles" in url:
+                # Organization has no tenant role
+                return _resp(200, [{"id": "role_mgr", "name": "manager"}])
+            return self._find(url)
+
+        async def post(self, url, **kwargs):
+            self.calls.append(("POST", url))
+            if "/users" in url and "organizations" not in url:
+                return _resp(201, {"id": new_id})
+            if "organizations" in url:
+                return _resp(201, {})
+            return self._find(url)
+
+        async def patch(self, url, **kwargs):
+            self.calls.append(("PATCH", url))
+            return _resp(200, {})
+
+    client = _NoRoleClient({})
+
+    with patch("app.services.logto_service._is_configured", return_value=True), \
+         patch("app.services.logto_service._get_m2m_token", new=AsyncMock(return_value="tok")), \
+         patch("app.services.logto_service._send_welcome_email", new=AsyncMock()) as mock_email, \
+         patch("app.core.config.get_settings", return_value=_mock_settings()), \
+         patch("app.services.logto_service.httpx.AsyncClient", return_value=client):
+
+        result = await logto_service.create_tenant_user(
+            email="alice@example.com", first_name="Alice",
+            last_name="Nakato", logto_org_id="org_test",
+        )
+
+    # User is still created and returned even though role not found
+    assert result == new_id
+    # Welcome email is still sent
+    mock_email.assert_called_once()
 
 
 # ─────────────────────────────────────────────────────────────────────────────

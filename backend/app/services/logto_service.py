@@ -203,6 +203,13 @@ async def create_tenant_user(
     assign the 'tenant' org role, set a temporary password, and send a
     welcome email.
 
+    Flow:
+      1. Search for existing user by email (find and link if exists)
+      2. If not found, create new user with temporary password
+      3. Add user to organisation
+      4. Assign 'tenant' org role immediately
+      5. Send welcome email with credentials
+
     Returns the Logto user ID (string) on success, or None if M2M is not
     configured or the call fails (logged as a warning — not raised, so
     activation still proceeds).
@@ -219,87 +226,60 @@ async def create_tenant_user(
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-        # base = str(s.logto_management_api_base)
         base = f"http://logto:3001/api"
+        temp_password: str | None = None
+        is_new_user = False
 
         async with httpx.AsyncClient(timeout=10) as client:
-            # 1. Create (or look up) the user ──────────────────────────────────
-            create_resp = await client.post(
+            # ─ Step 1: Search for existing user by email ──────────────────────
+            search_resp = await client.get(
                 f"{base}/users",
-                json={
-                    "primaryEmail": email,
-                    "name": f"{first_name} {last_name}",
-                    "username": email.split("@")[0].lower(),
-                },
+                params={"search": email, "searchFields": "primaryEmail"},
                 headers=headers,
             )
+            search_resp.raise_for_status()
+            existing_users = search_resp.json()
 
-            if create_resp.status_code == 422:
-                # Conflict — user already exists; find them by email
-                search_resp = await client.get(
+            if existing_users:
+                # User exists — link to existing account
+                logto_user_id = existing_users[0]["id"]
+                log.info(
+                    "logto.user_found_existing",
+                    email=email,
+                    logto_user_id=logto_user_id,
+                )
+            else:
+                # User doesn't exist — create new user with password
+                is_new_user = True
+                temp_password = _generate_temp_password()
+                
+                create_resp = await client.post(
                     f"{base}/users",
-                    params={"search": email, "searchFields": "primaryEmail"},
+                    json={
+                        "primaryEmail": email,
+                        "name": f"{first_name} {last_name}",
+                        "username": email.split("@")[0].lower(),
+                    },
                     headers=headers,
                 )
-                search_resp.raise_for_status()
-                users = search_resp.json()
-                if not users:
-                    log.warning("logto.user_not_found_after_conflict", email=email)
-                    return None
-                logto_user_id: str = users[0]["id"]
-                temp_password: str | None = None  # don't overwrite existing password
-            else:
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
-                # New user — set a temporary password
-                temp_password = _generate_temp_password()
-                patch_resp = await client.patch(
-                    f"{base}/users/{logto_user_id}",
-                    json={"password": temp_password},
-                    headers=headers,
+                log.info("logto.user_created_new", email=email, logto_user_id=logto_user_id)
+
+                # ─ Step 2: Set password for new user ─────────────────────────
+                password_set = await _set_user_password(
+                    client, base, logto_user_id, temp_password, headers
                 )
-                if patch_resp.status_code not in (200, 201, 204):
+                if not password_set:
                     log.warning(
                         "logto.set_password_failed",
-                        user_id=logto_user_id,
-                        status=patch_resp.status_code,
+                        logto_user_id=logto_user_id,
+                        email=email,
                     )
                     temp_password = None
 
-            # 2. Add user to the organisation ──────────────────────────────────
-            # add_resp = await client.post(
-            #     f"{base}/organizations/{logto_org_id}/users",
-            #     json={"userIds": [logto_user_id]},
-            #     headers=headers,
-            # )
-            # if add_resp.status_code not in (200, 201, 204):
-            #     log.warning(
-            #         "logto.add_to_org_failed",
-            #         user_id=logto_user_id,
-            #         org_id=logto_org_id,
-            #         status=add_resp.status_code,
-            #     )
-
-            # # 3. Assign the org-level 'tenant' role ────────────────────────────
-            # role_id = await _get_tenant_org_role_id(
-            #     logto_org_id, base=base, headers=headers
-            # )
-            # if role_id:
-            #     role_resp = await client.post(
-            #         f"{base}/organizations/{logto_org_id}/users/{logto_user_id}/roles",
-            #         json={"organizationRoleIds": [role_id]},
-            #         headers=headers,
-            #     )
-            #     if role_resp.status_code not in (200, 201, 204):
-            #         log.warning(
-            #             "logto.assign_role_failed",
-            #             user_id=logto_user_id,
-            #             role_id=role_id,
-            #             status=role_resp.status_code,
-            #         )
-            
-            # 1. Add user to org
-            add_resp =await client.post(
+            # ─ Step 3: Add user to organisation ──────────────────────────────
+            add_resp = await client.post(
                 f"{base}/organizations/{logto_org_id}/users",
                 json={"userIds": [logto_user_id]},
                 headers=headers,
@@ -311,60 +291,24 @@ async def create_tenant_user(
                     user_id=logto_user_id,
                     org_id=logto_org_id,
                     status=add_resp.status_code,
+                    response_body=add_resp.text,
                 )
 
-            # 2. Get org roles
-            roles_resp = await client.get(
-                f"{base}/organizations/{logto_org_id}/roles",
-                headers=headers,
+            # ─ Step 4: Assign 'tenant' org role immediately ───────────────────
+            await _assign_tenant_role(
+                client, base, logto_org_id, logto_user_id, headers
             )
-            
-            if roles_resp.status_code not in (200, 201, 204):
-                log.warning(
-                    "logto.get_org_roles_failed",
-                    org_id=logto_org_id,
-                    status=roles_resp.status_code,
-                )
-
-
-            roles_resp.raise_for_status()
-            roles = roles_resp.json()
-
-            # 3. Find "tenant" role
-            tenant_role = next(
-                (r for r in roles if r.get("name") == "tenant"),
-                None
-            )
-
-            if not tenant_role:
-                log.warning("logto.tenant_role_not_found", org_id=logto_org_id)
-                return
-
-            role_id = tenant_role["id"]
-
-            # 4. Assign role to user
-            assign_resp = await client.post(
-                f"{base}/organizations/{logto_org_id}/users/{logto_user_id}/roles",
-                json={"organizationRoleIds": [role_id]},
-                headers=headers,
-            )
-
-            if assign_resp.status_code not in (200, 201, 204):
-                log.warning(
-                    "logto.assign_role_failed",
-                    status=assign_resp.status_code,
-                    body=assign_resp.text,
-                )
 
         log.info(
-            "logto.tenant_user_created",
+            "logto.tenant_user_provisioned",
             logto_user_id=logto_user_id,
             email=email,
             org_id=logto_org_id,
+            is_new_user=is_new_user,
         )
 
-        # 4. Send welcome email ─────────────────────────────────────────────────
-        if temp_password:
+        # ─ Step 5: Send welcome email (only for new users with password) ─────
+        if is_new_user and temp_password:
             await _send_welcome_email(
                 email=email,
                 first_name=first_name,
@@ -377,6 +321,123 @@ async def create_tenant_user(
     except Exception as exc:  # noqa: BLE001
         log.warning("logto.create_tenant_user_failed", email=email, error=str(exc))
         return None
+
+
+async def _set_user_password(
+    client: httpx.AsyncClient,
+    base: str,
+    user_id: str,
+    password: str,
+    headers: dict,
+) -> bool:
+    """
+    Attempt to set a password for a user.
+    Tries PATCH endpoint first, returns True on success.
+    """
+    try:
+        # Try PATCH /users/{id} with password field
+        resp = await client.patch(
+            f"{base}/users/{user_id}",
+            json={"password": password},
+            headers=headers,
+        )
+        
+        if resp.status_code in (200, 201, 204):
+            log.debug("logto.password_set_success", user_id=user_id)
+            return True
+        
+        # Log the failure for diagnostics
+        log.warning(
+            "logto.password_set_failed",
+            user_id=user_id,
+            status=resp.status_code,
+            response_body=resp.text,
+        )
+        return False
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.password_set_exception", user_id=user_id, error=str(exc))
+        return False
+
+
+async def _assign_tenant_role(
+    client: httpx.AsyncClient,
+    base: str,
+    org_id: str,
+    user_id: str,
+    headers: dict,
+) -> bool:
+    """
+    Assign the 'tenant' org role to a user immediately after creation.
+    Returns True if successful, False otherwise (but doesn't block provisioning).
+    """
+    try:
+        # Fetch org roles
+        roles_resp = await client.get(
+            f"{base}/organizations/{org_id}/roles",
+            headers=headers,
+        )
+        
+        if roles_resp.status_code not in (200, 201, 204):
+            log.warning(
+                "logto.get_org_roles_failed",
+                org_id=org_id,
+                status=roles_resp.status_code,
+                response_body=roles_resp.text,
+            )
+            return False
+
+        roles = roles_resp.json()
+
+        # Find "tenant" role (case-insensitive)
+        tenant_role = next(
+            (r for r in roles if r.get("name", "").lower() == "tenant"),
+            None,
+        )
+
+        if not tenant_role:
+            log.warning(
+                "logto.tenant_role_not_found_in_org",
+                org_id=org_id,
+                available_roles=[r.get("name") for r in roles],
+            )
+            return False
+
+        role_id = tenant_role["id"]
+
+        # Assign role to user
+        assign_resp = await client.post(
+            f"{base}/organizations/{org_id}/users/{user_id}/roles",
+            json={"organizationRoleIds": [role_id]},
+            headers=headers,
+        )
+
+        if assign_resp.status_code in (200, 201, 204):
+            log.info(
+                "logto.tenant_role_assigned",
+                user_id=user_id,
+                org_id=org_id,
+                role_id=role_id,
+            )
+            return True
+
+        log.warning(
+            "logto.assign_role_failed",
+            user_id=user_id,
+            org_id=org_id,
+            role_id=role_id,
+            status=assign_resp.status_code,
+            response_body=assign_resp.text,
+        )
+        return False
+
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "logto.assign_role_exception",
+            org_id=org_id,
+            user_id=user_id,
+            error=str(exc),
+        )
+        return False
 
 
 # ── Resend login credentials ───────────────────────────────────────────────────
@@ -405,21 +466,19 @@ async def resend_login_credentials(
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-        base = str(s.logto_management_api_base)
+        base = f"http://logto:3001/api"
 
         temp_password = _generate_temp_password()
 
         async with httpx.AsyncClient(timeout=10) as client:
-            patch_resp = await client.patch(
-                f"{base}/users/{logto_user_id}",
-                json={"password": temp_password},
-                headers=headers,
+            password_set = await _set_user_password(
+                client, base, logto_user_id, temp_password, headers
             )
-            if patch_resp.status_code not in (200, 201, 204):
+            if not password_set:
                 log.warning(
                     "logto.resend_set_password_failed",
                     user_id=logto_user_id,
-                    status=patch_resp.status_code,
+                    email=email,
                 )
                 return False
 
