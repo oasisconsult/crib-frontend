@@ -81,10 +81,9 @@ async def _get_m2m_token() -> str:
     s = get_settings()
 
     base_url = str(s.logto_endpoint)
-    admin_url = str(s.logto_admin_api_endpoint)
+    resource = str(s.logto_admin_api_resource)
 
     url = f"{base_url.rstrip('/')}/oidc/token"
-    resource = f"{admin_url.rstrip('/')}/api"
 
     log.info("logto.m2m_request", url=url, resource=resource)
 
