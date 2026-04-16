@@ -209,7 +209,7 @@ async def test_create_tenant_user_happy_path_new_user():
 @pytest.mark.asyncio
 async def test_create_tenant_user_existing_user():
     """
-    Existing user flow: search for user by email → found → link to existing →
+    Existing user flow: create attempt returns 422 conflict → find existing user by email →
     add to org → assign role → NO welcome email (not a new user).
     """
     from app.services import logto_service
@@ -221,12 +221,14 @@ async def test_create_tenant_user_existing_user():
         async def get(self, url, **kwargs):
             self.calls.append(("GET", url))
             if "/users" in url and "organizations" not in url:
-                # Search returns existing user
+                # Search returns existing user after 422 conflict
                 return _resp(200, [{"id": existing_id}])
             return self._find(url)
 
         async def post(self, url, **kwargs):
             self.calls.append(("POST", url))
+            if "/users" in url and "organizations" not in url:
+                return _resp(422, {})  # Create conflict for existing user
             if "organizations" in url and "roles" not in url:
                 return _resp(201, {})  # Add to org
             if "roles" in url:

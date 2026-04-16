@@ -231,17 +231,31 @@ async def create_tenant_user(
         is_new_user = False
 
         async with httpx.AsyncClient(timeout=10) as client:
-            # ─ Step 1: Search for existing user by email ──────────────────────
-            search_resp = await client.get(
+            # ─ Step 1: Create the user, or resolve conflict if they already exist ──
+            create_resp = await client.post(
                 f"{base}/users",
-                params={"search": email, "searchFields": "primaryEmail"},
+                json={
+                    "primaryEmail": email,
+                    "name": f"{first_name} {last_name}",
+                    "username": email.split("@")[0].lower(),
+                },
                 headers=headers,
             )
-            search_resp.raise_for_status()
-            existing_users = search_resp.json()
 
-            if existing_users:
-                # User exists — link to existing account
+            if create_resp.status_code == 422:
+                # Conflict: the user already exists in Logto.
+                search_resp = await client.get(
+                    f"{base}/users",
+                    params={"search": email},
+                    headers=headers,
+                )
+                search_resp.raise_for_status()
+                existing_users = search_resp.json()
+
+                if not existing_users:
+                    log.warning("logto.user_not_found_after_conflict", email=email)
+                    return None
+
                 logto_user_id = existing_users[0]["id"]
                 log.info(
                     "logto.user_found_existing",
@@ -249,22 +263,11 @@ async def create_tenant_user(
                     logto_user_id=logto_user_id,
                 )
             else:
-                # User doesn't exist — create new user with password
-                is_new_user = True
-                temp_password = _generate_temp_password()
-                
-                create_resp = await client.post(
-                    f"{base}/users",
-                    json={
-                        "primaryEmail": email,
-                        "name": f"{first_name} {last_name}",
-                        "username": email.split("@")[0].lower(),
-                    },
-                    headers=headers,
-                )
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
                 log.info("logto.user_created_new", email=email, logto_user_id=logto_user_id)
+                is_new_user = True
+                temp_password = _generate_temp_password()
 
                 # ─ Step 2: Set password for new user ─────────────────────────
                 password_set = await _set_user_password(
