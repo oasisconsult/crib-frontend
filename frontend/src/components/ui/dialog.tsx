@@ -38,7 +38,7 @@ const DialogContent = React.forwardRef<
       className={cn(
         "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
         "w-full max-w-lg",
-        "bg-card text-card-foreground rounded-[14px] border border-border",
+        "bg-white dark:bg-[#111827] text-card-foreground rounded-[14px] border border-border",
         "shadow-[0_24px_48px_rgba(15,23,42,0.16),0_8px_16px_rgba(15,23,42,0.08)]",
         "dark:shadow-[0_24px_48px_rgba(0,0,0,0.5),0_8px_16px_rgba(0,0,0,0.3)]",
         "outline-none",

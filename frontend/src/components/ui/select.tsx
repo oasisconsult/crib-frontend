@@ -79,7 +79,7 @@ const SelectContent = React.forwardRef<
       ref={ref}
       className={cn(
         "relative z-50 max-h-80 min-w-[8rem] overflow-hidden",
-        "rounded-[10px] border border-border bg-popover text-popover-foreground",
+        "rounded-[10px] border border-border bg-white dark:bg-[#111827] text-popover-foreground",
         "shadow-[0_4px_16px_rgba(15,23,42,0.10),0_1px_4px_rgba(15,23,42,0.06)]",
         "dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),0_1px_4px_rgba(0,0,0,0.3)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
