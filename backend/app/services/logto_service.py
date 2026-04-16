@@ -58,7 +58,9 @@ async def _get_m2m_token() -> str:
 
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
-            f"{s.logto_admin_endpoint}oidc/token",
+            # OIDC token endpoint is on port 3001 (logto_endpoint), NOT port 3002 (admin console).
+            # Resource is the Management API identifier, which lives at logto_admin_endpoint/api.
+            f"{s.logto_endpoint}oidc/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": s.logto_m2m_app_id,
@@ -66,7 +68,6 @@ async def _get_m2m_token() -> str:
                 "resource": f"{s.logto_admin_endpoint}api",
                 "scope": "all",
             },
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         resp.raise_for_status()
         return resp.json()["access_token"]
