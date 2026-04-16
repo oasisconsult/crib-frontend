@@ -8,7 +8,7 @@ Used for:
   - Resending login credentials from the admin UI
 
 Auth flow:
-  POST {logto_admin_endpoint}/oidc/token  (client_credentials)
+  POST {logto_admin_api_endpoint}/oidc/token  (client_credentials)
   → Bearer token for Management API calls
 
 All functions are no-ops when M2M credentials are not configured,
@@ -59,13 +59,13 @@ async def _get_m2m_token() -> str:
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             # OIDC token endpoint is on port 3001 (logto_endpoint), NOT port 3002 (admin console).
-            # Resource is the Management API identifier, which lives at logto_admin_endpoint/api.
+            # Resource is the Management API identifier, which lives at logto_admin_api_endpoint/api.
             f"{s.logto_endpoint}oidc/token",
             data={
                 "grant_type": "client_credentials",
                 "client_id": s.logto_m2m_app_id,
                 "client_secret": s.logto_m2m_app_secret,
-                "resource": f"{s.logto_admin_endpoint}api",
+                "resource": f"{s.logto_admin_api_endpoint}api",
                 "scope": "all",
             },
         )
