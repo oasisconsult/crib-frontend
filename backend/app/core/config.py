@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     logto_app_secret: str = ""
     logto_api_resource: str = "http://localhost:8001"  # the API resource identifier in Logto
     logto_admin_endpoint: AnyHttpUrl = "http://localhost:3002/"  # type: ignore[assignment]
-    logto_admin_api_resource: AnyHttpUrl = "https://default.logto.app/api"  # type: ignore # the Management API resource identifier in Logto
+    logto_admin_api_resource: AnyHttpUrl = "http://default.logto.app/api"  # type: ignore # the Management API resource identifier in Logto
     logto_m2m_app_id: str = ""
     logto_m2m_app_secret: str = ""
     # Optional: override JWKS fetch URL with a Docker-internal address while keeping

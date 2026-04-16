@@ -17,6 +17,7 @@ so tests (which do not have real Logto) pass without mocking.
 
 from __future__ import annotations
 
+import resource
 import secrets
 import string
 
@@ -80,8 +81,10 @@ async def _get_m2m_token() -> str:
     
     s = get_settings()
 
-    base_url = str(s.logto_endpoint)
-    resource = str(s.logto_admin_api_resource)
+    # base_url = str(s.logto_endpoint)
+    base_url = f"http://logto:3001"
+    # resource = str(s.logto_admin_api_resource)
+    resource = f"http://default.logto.app/api"
 
     url = f"{base_url.rstrip('/')}/oidc/token"
 

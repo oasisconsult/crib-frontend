@@ -55,7 +55,7 @@ async def _create_logto_org(name: str, slug: str) -> str:
                 "client_id": settings.logto_m2m_app_id,
                 "client_secret": settings.logto_m2m_app_secret,
                 "scope": "all",
-                "resource": f"{settings.logto_admin_endpoint}api",
+                "resource": f"{settings.logto_admin_api_resource}",
             },
         )
         token_resp.raise_for_status()
