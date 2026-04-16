@@ -54,29 +54,57 @@ def _generate_temp_password() -> str:
 async def _get_m2m_token() -> str:
     """Exchange M2M client credentials for a Management API Bearer token."""
     from app.core.config import get_settings
+    # s = get_settings()
+    # url = f"{s.logto_endpoint}oidc/token"
+
+    # async with httpx.AsyncClient(timeout=10) as client:
+    #     resp = await client.post(
+    #         url,
+    #         # OIDC token endpoint is on port 3001 (logto_endpoint), NOT port 3002 (admin console).
+    #         # Resource is the Management API identifier, which lives at logto_admin_api_endpoint/api.
+    #         data={
+    #             "grant_type": "client_credentials",
+    #             "client_id": s.logto_m2m_app_id,
+    #             "client_secret": s.logto_m2m_app_secret,
+    #             "resource": f"{s.logto_admin_api_endpoint}api",
+    #             "scope": "all",
+    #         },
+    #     )
+    #     log.debug("logto.m2m_token_response", status=resp.status_code, response=resp.text)
+    #     log.info("logto.m2m_token_obtained", status=resp.status_code)
+    #     log.info("logto_admin_api_endpoint", status=resp.status_code, response=resp.text)
+    #     log.info("logto.m2m_final_url", url=str(resp.request.url))
+    #     log.debug("logto.m2m_token_response", status=resp.status_code, response=resp.text)
+    #     resp.raise_for_status()
+    #     return resp.json()["access_token"]
+    
     s = get_settings()
-    url = f"{s.logto_endpoint}oidc/token"
+
+    base_url = str(s.logto_endpoint)
+    admin_url = str(s.logto_admin_api_endpoint)
+
+    url = f"{base_url.rstrip('/')}/oidc/token"
+    resource = f"{admin_url.rstrip('/')}/api"
+
+    log.info("logto.m2m_request", url=url, resource=resource)
 
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             url,
-            # OIDC token endpoint is on port 3001 (logto_endpoint), NOT port 3002 (admin console).
-            # Resource is the Management API identifier, which lives at logto_admin_api_endpoint/api.
+            auth=(s.logto_m2m_app_id, s.logto_m2m_app_secret),
             data={
                 "grant_type": "client_credentials",
-                "client_id": s.logto_m2m_app_id,
-                "client_secret": s.logto_m2m_app_secret,
-                "resource": f"{s.logto_admin_api_endpoint}api",
+                "resource": resource,
                 "scope": "all",
             },
         )
-        log.debug("logto.m2m_token_response", status=resp.status_code, response=resp.text)
-        log.info("logto.m2m_token_obtained", status=resp.status_code)
-        log.info("logto_admin_api_endpoint", status=resp.status_code, response=resp.text)
-        log.info("logto.m2m_final_url", url=str(resp.request.url))
-        log.debug("logto.m2m_token_response", status=resp.status_code, response=resp.text)
-        resp.raise_for_status()
-        return resp.json()["access_token"]
+
+    log.info("logto.m2m_response", status=resp.status_code)
+    log.debug("logto.m2m_final_url", url=str(resp.request.url))
+    log.debug("logto.m2m_response_body", body=resp.text)
+
+    resp.raise_for_status()
+    return resp.json()["access_token"]
 
 
 # ── Organisation role lookup ───────────────────────────────────────────────────
