@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     redis_ttl_seconds: int = 300  # default cache TTL
 
     # ── Logto (OIDC) ─────────────────────────────────────────────────────────
-    logto_endpoint: AnyHttpUrl = "http://localhost:3001/"  # type: ignore[assignment]
+    logto_endpoint: AnyHttpUrl = "http://logto:3001/"  # type: ignore[assignment]
     logto_app_id: str = ""
     logto_app_secret: str = ""
     logto_api_resource: str = "http://localhost:8001"  # the API resource identifier in Logto
