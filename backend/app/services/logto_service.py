@@ -219,7 +219,8 @@ async def create_tenant_user(
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
         }
-        base = str(s.logto_management_api_base)
+        # base = str(s.logto_management_api_base)
+        base = f"http://logto:3001/api"
 
         async with httpx.AsyncClient(timeout=10) as client:
             # 1. Create (or look up) the user ──────────────────────────────────
