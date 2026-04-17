@@ -315,7 +315,7 @@ export default function PropertiesPage() {
       />
 
       {/* Toolbar */}
-      <div className="flex gap-2.5 items-center flex-wrap bg-white px-4 py-3 rounded-[10px] border border-border shadow-[0_1px_3px_rgba(15,23,42,0.05)] dark:bg-card dark:shadow-none">
+      <div className="flex gap-2.5 items-center flex-wrap bg-[hsl(var(--card))] px-4 py-3 rounded-[10px] border border-border shadow-[0_1px_3px_rgba(15,23,42,0.05)] dark:shadow-none">
         <FilterBar
           search={search}
           onSearchChange={setSearch}
@@ -405,7 +405,7 @@ export default function PropertiesPage() {
         </div>
       ) : (
         /* List view */
-        <div className="rounded-[12px] border border-border overflow-hidden bg-white shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:bg-card dark:shadow-none">
+        <div className="rounded-[12px] border border-border overflow-hidden bg-[hsl(var(--card))] shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:shadow-none">
           <table className="w-full text-sm" role="table" aria-label="Properties list">
             <thead>
               <tr className="border-b border-border bg-muted/40">

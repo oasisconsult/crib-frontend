@@ -48,7 +48,7 @@ function KpiCard({
   const inner = (
     <div
       className={cn(
-        "bg-white rounded-[12px] border border-border p-5 flex flex-col gap-4",
+        "bg-[hsl(var(--card))] rounded-[12px] border border-border p-5 flex flex-col gap-4",
         "shadow-[0_1px_3px_rgba(15,23,42,0.06),0_1px_2px_rgba(15,23,42,0.04)]",
         "dark:shadow-none",
         "hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)] dark:hover:shadow-[0_4px_12px_rgba(0,0,0,0.4)]",
@@ -298,7 +298,7 @@ function QuickAction({
     <Link
       href={href as any}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-[10px] border border-border bg-white dark:bg-card",
+        "flex items-center gap-3 p-3 rounded-[10px] border border-border bg-[hsl(var(--card))]",
         "hover:border-border/80 hover:shadow-[0_2px_8px_rgba(15,23,42,0.07)]",
         "dark:hover:shadow-[0_2px_8px_rgba(0,0,0,0.3)]",
         "transition-all duration-150 group",
@@ -474,7 +474,7 @@ export function Dashboard() {
         {/* Properties — 3 cols */}
         <section
           aria-labelledby="dash-properties-heading"
-          className="lg:col-span-3 bg-white rounded-[12px] border border-border shadow-[0_1px_4px_rgba(0,62,255,0.07)] dark:bg-card dark:shadow-none"
+          className="lg:col-span-3 bg-[hsl(var(--card))] rounded-[12px] border border-border shadow-[0_1px_4px_rgba(15,23,42,0.06)] dark:shadow-none"
         >
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
             <div>
@@ -505,7 +505,7 @@ export function Dashboard() {
         {/* Activity — 2 cols */}
         <section
           aria-labelledby="dash-activity-heading"
-          className="lg:col-span-2 bg-white rounded-[12px] border border-border shadow-[0_1px_4px_rgba(0,62,255,0.07)] dark:bg-card dark:shadow-none"
+          className="lg:col-span-2 bg-[hsl(var(--card))] rounded-[12px] border border-border shadow-[0_1px_4px_rgba(15,23,42,0.06)] dark:shadow-none"
         >
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
             <div>
@@ -536,7 +536,7 @@ export function Dashboard() {
       {/* Quick actions */}
       <section
         aria-labelledby="dash-quickactions-heading"
-        className="bg-white rounded-[12px] border border-border shadow-[0_1px_4px_rgba(0,62,255,0.07)] dark:bg-card dark:shadow-none"
+        className="bg-[hsl(var(--card))] rounded-[12px] border border-border shadow-[0_1px_4px_rgba(15,23,42,0.06)] dark:shadow-none"
       >
         <div className="px-5 py-3.5 border-b border-border">
           <h2
