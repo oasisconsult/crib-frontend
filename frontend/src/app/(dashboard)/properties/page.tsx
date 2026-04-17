@@ -1,17 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Plus, Building2, MapPin, Home, LayoutGrid, List, ChevronRight, TrendingUp,
+  Plus, Building2, Home, MapPin, LayoutGrid, List, ChevronRight, TrendingUp,
+  Warehouse, Hotel, Briefcase, Castle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CardSkeleton } from "@/components/common/LoadingSkeleton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { FilterBar } from "@/components/common/FilterBar";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrencyCompact } from "@/utils/formatters";
 import { useProperties } from "@/hooks/useProperties";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/utils/cn";
@@ -42,6 +41,16 @@ const TYPE_LABELS: Record<PropertyType, string> = {
 const ALL_TYPES: PropertyType[] = ["flat", "house", "hostel", "commercial", "villa"];
 const ALL_STATUSES: PropertyStatus[] = ["active", "inactive", "maintenance"];
 
+// ── Property type config ──────────────────────────────────────────────────
+
+const TYPE_CONFIG: Record<PropertyType, { gradient: string; icon: React.ComponentType<{ className?: string }> }> = {
+  flat:       { gradient: "from-[hsl(168,82%,32%)] to-[hsl(187,83%,28%)]", icon: Building2 },
+  house:      { gradient: "from-[hsl(43,90%,40%)] to-[hsl(32,89%,44%)]",  icon: Home },
+  hostel:     { gradient: "from-[hsl(230,28%,26%)] to-[hsl(230,28%,18%)]", icon: Hotel },
+  commercial: { gradient: "from-[hsl(187,83%,26%)] to-[hsl(230,28%,22%)]", icon: Briefcase },
+  villa:      { gradient: "from-[hsl(170,81%,28%)] to-[hsl(168,82%,20%)]", icon: Castle },
+};
+
 // ── Grid card ─────────────────────────────────────────────────────────────
 
 function PropertyCard({ property, onClick }: { property: Property; onClick: () => void }) {
@@ -49,84 +58,126 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
     ? Math.round((property.occupiedUnits / property.totalUnits) * 100)
     : 0;
 
+  const typeConf = TYPE_CONFIG[property.type] ?? TYPE_CONFIG.flat;
+  const TypeIcon = typeConf.icon;
+
+  const occupancyColor = occupancyPct >= 80
+    ? "bg-[hsl(var(--success))]"
+    : occupancyPct >= 50
+    ? "bg-[hsl(var(--warning))]"
+    : "bg-[hsl(var(--danger))]";
+
+  const occupancyTextColor = occupancyPct >= 80
+    ? "text-[hsl(var(--success))]"
+    : occupancyPct >= 50
+    ? "text-[hsl(var(--warning))]"
+    : "text-[hsl(var(--danger))]";
+
   return (
-    // WCAG 2.1.1 — card is a button (keyboard activatable); role conveys purpose
-    <Card
-      className="cursor-pointer hover:shadow-lg hover:border-border/80 transition-all duration-200 group focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background"
+    <div
+      className="group cursor-pointer rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden focus-within:ring-2 focus-within:ring-[hsl(var(--ring))] focus-within:ring-offset-2"
       onClick={onClick}
       role="article"
     >
+      {/* ── Header ── */}
       {property.coverImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={property.coverImage}
           alt={`${property.name} cover`}
-          className="w-full h-40 object-cover rounded-t-xl"
+          className="w-full h-36 object-cover"
         />
       ) : (
-        <div className="w-full h-40 rounded-t-xl bg-accent flex items-center justify-center" aria-hidden="true">
-          <Building2 className="h-12 w-12 text-accent-foreground/60" />
-        </div>
-      )}
+        <div
+          className={cn("relative h-36 bg-gradient-to-br", typeConf.gradient)}
+          aria-hidden="true"
+        >
+          {/* Decorative circles */}
+          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/10" />
 
-      <CardHeader className="pb-3 pt-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1">
-            <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors">
-              {property.name}
-            </CardTitle>
-            <CardDescription className="flex items-center gap-2 text-sm mt-1">
-              <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
-              {property.address.city}, {property.address.country}
-            </CardDescription>
+          {/* Centred icon */}
+          <div className="flex h-full items-center justify-center relative z-10">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 border border-white/30 backdrop-blur-sm">
+              <TypeIcon className="h-7 w-7 text-white" />
+            </div>
           </div>
-          <span className={cn("text-xs font-medium rounded-full px-3 py-1 capitalize shrink-0", STATUS_STYLES[property.status])}>
+
+          {/* Type pill — bottom left */}
+          <span className="absolute bottom-3 left-3 text-[10px] font-semibold rounded-md bg-black/25 text-white/90 px-2 py-0.5 backdrop-blur-sm">
+            {TYPE_LABELS[property.type] ?? property.type}
+          </span>
+
+          {/* Status — top right */}
+          <span className={cn(
+            "absolute top-3 right-3 flex items-center gap-1 text-[10px] font-semibold rounded-full px-2.5 py-1 capitalize",
+            STATUS_STYLES[property.status],
+          )}>
+            <span className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[property.status])} />
             {property.status}
           </span>
         </div>
-        <Badge variant="secondary" className="text-sm capitalize w-fit">
-          {TYPE_LABELS[property.type] ?? property.type}
-        </Badge>
-      </CardHeader>
+      )}
 
-      <CardContent className="pt-0 pb-5">
-        <div className="grid grid-cols-3 gap-4 text-sm">
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Total Units</p>
-            <div className="flex items-center gap-2 font-semibold text-foreground">
-              <Home className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              {property.totalUnits}
-            </div>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Occupied</p>
-            <p className="font-semibold text-primary">
-              {property.occupiedUnits}/{property.totalUnits}
-            </p>
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Occupancy</p>
-            <p className={cn("font-semibold", occupancyPct >= 80 ? "text-emerald-700 dark:text-emerald-400" : "text-foreground")}>
-              {occupancyPct}%
-            </p>
-          </div>
+      {/* ── Body ── */}
+      <div className="p-4">
+        {/* Name + location */}
+        <div className="mb-3">
+          <h3 className="font-semibold text-[hsl(var(--foreground))] text-[15px] leading-snug group-hover:text-[hsl(var(--primary))] transition-colors">
+            {property.name}
+          </h3>
+          <p className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
+            <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" />
+            {property.address.city}, {property.address.country}
+          </p>
         </div>
-        <div className="mt-4 pt-4 border-t border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Monthly Revenue</p>
-              <p className="text-xl font-bold text-foreground">
-                {formatCurrency(property.monthlyRevenue, property.currency || "UGX")}
+
+        {/* Stats row */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          {[
+            { label: "Units",    value: String(property.totalUnits) },
+            { label: "Occupied", value: `${property.occupiedUnits}/${property.totalUnits}`, colored: true },
+            { label: "Rate",     value: `${occupancyPct}%`, rate: true },
+          ].map((s) => (
+            <div key={s.label} className="rounded-lg bg-[hsl(var(--muted))]/60 px-2 py-1.5">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-0.5">{s.label}</p>
+              <p className={cn(
+                "text-sm font-bold",
+                s.colored ? "text-[hsl(var(--primary))]" : s.rate ? occupancyTextColor : "text-[hsl(var(--foreground))]",
+              )}>
+                {s.value}
               </p>
             </div>
-            <div className="flex items-center text-emerald-700 dark:text-emerald-400">
-              <TrendingUp className="h-4 w-4 mr-1" aria-hidden="true" />
-              <span className="text-sm font-medium">+12%</span>
-            </div>
+          ))}
+        </div>
+
+        {/* Occupancy bar */}
+        <div
+          className="h-1.5 w-full bg-[hsl(var(--muted))] rounded-full overflow-hidden mb-3"
+          role="progressbar"
+          aria-valuenow={occupancyPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${occupancyPct}% occupied`}
+        >
+          <div className={cn("h-full rounded-full transition-all duration-500", occupancyColor)} style={{ width: `${occupancyPct}%` }} />
+        </div>
+
+        {/* Revenue */}
+        <div className="flex items-center justify-between pt-3 border-t border-[hsl(var(--border))]">
+          <div>
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-0.5">Monthly Revenue</p>
+            <p className="text-lg font-bold text-[hsl(var(--foreground))]">
+              {formatCurrencyCompact(property.monthlyRevenue, property.currency || "UGX")}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 rounded-lg bg-[hsl(var(--success))]/10 px-2.5 py-1.5">
+            <TrendingUp className="h-3.5 w-3.5 text-[hsl(var(--success))]" aria-hidden="true" />
+            <span className="text-xs font-semibold text-[hsl(var(--success))]">+12%</span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -191,7 +242,7 @@ function PropertyRow({ property, onClick }: { property: Property; onClick: () =>
       <td className="py-3 px-4 text-sm font-semibold hidden md:table-cell text-foreground">
         <div className="flex items-center gap-1">
           <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
-          {formatCurrency(property.monthlyRevenue, property.currency || "UGX")}
+          {formatCurrencyCompact(property.monthlyRevenue, property.currency || "UGX")}
         </div>
       </td>
       <td className="py-3 px-4">

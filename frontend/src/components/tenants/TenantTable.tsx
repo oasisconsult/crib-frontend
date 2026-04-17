@@ -76,13 +76,7 @@ export function TenantTable() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[hsl(var(--foreground))]">Tenants</h1>
-          <p className="text-base text-[hsl(var(--muted-foreground))] mt-1">
-            Manage tenants, onboarding, and documents
-          </p>
-        </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
         <div className="flex gap-3">
           <Button variant="outline" size="sm">
             <Mail className="h-4 w-4 mr-2" />
