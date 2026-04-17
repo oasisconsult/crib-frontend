@@ -54,7 +54,7 @@ export function Header() {
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden text-[#696974] hover:text-[#171725] hover:bg-[#F1F1F5]"
+        className="md:hidden"
         onClick={() => setMobileNavOpen(true)}
         aria-label="Open navigation menu"
       >
@@ -68,7 +68,7 @@ export function Header() {
 
       {/* Search trigger */}
       <button
-        className="hidden md:flex flex-1 max-w-[380px] items-center gap-2 h-10 px-3 rounded-[8px] text-sm border transition-colors text-muted-foreground cursor-pointer bg-header border-border hover:border-primary/30 focus:outline-none"
+        className="hidden md:flex flex-1 max-w-[380px] items-center gap-2 h-10 px-3 rounded-[8px] text-sm border transition-colors text-muted-foreground cursor-pointer bg-[hsl(var(--input))] border-[hsl(var(--border))] hover:border-[hsl(var(--primary))]/40 hover:shadow-[0_0_0_3px_hsl(var(--accent))] focus:outline-none"
         onClick={() => setCommandPaletteOpen(true)}
         aria-label="Open search"
       >
@@ -95,8 +95,8 @@ export function Header() {
               className={cn(
                 "flex items-center justify-center h-9 w-9 rounded-[8px] transition-all duration-150",
                 preference === value
-                  ? "bg-card text-primary shadow-sm border border-border"
-                  : "text-muted-foreground hover:text-foreground hover:bg-card",
+                  ? "bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] shadow-sm border border-[hsl(var(--primary))]/20"
+                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -127,7 +127,7 @@ export function Header() {
             >
               <Avatar className="h-7 w-7">
                 <AvatarImage src={user?.avatar} alt={user?.name} />
-                <AvatarFallback className="text-xs font-semibold text-white bg-[#0062FF]">
+                <AvatarFallback className="text-xs font-semibold text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))]">
                   {getInitials(user?.name ?? "U")}
                 </AvatarFallback>
               </Avatar>
@@ -164,8 +164,8 @@ export function Header() {
                     className={cn(
                       "flex-1 flex flex-col items-center gap-1 py-1.5 rounded-[6px] text-[10px] font-medium transition-colors",
                       preference === value
-                        ? "bg-[hsl(var(--sidebar-active-bg))] text-[#0062FF]"
-                        : "text-muted-foreground hover:bg-header",
+                        ? "bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))]"
+                        : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))]",
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" />

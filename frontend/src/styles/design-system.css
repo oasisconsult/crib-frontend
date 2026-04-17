@@ -1,140 +1,163 @@
 /*
- * CRIB Design System — v3.0
- * Reference: Stripe, Linear, Vercel aesthetics applied to real estate SaaS
- * Brand palette: #0062FF primary · #0F172A near-black · #64748B muted
+ * CRIB Design System — v4.0
+ * Direction: Rightmove-style property platform — bright, warm, approachable
+ * Brand palette: #14C6A3 teal · #1E2235 navy · #F5B000 yellow
  * ─────────────────────────────────────────────────────────────────────────
  */
 
 /* ─── SHADCN / TAILWIND CSS VARIABLES ──────────────────────────────────────
-   These drive every Tailwind utility that references hsl(var(--*))
-   Calibrated to: background #F8FAFC · card #FFFFFF · primary #0062FF
+   HSL triplets (no commas) — consumed as hsl(var(--*))
+   Calibrated to: background #FAFAFA · card #FFFFFF · primary #14C6A3
    ─────────────────────────────────────────────────────────────────────── */
 
 /* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
 :root {
-  --background: 40 13% 98%; /* #FCFBF7 — cream white canvas */
-  --foreground: 215 22% 14%; /* #1F2B43 — dark navy text */
-  --card: 42 12% 99%; /* #FEFEFC — soft cream card surface */
-  --card-foreground: 215 22% 14%;
-  --popover: 42 12% 99%; /* cream white popover */
-  --popover-foreground: 215 22% 14%;
-  --primary: 217 86% 27%; /* #0B3D91 — trusted navy */
-  --primary-foreground: 0 0% 100%; /* #FFFFFF */
-  --secondary: 213 65% 91%; /* #D9E6FF — light-wash denim */
-  --secondary-foreground: 215 22% 14%;
-  --muted: 42 12% 96%; /* #F6F7F2 — cream muted surface */
-  --muted-foreground: 215 18% 45%; /* #6D7A92 */
-  --accent: 176 64% 74%; /* #6AD1CE — soft turquoise */
-  --accent-foreground: 215 22% 14%;
-  --destructive: 0 72% 51%; /* #DC2626 */
+  --background: 0 0% 97%;              /* #F7F7F7 — clean off-white canvas */
+  --foreground: 230 28% 16%;           /* #1E2235 — navy text */
+  --card: 0 0% 100%;                   /* #FFFFFF — white card surface */
+  --card-foreground: 230 28% 16%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 230 28% 16%;
+  --primary: 168 82% 43%;              /* #14C6A3 — brand teal */
+  --primary-foreground: 0 0% 100%;     /* white on teal */
+  --secondary: 168 42% 90%;            /* #CBF0E8 — light teal wash */
+  --secondary-foreground: 170 81% 25%; /* #0A7362 — dark teal text */
+  --muted: 210 20% 95%;                /* #EEF1F5 — light grey surface */
+  --muted-foreground: 215 16% 47%;     /* #6D7A92 — subtle text */
+  --accent: 168 55% 92%;               /* #D8F5EE — very light teal accent */
+  --accent-foreground: 170 81% 28%;    /* #0D8470 */
+  --destructive: 0 72% 51%;            /* #DC2626 */
   --destructive-foreground: 0 0% 100%;
-  --border: 210 26% 90%; /* #D9E2F5 — soft denim border */
-  --input: 40 13% 96%; /* warmer off-white fields */
-  --ring: 217 86% 31%; /* #1340A6 — deeper navy focus */
-  --radius: 0.75rem; /* 12px — more modern rounded corners */
+  --success: 158 64% 32%;              /* #18855A */
+  --success-foreground: 0 0% 100%;
+  --warning: 43 100% 48%;              /* #F5B000 */
+  --warning-foreground: 230 28% 16%;
+  --danger: 0 72% 51%;                 /* alias for destructive */
+  --danger-foreground: 0 0% 100%;
+  --info: 187 83% 34%;                 /* #0F8FA0 — cyan */
+  --info-foreground: 0 0% 100%;
+  --border: 210 22% 88%;               /* #DDE3EE */
+  --input: 0 0% 100%;                  /* white inputs */
+  --ring: 168 82% 43%;                 /* teal focus ring */
+  --radius: 0.75rem;
 
   /* Header */
-  --header: 42 12% 99%; /* #FEFEFC */
+  --header: 0 0% 100%;                 /* white header */
 
-  /* Sidebar — WHITE in light mode */
-  --sidebar: 0 0% 100%; /* #FFFFFF */
-  --sidebar-foreground: 215 16% 47%; /* #64748B inactive */
-  --sidebar-border: 210 26% 90%; /* matches --border */
-  --sidebar-active-bg: 215 100% 96%; /* #EEF4FF */
-  --sidebar-active-fg: 217 86% 27%; /* #0B3D91 */
-  --sidebar-hover-bg: 213 65% 96%; /* #ECF2FF */
-  --sidebar-section-fg: 215 16% 47%; /* #64748B */
+  /* Sidebar — white in light mode */
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 215 16% 47%;   /* #6D7A92 */
+  --sidebar-border: 210 22% 90%;
+  --sidebar-active-bg: 168 58% 92%;    /* #CCEEE7 — light teal */
+  --sidebar-active-fg: 170 81% 31%;    /* #0F8F7A — secondary teal */
+  --sidebar-hover-bg: 168 45% 96%;     /* #EDF9F6 — very light teal */
+  --sidebar-section-fg: 215 16% 58%;   /* subdued section labels */
 }
 
 /* ── DARK MODE ──────────────────────────────────────────────────────────── */
 .dark {
-  --background: 215 20% 97%; /* #F5F7FB — soft off-white canvas */
-  --foreground: 215 18% 13%; /* #1E293B — dark but gentle text */
-  --card: 210 12% 97%; /* #F5F7FA — paper-white surface */
-  --card-foreground: 215 18% 13%;
-  --popover: 210 14% 98%; /* #F8FAFC */
-  --popover-foreground: 215 18% 13%;
-  --primary: 221 100% 50%; /* #0062FF */
-  --primary-foreground: 0 0% 100%;
-  --secondary: 210 25% 92%; /* #E7EAF3 */
-  --secondary-foreground: 215 18% 13%;
-  --muted: 210 24% 94%; /* #EEF2FF */
-  --muted-foreground: 215 20% 45%; /* #6B7A8F — subtle contrast */
-  --accent: 217 33% 97%; /* #F3F6FE */
-  --accent-foreground: 221 100% 50%;
+  --background: 230 28% 11%;           /* #161929 — deep navy canvas */
+  --foreground: 210 20% 88%;           /* #D8DDE8 — off-white text */
+  --card: 230 25% 15%;                 /* #1C2033 — navy card surface */
+  --card-foreground: 210 20% 88%;
+  --popover: 230 25% 15%;
+  --popover-foreground: 210 20% 88%;
+  --primary: 168 70% 48%;              /* slightly brighter teal on dark */
+  --primary-foreground: 230 28% 10%;
+  --secondary: 230 20% 21%;            /* #282D40 */
+  --secondary-foreground: 210 15% 75%;
+  --muted: 230 22% 19%;                /* #212636 */
+  --muted-foreground: 215 15% 55%;
+  --accent: 230 22% 21%;
+  --accent-foreground: 168 60% 70%;
   --destructive: 0 63% 50%;
   --destructive-foreground: 0 0% 100%;
-  --border: 214 32% 88%; /* #E7EAF4 */
-  --input: 214 32% 90%;
-  --ring: 221 100% 60%;
+  --success: 158 58% 40%;
+  --success-foreground: 0 0% 100%;
+  --warning: 43 100% 55%;
+  --warning-foreground: 230 28% 12%;
+  --danger: 0 63% 50%;
+  --danger-foreground: 0 0% 100%;
+  --info: 187 70% 45%;
+  --info-foreground: 230 28% 10%;
+  --border: 230 22% 24%;               /* #2A3048 — subtle dark border */
+  --input: 230 22% 20%;                /* #232839 — dark input surface */
+  --ring: 168 70% 50%;
 
   /* Header */
-  --header: 215 18% 98%; /* #F8F9FC */
+  --header: 230 28% 14%;              /* #1A1F30 — dark navy header */
 
-  /* Sidebar — lighter neutral off-white tone */
-  --sidebar: 215 20% 98%; /* #F8F9FC */
-  --sidebar-foreground: 215 18% 45%; /* #6B7A8F */
-  --sidebar-border: 214 32% 88%;
-  --sidebar-active-bg: 221 100% 97%; /* #EEF4FF */
-  --sidebar-active-fg: 215 18% 13%; /* near-black */
-  --sidebar-hover-bg: 214 60% 97%; /* #F0F5FF */
-  --sidebar-section-fg: 215 18% 55%; /* #8A98B0 */
+  /* Sidebar — navy-based */
+  --sidebar: 230 30% 13%;             /* #181D2E */
+  --sidebar-foreground: 210 15% 58%;
+  --sidebar-border: 230 22% 21%;
+  --sidebar-active-bg: 168 82% 14%;   /* #0D3028 — dark teal glow */
+  --sidebar-active-fg: 168 60% 72%;   /* #80DFD0 — bright teal text */
+  --sidebar-hover-bg: 230 20% 18%;    /* #212637 */
+  --sidebar-section-fg: 215 12% 48%;
 }
 
 /* ─── SEMANTIC BRAND TOKENS ─────────────────────────────────────────────────
-   Use these in components instead of raw hex — keeps changes in one place
+   Hex tokens for direct CSS usage — update here, changes everywhere
    ────────────────────────────────────────────────────────────────────────── */
 :root {
-  /* Brand */
-  --color-primary: #0b3d91;
-  --color-primary-hover: #092f72;
-  --color-primary-subtle: #e4ecff;
-  --color-primary-border: #a5b9f2;
+  /* Brand Teal */
+  --color-primary: #14c6a3;
+  --color-primary-hover: #0f8f7a;
+  --color-primary-dark: #0a6b5a;
+  --color-primary-subtle: #d8f5ee;
+  --color-primary-border: #7ddec8;
 
-  /* Sidebar (light mode) */
+  /* Sidebar */
   --color-sidebar-bg: #ffffff;
-  --color-sidebar-hover: #ecf2ff;
-  --color-sidebar-active: #0b3d91;
-  --color-sidebar-text: #64748b;
-  --color-sidebar-text-active: #1f2b43;
+  --color-sidebar-hover: #edf9f6;
+  --color-sidebar-active: #0f8f7a;
+  --color-sidebar-text: #6d7a92;
+  --color-sidebar-text-active: #1e2235;
 
   /* Text scale */
-  --color-text-primary: #0f172a;
+  --color-text-primary: #1e2235;
   --color-text-secondary: #475569;
-  --color-text-tertiary: #64748b;
+  --color-text-tertiary: #6d7a92;
   --color-text-disabled: #94a3b8;
 
-  /* Surfaces (light mode) */
-  --color-canvas: #fbfcfd;
-  --color-surface: #fcfdff;
-  --color-surface-raised: #fcfdff;
-  --color-surface-sunken: #f8f9fb;
+  /* Surfaces */
+  --color-canvas: #f7f7f7;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #f4f6f9;
 
   /* Borders */
-  --color-border: #e7edf3;
-  --color-border-strong: #cbd5e1;
-  --color-border-focus: #0062ff;
+  --color-border: #dde3ee;
+  --color-border-strong: #b8c4d9;
+  --color-border-focus: #14c6a3;
 
   /* Semantic status */
-  --color-success: #059669;
+  --color-success: #18855a;
   --color-success-subtle: #ecfdf5;
-  --color-success-border: #a7f3d0;
+  --color-success-border: #6ee7b7;
   --color-warning: #d97706;
   --color-warning-subtle: #fffaeb;
   --color-warning-border: #fce7a2;
   --color-danger: #dc2626;
   --color-danger-subtle: #fee2e2;
   --color-danger-border: #fecaca;
-  --color-info: #4dc7c3;
-  --color-info-subtle: #e2f7f4;
-  --color-info-border: #8ad9d3;
+  --color-info: #0f8fa0;
+  --color-info-subtle: #e0f5f7;
+  --color-info-border: #7ad2dd;
+
+  /* Accent palette */
+  --color-yellow: #f5b000;
+  --color-orange: #f28c18;
+  --color-navy: #1e2235;
+  --color-cyan: #0f8fa0;
 
   /* Shadows */
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
-  --shadow-md: 0 6px 18px rgba(15, 23, 42, 0.1);
-  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.14);
-  --shadow-xl: 0 24px 48px rgba(15, 23, 42, 0.18);
+  --shadow-xs: 0 1px 2px rgba(30, 34, 53, 0.04);
+  --shadow-sm: 0 1px 4px rgba(30, 34, 53, 0.07);
+  --shadow-md: 0 4px 16px rgba(30, 34, 53, 0.09);
+  --shadow-lg: 0 8px 28px rgba(30, 34, 53, 0.12);
+  --shadow-xl: 0 20px 44px rgba(30, 34, 53, 0.15);
 
   /* Geometry */
   --radius-sm: 4px;
@@ -156,14 +179,14 @@
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
   /* Type scale — 1.2 ratio, 14px base */
-  --text-xs: 0.75rem; /* 12px */
-  --text-sm: 0.875rem; /* 14px */
-  --text-base: 1rem; /* 16px */
-  --text-lg: 1.125rem; /* 18px */
-  --text-xl: 1.25rem; /* 20px */
-  --text-2xl: 1.5rem; /* 24px */
+  --text-xs: 0.75rem;   /* 12px */
+  --text-sm: 0.875rem;  /* 14px */
+  --text-base: 1rem;    /* 16px */
+  --text-lg: 1.125rem;  /* 18px */
+  --text-xl: 1.25rem;   /* 20px */
+  --text-2xl: 1.5rem;   /* 24px */
   --text-3xl: 1.875rem; /* 30px */
-  --text-4xl: 2.25rem; /* 36px */
+  --text-4xl: 2.25rem;  /* 36px */
 
   /* Z-index ladder */
   --z-base: 0;
@@ -196,27 +219,17 @@ body {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.5;
-  color: var(--foreground);
-  background-color: var(--background);
-}
-
-html.light body {
-  color: var(--foreground);
-  background-color: var(--background);
-}
-
-html.dark body {
-  color: var(--foreground);
-  background-color: var(--background);
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--background));
 }
 
 /* Selection */
 ::selection {
   background: var(--color-primary-subtle);
-  color: var(--color-primary);
+  color: var(--color-primary-hover);
 }
 
-/* Scrollbar (Webkit) */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -234,17 +247,15 @@ html.dark body {
 
 /* ─── TYPOGRAPHY ─────────────────────────────────────────────────────────── */
 
-/* Page title  — used by PageHeader */
 .ds-page-title {
   font-family: var(--font-display);
-  font-size: 1.25rem; /* 20px */
+  font-size: 1.25rem;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.3;
   color: var(--color-text-primary);
 }
 
-/* Section heading — card titles, section labels */
 .ds-section-title {
   font-size: var(--text-sm);
   font-weight: 600;
@@ -252,7 +263,6 @@ html.dark body {
   color: var(--color-text-primary);
 }
 
-/* Stat value — big numbers on KPI cards */
 .ds-stat-value {
   font-family: var(--font-display);
   font-size: 1.75rem;
@@ -262,7 +272,6 @@ html.dark body {
   color: var(--color-text-primary);
 }
 
-/* Label above inputs */
 .ds-field-label {
   font-size: var(--text-sm);
   font-weight: 500;
@@ -270,14 +279,12 @@ html.dark body {
   line-height: 1.4;
 }
 
-/* Caption / helper text */
 .ds-caption {
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
   line-height: 1.5;
 }
 
-/* Monospace — amounts, IDs */
 .ds-mono {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
@@ -286,7 +293,6 @@ html.dark body {
 
 /* ─── PAGE LAYOUT ────────────────────────────────────────────────────────── */
 
-/* Sidebar */
 .ds-sidebar {
   width: 240px;
   flex-shrink: 0;
@@ -307,7 +313,7 @@ html.dark body {
   display: flex;
   align-items: center;
   gap: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
@@ -327,7 +333,7 @@ html.dark body {
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: #ffffff;
+  color: var(--color-text-primary);
   white-space: nowrap;
 }
 
@@ -337,7 +343,7 @@ html.dark body {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--color-sidebar-text);
   white-space: nowrap;
 }
 
@@ -361,17 +367,18 @@ html.dark body {
 
 .ds-nav-item:hover {
   background: var(--color-sidebar-hover);
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--color-text-primary);
 }
 
 .ds-nav-item--active {
-  background: var(--color-primary);
-  color: #ffffff;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-hover);
   font-weight: 600;
 }
 
 .ds-nav-item--active:hover {
-  background: var(--color-primary-hover);
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-dark);
 }
 
 /* Header bar */
@@ -390,7 +397,6 @@ html.dark body {
 
 /* ─── SURFACE / CARD PATTERNS ────────────────────────────────────────────── */
 
-/* Standard card */
 .ds-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -398,7 +404,6 @@ html.dark body {
   box-shadow: var(--shadow-sm);
 }
 
-/* Stat / KPI card */
 .ds-stat-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -440,7 +445,6 @@ html.dark body {
   color: var(--color-danger);
 }
 
-/* Card section divider */
 .ds-card-header {
   padding: 16px 20px;
   border-bottom: 1px solid var(--color-border);
@@ -550,12 +554,11 @@ html.dark body {
 }
 .ds-badge--primary {
   background: var(--color-primary-subtle);
-  color: var(--color-primary);
+  color: var(--color-primary-hover);
 }
 
 /* ─── FORM ELEMENTS ──────────────────────────────────────────────────────── */
 
-/* Form field group */
 .ds-field {
   display: flex;
   flex-direction: column;
@@ -576,7 +579,6 @@ html.dark body {
   gap: 4px;
 }
 
-/* Form section block */
 .ds-form-section {
   background: var(--color-surface);
   border: 1px solid var(--color-border);

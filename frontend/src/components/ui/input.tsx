@@ -11,23 +11,23 @@ const inputBase = [
   "flex w-full",
   "h-9",
   "rounded-[8px]",
-  "border border-input",
-  "bg-background",
+  "border border-[hsl(var(--border))]",
+  "bg-[hsl(var(--input))]",
   "px-3",
-  "text-sm text-foreground",
-  "placeholder:text-muted-foreground/60",
+  "text-sm text-[hsl(var(--foreground))]",
+  "placeholder:text-[hsl(var(--muted-foreground))]/60",
   "transition-[border-color,box-shadow] duration-150",
-  // WCAG 2.4.7 — visible focus indicator with ring offset for separation
+  // WCAG 2.4.7 — visible focus indicator
   "focus-visible:outline-none",
-  "focus-visible:border-primary",
-  "focus-visible:ring-2 focus-visible:ring-ring/20",
+  "focus-visible:border-[hsl(var(--primary))]",
+  "focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]/20",
   // Disabled state
-  "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:border-border",
-  "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground",
+  "disabled:cursor-not-allowed disabled:bg-[hsl(var(--muted))] disabled:text-[hsl(var(--muted-foreground))] disabled:border-[hsl(var(--border))]",
+  "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-[hsl(var(--foreground))]",
 ].join(" ");
 
 // WCAG 1.3.1 — error state uses both color AND border change (not color alone)
-const inputError = "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20";
+const inputError = "border-[hsl(var(--destructive))] focus-visible:border-[hsl(var(--destructive))] focus-visible:ring-[hsl(var(--destructive))]/20";
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, leftIcon, rightIcon, error, ...props }, ref) => {

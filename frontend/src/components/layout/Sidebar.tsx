@@ -140,7 +140,7 @@ export function Sidebar() {
             sidebarCollapsed ? "justify-center px-4" : "px-4 gap-2.5",
           )}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#0062FF] text-white">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
             <Building2 className="h-4 w-4" />
           </div>
           {!sidebarCollapsed && (
@@ -252,7 +252,7 @@ export function Sidebar() {
           {!sidebarCollapsed ? (
             <div className="px-3 pb-3">
               <div className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 hover:bg-[hsl(var(--sidebar-hover-bg))] group cursor-pointer transition-colors">
-                <div className="h-7 w-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-white bg-[#0062FF]">
+                <div className="h-7 w-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))]">
                   {getInitials(user?.name ?? "U")}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -279,7 +279,7 @@ export function Sidebar() {
             <div className="pb-2 flex justify-center">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold text-white bg-[#0062FF] cursor-pointer">
+                  <div className="h-7 w-7 rounded-full flex items-center justify-center text-[11px] font-bold text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))] cursor-pointer">
                     {getInitials(user?.name ?? "U")}
                   </div>
                 </TooltipTrigger>

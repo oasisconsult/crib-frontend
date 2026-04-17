@@ -21,7 +21,11 @@ const DropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      "flex cursor-default gap-2 select-none items-center rounded-md px-2 py-1.5 text-sm outline-none focus:bg-accent data-[state=open]:bg-accent [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      "flex cursor-default gap-2 select-none items-center rounded-[7px] px-2.5 py-1.5 text-[13px] outline-none transition-colors",
+      "focus:bg-[hsl(var(--accent))] focus:text-[hsl(var(--accent-foreground))]",
+      "data-[state=open]:bg-[hsl(var(--accent))] data-[state=open]:text-[hsl(var(--accent-foreground))]",
+      "data-[highlighted]:bg-[hsl(var(--accent))] data-[highlighted]:text-[hsl(var(--accent-foreground))]",
+      "[&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
       inset && "pl-8",
       className,
     )}
@@ -84,7 +88,11 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[13px] text-foreground outline-none transition-colors focus:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-40 [&>svg]:size-3.5 [&>svg]:shrink-0 [&>svg]:text-muted-foreground",
+      "relative flex cursor-default select-none items-center gap-2 rounded-[7px] px-2.5 py-1.5 text-[13px] text-[hsl(var(--foreground))] outline-none transition-colors",
+      "focus:bg-[hsl(var(--accent))] focus:text-[hsl(var(--accent-foreground))]",
+      "data-[highlighted]:bg-[hsl(var(--accent))] data-[highlighted]:text-[hsl(var(--accent-foreground))]",
+      "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
+      "[&>svg]:size-3.5 [&>svg]:shrink-0 [&>svg]:text-[hsl(var(--muted-foreground))]",
       inset && "pl-8",
       className,
     )}
@@ -100,7 +108,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-lg py-1.5 pl-8 pr-2 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex cursor-default select-none items-center rounded-[7px] py-1.5 pl-8 pr-2 text-[13px] outline-none transition-colors focus:bg-[hsl(var(--accent))] focus:text-[hsl(var(--accent-foreground))] data-[highlighted]:bg-[hsl(var(--accent))] data-[highlighted]:text-[hsl(var(--accent-foreground))] data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       className,
     )}
     checked={checked}
@@ -126,7 +134,7 @@ const DropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn(
-      "px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wider text-[#94A3B8]",
+      "px-2.5 py-2 text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]",
       inset && "pl-8",
       className,
     )}

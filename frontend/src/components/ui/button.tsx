@@ -20,44 +20,44 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // ── Primary ── filled blue, main CTA
+        // ── Primary ── teal CTA
         default: [
           "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-[hsl(var(--primary))]",
           "hover:bg-[hsl(var(--primary))]/90 hover:border-[hsl(var(--primary))]/90",
           "active:scale-[0.97]",
-          "shadow-[0_1px_2px_rgba(0,98,255,0.25)]",
+          "shadow-[0_1px_3px_rgba(20,198,163,0.30)]",
         ].join(" "),
 
         // ── Destructive ── filled red
         destructive: [
-          "bg-[hsl(var(--danger))] text-[hsl(var(--danger-foreground))] border-[hsl(var(--danger))]",
-          "hover:bg-[hsl(var(--danger))]/90 hover:border-[hsl(var(--danger))]/90",
+          "bg-[hsl(var(--destructive))] text-[hsl(var(--destructive-foreground))] border-[hsl(var(--destructive))]",
+          "hover:bg-[hsl(var(--destructive))]/90 hover:border-[hsl(var(--destructive))]/90",
           "active:scale-[0.97]",
         ].join(" "),
 
         // ── Outline ── bordered, transparent fill
         outline: [
           "bg-transparent text-[hsl(var(--foreground))] border-[hsl(var(--border))]",
-          "hover:bg-[hsl(var(--muted))] hover:border-[hsl(var(--border))]",
+          "hover:bg-[hsl(var(--accent))] hover:border-[hsl(var(--primary))]/30 hover:text-[hsl(var(--accent-foreground))]",
           "active:scale-[0.97]",
         ].join(" "),
 
-        // ── Secondary ── muted gray fill
+        // ── Secondary ── light teal wash fill
         secondary: [
-          "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] border-[hsl(var(--border))]",
-          "hover:bg-[hsl(var(--secondary))]/80",
+          "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] border-[hsl(var(--secondary))]",
+          "hover:bg-[hsl(var(--secondary))]/70 hover:border-[hsl(var(--primary))]/20",
           "active:scale-[0.97]",
         ].join(" "),
 
-        // ── Ghost ── no border, appears on hover
+        // ── Ghost ── no border, teal on hover
         ghost: [
           "bg-transparent text-[hsl(var(--muted-foreground))] border-transparent",
-          "hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]",
+          "hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]",
         ].join(" "),
 
         // ── Link ── looks like an anchor
         link: [
-          "bg-transparent text-primary border-transparent underline-offset-4",
+          "bg-transparent text-[hsl(var(--primary))] border-transparent underline-offset-4",
           "hover:underline",
           "p-0 h-auto",
         ].join(" "),

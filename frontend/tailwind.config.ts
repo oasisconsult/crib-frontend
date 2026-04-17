@@ -63,12 +63,15 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Real estate brand colours (from design system screenshots)
+        // Real estate brand colours — Rightmove-style teal palette
         brand: {
-          blue: "#0062FF",    // Primary brand blue
-          navy: "#171725",    // Sidebar / dark nav
-          gray: "#696974",    // Secondary text
-          light: "#F1F1F5",   // Page background
+          teal: "#14C6A3",    // Primary brand teal
+          "teal-dark": "#0F8F7A", // Secondary teal
+          "teal-deep": "#0A6B5A", // Dark teal
+          cyan: "#0F8FA0",    // Cyan accent
+          yellow: "#F5B000",  // Warm yellow
+          orange: "#F28C18",  // Orange accent
+          navy: "#1E2235",    // Dark navy text / dark mode bg
           white: "#FFFFFF",
         },
         // Domain colours
