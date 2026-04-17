@@ -3,7 +3,15 @@
 import { useState, useRef } from "react";
 import React from "react";
 import { useRouter } from "next/navigation";
-import { Plus, LayoutGrid, List, ChevronRight, BedDouble, Bath, Maximize2 } from "lucide-react";
+import {
+  Plus,
+  LayoutGrid,
+  List,
+  ChevronRight,
+  BedDouble,
+  Bath,
+  Maximize2,
+} from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,35 +22,54 @@ import { cn } from "@/utils/cn";
 import { useUnits } from "@/hooks/useProperties";
 import type { Unit, UnitStatus } from "@/types";
 
-const STATUS_STYLES: Record<UnitStatus, { badge: string; card: string; dot: string }> = {
+const STATUS_STYLES: Record<
+  UnitStatus,
+  { badge: string; card: string; dot: string }
+> = {
   available: {
-    badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-    card: "border-emerald-200 dark:border-emerald-800 hover:border-emerald-400",
+    badge:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-100/40 dark:text-emerald-300",
+    card: "border-emerald-200 dark:border-emerald-200 hover:border-emerald-400",
     dot: "bg-emerald-500",
   },
   occupied: {
-    badge: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
+    badge:
+      "bg-indigo-100 text-indigo-800 dark:bg-indigo-100/40 dark:text-indigo-300",
     card: "border-border hover:border-indigo-300",
     dot: "bg-indigo-500",
   },
   reserved: {
-    badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-    card: "border-amber-200 dark:border-amber-800 hover:border-amber-400",
+    badge:
+      "bg-amber-100 text-amber-800 dark:bg-amber-100/40 dark:text-amber-300",
+    card: "border-amber-200 dark:border-amber-200 hover:border-amber-400",
     dot: "bg-amber-500",
   },
   maintenance: {
-    badge: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-    card: "border-red-200 dark:border-red-800 hover:border-red-400",
+    badge: "bg-red-100 text-red-800 dark:bg-red-100/40 dark:text-red-300",
+    card: "border-red-200 dark:border-red-200 hover:border-red-400",
     dot: "bg-red-500",
   },
 };
 
-const ALL_STATUSES: UnitStatus[] = ["available", "occupied", "reserved", "maintenance"];
+const ALL_STATUSES: UnitStatus[] = [
+  "available",
+  "occupied",
+  "reserved",
+  "maintenance",
+];
 
 // ── Grid card ─────────────────────────────────────────────────────────────────
 
-const UnitCard = React.memo(function UnitCard({ unit, selected, onSelect, onClick }: {
-  unit: Unit; selected: boolean; onSelect: () => void; onClick: () => void;
+const UnitCard = React.memo(function UnitCard({
+  unit,
+  selected,
+  onSelect,
+  onClick,
+}: {
+  unit: Unit;
+  selected: boolean;
+  onSelect: () => void;
+  onClick: () => void;
 }) {
   const styles = STATUS_STYLES[unit.status];
   return (
@@ -59,7 +86,10 @@ const UnitCard = React.memo(function UnitCard({ unit, selected, onSelect, onClic
     >
       <div
         className="absolute top-2 left-2"
-        onClick={(e) => { e.stopPropagation(); onSelect(); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
       >
         <input
           type="checkbox"
@@ -72,20 +102,40 @@ const UnitCard = React.memo(function UnitCard({ unit, selected, onSelect, onClic
       <div className="mt-3">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-sm leading-tight">{unit.name}</h3>
-          <span className={cn("text-xs font-medium rounded-full px-2 py-0.5 capitalize shrink-0", styles.badge)}>
+          <span
+            className={cn(
+              "text-xs font-medium rounded-full px-2 py-0.5 capitalize shrink-0",
+              styles.badge,
+            )}
+          >
             {unit.status}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5 capitalize">{unit.type.replace("_", " ")}</p>
+        <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+          {unit.type.replace("_", " ")}
+        </p>
         <div className="mt-3 flex items-end justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="flex items-center gap-0.5"><BedDouble className="h-3 w-3" />{unit.bedrooms}</span>
-            <span className="flex items-center gap-0.5"><Bath className="h-3 w-3" />{unit.bathrooms}</span>
-            {unit.area && <span className="flex items-center gap-0.5"><Maximize2 className="h-3 w-3" />{unit.area}m²</span>}
+            <span className="flex items-center gap-0.5">
+              <BedDouble className="h-3 w-3" />
+              {unit.bedrooms}
+            </span>
+            <span className="flex items-center gap-0.5">
+              <Bath className="h-3 w-3" />
+              {unit.bathrooms}
+            </span>
+            {unit.area && (
+              <span className="flex items-center gap-0.5">
+                <Maximize2 className="h-3 w-3" />
+                {unit.area}m²
+              </span>
+            )}
           </div>
           <p className="text-sm font-bold">
             {formatCurrency(unit.monthlyRent, unit.currency)}
-            <span className="text-xs font-normal text-muted-foreground">/mo</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              /mo
+            </span>
           </p>
         </div>
       </div>
@@ -95,8 +145,16 @@ const UnitCard = React.memo(function UnitCard({ unit, selected, onSelect, onClic
 
 // ── List row ──────────────────────────────────────────────────────────────────
 
-const UnitRow = React.memo(function UnitRow({ unit, selected, onSelect, onClick }: {
-  unit: Unit; selected: boolean; onSelect: () => void; onClick: () => void;
+const UnitRow = React.memo(function UnitRow({
+  unit,
+  selected,
+  onSelect,
+  onClick,
+}: {
+  unit: Unit;
+  selected: boolean;
+  onSelect: () => void;
+  onClick: () => void;
 }) {
   const styles = STATUS_STYLES[unit.status];
   return (
@@ -104,7 +162,13 @@ const UnitRow = React.memo(function UnitRow({ unit, selected, onSelect, onClick 
       className="group border-b last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
       onClick={onClick}
     >
-      <td className="py-3 px-4 w-8" onClick={(e) => { e.stopPropagation(); onSelect(); }}>
+      <td
+        className="py-3 px-4 w-8"
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
+      >
         <input
           type="checkbox"
           checked={selected}
@@ -118,7 +182,9 @@ const UnitRow = React.memo(function UnitRow({ unit, selected, onSelect, onClick 
           <span className={cn("h-2 w-2 rounded-full shrink-0", styles.dot)} />
           <span className="font-medium text-sm">{unit.name}</span>
           {unit.floor != null && (
-            <span className="text-xs text-muted-foreground">Floor {unit.floor}</span>
+            <span className="text-xs text-muted-foreground">
+              Floor {unit.floor}
+            </span>
           )}
         </div>
       </td>
@@ -126,14 +192,25 @@ const UnitRow = React.memo(function UnitRow({ unit, selected, onSelect, onClick 
         {unit.type.replace("_", " ")}
       </td>
       <td className="py-3 px-4">
-        <span className={cn("text-xs font-medium rounded-full px-2 py-0.5 capitalize", styles.badge)}>
+        <span
+          className={cn(
+            "text-xs font-medium rounded-full px-2 py-0.5 capitalize",
+            styles.badge,
+          )}
+        >
           {unit.status}
         </span>
       </td>
       <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{unit.bedrooms}</span>
-          <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{unit.bathrooms}</span>
+          <span className="flex items-center gap-1">
+            <BedDouble className="h-3.5 w-3.5" />
+            {unit.bedrooms}
+          </span>
+          <span className="flex items-center gap-1">
+            <Bath className="h-3.5 w-3.5" />
+            {unit.bathrooms}
+          </span>
         </div>
       </td>
       <td className="py-3 px-4 text-sm text-muted-foreground hidden lg:table-cell">
@@ -168,7 +245,8 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
   const units = data?.data ?? [];
 
   const filtered = units.filter((u) => {
-    const matchesSearch = !search || u.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch =
+      !search || u.name.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || u.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -183,7 +261,8 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -213,12 +292,16 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
         {/* Status filter */}
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as UnitStatus | "all")}
+          onChange={(e) =>
+            setStatusFilter(e.target.value as UnitStatus | "all")
+          }
           className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
         >
           <option value="all">All statuses</option>
           {ALL_STATUSES.map((s) => (
-            <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+            <option key={s} value={s} className="capitalize">
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </option>
           ))}
         </select>
 
@@ -242,7 +325,10 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
           </Button>
         </div>
 
-        <Button size="sm" onClick={() => router.push(`/properties/${propertyId}/units/new`)}>
+        <Button
+          size="sm"
+          onClick={() => router.push(`/properties/${propertyId}/units/new`)}
+        >
           <Plus className="h-4 w-4" />
           Add Unit
         </Button>
@@ -282,7 +368,10 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
       {isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="rounded-xl border-2 border-border p-4 space-y-2 animate-pulse">
+            <div
+              key={i}
+              className="rounded-xl border-2 border-border p-4 space-y-2 animate-pulse"
+            >
               <div className="h-4 bg-muted rounded w-2/3" />
               <div className="h-3 bg-muted rounded w-1/2" />
               <div className="h-5 bg-muted rounded w-1/3 mt-3" />
@@ -293,7 +382,14 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
         <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
           <p className="text-sm">No units match your filters</p>
           {(search || statusFilter !== "all") && (
-            <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setSearch("");
+                setStatusFilter("all");
+              }}
+            >
               Clear filters
             </Button>
           )}
@@ -328,21 +424,37 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
                 <th className="py-2.5 px-4 w-8 text-left">
                   <input
                     type="checkbox"
-                    checked={selected.size === filtered.length && filtered.length > 0}
+                    checked={
+                      selected.size === filtered.length && filtered.length > 0
+                    }
                     ref={(el) => {
-                      if (el) el.indeterminate = selected.size > 0 && selected.size < filtered.length;
+                      if (el)
+                        el.indeterminate =
+                          selected.size > 0 && selected.size < filtered.length;
                     }}
                     onChange={toggleSelectAll}
                     className="rounded border-border"
                     aria-label="Select all"
                   />
                 </th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">Unit</th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden sm:table-cell">Type</th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">Status</th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">Beds / Baths</th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden lg:table-cell">Area</th>
-                <th className="py-2.5 px-4 text-right font-medium text-muted-foreground">Rent / mo</th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">
+                  Unit
+                </th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden sm:table-cell">
+                  Type
+                </th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">
+                  Status
+                </th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">
+                  Beds / Baths
+                </th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden lg:table-cell">
+                  Area
+                </th>
+                <th className="py-2.5 px-4 text-right font-medium text-muted-foreground">
+                  Rent / mo
+                </th>
                 <th className="py-2.5 px-4 w-8" />
               </tr>
             </thead>
@@ -359,7 +471,8 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
             </tbody>
           </table>
           <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
-            {filtered.length} of {units.length} unit{units.length !== 1 ? "s" : ""}
+            {filtered.length} of {units.length} unit
+            {units.length !== 1 ? "s" : ""}
           </div>
         </div>
       )}

@@ -20,7 +20,7 @@ export function PaymentSuccessStep({ preview, onNext }: Props) {
     <Card>
       <CardContent className="pt-8 pb-6 space-y-6">
         <div className="text-center space-y-3">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 mx-auto">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-100/40 mx-auto">
             <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
@@ -45,7 +45,8 @@ export function PaymentSuccessStep({ preview, onNext }: Props) {
           )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">
-              Advance rent ({preview.advancePaymentMonths} month{preview.advancePaymentMonths !== 1 ? "s" : ""})
+              Advance rent ({preview.advancePaymentMonths} month
+              {preview.advancePaymentMonths !== 1 ? "s" : ""})
             </span>
             <span className="text-emerald-700 dark:text-emerald-400 font-medium">
               {fmt(preview.totalAdvanceRent)} ✓
@@ -58,7 +59,7 @@ export function PaymentSuccessStep({ preview, onNext }: Props) {
           </div>
         </div>
 
-        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20 p-3 text-sm text-blue-800 dark:text-blue-200">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-200 dark:bg-blue-100/40 p-3 text-sm text-blue-800 dark:text-blue-200">
           <p className="font-medium mb-0.5">Next: Sign your agreement</p>
           <p>
             You will now sign the final tenancy agreement. The terms will be

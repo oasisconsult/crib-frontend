@@ -7,7 +7,15 @@
  * Used in PaymentStep and AdaptivePaymentButton to help tenants choose a channel.
  */
 
-import { TrendingDown, Zap, Shield, Phone, Building2, Banknote, CreditCard } from "lucide-react";
+import {
+  TrendingDown,
+  Zap,
+  Shield,
+  Phone,
+  Building2,
+  Banknote,
+  CreditCard,
+} from "lucide-react";
 import { cn } from "@/utils/cn";
 import { formatCurrency } from "@/utils/formatters";
 import type { ChannelCostEstimate, PaymentDecision } from "@/types";
@@ -47,19 +55,27 @@ const CHANNEL_CONFIG: Record<
 
 function retryLabel(strategy: PaymentDecision["retryStrategy"]): string {
   switch (strategy) {
-    case "none":      return "High reliability";
-    case "immediate": return "May need 1 retry";
-    case "delayed":   return "May need retries";
-    case "next_day":  return "Low reliability";
+    case "none":
+      return "High reliability";
+    case "immediate":
+      return "May need 1 retry";
+    case "delayed":
+      return "May need retries";
+    case "next_day":
+      return "Low reliability";
   }
 }
 
 function retryColor(strategy: PaymentDecision["retryStrategy"]): string {
   switch (strategy) {
-    case "none":      return "text-emerald-600";
-    case "immediate": return "text-amber-600";
-    case "delayed":   return "text-orange-600";
-    case "next_day":  return "text-red-600";
+    case "none":
+      return "text-emerald-600";
+    case "immediate":
+      return "text-amber-600";
+    case "delayed":
+      return "text-orange-600";
+    case "next_day":
+      return "text-red-600";
   }
 }
 
@@ -82,7 +98,7 @@ function ChannelRow({
       className={cn(
         "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors",
         isRecommended
-          ? "border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30"
+          ? "border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-100/40"
           : "border-border bg-background",
       )}
     >
@@ -91,14 +107,16 @@ function ChannelRow({
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
             isRecommended
-              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-100/40 dark:text-emerald-300"
               : "bg-muted text-muted-foreground",
           )}
         >
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium leading-tight truncate">{cfg.label}</p>
+          <p className="text-sm font-medium leading-tight truncate">
+            {cfg.label}
+          </p>
           <p className="text-xs text-muted-foreground">
             {estimate.feePercent === 0
               ? "No fee"

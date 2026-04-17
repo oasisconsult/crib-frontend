@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ESignatureCanvas } from "@/components/onboarding/ESignatureCanvas";
 import { useSignAgreement } from "@/hooks/useOnboardingFlow";
@@ -21,9 +27,20 @@ function fmt(n: number, currency: string) {
   return `${currency} ${n.toLocaleString()}`;
 }
 
-export function FinalSignatureStep({ token, preview, termsAcceptedAt, onSigned, onBack }: Props) {
+export function FinalSignatureStep({
+  token,
+  preview,
+  termsAcceptedAt,
+  onSigned,
+  onBack,
+}: Props) {
   const [signature, setSignature] = useState<string | null>(null);
-  const { mutate: signAgreement, isPending, isError, error } = useSignAgreement(token);
+  const {
+    mutate: signAgreement,
+    isPending,
+    isError,
+    error,
+  } = useSignAgreement(token);
 
   function handleSign() {
     if (!signature) return;
@@ -43,18 +60,25 @@ export function FinalSignatureStep({ token, preview, termsAcceptedAt, onSigned, 
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Same-terms assurance banner */}
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20 p-3 text-sm text-emerald-800 dark:text-emerald-200">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-200 dark:bg-emerald-100/40 p-3 text-sm text-emerald-800 dark:text-emerald-200">
           <p className="font-medium mb-0.5">No surprises</p>
-          <p>The terms below are identical to the agreement preview you accepted. Nothing has changed.</p>
+          <p>
+            The terms below are identical to the agreement preview you accepted.
+            Nothing has changed.
+          </p>
         </div>
 
         {/* Locked terms summary */}
         <div className="rounded-lg border bg-muted/10 p-4 text-sm space-y-2 select-none pointer-events-none">
-          <p className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">Agreed terms</p>
+          <p className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
+            Agreed terms
+          </p>
           <div className="space-y-1">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Property</span>
-              <span className="font-medium">{preview.propertyName} — {preview.unitName}</span>
+              <span className="font-medium">
+                {preview.propertyName} — {preview.unitName}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Start date</span>
@@ -92,7 +116,8 @@ export function FinalSignatureStep({ token, preview, termsAcceptedAt, onSigned, 
           <p className="text-sm text-destructive">
             {(error as Error)?.message === "Agreement terms have changed"
               ? "The agreement terms have changed since your preview. Please contact your landlord."
-              : (error as Error)?.message ?? "Signing failed. Please try again."}
+              : ((error as Error)?.message ??
+                "Signing failed. Please try again.")}
           </p>
         )}
 
@@ -111,7 +136,8 @@ export function FinalSignatureStep({ token, preview, termsAcceptedAt, onSigned, 
         </div>
 
         <p className="text-xs text-muted-foreground text-center">
-          By signing you agree to the tenancy terms and confirm the information above is correct.
+          By signing you agree to the tenancy terms and confirm the information
+          above is correct.
         </p>
       </CardContent>
     </Card>

@@ -38,9 +38,8 @@ const DialogContent = React.forwardRef<
       className={cn(
         "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
         "w-full max-w-lg",
-        "bg-white dark:bg-[#111827] text-card-foreground rounded-[14px] border border-border",
+        "bg-card text-card-foreground rounded-[14px] border border-border",
         "shadow-[0_24px_48px_rgba(15,23,42,0.16),0_8px_16px_rgba(15,23,42,0.08)]",
-        "dark:shadow-[0_24px_48px_rgba(0,0,0,0.5),0_8px_16px_rgba(0,0,0,0.3)]",
         "outline-none",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -70,7 +69,10 @@ const DialogContent = React.forwardRef<
 ));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+const DialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn("px-6 pt-6 pb-4 border-b border-border", className)}
     {...props}
@@ -78,12 +80,18 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 );
 DialogHeader.displayName = "DialogHeader";
 
-const DialogBody = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+const DialogBody = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn("px-6 py-5", className)} {...props} />
 );
 DialogBody.displayName = "DialogBody";
 
-const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+const DialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
       "flex flex-row items-center justify-end gap-2 px-6 py-4",
@@ -116,13 +124,25 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground mt-1 leading-relaxed", className)}
+    className={cn(
+      "text-sm text-muted-foreground mt-1 leading-relaxed",
+      className,
+    )}
     {...props}
   />
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 export {
-  Dialog, DialogPortal, DialogOverlay, DialogTrigger, DialogClose,
-  DialogContent, DialogHeader, DialogBody, DialogFooter, DialogTitle, DialogDescription,
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogTrigger,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogBody,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
 };

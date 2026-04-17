@@ -101,14 +101,17 @@ export function AdaptivePaymentButton({
 
       {/* Failure risk warning */}
       {isRisky && decision && (
-        <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 px-2.5 py-1.5">
+        <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 rounded-md border border-amber-200 dark:border-amber-200 bg-amber-50 dark:bg-amber-100/40 px-2.5 py-1.5">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           <span>
             {Math.round(failureScore * 100)}% failure risk on this channel.{" "}
             {decision.retryStrategy !== "none" && (
               <span>
                 Retry strategy:{" "}
-                <span className="font-medium">{decision.retryStrategy.replace("_", " ")}</span>.
+                <span className="font-medium">
+                  {decision.retryStrategy.replace("_", " ")}
+                </span>
+                .
               </span>
             )}
           </span>

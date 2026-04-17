@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { useAcceptTerms } from "@/hooks/useOnboardingFlow";
 
 interface Props {
@@ -15,12 +21,19 @@ interface Props {
 export function TermsAcceptanceStep({ token, onNext, onBack }: Props) {
   const [checkedTerms, setCheckedTerms] = useState(false);
   const [checkedPayment, setCheckedPayment] = useState(false);
-  const { mutate: acceptTerms, isPending, isError, error } = useAcceptTerms(token);
+  const {
+    mutate: acceptTerms,
+    isPending,
+    isError,
+    error,
+  } = useAcceptTerms(token);
 
   const canProceed = checkedTerms && checkedPayment;
 
   function handleAccept() {
-    acceptTerms(true, { onSuccess: (result) => onNext(result.termsAcceptedAt) });
+    acceptTerms(true, {
+      onSuccess: (result) => onNext(result.termsAcceptedAt),
+    });
   }
 
   return (
@@ -35,12 +48,12 @@ export function TermsAcceptanceStep({ token, onNext, onBack }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950/20 p-4 text-sm text-indigo-800 dark:text-indigo-200 space-y-1">
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 dark:border-indigo-200 dark:bg-indigo-100/40 p-4 text-sm text-indigo-800 dark:text-indigo-200 space-y-1">
           <p className="font-medium">Why this matters</p>
           <p>
-            Your explicit acceptance creates a legally binding record of your agreement
-            to the terms shown in the preview. Payment secures your unit and confirms
-            your commitment.
+            Your explicit acceptance creates a legally binding record of your
+            agreement to the terms shown in the preview. Payment secures your
+            unit and confirms your commitment.
           </p>
         </div>
 
@@ -55,9 +68,9 @@ export function TermsAcceptanceStep({ token, onNext, onBack }: Props) {
               />
             </div>
             <span className="text-sm leading-relaxed">
-              <span className="font-medium">I have read and agree</span> to the tenancy
-              terms shown in the agreement preview, including the rent amount, deposit,
-              notice period, and late fee policy.
+              <span className="font-medium">I have read and agree</span> to the
+              tenancy terms shown in the agreement preview, including the rent
+              amount, deposit, notice period, and late fee policy.
             </span>
           </label>
 
@@ -71,16 +84,17 @@ export function TermsAcceptanceStep({ token, onNext, onBack }: Props) {
               />
             </div>
             <span className="text-sm leading-relaxed">
-              <span className="font-medium">I understand</span> that making payment
-              secures this unit for me, and the final agreement I sign will match
-              the terms I have reviewed.
+              <span className="font-medium">I understand</span> that making
+              payment secures this unit for me, and the final agreement I sign
+              will match the terms I have reviewed.
             </span>
           </label>
         </div>
 
         {isError && (
           <p className="text-sm text-destructive">
-            {(error as Error)?.message ?? "Failed to record acceptance. Please try again."}
+            {(error as Error)?.message ??
+              "Failed to record acceptance. Please try again."}
           </p>
         )}
 

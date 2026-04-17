@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, ChevronDown, FileText } from "lucide-react";
 import DOMPurify from "dompurify";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { usePreviewAgreement } from "@/hooks/useOnboardingFlow";
 import type { AgreementPreview } from "@/types/onboarding";
 
@@ -15,9 +21,15 @@ interface Props {
   onNext: (preview: AgreementPreview) => void;
 }
 
-export function AgreementPreviewStep({ token, preview: initialPreview, onNext }: Props) {
+export function AgreementPreviewStep({
+  token,
+  preview: initialPreview,
+  onNext,
+}: Props) {
   const { mutate: fetchPreview, isPending } = usePreviewAgreement(token);
-  const [preview, setPreview] = useState<AgreementPreview | null>(initialPreview);
+  const [preview, setPreview] = useState<AgreementPreview | null>(
+    initialPreview,
+  );
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -59,17 +71,18 @@ export function AgreementPreviewStep({ token, preview: initialPreview, onNext }:
           <CardTitle>Residential House Lease Agreement</CardTitle>
         </div>
         <CardDescription>
-          Read the full agreement carefully before accepting. The Continue button activates
-          once you reach the end.
+          Read the full agreement carefully before accepting. The Continue
+          button activates once you reach the end.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Warning banner */}
-        <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-200">
+        <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-200 dark:bg-amber-100/40 p-3 text-sm text-amber-800 dark:text-amber-200">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
-            This is a <strong>legally binding agreement</strong>. Read all clauses before
-            proceeding. Scrolling to the end confirms you have read the full document.
+            This is a <strong>legally binding agreement</strong>. Read all
+            clauses before proceeding. Scrolling to the end confirms you have
+            read the full document.
           </span>
         </div>
 
@@ -78,18 +91,37 @@ export function AgreementPreviewStep({ token, preview: initialPreview, onNext }:
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="h-[70vh] min-h-[400px] overflow-y-auto rounded-lg border bg-white dark:bg-zinc-950 shadow-inner"
+            className="h-[70vh] min-h-[400px] overflow-y-auto rounded-lg border bg-white dark:bg-zinc-100/40 shadow-inner"
             style={{ scrollBehavior: "smooth" }}
-            dangerouslySetInnerHTML={{ 
+            dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize(preview.renderedHtml, {
                 ALLOWED_TAGS: [
-                  'p', 'br', 'strong', 'em', 'u', 'ol', 'ul', 'li', 
-                  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                  'div', 'span', 'table', 'thead', 'tbody', 'tr', 'th', 'td'
+                  "p",
+                  "br",
+                  "strong",
+                  "em",
+                  "u",
+                  "ol",
+                  "ul",
+                  "li",
+                  "h1",
+                  "h2",
+                  "h3",
+                  "h4",
+                  "h5",
+                  "h6",
+                  "div",
+                  "span",
+                  "table",
+                  "thead",
+                  "tbody",
+                  "tr",
+                  "th",
+                  "td",
                 ],
-                ALLOWED_ATTR: ['class', 'style'],
-                ALLOW_DATA_ATTR: false
-              })
+                ALLOWED_ATTR: ["class", "style"],
+                ALLOW_DATA_ATTR: false,
+              }),
             }}
           />
         ) : (
@@ -103,24 +135,29 @@ export function AgreementPreviewStep({ token, preview: initialPreview, onNext }:
               Residential House Lease Agreement
             </h3>
             <p>
-              This Lease is made between <strong>{preview.tenantName}</strong> (&ldquo;Tenant&rdquo;)
-              and the Landlord, for the premises at{" "}
-              <strong>{preview.propertyName} — {preview.unitName}</strong>.
+              This Lease is made between <strong>{preview.tenantName}</strong>{" "}
+              (&ldquo;Tenant&rdquo;) and the Landlord, for the premises at{" "}
+              <strong>
+                {preview.propertyName} — {preview.unitName}
+              </strong>
+              .
             </p>
             <p>
               <strong>Term:</strong> Commencing {preview.startDate},{" "}
               {preview.endDate ?? "month-to-month (rolling)"}.
             </p>
             <p>
-              <strong>Rent:</strong> {preview.currency} {preview.monthlyRent.toLocaleString()} per
-              month, due on day {preview.rentDayOfMonth}.
+              <strong>Rent:</strong> {preview.currency}{" "}
+              {preview.monthlyRent.toLocaleString()} per month, due on day{" "}
+              {preview.rentDayOfMonth}.
             </p>
             <p>
-              <strong>Deposit:</strong> {preview.currency} {preview.depositAmount.toLocaleString()}.
+              <strong>Deposit:</strong> {preview.currency}{" "}
+              {preview.depositAmount.toLocaleString()}.
             </p>
             <p>
-              <strong>Notice:</strong> {preview.noticePeriodDays} days written notice by either
-              party.
+              <strong>Notice:</strong> {preview.noticePeriodDays} days written
+              notice by either party.
             </p>
             <p className="text-xs text-muted-foreground text-center pt-8">
               — End of agreement —

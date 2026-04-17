@@ -12,7 +12,9 @@ const SelectValue = SelectPrimitive.Value;
 /* ── Trigger — same proportions as Input ────────────────────────────────── */
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & { error?: boolean }
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+    error?: boolean;
+  }
 >(({ className, children, error, ...props }, ref) => (
   <SelectPrimitive.Trigger
     ref={ref}
@@ -27,14 +29,18 @@ const SelectTrigger = React.forwardRef<
       "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground",
       "data-[placeholder]:text-muted-foreground/60",
       "[&>span]:line-clamp-1",
-      error && "border-destructive focus:border-destructive focus:ring-destructive/20",
+      error &&
+        "border-destructive focus:border-destructive focus:ring-destructive/20",
       className,
     )}
     {...props}
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" aria-hidden="true" />
+      <ChevronDown
+        className="h-3.5 w-3.5 text-muted-foreground shrink-0"
+        aria-hidden="true"
+      />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -47,7 +53,10 @@ const SelectScrollUpButton = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.ScrollUpButton
     ref={ref}
-    className={cn("flex cursor-default items-center justify-center py-1 text-muted-foreground", className)}
+    className={cn(
+      "flex cursor-default items-center justify-center py-1 text-muted-foreground",
+      className,
+    )}
     {...props}
   >
     <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
@@ -61,13 +70,17 @@ const SelectScrollDownButton = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.ScrollDownButton
     ref={ref}
-    className={cn("flex cursor-default items-center justify-center py-1 text-muted-foreground", className)}
+    className={cn(
+      "flex cursor-default items-center justify-center py-1 text-muted-foreground",
+      className,
+    )}
     {...props}
   >
     <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
   </SelectPrimitive.ScrollDownButton>
 ));
-SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayName;
+SelectScrollDownButton.displayName =
+  SelectPrimitive.ScrollDownButton.displayName;
 
 /* ── Dropdown panel ─────────────────────────────────────────────────────── */
 const SelectContent = React.forwardRef<
@@ -79,9 +92,8 @@ const SelectContent = React.forwardRef<
       ref={ref}
       className={cn(
         "relative z-50 max-h-80 min-w-[8rem] overflow-hidden",
-        "rounded-[10px] border border-border bg-white dark:bg-[#111827] text-popover-foreground",
+        "rounded-[10px] border border-border bg-card text-popover-foreground",
         "shadow-[0_4px_16px_rgba(15,23,42,0.10),0_1px_4px_rgba(15,23,42,0.06)]",
-        "dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),0_1px_4px_rgba(0,0,0,0.3)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
@@ -142,7 +154,10 @@ const SelectItem = React.forwardRef<
     {...props}
   >
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-    <span className="absolute right-2.5 flex h-3.5 w-3.5 items-center justify-center text-primary" aria-hidden="true">
+    <span
+      className="absolute right-2.5 flex h-3.5 w-3.5 items-center justify-center text-primary"
+      aria-hidden="true"
+    >
       <SelectPrimitive.ItemIndicator>
         <Check className="h-3.5 w-3.5" />
       </SelectPrimitive.ItemIndicator>
@@ -152,7 +167,13 @@ const SelectItem = React.forwardRef<
 SelectItem.displayName = SelectPrimitive.Item.displayName;
 
 export {
-  Select, SelectGroup, SelectValue,
-  SelectTrigger, SelectContent, SelectLabel, SelectItem,
-  SelectScrollUpButton, SelectScrollDownButton,
+  Select,
+  SelectGroup,
+  SelectValue,
+  SelectTrigger,
+  SelectContent,
+  SelectLabel,
+  SelectItem,
+  SelectScrollUpButton,
+  SelectScrollDownButton,
 };

@@ -30,7 +30,7 @@ export function PaymentPendingStep({ token, onPaymentSecured }: Props) {
   return (
     <Card>
       <CardContent className="pt-8 pb-8 text-center space-y-5">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mx-auto">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-100/40 mx-auto">
           <Clock className="h-8 w-8 text-amber-600 dark:text-amber-400" />
         </div>
 
@@ -42,9 +42,9 @@ export function PaymentPendingStep({ token, onPaymentSecured }: Props) {
           </p>
         </div>
 
-        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-200 max-w-sm mx-auto">
-          This page will automatically advance once payment is confirmed.
-          You can safely close and return — your progress is saved.
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-200 dark:bg-amber-100/40 p-3 text-sm text-amber-800 dark:text-amber-200 max-w-sm mx-auto">
+          This page will automatically advance once payment is confirmed. You
+          can safely close and return — your progress is saved.
         </div>
 
         <Button
@@ -54,7 +54,9 @@ export function PaymentPendingStep({ token, onPaymentSecured }: Props) {
           disabled={isFetching}
           className="gap-1.5"
         >
-          <RefreshCw className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`} />
+          <RefreshCw
+            className={`h-3 w-3 ${isFetching ? "animate-spin" : ""}`}
+          />
           Check status
         </Button>
       </CardContent>

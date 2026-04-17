@@ -3,8 +3,18 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  X, LayoutDashboard, Building2, Users, FileText, CreditCard,
-  ClipboardList, Bell, BarChart3, Settings, Wrench, Shield,
+  X,
+  LayoutDashboard,
+  Building2,
+  Users,
+  FileText,
+  CreditCard,
+  ClipboardList,
+  Bell,
+  BarChart3,
+  Settings,
+  Wrench,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -21,17 +31,65 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/",              label: "Dashboard",     icon: LayoutDashboard, section: "MENU" },
-  { href: "/properties",   label: "Properties",    icon: Building2,       roles: ["owner","manager","superadmin"] },
-  { href: "/tenants",      label: "Tenants",       icon: Users,           roles: ["owner","manager","superadmin"] },
-  { href: "/leases",       label: "Leases",        icon: FileText,        roles: ["owner","manager","superadmin"] },
-  { href: "/payments",     label: "Payments",      icon: CreditCard,      roles: ["owner","manager","superadmin"], section: "FINANCE" },
-  { href: "/inspections",  label: "Inspections",   icon: ClipboardList,   roles: ["owner","manager","superadmin","maintenance"], section: "OPERATIONS" },
-  { href: "/maintenance",  label: "Maintenance",   icon: Wrench,          roles: ["owner","manager","superadmin","maintenance"] },
-  { href: "/notifications",label: "Notifications", icon: Bell,            roles: ["owner","manager","superadmin"] },
-  { href: "/analytics",    label: "Analytics",     icon: BarChart3,       roles: ["owner","manager","superadmin"] },
-  { href: "/admin",        label: "Admin",         icon: Shield,          roles: ["superadmin"], section: "SYSTEM" },
-  { href: "/settings",     label: "Settings",      icon: Settings },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, section: "MENU" },
+  {
+    href: "/properties",
+    label: "Properties",
+    icon: Building2,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/tenants",
+    label: "Tenants",
+    icon: Users,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/leases",
+    label: "Leases",
+    icon: FileText,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/payments",
+    label: "Payments",
+    icon: CreditCard,
+    roles: ["owner", "manager", "superadmin"],
+    section: "FINANCE",
+  },
+  {
+    href: "/inspections",
+    label: "Inspections",
+    icon: ClipboardList,
+    roles: ["owner", "manager", "superadmin", "maintenance"],
+    section: "OPERATIONS",
+  },
+  {
+    href: "/maintenance",
+    label: "Maintenance",
+    icon: Wrench,
+    roles: ["owner", "manager", "superadmin", "maintenance"],
+  },
+  {
+    href: "/notifications",
+    label: "Notifications",
+    icon: Bell,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/admin",
+    label: "Admin",
+    icon: Shield,
+    roles: ["superadmin"],
+    section: "SYSTEM",
+  },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function MobileNav() {
@@ -68,8 +126,10 @@ export function MobileNav() {
               <Building2 className="h-4 w-4" />
             </div>
             <span
-              className="font-bold text-[15px] text-[#0F172A] dark:text-white tracking-[-0.01em]"
-              style={{ fontFamily: "var(--font-poppins, 'Poppins', sans-serif)" }}
+              className="font-bold text-[15px] text-[hsl(var(--foreground))] tracking-[-0.01em]"
+              style={{
+                fontFamily: "var(--font-poppins, 'Poppins', sans-serif)",
+              }}
             >
               CRIB
             </span>
@@ -83,10 +143,15 @@ export function MobileNav() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2 px-2" aria-label="Mobile navigation">
+        <nav
+          className="flex-1 overflow-y-auto py-2 px-2"
+          aria-label="Mobile navigation"
+        >
           {visibleItems.map((item) => {
             const isActive =
-              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
             const Icon = item.icon;
 
             const showSection = item.section && item.section !== lastSection;
@@ -106,14 +171,16 @@ export function MobileNav() {
                     "flex items-center gap-2.5 px-2.5 py-2 rounded-[7px] text-[13.5px] font-medium transition-all",
                     isActive
                       ? "bg-[hsl(var(--sidebar-active-bg))] text-[hsl(var(--sidebar-active-fg))] font-semibold"
-                      : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[#0F172A] dark:hover:text-white",
+                      : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[hsl(var(--foreground))]",
                   )}
                   aria-current={isActive ? "page" : undefined}
                 >
                   <Icon
                     className={cn(
                       "h-[18px] w-[18px] shrink-0",
-                      isActive ? "text-[hsl(var(--sidebar-active-fg))]" : "text-[hsl(var(--sidebar-foreground))]",
+                      isActive
+                        ? "text-[hsl(var(--sidebar-active-fg))]"
+                        : "text-[hsl(var(--sidebar-foreground))]",
                     )}
                   />
                   {item.label}

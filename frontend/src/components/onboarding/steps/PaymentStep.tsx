@@ -3,14 +3,24 @@
 import { useRef, useState } from "react";
 import { CreditCard, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useSubmitOnboardingPayments } from "@/hooks/useOnboardingFlow";
 import { usePaymentEstimate } from "@/hooks/usePayments";
 import { CostComparisonCard } from "@/components/payments/CostComparisonCard";
-import type { AgreementPreview, OnboardingPaymentItem, OnboardingPaymentMethod } from "@/types/onboarding";
+import type {
+  AgreementPreview,
+  OnboardingPaymentItem,
+  OnboardingPaymentMethod,
+} from "@/types/onboarding";
 
 interface Props {
   token: string;
@@ -22,10 +32,10 @@ interface Props {
 }
 
 const METHOD_LABELS: Record<OnboardingPaymentMethod, string> = {
-  mobile_money_mtn:    "MTN Mobile Money",
+  mobile_money_mtn: "MTN Mobile Money",
   mobile_money_airtel: "Airtel Money",
-  bank_transfer:       "Bank Transfer",
-  cash:                "Cash",
+  bank_transfer: "Bank Transfer",
+  cash: "Cash",
 };
 
 function useStableIdempotencyKeys() {
@@ -35,8 +45,16 @@ function useStableIdempotencyKeys() {
   return { depositKey, rentKey };
 }
 
-export function PaymentStep({ token, leaseId, tenantId, preview, onNext, onBack }: Props) {
-  const [method, setMethod] = useState<OnboardingPaymentMethod>("mobile_money_mtn");
+export function PaymentStep({
+  token,
+  leaseId,
+  tenantId,
+  preview,
+  onNext,
+  onBack,
+}: Props) {
+  const [method, setMethod] =
+    useState<OnboardingPaymentMethod>("mobile_money_mtn");
   const [reference, setReference] = useState("");
   const [showEstimate, setShowEstimate] = useState(false);
 
@@ -44,10 +62,19 @@ export function PaymentStep({ token, leaseId, tenantId, preview, onNext, onBack 
   const { data: decision } = usePaymentEstimate(
     leaseId,
     preview.totalDueAtOnboarding > 0
-      ? { amount: preview.totalDueAtOnboarding, currency: preview.currency, tenantId }
+      ? {
+          amount: preview.totalDueAtOnboarding,
+          currency: preview.currency,
+          tenantId,
+        }
       : null,
   );
-  const { mutate: submitPayments, isPending, isError, error } = useSubmitOnboardingPayments(token);
+  const {
+    mutate: submitPayments,
+    isPending,
+    isError,
+    error,
+  } = useSubmitOnboardingPayments(token);
   const { depositKey, rentKey } = useStableIdempotencyKeys();
 
   const requiresReference = method !== "cash";
@@ -107,7 +134,10 @@ export function PaymentStep({ token, leaseId, tenantId, preview, onNext, onBack 
             "✔ Payment secures your unit",
             "✔ Final agreement will be signed after payment",
           ].map((msg) => (
-            <div key={msg} className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
+            <div
+              key={msg}
+              className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400"
+            >
               <span>{msg}</span>
             </div>
           ))}
@@ -124,14 +154,17 @@ export function PaymentStep({ token, leaseId, tenantId, preview, onNext, onBack 
           )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">
-              Advance rent ({preview.advancePaymentMonths} month{preview.advancePaymentMonths !== 1 ? "s" : ""})
+              Advance rent ({preview.advancePaymentMonths} month
+              {preview.advancePaymentMonths !== 1 ? "s" : ""})
             </span>
             <span>{fmt(preview.totalAdvanceRent)}</span>
           </div>
           <Separator />
           <div className="flex justify-between font-semibold">
             <span>Total due now</span>
-            <span className="text-emerald-700 dark:text-emerald-400">{fmt(preview.totalDueAtOnboarding)}</span>
+            <span className="text-emerald-700 dark:text-emerald-400">
+              {fmt(preview.totalDueAtOnboarding)}
+            </span>
           </div>
         </div>
 
@@ -143,12 +176,15 @@ export function PaymentStep({ token, leaseId, tenantId, preview, onNext, onBack 
               className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 font-medium hover:underline"
               onClick={() => setShowEstimate((v) => !v)}
             >
-              💡 Recommended: {decision.recommendedChannel.replace(/_/g, " ")}
-              {" "}· {showEstimate ? "Hide" : "Compare channel costs"}
+              💡 Recommended: {decision.recommendedChannel.replace(/_/g, " ")} ·{" "}
+              {showEstimate ? "Hide" : "Compare channel costs"}
             </button>
             {showEstimate && (
               <div className="rounded-lg border bg-muted/30 p-3">
-                <CostComparisonCard decision={decision} currency={preview.currency} />
+                <CostComparisonCard
+                  decision={decision}
+                  currency={preview.currency}
+                />
               </div>
             )}
           </div>
@@ -158,22 +194,25 @@ export function PaymentStep({ token, leaseId, tenantId, preview, onNext, onBack 
         <div className="space-y-2">
           <Label>Payment method</Label>
           <div className="grid grid-cols-2 gap-2">
-            {(Object.entries(METHOD_LABELS) as [OnboardingPaymentMethod, string][]).map(
-              ([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setMethod(value)}
-                  className={`rounded-lg border px-3 py-2.5 text-sm text-left transition-colors ${
-                    method === value
-                      ? "border-primary bg-primary/5 text-primary font-medium"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  {label}
-                </button>
-              )
-            )}
+            {(
+              Object.entries(METHOD_LABELS) as [
+                OnboardingPaymentMethod,
+                string,
+              ][]
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setMethod(value)}
+                className={`rounded-lg border px-3 py-2.5 text-sm text-left transition-colors ${
+                  method === value
+                    ? "border-primary bg-primary/5 text-primary font-medium"
+                    : "border-border hover:border-primary/50"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -195,21 +234,23 @@ export function PaymentStep({ token, leaseId, tenantId, preview, onNext, onBack 
             />
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Info className="h-3 w-3" />
-              Provide the transaction reference so your landlord can verify the payment.
+              Provide the transaction reference so your landlord can verify the
+              payment.
             </p>
           </div>
         )}
 
         {method === "cash" && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20 p-3 text-sm text-blue-800 dark:text-blue-200">
-            Pay cash directly to your landlord or property manager.
-            Your payment will be confirmed once they receive and record it.
+          <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-200 dark:bg-blue-100/40 p-3 text-sm text-blue-800 dark:text-blue-200">
+            Pay cash directly to your landlord or property manager. Your payment
+            will be confirmed once they receive and record it.
           </div>
         )}
 
         {isError && (
           <p className="text-sm text-destructive">
-            {(error as Error)?.message ?? "Payment submission failed. Please try again."}
+            {(error as Error)?.message ??
+              "Payment submission failed. Please try again."}
           </p>
         )}
 

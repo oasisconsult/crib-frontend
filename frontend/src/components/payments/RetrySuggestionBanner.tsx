@@ -50,7 +50,7 @@ export function RetrySuggestionBanner({
     <div
       className={cn(
         "flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3",
-        "dark:border-red-800 dark:bg-red-950/30",
+        "dark:border-red-200 dark:bg-red-100/40",
         className,
       )}
     >
@@ -68,7 +68,8 @@ export function RetrySuggestionBanner({
         )}
 
         <p className="text-xs text-muted-foreground mt-1">
-          {retryCount > 0 && `Attempt ${retryCount + 1} of ${MAX_RETRIES + 1}. `}
+          {retryCount > 0 &&
+            `Attempt ${retryCount + 1} of ${MAX_RETRIES + 1}. `}
           {canRetry
             ? `${attemptsLeft} ${attemptsLeft === 1 ? "retry" : "retries"} remaining.`
             : "No retries remaining. Please contact support."}
@@ -83,7 +84,9 @@ export function RetrySuggestionBanner({
           onClick={handleRetry}
           disabled={isPending}
         >
-          <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", isPending && "animate-spin")} />
+          <RefreshCw
+            className={cn("h-3.5 w-3.5 mr-1.5", isPending && "animate-spin")}
+          />
           {isPending ? "Retrying…" : "Retry"}
         </Button>
       )}

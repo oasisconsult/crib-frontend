@@ -20,7 +20,7 @@ export const realEstateColors = {
     700: "#334155",
     800: "#1e293b",
     900: "#0f172a",
-    950: "#020617"
+    950: "#020617",
   },
 
   // Secondary Brand - Slate Blue (Property, Modern)
@@ -35,7 +35,7 @@ export const realEstateColors = {
     700: "#334155",
     800: "#1e293b",
     900: "#0f172a",
-    950: "#020617"
+    950: "#020617",
   },
 
   // Accent - Emerald Green (Growth, Success, Revenue)
@@ -50,7 +50,7 @@ export const realEstateColors = {
     700: "#047857",
     800: "#065f46",
     900: "#064e3b",
-    950: "#022c22"
+    950: "#022c22",
   },
 
   // Success - Forest Green (Properties, Growth)
@@ -65,7 +65,7 @@ export const realEstateColors = {
     700: "#15803d",
     800: "#166534",
     900: "#14532d",
-    950: "#052e16"
+    950: "#052e16",
   },
 
   // Warning - Amber (Maintenance, Alerts)
@@ -80,7 +80,7 @@ export const realEstateColors = {
     700: "#b45309",
     800: "#92400e",
     900: "#78350f",
-    950: "#451a03"
+    950: "#451a03",
   },
 
   // Error - Rose (Urgent Issues, Overdue)
@@ -95,7 +95,7 @@ export const realEstateColors = {
     700: "#be185d",
     800: "#9d174d",
     900: "#831843",
-    950: "#500724"
+    950: "#500724",
   },
 
   // Property Blue (Real Estate Focus)
@@ -110,7 +110,7 @@ export const realEstateColors = {
     700: "#1d4ed8",
     800: "#1e40af",
     900: "#1e3a8a",
-    950: "#172554"
+    950: "#172554",
   },
 
   // Tenant Purple (People, Relationships)
@@ -125,7 +125,7 @@ export const realEstateColors = {
     700: "#7c3aed",
     800: "#6b21a8",
     900: "#581c87",
-    950: "#3b0764"
+    950: "#3b0764",
   },
 
   // Revenue Gold (Financial, Premium)
@@ -140,7 +140,7 @@ export const realEstateColors = {
     700: "#b45309",
     800: "#92400e",
     900: "#78350f",
-    950: "#451a03"
+    950: "#451a03",
   },
 
   // Neutral Grays (Professional Base)
@@ -155,7 +155,7 @@ export const realEstateColors = {
     700: "#404040",
     800: "#262626",
     900: "#171717",
-    950: "#0a0a0a"
+    950: "#0a0a0a",
   },
 
   // Surface Colors (Cards, Backgrounds)
@@ -170,8 +170,8 @@ export const realEstateColors = {
     700: "#475569",
     800: "#334155",
     900: "#1e293b",
-    950: "#0f172a"
-  }
+    950: "#0f172a",
+  },
 };
 
 // Real Estate themed color variants for different dashboard metrics
@@ -180,38 +180,38 @@ export const realEstateColorVariants = {
     bg: realEstateColors.revenue[50],
     text: realEstateColors.revenue[700],
     icon: realEstateColors.revenue[600],
-    border: realEstateColors.revenue[200]
+    border: realEstateColors.revenue[200],
   },
   occupancy: {
     bg: realEstateColors.property[50],
     text: realEstateColors.property[700],
     icon: realEstateColors.property[600],
-    border: realEstateColors.property[200]
+    border: realEstateColors.property[200],
   },
   tenants: {
     bg: realEstateColors.tenant[50],
     text: realEstateColors.tenant[700],
     icon: realEstateColors.tenant[600],
-    border: realEstateColors.tenant[200]
+    border: realEstateColors.tenant[200],
   },
   overdue: {
     bg: realEstateColors.error[50],
     text: realEstateColors.error[700],
     icon: realEstateColors.error[600],
-    border: realEstateColors.error[200]
+    border: realEstateColors.error[200],
   },
   maintenance: {
     bg: realEstateColors.warning[50],
     text: realEstateColors.warning[700],
     icon: realEstateColors.warning[600],
-    border: realEstateColors.warning[200]
+    border: realEstateColors.warning[200],
   },
   growth: {
     bg: realEstateColors.accent[50],
     text: realEstateColors.accent[700],
     icon: realEstateColors.accent[600],
-    border: realEstateColors.accent[200]
-  }
+    border: realEstateColors.accent[200],
+  },
 };
 
 // Enhanced stat card with accessibility improvements
@@ -224,18 +224,18 @@ interface AccessibleStatCardProps {
   ariaLabel?: string;
 }
 
-export function AccessibleStatCard({ 
-  title, 
-  value, 
-  trend, 
-  progress, 
+export function AccessibleStatCard({
+  title,
+  value,
+  trend,
+  progress,
   colorVariant,
-  ariaLabel 
+  ariaLabel,
 }: AccessibleStatCardProps) {
   const colors = realEstateColorVariants[colorVariant];
-  
+
   return (
-    <Card 
+    <Card
       className="hover:shadow-md transition-shadow overflow-hidden focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-primary"
       role="article"
       aria-label={ariaLabel || `${title}: ${value}`}
@@ -246,14 +246,21 @@ export function AccessibleStatCard({
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide truncate">
               {title}
             </p>
-            <p className="mt-2 text-2xl font-bold tracking-tight leading-none break-words" aria-live="polite">
+            <p
+              className="mt-2 text-2xl font-bold tracking-tight leading-none break-words"
+              aria-live="polite"
+            >
               {value}
             </p>
             {trend && (
-              <div className={cn(
-                "flex items-center gap-1 mt-2 text-xs font-medium",
-                trend.positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"
-              )}>
+              <div
+                className={cn(
+                  "flex items-center gap-1 mt-2 text-xs font-medium",
+                  trend.positive
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-red-500 dark:text-red-400",
+                )}
+              >
                 <span aria-hidden="true">
                   {trend.positive ? "Trending up" : "Trending down"}
                 </span>
@@ -261,8 +268,11 @@ export function AccessibleStatCard({
               </div>
             )}
           </div>
-          <div 
-            className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", colors.bg)}
+          <div
+            className={cn(
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+              colors.bg,
+            )}
             aria-hidden="true"
           >
             {/* Icon would go here */}
@@ -272,9 +282,11 @@ export function AccessibleStatCard({
           <div className="mt-4">
             <div className="flex justify-between text-xs text-muted-foreground mb-1">
               <span>Progress</span>
-              <span aria-label={`Progress: ${progress} percent`}>{progress}%</span>
+              <span aria-label={`Progress: ${progress} percent`}>
+                {progress}%
+              </span>
             </div>
-            <div 
+            <div
               className="h-1.5 w-full rounded-full bg-muted overflow-hidden"
               role="progressbar"
               aria-valuenow={progress}
@@ -283,8 +295,13 @@ export function AccessibleStatCard({
               aria-label={`Progress: ${progress}% complete`}
             >
               <div
-                className={cn("h-full rounded-full transition-all", 
-                  progress >= 80 ? "bg-emerald-500" : progress >= 60 ? "bg-amber-500" : "bg-red-500"
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  progress >= 80
+                    ? "bg-emerald-500"
+                    : progress >= 60
+                      ? "bg-amber-500"
+                      : "bg-red-500",
                 )}
                 style={{ width: `${Math.min(progress, 100)}%` }}
               />
@@ -299,22 +316,34 @@ export function AccessibleStatCard({
 // Accessible badge with proper ARIA labels
 interface AccessibleBadgeProps {
   children: React.ReactNode;
-  variant?: "default" | "secondary" | "destructive" | "outline" | "success" | "warning";
+  variant?:
+    | "default"
+    | "secondary"
+    | "destructive"
+    | "outline"
+    | "success"
+    | "warning";
   ariaLabel?: string;
 }
 
-export function AccessibleBadge({ children, variant = "default", ariaLabel }: AccessibleBadgeProps) {
+export function AccessibleBadge({
+  children,
+  variant = "default",
+  ariaLabel,
+}: AccessibleBadgeProps) {
   const variantClasses = {
     default: "bg-primary text-primary-foreground",
     secondary: "bg-secondary text-secondary-foreground",
     destructive: "bg-destructive text-destructive-foreground",
     outline: "border border-input bg-background text-foreground",
-    success: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400",
-    warning: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+    success:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-100/40 dark:text-emerald-400",
+    warning:
+      "bg-amber-100 text-amber-800 dark:bg-amber-100/40 dark:text-amber-400",
   };
 
   return (
-    <Badge 
+    <Badge
       className={variantClasses[variant]}
       aria-label={ariaLabel}
       role="status"
@@ -330,16 +359,12 @@ export const highContrastTheme = {
   text: "text-foreground",
   muted: "text-muted-foreground",
   background: "bg-background",
-  focus: "ring-2 ring-offset-2 ring-primary"
+  focus: "ring-2 ring-offset-2 ring-primary",
 };
 
 // Screen reader only content
 export function ScreenReaderOnly({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="sr-only">
-      {children}
-    </span>
-  );
+  return <span className="sr-only">{children}</span>;
 }
 
 // Skip to main content link for accessibility
@@ -355,7 +380,8 @@ export function SkipToMain() {
 }
 
 // Focus visible styles for keyboard navigation
-export const focusVisibleStyles = "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary";
+export const focusVisibleStyles =
+  "focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary";
 
 // Accessible button with proper ARIA support
 interface AccessibleButtonProps {
@@ -368,14 +394,14 @@ interface AccessibleButtonProps {
   size?: "sm" | "default" | "lg";
 }
 
-export function AccessibleButton({ 
-  children, 
-  onClick, 
-  disabled = false, 
-  ariaLabel, 
+export function AccessibleButton({
+  children,
+  onClick,
+  disabled = false,
+  ariaLabel,
   ariaDescribedBy,
   variant = "default",
-  size = "default"
+  size = "default",
 }: AccessibleButtonProps) {
   return (
     <Button
@@ -409,7 +435,11 @@ interface AccessibleTableProps {
   onSort?: (columnId: string) => void;
 }
 
-export function AccessibleTable({ headers, rows, onSort }: AccessibleTableProps) {
+export function AccessibleTable({
+  headers,
+  rows,
+  onSort,
+}: AccessibleTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse" role="table">
@@ -440,7 +470,11 @@ export function AccessibleTable({ headers, rows, onSort }: AccessibleTableProps)
         </thead>
         <tbody role="rowgroup">
           {rows.map((row) => (
-            <tr key={row.id} role="row" className="hover:bg-muted/30 transition-colors">
+            <tr
+              key={row.id}
+              role="row"
+              className="hover:bg-muted/30 transition-colors"
+            >
               {row.cells.map((cell, index) => (
                 <td
                   key={index}
@@ -465,11 +499,11 @@ export const colorBlindFriendlyColors = {
   green: "#16a34a",
   purple: "#9333ea",
   pink: "#db2777",
-  teal: "#0d9488"
+  teal: "#0d9488",
 };
 
 // Reduced motion support
 export const reducedMotionStyles = {
   transition: "transition-none",
-  animation: "animate-none"
+  animation: "animate-none",
 };

@@ -52,18 +52,26 @@ type DocType = TenantDocument["type"];
 
 const DOC_TYPE_OPTIONS: { value: DocType; label: string; group: string }[] = [
   // Identity
-  { value: "national_id",         label: "National ID",             group: "Identity" },
-  { value: "passport",            label: "Passport",                group: "Identity" },
-  { value: "driving_licence",     label: "Driving Licence",         group: "Identity" },
-  { value: "residence_permit",    label: "Residence Permit",        group: "Identity" },
+  { value: "national_id", label: "National ID", group: "Identity" },
+  { value: "passport", label: "Passport", group: "Identity" },
+  { value: "driving_licence", label: "Driving Licence", group: "Identity" },
+  { value: "residence_permit", label: "Residence Permit", group: "Identity" },
   // Tenancy
-  { value: "lease_agreement" as DocType, label: "Signed Lease Agreement", group: "Tenancy" },
-  { value: "reference_letter",    label: "Reference Letter",        group: "Tenancy" },
+  {
+    value: "lease_agreement" as DocType,
+    label: "Signed Lease Agreement",
+    group: "Tenancy",
+  },
+  { value: "reference_letter", label: "Reference Letter", group: "Tenancy" },
   // Financial
-  { value: "proof_of_income",     label: "Proof of Income / Employment Letter", group: "Financial" },
-  { value: "bank_statement",      label: "Bank Statement",          group: "Financial" },
+  {
+    value: "proof_of_income",
+    label: "Proof of Income / Employment Letter",
+    group: "Financial",
+  },
+  { value: "bank_statement", label: "Bank Statement", group: "Financial" },
   // Other
-  { value: "other",               label: "Other",                   group: "Other" },
+  { value: "other", label: "Other", group: "Other" },
 ];
 
 const TYPE_LABELS: Record<string, string> = Object.fromEntries(
@@ -73,12 +81,16 @@ const TYPE_LABELS: Record<string, string> = Object.fromEntries(
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function docIcon(type: DocType) {
-  if (type === "national_id" || type === "passport" || type === "driving_licence" || type === "residence_permit")
+  if (
+    type === "national_id" ||
+    type === "passport" ||
+    type === "driving_licence" ||
+    type === "residence_permit"
+  )
     return FileBadge;
-  if (type === "lease_agreement" as string || type === "reference_letter")
+  if (type === ("lease_agreement" as string) || type === "reference_letter")
     return FileCheck2;
-  if ((type as string).includes("image"))
-    return FileImage;
+  if ((type as string).includes("image")) return FileImage;
   return FileText;
 }
 
@@ -105,11 +117,11 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
   const { mutate: upload, isPending } = useUploadTenantDocument();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [docType, setDocType]     = useState<DocType>("national_id");
-  const [docName, setDocName]     = useState("");
+  const [docType, setDocType] = useState<DocType>("national_id");
+  const [docName, setDocName] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
-  const [file, setFile]           = useState<File | null>(null);
-  const [dragOver, setDragOver]   = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [dragOver, setDragOver] = useState(false);
 
   // Auto-fill name when type changes (only if not manually edited)
   function handleTypeChange(value: DocType) {
@@ -179,7 +191,10 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
           {/* Type */}
           <div className="space-y-1.5">
             <Label htmlFor="docType">Document Type *</Label>
-            <Select value={docType} onValueChange={(v) => handleTypeChange(v as DocType)}>
+            <Select
+              value={docType}
+              onValueChange={(v) => handleTypeChange(v as DocType)}
+            >
               <SelectTrigger id="docType">
                 <SelectValue />
               </SelectTrigger>
@@ -189,9 +204,13 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
                     <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                       {group}
                     </div>
-                    {DOC_TYPE_OPTIONS.filter((o) => o.group === group).map((o) => (
-                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                    ))}
+                    {DOC_TYPE_OPTIONS.filter((o) => o.group === group).map(
+                      (o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ),
+                    )}
                   </div>
                 ))}
               </SelectContent>
@@ -212,7 +231,10 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
 
           {/* Expiry */}
           <div className="space-y-1.5">
-            <Label htmlFor="docExpiry">Expiry Date <span className="text-muted-foreground">(optional)</span></Label>
+            <Label htmlFor="docExpiry">
+              Expiry Date{" "}
+              <span className="text-muted-foreground">(optional)</span>
+            </Label>
             <Input
               id="docExpiry"
               type="date"
@@ -224,7 +246,10 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
 
           {/* File drop zone */}
           <div className="space-y-1.5">
-            <Label>File <span className="text-muted-foreground">(optional in demo)</span></Label>
+            <Label>
+              File{" "}
+              <span className="text-muted-foreground">(optional in demo)</span>
+            </Label>
             <div
               className={cn(
                 "rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer",
@@ -233,7 +258,10 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
                   : "border-border hover:border-primary/50 hover:bg-muted/40",
               )}
               onClick={() => fileRef.current?.click()}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               role="button"
@@ -244,13 +272,20 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
                 type="file"
                 className="hidden"
                 accept=".pdf,.jpg,.jpeg,.png,.webp"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFile(f);
+                }}
               />
               {file ? (
                 <div className="flex items-center justify-center gap-2 text-sm">
                   <FileText className="h-4 w-4 text-primary" />
-                  <span className="font-medium truncate max-w-xs">{file.name}</span>
-                  <span className="text-muted-foreground">{formatFileSize(file.size)}</span>
+                  <span className="font-medium truncate max-w-xs">
+                    {file.name}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {formatFileSize(file.size)}
+                  </span>
                 </div>
               ) : (
                 <>
@@ -258,7 +293,9 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
                   <p className="text-sm text-muted-foreground">
                     Drag & drop or click to select
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">PDF, JPG, PNG up to 50 MB</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    PDF, JPG, PNG up to 50 MB
+                  </p>
                 </>
               )}
             </div>
@@ -268,7 +305,11 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
             <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" loading={isPending} disabled={!docName.trim()}>
+            <Button
+              type="submit"
+              loading={isPending}
+              disabled={!docName.trim()}
+            >
               <Upload className="h-3.5 w-3.5" />
               Upload Document
             </Button>
@@ -290,21 +331,28 @@ interface DocRowProps {
 
 function DocumentRow({ doc, tenantId, canVerify, canDelete }: DocRowProps) {
   const { mutate: verify, isPending: verifying } = useVerifyTenantDocument();
-  const { mutate: remove, isPending: deleting }  = useDeleteTenantDocument();
-  const [confirmDelete, setConfirmDelete]        = useState(false);
+  const { mutate: remove, isPending: deleting } = useDeleteTenantDocument();
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const Icon      = docIcon(doc.type);
-  const expiring  = isExpiringSoon(doc.expiresAt);
-  const expired   = isExpired(doc.expiresAt);
+  const Icon = docIcon(doc.type);
+  const expiring = isExpiringSoon(doc.expiresAt);
+  const expired = isExpired(doc.expiresAt);
 
   return (
     <div className="group flex items-start gap-3 rounded-lg border p-3 hover:bg-muted/30 transition-colors">
       {/* Icon */}
-      <div className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-        doc.verified ? "bg-emerald-100 dark:bg-emerald-950/40" : "bg-muted",
-      )}>
-        <Icon className={cn("h-4 w-4", doc.verified ? "text-emerald-600" : "text-muted-foreground")} />
+      <div
+        className={cn(
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+          doc.verified ? "bg-emerald-100 dark:bg-emerald-100/40" : "bg-muted",
+        )}
+      >
+        <Icon
+          className={cn(
+            "h-4 w-4",
+            doc.verified ? "text-emerald-600" : "text-muted-foreground",
+          )}
+        />
       </div>
 
       {/* Info */}
@@ -312,20 +360,31 @@ function DocumentRow({ doc, tenantId, canVerify, canDelete }: DocRowProps) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium truncate">{doc.name}</span>
           {doc.verified ? (
-            <Badge variant="outline" className="text-[10px] gap-1 text-emerald-700 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 shrink-0">
+            <Badge
+              variant="outline"
+              className="text-[10px] gap-1 text-emerald-700 border-emerald-200 bg-emerald-50 dark:bg-emerald-100/40 dark:border-emerald-200 shrink-0"
+            >
               <ShieldCheck className="h-2.5 w-2.5" />
               Verified
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-[10px] text-amber-700 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 shrink-0">
+            <Badge
+              variant="outline"
+              className="text-[10px] text-amber-700 border-amber-200 bg-amber-50 dark:bg-amber-100/40 dark:border-amber-200 shrink-0"
+            >
               Unverified
             </Badge>
           )}
           {expired && (
-            <Badge variant="destructive" className="text-[10px] shrink-0">Expired</Badge>
+            <Badge variant="destructive" className="text-[10px] shrink-0">
+              Expired
+            </Badge>
           )}
           {!expired && expiring && (
-            <Badge variant="outline" className="text-[10px] text-orange-700 border-orange-200 bg-orange-50 dark:bg-orange-950/30 shrink-0">
+            <Badge
+              variant="outline"
+              className="text-[10px] text-orange-700 border-orange-200 bg-orange-50 dark:bg-orange-100/40 shrink-0"
+            >
               <AlertTriangle className="h-2.5 w-2.5 mr-0.5" />
               Expiring soon
             </Badge>
@@ -333,7 +392,9 @@ function DocumentRow({ doc, tenantId, canVerify, canDelete }: DocRowProps) {
         </div>
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-          <span className="capitalize">{TYPE_LABELS[doc.type] ?? doc.type.replace(/_/g, " ")}</span>
+          <span className="capitalize">
+            {TYPE_LABELS[doc.type] ?? doc.type.replace(/_/g, " ")}
+          </span>
           {doc.sizeBytes > 0 && (
             <>
               <span>·</span>
@@ -345,7 +406,12 @@ function DocumentRow({ doc, tenantId, canVerify, canDelete }: DocRowProps) {
           {doc.expiresAt && (
             <>
               <span>·</span>
-              <span className={cn("flex items-center gap-0.5", expired && "text-red-600 font-medium")}>
+              <span
+                className={cn(
+                  "flex items-center gap-0.5",
+                  expired && "text-red-600 font-medium",
+                )}
+              >
                 <Calendar className="h-3 w-3" />
                 Expires {formatDate(doc.expiresAt)}
               </span>
@@ -358,7 +424,12 @@ function DocumentRow({ doc, tenantId, canVerify, canDelete }: DocRowProps) {
       <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         {/* Download / view */}
         {doc.url && (
-          <Button variant="ghost" size="icon-sm" asChild title="View / Download">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            asChild
+            title="View / Download"
+          >
             <a href={doc.url} target="_blank" rel="noopener noreferrer">
               <Download className="h-3.5 w-3.5" />
             </a>
@@ -395,13 +466,20 @@ function DocumentRow({ doc, tenantId, canVerify, canDelete }: DocRowProps) {
         )}
         {confirmDelete && (
           <div className="flex items-center gap-1">
-            <span className="text-xs text-destructive font-medium">Delete?</span>
+            <span className="text-xs text-destructive font-medium">
+              Delete?
+            </span>
             <Button
               variant="destructive"
               size="sm"
               className="h-6 text-xs px-2"
               loading={deleting}
-              onClick={() => remove({ tenantId, documentId: doc.id }, { onSuccess: () => setConfirmDelete(false) })}
+              onClick={() =>
+                remove(
+                  { tenantId, documentId: doc.id },
+                  { onSuccess: () => setConfirmDelete(false) },
+                )
+              }
             >
               Yes
             </Button>
@@ -426,28 +504,43 @@ interface TenantDocumentsSectionProps {
   tenantId: string;
 }
 
-export function TenantDocumentsSection({ tenantId }: TenantDocumentsSectionProps) {
+export function TenantDocumentsSection({
+  tenantId,
+}: TenantDocumentsSectionProps) {
   const { data: documents = [], isLoading } = useTenantDocuments(tenantId);
   const { can } = usePermissions();
-  const canWrite  = can("tenants:write");
+  const canWrite = can("tenants:write");
   const canVerify = can("tenants:write");
   const [showUpload, setShowUpload] = useState(false);
 
-  const verifiedCount   = documents.filter((d) => d.verified).length;
-  const expiredCount    = documents.filter((d) => isExpired(d.expiresAt)).length;
-  const expiringSoon    = documents.filter((d) => isExpiringSoon(d.expiresAt)).length;
+  const verifiedCount = documents.filter((d) => d.verified).length;
+  const expiredCount = documents.filter((d) => isExpired(d.expiresAt)).length;
+  const expiringSoon = documents.filter((d) =>
+    isExpiringSoon(d.expiresAt),
+  ).length;
 
   // Group by type category for display
-  const identity   = documents.filter((d) => ["national_id","passport","driving_licence","residence_permit"].includes(d.type));
-  const tenancy    = documents.filter((d) => ["lease_agreement","reference_letter"].includes(d.type as string));
-  const financial  = documents.filter((d) => ["proof_of_income","bank_statement"].includes(d.type));
-  const other      = documents.filter((d) => !identity.includes(d) && !tenancy.includes(d) && !financial.includes(d));
+  const identity = documents.filter((d) =>
+    ["national_id", "passport", "driving_licence", "residence_permit"].includes(
+      d.type,
+    ),
+  );
+  const tenancy = documents.filter((d) =>
+    ["lease_agreement", "reference_letter"].includes(d.type as string),
+  );
+  const financial = documents.filter((d) =>
+    ["proof_of_income", "bank_statement"].includes(d.type),
+  );
+  const other = documents.filter(
+    (d) =>
+      !identity.includes(d) && !tenancy.includes(d) && !financial.includes(d),
+  );
 
   const groups = [
-    { label: "Identity",   docs: identity  },
-    { label: "Tenancy",    docs: tenancy   },
-    { label: "Financial",  docs: financial },
-    { label: "Other",      docs: other     },
+    { label: "Identity", docs: identity },
+    { label: "Tenancy", docs: tenancy },
+    { label: "Financial", docs: financial },
+    { label: "Other", docs: other },
   ].filter((g) => g.docs.length > 0);
 
   return (
@@ -465,7 +558,11 @@ export function TenantDocumentsSection({ tenantId }: TenantDocumentsSectionProps
               )}
             </CardTitle>
             {canWrite && (
-              <Button size="sm" variant="outline" onClick={() => setShowUpload(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowUpload(true)}
+              >
                 <Plus className="h-3.5 w-3.5" />
                 Add Document
               </Button>
@@ -475,18 +572,18 @@ export function TenantDocumentsSection({ tenantId }: TenantDocumentsSectionProps
           {/* Summary chips */}
           {documents.length > 0 && (
             <div className="flex gap-2 flex-wrap mt-2">
-              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 rounded-full px-2 py-0.5">
+              <span className="inline-flex items-center gap-1 text-xs text-emerald-700 bg-emerald-50 dark:bg-emerald-100/40 rounded-full px-2 py-0.5">
                 <ShieldCheck className="h-3 w-3" />
                 {verifiedCount}/{documents.length} verified
               </span>
               {expiredCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-50 dark:bg-red-950/30 rounded-full px-2 py-0.5">
+                <span className="inline-flex items-center gap-1 text-xs text-red-700 bg-red-50 dark:bg-red-100/40 rounded-full px-2 py-0.5">
                   <AlertTriangle className="h-3 w-3" />
                   {expiredCount} expired
                 </span>
               )}
               {expiringSoon > 0 && (
-                <span className="inline-flex items-center gap-1 text-xs text-orange-700 bg-orange-50 dark:bg-orange-950/30 rounded-full px-2 py-0.5">
+                <span className="inline-flex items-center gap-1 text-xs text-orange-700 bg-orange-50 dark:bg-orange-100/40 rounded-full px-2 py-0.5">
                   <Calendar className="h-3 w-3" />
                   {expiringSoon} expiring soon
                 </span>
@@ -499,7 +596,10 @@ export function TenantDocumentsSection({ tenantId }: TenantDocumentsSectionProps
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2].map((i) => (
-                <div key={i} className="h-16 rounded-lg bg-muted animate-pulse" />
+                <div
+                  key={i}
+                  className="h-16 rounded-lg bg-muted animate-pulse"
+                />
               ))}
             </div>
           ) : documents.length === 0 ? (
@@ -512,7 +612,12 @@ export function TenantDocumentsSection({ tenantId }: TenantDocumentsSectionProps
                 Upload IDs, signed agreements, and supporting documents.
               </p>
               {canWrite && (
-                <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowUpload(true)}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={() => setShowUpload(true)}
+                >
                   <Plus className="h-3.5 w-3.5" />
                   Add Document
                 </Button>

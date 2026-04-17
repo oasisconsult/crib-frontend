@@ -1,13 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, CreditCard, UserCheck, ClipboardList, Wrench, ArrowRight } from "lucide-react";
+import {
+  FileText,
+  CreditCard,
+  UserCheck,
+  ClipboardList,
+  Wrench,
+  ArrowRight,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatRelative } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
 
-type ActivityType = "lease" | "payment" | "onboarding" | "inspection" | "maintenance";
+type ActivityType =
+  | "lease"
+  | "payment"
+  | "onboarding"
+  | "inspection"
+  | "maintenance";
 
 interface ActivityItem {
   id: string;
@@ -17,25 +29,86 @@ interface ActivityItem {
   timestamp: string;
 }
 
-const ICONS: Record<ActivityType, { icon: React.ComponentType<{ className?: string }>; bg: string; color: string }> = {
-  lease:       { icon: FileText,      bg: "bg-indigo-100 dark:bg-indigo-900/30",  color: "text-indigo-600"  },
-  payment:     { icon: CreditCard,    bg: "bg-emerald-100 dark:bg-emerald-900/30",color: "text-emerald-600" },
-  onboarding:  { icon: UserCheck,     bg: "bg-sky-100 dark:bg-sky-900/30",        color: "text-sky-600"     },
-  inspection:  { icon: ClipboardList, bg: "bg-violet-100 dark:bg-violet-900/30",  color: "text-violet-600"  },
-  maintenance: { icon: Wrench,        bg: "bg-orange-100 dark:bg-orange-900/30",  color: "text-orange-600"  },
+const ICONS: Record<
+  ActivityType,
+  {
+    icon: React.ComponentType<{ className?: string }>;
+    bg: string;
+    color: string;
+  }
+> = {
+  lease: {
+    icon: FileText,
+    bg: "bg-indigo-100 dark:bg-indigo-100/40",
+    color: "text-indigo-600",
+  },
+  payment: {
+    icon: CreditCard,
+    bg: "bg-emerald-100 dark:bg-emerald-100/40",
+    color: "text-emerald-600",
+  },
+  onboarding: {
+    icon: UserCheck,
+    bg: "bg-sky-100 dark:bg-sky-100/40",
+    color: "text-sky-600",
+  },
+  inspection: {
+    icon: ClipboardList,
+    bg: "bg-violet-100 dark:bg-violet-100/40",
+    color: "text-violet-600",
+  },
+  maintenance: {
+    icon: Wrench,
+    bg: "bg-orange-100 dark:bg-orange-100/40",
+    color: "text-orange-600",
+  },
 };
 
 function buildActivities(now: number): ActivityItem[] {
   return [
-    { id: "a1", type: "payment",     title: "Rent received",           description: "Brian Ssempala · Kololo Heights · UGX 1,500,000",  timestamp: new Date(now - 1 * 3600000).toISOString()      },
-    { id: "a2", type: "onboarding",  title: "Onboarding complete",     description: "Fatuma Nakato submitted her profile",               timestamp: new Date(now - 4 * 3600000).toISOString()      },
-    { id: "a3", type: "lease",       title: "Lease sent for signing",  description: "Unit A · Ntinda View Flats",                        timestamp: new Date(now - 24 * 3600000).toISOString()     },
-    { id: "a4", type: "inspection",  title: "Inspection scheduled",    description: "Room 101 · Bugolobi Lodge · 10 Apr, 10:00–12:00",   timestamp: new Date(now - 2 * 24 * 3600000).toISOString() },
-    { id: "a5", type: "maintenance", title: "Maintenance reported",    description: "Leaking pipe · Unit B · Ntinda View",               timestamp: new Date(now - 3 * 24 * 3600000).toISOString() },
+    {
+      id: "a1",
+      type: "payment",
+      title: "Rent received",
+      description: "Brian Ssempala · Kololo Heights · UGX 1,500,000",
+      timestamp: new Date(now - 1 * 3600000).toISOString(),
+    },
+    {
+      id: "a2",
+      type: "onboarding",
+      title: "Onboarding complete",
+      description: "Fatuma Nakato submitted her profile",
+      timestamp: new Date(now - 4 * 3600000).toISOString(),
+    },
+    {
+      id: "a3",
+      type: "lease",
+      title: "Lease sent for signing",
+      description: "Unit A · Ntinda View Flats",
+      timestamp: new Date(now - 24 * 3600000).toISOString(),
+    },
+    {
+      id: "a4",
+      type: "inspection",
+      title: "Inspection scheduled",
+      description: "Room 101 · Bugolobi Lodge · 10 Apr, 10:00–12:00",
+      timestamp: new Date(now - 2 * 24 * 3600000).toISOString(),
+    },
+    {
+      id: "a5",
+      type: "maintenance",
+      title: "Maintenance reported",
+      description: "Leaking pipe · Unit B · Ntinda View",
+      timestamp: new Date(now - 3 * 24 * 3600000).toISOString(),
+    },
   ];
 }
 
-export function ActivityTimeline({ activities: activitiesProp }: { activities?: ActivityItem[] }) {
+export function ActivityTimeline({
+  activities: activitiesProp,
+}: {
+  activities?: ActivityItem[];
+}) {
   const [items, setItems] = useState<ActivityItem[]>([]);
 
   useEffect(() => {
@@ -63,12 +136,21 @@ export function ActivityTimeline({ activities: activitiesProp }: { activities?: 
                 {idx < activities.length - 1 && (
                   <div className="absolute left-[15px] top-8 bottom-0 w-px bg-border" />
                 )}
-                <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-full z-10 mt-0.5", bg)}>
+                <div
+                  className={cn(
+                    "flex h-8 w-8 shrink-0 items-center justify-center rounded-full z-10 mt-0.5",
+                    bg,
+                  )}
+                >
                   <Icon className={cn("h-3.5 w-3.5", color)} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium leading-tight">{item.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{item.description}</p>
+                  <p className="text-sm font-medium leading-tight">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                    {item.description}
+                  </p>
                   <time
                     className="text-xs text-muted-foreground/60 mt-1 block"
                     dateTime={item.timestamp}

@@ -3,9 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Building2, Users, FileText, CreditCard,
-  ClipboardList, Bell, BarChart3, Settings, ChevronLeft,
-  ChevronRight, Wrench, Shield, LogOut,
+  LayoutDashboard,
+  Building2,
+  Users,
+  FileText,
+  CreditCard,
+  ClipboardList,
+  Bell,
+  BarChart3,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  Wrench,
+  Shield,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -33,17 +44,65 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/",              label: "Dashboard",     icon: LayoutDashboard, section: "MENU" },
-  { href: "/properties",   label: "Properties",    icon: Building2,       roles: ["owner","manager","superadmin"] },
-  { href: "/tenants",      label: "Tenants",       icon: Users,           roles: ["owner","manager","superadmin"] },
-  { href: "/leases",       label: "Leases",        icon: FileText,        roles: ["owner","manager","superadmin"] },
-  { href: "/payments",     label: "Payments",      icon: CreditCard,      roles: ["owner","manager","superadmin"],  section: "FINANCE" },
-  { href: "/analytics",    label: "Analytics",     icon: BarChart3,       roles: ["owner","manager","superadmin"] },
-  { href: "/inspections",  label: "Inspections",   icon: ClipboardList,   roles: ["owner","manager","superadmin","maintenance"], section: "OPERATIONS" },
-  { href: "/maintenance",  label: "Maintenance",   icon: Wrench,          roles: ["owner","manager","superadmin","maintenance"] },
-  { href: "/notifications",label: "Notifications", icon: Bell,            roles: ["owner","manager","superadmin"] },
-  { href: "/admin",        label: "Admin",         icon: Shield,          roles: ["superadmin"], section: "SYSTEM" },
-  { href: "/settings",     label: "Settings",      icon: Settings },
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, section: "MENU" },
+  {
+    href: "/properties",
+    label: "Properties",
+    icon: Building2,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/tenants",
+    label: "Tenants",
+    icon: Users,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/leases",
+    label: "Leases",
+    icon: FileText,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/payments",
+    label: "Payments",
+    icon: CreditCard,
+    roles: ["owner", "manager", "superadmin"],
+    section: "FINANCE",
+  },
+  {
+    href: "/analytics",
+    label: "Analytics",
+    icon: BarChart3,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/inspections",
+    label: "Inspections",
+    icon: ClipboardList,
+    roles: ["owner", "manager", "superadmin", "maintenance"],
+    section: "OPERATIONS",
+  },
+  {
+    href: "/maintenance",
+    label: "Maintenance",
+    icon: Wrench,
+    roles: ["owner", "manager", "superadmin", "maintenance"],
+  },
+  {
+    href: "/notifications",
+    label: "Notifications",
+    icon: Bell,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/admin",
+    label: "Admin",
+    icon: Shield,
+    roles: ["superadmin"],
+    section: "SYSTEM",
+  },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 /* ── Component ──────────────────────────────────────────────────────────── */
@@ -86,7 +145,7 @@ export function Sidebar() {
           </div>
           {!sidebarCollapsed && (
             <span
-              className="text-[15px] font-bold text-[hsl(var(--sidebar-active-fg))] tracking-[-0.01em] dark:text-white"
+              className="text-[15px] font-bold text-[hsl(var(--sidebar-active-fg))] tracking-[-0.01em]"
               style={{ fontFamily: "var(--font-poppins,'Poppins',sans-serif)" }}
             >
               CRIB
@@ -95,12 +154,19 @@ export function Sidebar() {
         </div>
 
         {/* ── Nav ───────────────────────────────────────────────────── */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2" aria-label="Sidebar navigation">
+        <nav
+          className="flex-1 overflow-y-auto overflow-x-hidden py-2 px-2"
+          aria-label="Sidebar navigation"
+        >
           {visibleItems.map((item) => {
-            const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname.startsWith(item.href);
             const Icon = item.icon;
 
-            const showSection = !sidebarCollapsed && item.section && item.section !== lastSection;
+            const showSection =
+              !sidebarCollapsed && item.section && item.section !== lastSection;
             if (item.section) lastSection = item.section;
 
             const link = (
@@ -114,17 +180,21 @@ export function Sidebar() {
                   "transition-[background,color] duration-100",
                   isActive
                     ? "bg-[hsl(var(--sidebar-active-bg))] text-[hsl(var(--sidebar-active-fg))] font-semibold"
-                    : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[#0F172A] dark:hover:text-white",
+                    : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[hsl(var(--foreground))]",
                   sidebarCollapsed && "justify-center px-0 mx-auto w-10",
                 )}
               >
                 <Icon
                   className={cn(
                     "h-[18px] w-[18px] shrink-0",
-                    isActive ? "text-[hsl(var(--sidebar-active-fg))]" : "text-[hsl(var(--sidebar-foreground))]",
+                    isActive
+                      ? "text-[hsl(var(--sidebar-active-fg))]"
+                      : "text-[hsl(var(--sidebar-foreground))]",
                   )}
                 />
-                {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+                {!sidebarCollapsed && (
+                  <span className="truncate">{item.label}</span>
+                )}
                 {!sidebarCollapsed && item.badge && (
                   <span className="ml-auto h-4.5 min-w-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
                     {item.badge}
@@ -143,11 +213,16 @@ export function Sidebar() {
                 {sidebarCollapsed ? (
                   <Tooltip>
                     <TooltipTrigger asChild>{link}</TooltipTrigger>
-                    <TooltipContent side="right" className="text-xs font-medium">
+                    <TooltipContent
+                      side="right"
+                      className="text-xs font-medium"
+                    >
                       {item.label}
                     </TooltipContent>
                   </Tooltip>
-                ) : link}
+                ) : (
+                  link
+                )}
               </div>
             );
           })}
@@ -162,11 +237,15 @@ export function Sidebar() {
               "w-full flex items-center justify-center h-9 mt-1",
               "text-[hsl(var(--sidebar-section-fg))] hover:text-[hsl(var(--sidebar-foreground))] transition-colors",
             )}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={
+              sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+            }
           >
-            {sidebarCollapsed
-              ? <ChevronRight className="h-3.5 w-3.5" />
-              : <ChevronLeft className="h-3.5 w-3.5" />}
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronLeft className="h-3.5 w-3.5" />
+            )}
           </button>
 
           {/* User info */}
@@ -177,7 +256,7 @@ export function Sidebar() {
                   {getInitials(user?.name ?? "U")}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12.5px] font-semibold text-[#0F172A] dark:text-white/90 truncate leading-tight">
+                  <p className="text-[12.5px] font-semibold text-[hsl(var(--foreground))] truncate leading-tight">
                     {user?.name ?? "User"}
                   </p>
                   <p className="text-[11px] text-[hsl(var(--sidebar-section-fg))] truncate leading-tight">
@@ -185,7 +264,10 @@ export function Sidebar() {
                   </p>
                 </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); logout(); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    logout();
+                  }}
                   className="opacity-0 group-hover:opacity-100 transition-opacity text-[hsl(var(--sidebar-section-fg))] hover:text-red-500 p-0.5"
                   aria-label="Sign out"
                 >

@@ -10,7 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -30,8 +36,14 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 const TEMPLATE_VARIABLES = [
-  "tenant_name", "property_name", "unit_name", "amount",
-  "due_date", "lease_start", "lease_end", "landlord_name",
+  "tenant_name",
+  "property_name",
+  "unit_name",
+  "amount",
+  "due_date",
+  "lease_start",
+  "lease_end",
+  "landlord_name",
 ];
 
 interface TemplateEditorProps {
@@ -47,7 +59,13 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
   const { mutate: update, isPending: updating } = useUpdateTemplate();
   const isPending = creating || updating;
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormValues>({
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: template
       ? {
@@ -81,7 +99,10 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
       const sampleVars = Object.fromEntries(
         TEMPLATE_VARIABLES.map((v) => [v, `[${v.replace(/_/g, " ")}]`]),
       );
-      const result = await notificationsApi.previewTemplate(template.id, sampleVars);
+      const result = await notificationsApi.previewTemplate(
+        template.id,
+        sampleVars,
+      );
       setPreview(result.body);
     } finally {
       setLoadingPreview(false);
@@ -89,9 +110,16 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
   };
 
   const onSubmit = (values: FormValues) => {
-    const payload = { ...values, landlordId: "landlord-1", variables: TEMPLATE_VARIABLES };
+    const payload = {
+      ...values,
+      landlordId: "landlord-1",
+      variables: TEMPLATE_VARIABLES,
+    };
     if (template) {
-      update({ id: template.id, data: payload as Partial<NotificationTemplate> }, { onSuccess: onSaved });
+      update(
+        { id: template.id, data: payload as Partial<NotificationTemplate> },
+        { onSuccess: onSaved },
+      );
     } else {
       create(payload as Parameters<typeof create>[0], { onSuccess: onSaved });
     }
@@ -101,14 +129,30 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="name">Template Name <span className="text-destructive">*</span></Label>
-          <Input id="name" placeholder="Rent Due Reminder" error={!!errors.name} {...register("name")} />
-          {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          <Label htmlFor="name">
+            Template Name <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="name"
+            placeholder="Rent Due Reminder"
+            error={!!errors.name}
+            {...register("name")}
+          />
+          {errors.name && (
+            <p className="text-xs text-destructive">{errors.name.message}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">
-          <Label>Channel <span className="text-destructive">*</span></Label>
-          <Select value={channel} onValueChange={(v) => setValue("channel", v as FormValues["channel"])}>
+          <Label>
+            Channel <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={channel}
+            onValueChange={(v) =>
+              setValue("channel", v as FormValues["channel"])
+            }
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -122,8 +166,13 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
         </div>
 
         <div className="space-y-1.5">
-          <Label>Trigger <span className="text-destructive">*</span></Label>
-          <Select defaultValue={template?.trigger} onValueChange={(v) => setValue("trigger", v)}>
+          <Label>
+            Trigger <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            defaultValue={template?.trigger}
+            onValueChange={(v) => setValue("trigger", v)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select trigger..." />
             </SelectTrigger>
@@ -132,11 +181,17 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
               <SelectItem value="rent_overdue">Rent Overdue</SelectItem>
               <SelectItem value="lease_expiry">Lease Expiry</SelectItem>
               <SelectItem value="lease_activated">Lease Activated</SelectItem>
-              <SelectItem value="onboarding_invite">Onboarding Invite</SelectItem>
-              <SelectItem value="payment_confirmed">Payment Confirmed</SelectItem>
+              <SelectItem value="onboarding_invite">
+                Onboarding Invite
+              </SelectItem>
+              <SelectItem value="payment_confirmed">
+                Payment Confirmed
+              </SelectItem>
               <SelectItem value="payment_failed">Payment Failed</SelectItem>
               <SelectItem value="late_fee_applied">Late Fee Applied</SelectItem>
-              <SelectItem value="inspection_scheduled">Inspection Scheduled</SelectItem>
+              <SelectItem value="inspection_scheduled">
+                Inspection Scheduled
+              </SelectItem>
               <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
@@ -145,7 +200,11 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
         {channel === "email" && (
           <div className="space-y-1.5">
             <Label htmlFor="subject">Email Subject</Label>
-            <Input id="subject" placeholder="Your rent for {{unit_name}} is due" {...register("subject")} />
+            <Input
+              id="subject"
+              placeholder="Your rent for {{unit_name}} is due"
+              {...register("subject")}
+            />
           </div>
         )}
       </div>
@@ -162,7 +221,7 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
               key={v}
               type="button"
               onClick={() => insertVariable(v)}
-              className="text-xs px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-mono transition-colors"
+              className="text-xs px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-100/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-200 font-mono transition-colors"
             >
               {`{{${v}}}`}
             </button>
@@ -172,7 +231,9 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
 
       {/* Body */}
       <div className="space-y-1.5">
-        <Label htmlFor="body">Message Body <span className="text-destructive">*</span></Label>
+        <Label htmlFor="body">
+          Message Body <span className="text-destructive">*</span>
+        </Label>
         <Textarea
           id="body"
           rows={7}
@@ -180,10 +241,13 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
           error={!!errors.body}
           {...register("body")}
         />
-        {errors.body && <p className="text-xs text-destructive">{errors.body.message}</p>}
+        {errors.body && (
+          <p className="text-xs text-destructive">{errors.body.message}</p>
+        )}
         {channel === "sms" && body && (
           <p className="text-xs text-muted-foreground">
-            {body.length} chars / {Math.ceil(body.length / 160)} SMS segment{Math.ceil(body.length / 160) !== 1 ? "s" : ""}
+            {body.length} chars / {Math.ceil(body.length / 160)} SMS segment
+            {Math.ceil(body.length / 160) !== 1 ? "s" : ""}
           </p>
         )}
       </div>
@@ -196,7 +260,9 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
           </CardHeader>
           <CardContent>
             <Alert variant="info">
-              <AlertDescription className="whitespace-pre-wrap text-sm">{preview}</AlertDescription>
+              <AlertDescription className="whitespace-pre-wrap text-sm">
+                {preview}
+              </AlertDescription>
             </Alert>
           </CardContent>
         </Card>
