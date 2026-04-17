@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { inspectionsApi } from "@/services/api/inspections";
 import { toast } from "@/store/useUIStore";
@@ -9,6 +9,7 @@ export function useInspections(params?: QueryParams) {
   return useQuery({
     queryKey: queryKeys.inspections.list(params ?? {}),
     queryFn: () => inspectionsApi.list(params),
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -67,7 +68,7 @@ export function useMaintenanceIssues(params?: QueryParams) {
   return useQuery({
     queryKey: queryKeys.maintenance.list(params),
     queryFn: () => inspectionsApi.listMaintenance(params),
-    enabled: true,
+    placeholderData: keepPreviousData,
   });
 }
 

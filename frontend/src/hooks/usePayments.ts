@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { paymentsApi, analyticsApi } from "@/services/api/payments";
 import { toast } from "@/store/useUIStore";
@@ -10,6 +10,7 @@ export function usePayments(params?: QueryParams) {
   return useQuery({
     queryKey: queryKeys.payments.list(params),
     queryFn: () => paymentsApi.list(params),
+    placeholderData: keepPreviousData,
   });
 }
 

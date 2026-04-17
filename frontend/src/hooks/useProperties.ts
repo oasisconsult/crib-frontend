@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { propertiesApi } from "@/services/api/properties";
 import { toast } from "@/store/useUIStore";
@@ -10,6 +10,7 @@ export function useProperties(params?: QueryParams) {
   return useQuery({
     queryKey: queryKeys.properties.list(params),
     queryFn: () => propertiesApi.list(params),
+    placeholderData: keepPreviousData,
   });
 }
 

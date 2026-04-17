@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { notificationsApi } from "@/services/api/notifications";
 import { toast } from "@/store/useUIStore";
@@ -10,6 +10,7 @@ export function useNotifications(params?: QueryParams) {
   return useQuery({
     queryKey: queryKeys.notifications.list(params),
     queryFn: () => notificationsApi.list(params),
+    placeholderData: keepPreviousData,
   });
 }
 
