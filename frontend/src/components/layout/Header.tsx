@@ -164,7 +164,7 @@ export function Header() {
                     className={cn(
                       "flex-1 flex flex-col items-center gap-1 py-1.5 rounded-[6px] text-[10px] font-medium transition-colors",
                       preference === value
-                        ? "bg-[#0062FF]/10 text-[#0062FF]"
+                        ? "bg-[hsl(var(--sidebar-active-bg))] text-[#0062FF]"
                         : "text-muted-foreground hover:bg-header",
                     )}
                   >
