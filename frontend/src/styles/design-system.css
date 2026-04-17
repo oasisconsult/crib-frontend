@@ -23,7 +23,7 @@
   --secondary:            214 32% 95%;     /* #EDF2FA — clean light blue-grey */
   --secondary-foreground: 222 47% 11%;
   --muted:                214 32% 95%;     /* #EDF2FA */
-  --muted-foreground:     215 16% 47%;     /* #64748B */
+  --muted-foreground:     215 20% 40%;     /* #5A6C7D — darker for better contrast on light bg */
   --accent:               221 100% 97%;    /* #EEF4FF */
   --accent-foreground:    221 100% 50%;
   --destructive:          0 72% 51%;       /* #DC2626 */
@@ -31,7 +31,7 @@
   --border:               214 32% 89%;     /* #DEEAF8 — slightly blue-tinted border */
   --input:                214 32% 89%;
   --ring:                 221 100% 50%;    /* #0062FF */
-  --radius:               0.5rem;
+  --radius:               0.75rem;       /* 12px — more modern rounded corners */
 
   /* Header */
   --header:               0 0% 100%;       /* #FFFFFF */
@@ -59,7 +59,7 @@
   --secondary:            217 33% 15%;     /* #172033 */
   --secondary-foreground: 210 40% 96%;
   --muted:                217 33% 15%;
-  --muted-foreground:     215 20% 55%;     /* #7A8BA6 */
+  --muted-foreground:     215 25% 55%;     /* #94A3B8 — lighter for better contrast on dark bg */
   --accent:               217 33% 18%;     /* #1A2840 */
   --accent-foreground:    221 100% 70%;
   --destructive:          0 65% 52%;
@@ -88,53 +88,53 @@
   /* Brand */
   --color-primary:        #0062FF;
   --color-primary-hover:  #0052D9;
-  --color-primary-subtle: #EEF4FF;
+  --color-primary-subtle: #E8F3FF;
   --color-primary-border: #C7DAFF;
 
-  /* Sidebar */
-  --color-sidebar-bg:     #0F172A;   /* Near-black navy — more premium than #171725 */
-  --color-sidebar-hover:  rgba(255,255,255,0.06);
+  /* Sidebar (light mode) */
+  --color-sidebar-bg:     #FFFFFF;
+  --color-sidebar-hover:  #F3F4F6;
   --color-sidebar-active: #0062FF;
-  --color-sidebar-text:   rgba(255,255,255,0.55);
-  --color-sidebar-text-active: #FFFFFF;
+  --color-sidebar-text:   #64748B;
+  --color-sidebar-text-active: #0F172A;
 
   /* Text scale */
-  --color-text-primary:   #0F172A;   /* slate-900 */
-  --color-text-secondary: #64748B;   /* slate-500 */
-  --color-text-tertiary:  #94A3B8;   /* slate-400 */
-  --color-text-disabled:  #CBD5E1;   /* slate-300 */
+  --color-text-primary:   #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-tertiary:  #64748B;
+  --color-text-disabled:  #94A3B8;
 
-  /* Surfaces */
-  --color-canvas:         #EFF5FF;   /* page background — clean light blue-white */
-  --color-surface:        #FFFFFF;   /* card / panel — pure white */
-  --color-surface-raised: #FFFFFF;   /* elevated modals */
-  --color-surface-sunken: #EDF2FA;   /* inset areas — subtle blue-grey */
+  /* Surfaces (light mode) */
+  --color-canvas:         #F7F9FC;
+  --color-surface:        #FFFFFF;
+  --color-surface-raised: #FFFFFF;
+  --color-surface-sunken: #F3F4F6;
 
   /* Borders */
-  --color-border:         #E2E8F0;   /* default */
-  --color-border-strong:  #CBD5E1;   /* emphasized */
-  --color-border-focus:   #0062FF;   /* focused inputs */
+  --color-border:         #E5E7EB;
+  --color-border-strong:  #CBD5E1;
+  --color-border-focus:   #0062FF;
 
   /* Semantic status */
-  --color-success:        #059669;   /* emerald-600 */
+  --color-success:        #059669;
   --color-success-subtle: #ECFDF5;
   --color-success-border: #A7F3D0;
-  --color-warning:        #D97706;   /* amber-600 */
-  --color-warning-subtle: #FFFBEB;
-  --color-warning-border: #FCD34D;
-  --color-danger:         #DC2626;   /* red-600 */
-  --color-danger-subtle:  #FEF2F2;
+  --color-warning:        #D97706;
+  --color-warning-subtle: #FFFAEB;
+  --color-warning-border: #FCE7A2;
+  --color-danger:         #DC2626;
+  --color-danger-subtle:  #FEE2E2;
   --color-danger-border:  #FECACA;
-  --color-info:           #0284C7;   /* sky-600 */
-  --color-info-subtle:    #F0F9FF;
+  --color-info:           #2563EB;
+  --color-info-subtle:    #EFF6FF;
   --color-info-border:    #BAE6FD;
 
-  /* Shadows — crisp white cards on blue-white canvas */
-  --shadow-xs:  0 1px 2px rgba(0,62,255,0.04);
-  --shadow-sm:  0 1px 3px rgba(0,62,255,0.06), 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md:  0 4px 8px rgba(0,62,255,0.07), 0 2px 4px rgba(15,23,42,0.04);
-  --shadow-lg:  0 12px 24px rgba(0,62,255,0.08), 0 4px 8px rgba(15,23,42,0.04);
-  --shadow-xl:  0 24px 40px rgba(0,62,255,0.10), 0 8px 16px rgba(15,23,42,0.06);
+  /* Shadows */
+  --shadow-xs:  0 1px 2px rgba(15,23,42,0.04);
+  --shadow-sm:  0 1px 3px rgba(15,23,42,0.08);
+  --shadow-md:  0 6px 18px rgba(15,23,42,0.10);
+  --shadow-lg:  0 12px 32px rgba(15,23,42,0.14);
+  --shadow-xl:  0 24px 48px rgba(15,23,42,0.18);
 
   /* Geometry */
   --radius-sm:  4px;
@@ -194,8 +194,18 @@ body {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.5;
-  color: var(--color-text-primary);
-  background-color: var(--color-canvas);
+  color: var(--foreground);
+  background-color: var(--background);
+}
+
+html.light body {
+  color: var(--foreground);
+  background-color: var(--background);
+}
+
+html.dark body {
+  color: var(--foreground);
+  background-color: var(--background);
 }
 
 /* Selection */

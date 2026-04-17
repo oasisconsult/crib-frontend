@@ -15,11 +15,11 @@ export function Card({ children, className = "", hover = true }: CardProps) {
   return (
     <div
       className={`
-        bg-surface-${resolved}
-        border border-border-${resolved}
+        bg-card text-card-foreground
+        border border-border
         rounded-2xl p-6
         shadow-sm
-        ${hover ? "hover:bg-white/5 hover:shadow-md transition-all duration-300" : ""}
+        ${hover ? "hover:shadow-md transition-shadow duration-200" : ""}
         ${className}
       `}
     >

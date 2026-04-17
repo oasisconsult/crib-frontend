@@ -35,7 +35,7 @@ export function Header() {
   const { preference, setPreference } = useTheme();
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 px-4 md:px-6 bg-[hsl(var(--header))] border-b border-[hsl(var(--sidebar-border))] shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 px-4 md:px-6 bg-header border-b border-sidebar-border shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
       {/* Mobile menu */}
       <Button
         variant="ghost"
@@ -54,13 +54,13 @@ export function Header() {
 
       {/* Search trigger */}
       <button
-        className="hidden md:flex flex-1 max-w-[380px] items-center gap-2 h-10 px-3 rounded-[8px] text-sm border transition-colors text-[hsl(var(--muted-foreground))] cursor-pointer bg-[hsl(var(--muted))] border-[hsl(var(--border))] hover:border-[#0062FF]/30 focus:outline-none"
+        className="hidden md:flex flex-1 max-w-[380px] items-center gap-2 h-10 px-3 rounded-[8px] text-sm border transition-colors text-muted-foreground cursor-pointer bg-muted border-border hover:border-[#0062FF]/30 focus:outline-none"
         onClick={() => setCommandPaletteOpen(true)}
         aria-label="Open search"
       >
         <Search className="h-4 w-4 shrink-0" />
         <span className="flex-1 text-left">Search properties, tenants...</span>
-        <kbd className="text-xs font-mono bg-[hsl(var(--background))] border border-[hsl(var(--border))] rounded px-1.5 py-0.5">
+        <kbd className="text-xs font-mono bg-background border border-border rounded px-1.5 py-0.5">
           ⌘K
         </kbd>
       </button>
@@ -68,7 +68,7 @@ export function Header() {
       <div className="ml-auto flex items-center gap-1.5">
         {/* ── 3-way theme toggle ──────────────────────────────────── */}
         <div
-          className="hidden sm:flex items-center gap-0.5 rounded-[8px] bg-[hsl(var(--muted))] border border-[hsl(var(--border))] p-0.5"
+          className="hidden sm:flex items-center gap-0.5 rounded-[10px] bg-muted border border-border p-0.5"
           role="group"
           aria-label="Theme preference"
         >
@@ -79,13 +79,13 @@ export function Header() {
               aria-label={`${label} mode`}
               aria-pressed={preference === value}
               className={cn(
-                "flex items-center justify-center h-7 w-7 rounded-[6px] transition-all duration-150",
+                "flex items-center justify-center h-9 w-9 rounded-[8px] transition-all duration-150",
                 preference === value
-                  ? "bg-[hsl(var(--header))] text-[#0062FF] shadow-sm border border-[hsl(var(--border))]"
-                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--header))]",
+                  ? "bg-card text-primary shadow-sm border border-border"
+                  : "text-muted-foreground hover:text-foreground hover:bg-card",
               )}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="h-4 w-4" />
             </button>
           ))}
         </div>
@@ -94,13 +94,13 @@ export function Header() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] h-9 w-9 rounded-[8px]"
+          className="relative text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9 rounded-[8px]"
           aria-label="Notifications"
           asChild
         >
           <Link href="/notifications">
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border-2 border-[hsl(var(--header))]" />
+            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border-2 border-header" />
           </Link>
         </Button>
 
@@ -108,7 +108,7 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="flex items-center gap-2 h-9 px-2 rounded-[8px] hover:bg-[hsl(var(--muted))] transition-colors"
+              className="flex items-center gap-2 h-9 px-2 rounded-[8px] hover:bg-muted transition-colors"
               aria-label="User menu"
             >
               <Avatar className="h-7 w-7">
@@ -118,24 +118,24 @@ export function Header() {
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:flex flex-col items-start">
-                <span className="text-sm font-semibold text-[hsl(var(--foreground))] leading-tight">
+                <span className="text-sm font-semibold text-foreground leading-tight">
                   {user?.name ?? "User"}
                 </span>
               </div>
-              <ChevronDown className="h-3.5 w-3.5 text-[hsl(var(--muted-foreground))] hidden md:block" />
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground hidden md:block" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-0.5">
                 <span className="font-semibold text-sm">{user?.name ?? "User"}</span>
-                <span className="text-xs text-[hsl(var(--muted-foreground))] font-normal">{user?.email}</span>
+                <span className="text-xs text-muted-foreground font-normal">{user?.email}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {/* Mobile theme toggle inside dropdown */}
             <div className="sm:hidden px-1 py-1.5">
-              <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]">Theme</p>
+              <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Theme</p>
               <div className="flex items-center gap-1">
                 {THEME_OPTIONS.map(({ value, icon: Icon, label }) => (
                   <button
@@ -145,7 +145,7 @@ export function Header() {
                       "flex-1 flex flex-col items-center gap-1 py-1.5 rounded-[6px] text-[10px] font-medium transition-colors",
                       preference === value
                         ? "bg-[#0062FF]/10 text-[#0062FF]"
-                        : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]",
+                        : "text-muted-foreground hover:bg-muted",
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" />

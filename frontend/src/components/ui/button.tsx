@@ -8,7 +8,7 @@ const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
     "font-medium text-sm leading-none",
-    "rounded-[8px]",
+    "rounded-[var(--radius)]",
     "border border-transparent",
     "transition-all duration-150 ease-out",
     // WCAG 2.4.7 — visible focus indicator, ring-offset uses bg so it's visible on any surface
@@ -22,37 +22,37 @@ const buttonVariants = cva(
       variant: {
         // ── Primary ── filled blue, main CTA
         default: [
-          "bg-primary text-white border-primary",
-          "hover:bg-primary/90 hover:border-primary/90",
+          "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-[hsl(var(--primary))]",
+          "hover:bg-[hsl(var(--primary))]/90 hover:border-[hsl(var(--primary))]/90",
           "active:scale-[0.97]",
           "shadow-[0_1px_2px_rgba(0,98,255,0.25)]",
         ].join(" "),
 
         // ── Destructive ── filled red
         destructive: [
-          "bg-destructive text-white border-destructive",
-          "hover:bg-destructive/90 hover:border-destructive/90",
+          "bg-[hsl(var(--danger))] text-[hsl(var(--danger-foreground))] border-[hsl(var(--danger))]",
+          "hover:bg-[hsl(var(--danger))]/90 hover:border-[hsl(var(--danger))]/90",
           "active:scale-[0.97]",
         ].join(" "),
 
         // ── Outline ── bordered, transparent fill
         outline: [
-          "bg-transparent text-foreground border-border",
-          "hover:bg-muted hover:border-border",
+          "bg-transparent text-[hsl(var(--foreground))] border-[hsl(var(--border))]",
+          "hover:bg-[hsl(var(--muted))] hover:border-[hsl(var(--border))]",
           "active:scale-[0.97]",
         ].join(" "),
 
         // ── Secondary ── muted gray fill
         secondary: [
-          "bg-secondary text-secondary-foreground border-border",
-          "hover:bg-secondary/80",
+          "bg-[hsl(var(--secondary))] text-[hsl(var(--secondary-foreground))] border-[hsl(var(--border))]",
+          "hover:bg-[hsl(var(--secondary))]/80",
           "active:scale-[0.97]",
         ].join(" "),
 
         // ── Ghost ── no border, appears on hover
         ghost: [
-          "bg-transparent text-muted-foreground border-transparent",
-          "hover:bg-muted hover:text-foreground",
+          "bg-transparent text-[hsl(var(--muted-foreground))] border-transparent",
+          "hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]",
         ].join(" "),
 
         // ── Link ── looks like an anchor
@@ -64,18 +64,16 @@ const buttonVariants = cva(
 
         // ── Success ──
         success: [
-          "bg-emerald-600 text-white border-emerald-600",
-          "hover:bg-emerald-700",
+          "bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))] border-[hsl(var(--success))]",
+          "hover:bg-[hsl(var(--success))]/90 hover:border-[hsl(var(--success))]/90",
           "active:scale-[0.97]",
-          "dark:bg-emerald-500 dark:border-emerald-500 dark:hover:bg-emerald-600",
         ].join(" "),
 
         // ── Warning ──
         warning: [
-          "bg-amber-600 text-white border-amber-600",
-          "hover:bg-amber-700",
+          "bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))] border-[hsl(var(--warning))]",
+          "hover:bg-[hsl(var(--warning))]/90 hover:border-[hsl(var(--warning))]/90",
           "active:scale-[0.97]",
-          "dark:bg-amber-500 dark:border-amber-500 dark:hover:bg-amber-600",
         ].join(" "),
       },
 

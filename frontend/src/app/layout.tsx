@@ -32,6 +32,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="color-scheme" content="light dark" />
+      </head>
       <body className={`${poppins.variable} ${inter.variable} font-sans antialiased`}>
         <ErrorBoundary title="Application Error" description="Something went wrong with the application.">
           <MSWProvider>
