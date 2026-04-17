@@ -10,13 +10,19 @@ import { FilterBar } from "@/components/common/FilterBar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/utils/formatters";
 import { useInspections } from "@/hooks/useInspections";
-import type { Inspection } from "@/types";
+import type { Inspection, FilterConfig } from "@/types";
+
+const PAGE_SIZE = 20;
 
 const COLUMNS: Column<Inspection>[] = [
   {
     key: "id",
-    header: "ID",
-    render: (i) => <span className="font-mono text-xs font-medium">#{i.id.slice(-6).toUpperCase()}</span>,
+    header: "Reference",
+    render: (i) => (
+      <span className="font-mono text-xs font-medium">
+        #{i.id.slice(-6).toUpperCase()}
+      </span>
+    ),
   },
   {
     key: "state",
@@ -32,49 +38,73 @@ const COLUMNS: Column<Inspection>[] = [
   },
   {
     key: "unitId",
-    header: "Unit",
+    header: "Property / Unit",
     render: (i) => (
-      <span className="text-sm">
-        {i.unitName
-          ? i.propertyName
-            ? `${i.propertyName} — ${i.unitName}`
-            : i.unitName
-          : `Unit #${i.unitId.slice(-4)}`}
-      </span>
+      <div className="min-w-0">
+        {i.propertyName && (
+          <p className="text-sm font-medium truncate">{i.propertyName}</p>
+        )}
+        <p className="text-xs text-muted-foreground truncate">
+          {i.unitName ?? `Unit #${i.unitId.slice(-4)}`}
+        </p>
+      </div>
     ),
   },
   {
     key: "scheduledDate",
     header: "Scheduled",
     sortable: true,
-    render: (i) => formatDate(i.scheduledDate),
+    render: (i) => (
+      <span className="text-muted-foreground">{formatDate(i.scheduledDate)}</span>
+    ),
   },
   {
     key: "inspectorName",
     header: "Inspector",
-    render: (i) => <span className="text-sm">{i.inspectorName ?? "—"}</span>,
+    render: (i) => (
+      <span className="text-sm">{i.inspectorName ?? "—"}</span>
+    ),
   },
 ];
 
+const TAB_FILTERS: Record<string, FilterConfig[]> = {
+  all:         [],
+  scheduled:   [{ field: "state", operator: "eq", value: "scheduled" }],
+  in_progress: [{ field: "state", operator: "eq", value: "in_progress" }],
+  completed:   [{ field: "state", operator: "eq", value: "completed" }],
+};
+
+const TABS = ["all", "scheduled", "in_progress", "completed"] as const;
+const TAB_LABELS: Record<typeof TABS[number], string> = {
+  all: "All", scheduled: "Scheduled", in_progress: "In Progress", completed: "Completed",
+};
+
 export default function InspectionsPage() {
   const router = useRouter();
+  const [tab, setTab] = useState<typeof TABS[number]>("all");
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("all");
-  const { data, isLoading } = useInspections();
 
-  const inspections = (data?.data ?? []).filter((i) => {
-    const tabMatch =
-      tab === "all" ||
-      (tab === "scheduled" && i.state === "scheduled") ||
-      (tab === "in_progress" && i.state === "in_progress") ||
-      (tab === "completed" && i.state === "completed");
-    const searchMatch =
-      !search || i.id.toLowerCase().includes(search.toLowerCase());
-    return tabMatch && searchMatch;
+  const { data, isLoading } = useInspections({
+    page,
+    pageSize: PAGE_SIZE,
+    search: search || undefined,
+    filters: TAB_FILTERS[tab],
   });
 
+  const handleTabChange = (t: string) => {
+    setTab(t as typeof TABS[number]);
+    setPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Inspections</h1>
@@ -88,32 +118,40 @@ export default function InspectionsPage() {
         </Button>
       </div>
 
+      {/* Toolbar */}
       <FilterBar
         search={search}
-        onSearchChange={setSearch}
-        placeholder="Search by reference..."
+        onSearchChange={handleSearchChange}
+        placeholder="Search by reference or property..."
         className="max-w-sm"
       />
 
-      <Tabs value={tab} onValueChange={setTab}>
+      {/* Tabs + Table */}
+      <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-          <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+          {TABS.map((t) => (
+            <TabsTrigger key={t} value={t}>{TAB_LABELS[t]}</TabsTrigger>
+          ))}
         </TabsList>
 
-        {["all", "scheduled", "in_progress", "completed"].map((t) => (
+        {TABS.map((t) => (
           <TabsContent key={t} value={t} className="mt-3">
             <DataTable
-              data={inspections}
+              data={data?.data ?? []}
               columns={COLUMNS}
               loading={isLoading}
               rowKey={(i) => i.id}
               onRowClick={(i) => router.push(`/inspections/${i.id}`)}
               emptyTitle="No inspections found"
-              emptyDescription="Schedule an inspection to get started"
-
+              emptyDescription={
+                t === "all"
+                  ? "Schedule an inspection to get started"
+                  : "No inspections match this filter"
+              }
+              pageSize={PAGE_SIZE}
+              totalItems={data?.total}
+              currentPage={page}
+              onPageChange={setPage}
             />
           </TabsContent>
         ))}

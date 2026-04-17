@@ -10,17 +10,18 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
 import { formatCurrency, formatDate, formatDateRange } from "@/utils/formatters";
 import { useLeases } from "@/hooks/useLeases";
-import type { Lease } from "@/types";
+import type { Lease, FilterConfig } from "@/types";
 import type { LeaseState } from "@/types/states";
-import { LeaseWorkflowStepper } from "./WorkflowStepper";
+
+const PAGE_SIZE = 20;
 
 const TABS: { value: string; label: string; states: LeaseState[] }[] = [
-  { value: "all", label: "All", states: [] },
-  { value: "active", label: "Active", states: ["active"] },
-  { value: "pending", label: "Pending", states: ["payment_pending", "payment_secured", "agreement_signed"] },
-  { value: "draft", label: "Drafts", states: ["draft"] },
-  { value: "notice", label: "Notice", states: ["onboarding_started", "agreement_previewed", "terms_accepted"] },
-  { value: "closed", label: "Closed / Terminated", states: ["expired", "terminated"] },
+  { value: "all",     label: "All",               states: [] },
+  { value: "active",  label: "Active",             states: ["active"] },
+  { value: "pending", label: "Pending",            states: ["payment_pending", "payment_secured", "agreement_signed"] },
+  { value: "draft",   label: "Drafts",             states: ["draft"] },
+  { value: "notice",  label: "Notice",             states: ["onboarding_started", "agreement_previewed", "terms_accepted"] },
+  { value: "closed",  label: "Closed / Terminated", states: ["expired", "terminated"] },
 ];
 
 const COLUMNS: Column<Lease>[] = [
@@ -28,83 +29,92 @@ const COLUMNS: Column<Lease>[] = [
     key: "reference",
     header: "Reference",
     sortable: true,
-    render: (lease) => (
-      <span className="font-mono text-xs font-medium">{lease.reference}</span>
-    ),
+    render: (l) => <span className="font-mono text-xs font-medium">{l.reference}</span>,
   },
   {
     key: "state",
     header: "Status",
-    render: (lease) => <StatusBadge state={lease.state} domain="lease" />,
+    render: (l) => <StatusBadge state={l.state} domain="lease" />,
   },
   {
     key: "tenantId",
     header: "Tenant",
-    render: (lease) => (
-      <span className="text-sm">{lease.tenantName ?? `Tenant #${lease.tenantId.slice(-4)}`}</span>
+    render: (l) => (
+      <span className="text-sm">{l.tenantName ?? `Tenant #${l.tenantId.slice(-4)}`}</span>
     ),
   },
   {
     key: "unitId",
     header: "Unit",
-    render: (lease) => (
+    render: (l) => (
       <span className="text-sm">
-        {lease.unitName
-          ? lease.propertyName
-            ? `${lease.propertyName} — ${lease.unitName}`
-            : lease.unitName
-          : `Unit #${lease.unitId.slice(-4)}`}
+        {l.unitName
+          ? l.propertyName
+            ? `${l.propertyName} — ${l.unitName}`
+            : l.unitName
+          : `Unit #${l.unitId.slice(-4)}`}
       </span>
     ),
   },
   {
     key: "terms",
     header: "Period",
-    render: (lease) =>
-      formatDateRange(lease.terms.startDate, lease.terms.endDate),
+    render: (l) => formatDateRange(l.terms.startDate, l.terms.endDate),
   },
   {
     key: "monthlyRent",
     header: "Rent / mo",
     sortable: true,
-    render: (lease) =>
-      formatCurrency(lease.terms.monthlyRent, lease.terms.currency),
+    render: (l) => (
+      <span className="font-medium">{formatCurrency(l.terms.monthlyRent, l.terms.currency)}</span>
+    ),
   },
   {
     key: "createdAt",
     header: "Created",
     sortable: true,
-    render: (lease) => formatDate(lease.createdAt),
+    render: (l) => <span className="text-muted-foreground">{formatDate(l.createdAt)}</span>,
   },
 ];
 
+function tabFilters(tab: string): FilterConfig[] {
+  const t = TABS.find((x) => x.value === tab);
+  if (!t || t.states.length === 0) return [];
+  return [{ field: "state", operator: "in", value: t.states }];
+}
+
 export function LeaseTable() {
   const router = useRouter();
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const { data, isLoading } = useLeases();
 
-  const allLeases = data?.data ?? [];
-
-  const filtered = allLeases.filter((l) => {
-    const tabConfig = TABS.find((t) => t.value === activeTab);
-    const tabMatch =
-      !tabConfig?.states.length || tabConfig.states.includes(l.state);
-    const searchMatch =
-      !search ||
-      l.reference.toLowerCase().includes(search.toLowerCase()) ||
-      l.tenantId.includes(search);
-    return tabMatch && searchMatch;
+  const { data, isLoading } = useLeases({
+    page,
+    pageSize: PAGE_SIZE,
+    search: search || undefined,
+    filters: tabFilters(activeTab),
   });
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-4">
+      {/* Toolbar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <FilterBar
           search={search}
-          onSearchChange={setSearch}
+          onSearchChange={handleSearchChange}
           placeholder="Search by reference or tenant..."
-          className="flex-1"
+          className="flex-1 max-w-sm"
         />
         <Button onClick={() => router.push("/leases/new")} className="shrink-0">
           <Plus className="h-4 w-4" />
@@ -112,16 +122,12 @@ export function LeaseTable() {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="flex-wrap h-auto gap-1">
           {TABS.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} className="text-xs">
               {tab.label}
-              {tab.states.length > 0 && (
-                <span className="ml-1.5 text-muted-foreground">
-                  ({allLeases.filter((l) => tab.states.includes(l.state)).length})
-                </span>
-              )}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -129,13 +135,21 @@ export function LeaseTable() {
         {TABS.map((tab) => (
           <TabsContent key={tab.value} value={tab.value} className="mt-3">
             <DataTable
-              data={filtered}
+              data={data?.data ?? []}
               columns={COLUMNS}
               loading={isLoading}
               rowKey={(l) => l.id}
               onRowClick={(l) => router.push(`/leases/${l.id}`)}
               emptyTitle="No leases found"
-              emptyDescription="Create a lease to get started"
+              emptyDescription={
+                activeTab === "all"
+                  ? "Create a lease to get started"
+                  : "No leases match this filter"
+              }
+              pageSize={PAGE_SIZE}
+              totalItems={data?.total}
+              currentPage={page}
+              onPageChange={setPage}
             />
           </TabsContent>
         ))}

@@ -1,24 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Plus, Wrench, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
+import { FilterBar } from "@/components/common/FilterBar";
 import { formatDate } from "@/utils/formatters";
 import { useMaintenanceIssues, useCreateMaintenanceIssue } from "@/hooks/useInspections";
 import { useProperties } from "@/hooks/useProperties";
+import { useRouter } from "next/navigation";
 import { cn } from "@/utils/cn";
-import type { MaintenanceIssue } from "@/types";
+import type { MaintenanceIssue, FilterConfig } from "@/types";
+
+const PAGE_SIZE = 20;
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
   urgent: { label: "Urgent", color: "text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200" },
@@ -38,41 +41,77 @@ function PriorityBadge({ priority }: { priority: string }) {
   );
 }
 
-function IssueCard({ issue }: { issue: MaintenanceIssue }) {
-  const router = useRouter();
-  return (
-    <div
-      className="flex items-start gap-3 rounded-lg border p-4 hover:bg-muted/30 transition-colors cursor-pointer"
-      onClick={() => router.push(`/maintenance/${issue.id}`)}
-    >
-      <div className={cn(
-        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-        issue.priority === "urgent" || issue.priority === "high"
-          ? "bg-red-100 dark:bg-red-950/30"
-          : "bg-amber-100 dark:bg-amber-950/30",
-      )}>
-        <AlertTriangle className={cn(
-          "h-4 w-4",
-          issue.priority === "urgent" || issue.priority === "high" ? "text-red-600" : "text-amber-600",
-        )} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium">{issue.title}</p>
-          <PriorityBadge priority={issue.priority} />
-          <StatusBadge state={issue.state} domain="maintenance" />
+const COLUMNS: Column<MaintenanceIssue>[] = [
+  {
+    key: "title",
+    header: "Issue",
+    render: (i) => (
+      <div className="flex items-center gap-2 min-w-0">
+        <div className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+          i.priority === "urgent" || i.priority === "high"
+            ? "bg-red-100 dark:bg-red-950/30"
+            : "bg-amber-100 dark:bg-amber-950/30",
+        )}>
+          <AlertTriangle className={cn(
+            "h-3.5 w-3.5",
+            i.priority === "urgent" || i.priority === "high" ? "text-red-600" : "text-amber-600",
+          )} />
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{issue.description}</p>
-        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
-          <span>Property: {issue.propertyName ?? issue.propertyId}</span>
-          {issue.unitId && <span>· Unit: {issue.unitName ?? issue.unitId}</span>}
-          <span>· Reported {formatDate(issue.reportedAt ?? issue.createdAt)}</span>
-          {issue.resolvedAt && <span>· Resolved {formatDate(issue.resolvedAt)}</span>}
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">{i.title}</p>
+          <PriorityBadge priority={i.priority} />
         </div>
       </div>
-    </div>
-  );
-}
+    ),
+  },
+  {
+    key: "state",
+    header: "Status",
+    render: (i) => <StatusBadge state={i.state} domain="maintenance" />,
+  },
+  {
+    key: "category",
+    header: "Category",
+    render: (i) => (
+      <span className="text-sm capitalize">{(i.category ?? "").replace(/_/g, " ")}</span>
+    ),
+  },
+  {
+    key: "propertyId",
+    header: "Property / Unit",
+    render: (i) => (
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{i.propertyName ?? i.propertyId}</p>
+        {i.unitId && (
+          <p className="text-xs text-muted-foreground truncate">{i.unitName ?? `Unit #${i.unitId.slice(-4)}`}</p>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: "reportedAt",
+    header: "Reported",
+    sortable: true,
+    render: (i) => (
+      <span className="text-muted-foreground">{formatDate(i.reportedAt ?? i.createdAt)}</span>
+    ),
+  },
+];
+
+const OPEN_STATES = ["reported", "assigned", "in_progress"];
+const RESOLVED_STATES = ["resolved", "closed"];
+
+const TAB_FILTERS: Record<string, FilterConfig[]> = {
+  open:     [{ field: "state", operator: "in", value: OPEN_STATES }],
+  resolved: [{ field: "state", operator: "in", value: RESOLVED_STATES }],
+  all:      [],
+};
+
+const TABS = ["open", "resolved", "all"] as const;
+const TAB_LABELS: Record<typeof TABS[number], string> = {
+  open: "Open", resolved: "Resolved", all: "All",
+};
 
 function NewIssueDialog({ onClose }: { onClose: () => void }) {
   const { mutate: create, isPending } = useCreateMaintenanceIssue();
@@ -153,40 +192,44 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
       <Separator />
       <div className="flex justify-end gap-3">
         <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-        <Button type="submit" loading={isPending} disabled={!propertyId || !title}>Report Issue</Button>
+        <Button type="submit" disabled={!propertyId || !title || isPending}>
+          {isPending ? "Reporting…" : "Report Issue"}
+        </Button>
       </div>
     </form>
   );
 }
 
 export default function MaintenancePage() {
-  const [tab, setTab] = useState("open");
+  const router = useRouter();
+  const [tab, setTab] = useState<typeof TABS[number]>("open");
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { data, isLoading } = useMaintenanceIssues();
 
-  const issues = (data?.data ?? []) as MaintenanceIssue[];
-
-  const filtered = issues.filter((i) => {
-    const tabMatch =
-      tab === "all" ||
-      (tab === "open" && (i.state === "reported" || i.state === "assigned" || i.state === "in_progress")) ||
-      (tab === "resolved" && (i.state === "resolved" || i.state === "closed"));
-    const searchMatch = !search || i.title.toLowerCase().includes(search.toLowerCase());
-    return tabMatch && searchMatch;
+  const { data, isLoading } = useMaintenanceIssues({
+    page,
+    pageSize: PAGE_SIZE,
+    search: search || undefined,
+    filters: TAB_FILTERS[tab],
   });
 
-  const openCount = issues.filter((i) => i.state === "reported" || i.state === "assigned" || i.state === "in_progress").length;
-  const urgentCount = issues.filter((i) => i.priority === "urgent" || (i.priority === "high" && (i.state === "reported" || i.state === "assigned"))).length;
+  const handleTabChange = (t: string) => {
+    setTab(t as typeof TABS[number]);
+    setPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <Wrench className="h-6 w-6" />
-            Maintenance
-          </h1>
+          <h1 className="text-2xl font-bold tracking-tight">Maintenance</h1>
           <p className="text-sm text-muted-foreground mt-1">Track and manage property maintenance issues</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -205,65 +248,41 @@ export default function MaintenancePage() {
         </Dialog>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: "Open Issues", value: openCount, color: "text-amber-600" },
-          { label: "Urgent / High", value: urgentCount, color: "text-red-600" },
-          { label: "Resolved (30d)", value: issues.filter((i) => i.state === "resolved").length, color: "text-emerald-600" },
-          { label: "Total Issues", value: issues.length, color: "text-foreground" },
-        ].map((s) => (
-          <Card key={s.label}>
-            <CardContent className="pt-4 pb-3">
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className={cn("text-2xl font-bold mt-1", s.color)}>{s.value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Search */}
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Search issues..."
-        className="flex h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      {/* Toolbar */}
+      <FilterBar
+        search={search}
+        onSearchChange={handleSearchChange}
+        placeholder="Search by title or property..."
+        className="max-w-sm"
       />
 
-      <Tabs value={tab} onValueChange={setTab}>
+      {/* Tabs + Table */}
+      <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
-          <TabsTrigger value="open">
-            Open
-            {openCount > 0 && <Badge variant="destructive" className="ml-1.5 text-xs">{openCount}</Badge>}
-          </TabsTrigger>
-          <TabsTrigger value="resolved">Resolved</TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
+          {TABS.map((t) => (
+            <TabsTrigger key={t} value={t}>{TAB_LABELS[t]}</TabsTrigger>
+          ))}
         </TabsList>
 
-        {["open", "resolved", "all"].map((t) => (
-          <TabsContent key={t} value={t} className="mt-4">
-            {isLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-24 rounded-lg border bg-muted/30 animate-pulse" />
-                ))}
-              </div>
-            ) : filtered.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Wrench className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm font-medium">No issues found</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {tab === "open" ? "All clear — no open maintenance issues" : "No issues match your search"}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {filtered.map((issue) => <IssueCard key={issue.id} issue={issue} />)}
-              </div>
-            )}
+        {TABS.map((t) => (
+          <TabsContent key={t} value={t} className="mt-3">
+            <DataTable
+              data={(data as any)?.data ?? []}
+              columns={COLUMNS}
+              loading={isLoading}
+              rowKey={(i) => i.id}
+              onRowClick={(i) => router.push(`/maintenance/${i.id}`)}
+              emptyTitle="No issues found"
+              emptyDescription={
+                t === "open"
+                  ? "All clear — no open maintenance issues"
+                  : "No issues match this filter"
+              }
+              pageSize={PAGE_SIZE}
+              totalItems={(data as any)?.total}
+              currentPage={page}
+              onPageChange={setPage}
+            />
           </TabsContent>
         ))}
       </Tabs>

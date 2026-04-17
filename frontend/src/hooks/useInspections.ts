@@ -63,8 +63,7 @@ export function useTransitionInspection() {
   });
 }
 
-export function useMaintenanceIssues(inspectionId?: string) {
-  const params = inspectionId ? { inspectionId } as QueryParams : undefined;
+export function useMaintenanceIssues(params?: QueryParams) {
   return useQuery({
     queryKey: queryKeys.maintenance.list(params),
     queryFn: () => inspectionsApi.listMaintenance(params),

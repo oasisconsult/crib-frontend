@@ -11,13 +11,17 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayments, useDashboardStats } from "@/hooks/usePayments";
-import type { Payment } from "@/types";
+import type { Payment, FilterConfig } from "@/types";
+
+const PAGE_SIZE = 20;
 
 const COLUMNS: Column<Payment>[] = [
   {
     key: "reference",
     header: "Reference",
-    render: (p) => <span className="font-mono text-xs font-medium">{p.reference ?? "—"}</span>,
+    render: (p) => (
+      <span className="font-mono text-xs font-medium">{p.reference ?? "—"}</span>
+    ),
   },
   {
     key: "tenantName",
@@ -26,7 +30,9 @@ const COLUMNS: Column<Payment>[] = [
       <div className="min-w-0">
         <p className="text-sm font-medium truncate">{p.tenantName ?? "—"}</p>
         {(p.unitName ?? p.propertyName) && (
-          <p className="text-xs text-muted-foreground truncate">{p.unitName ?? p.propertyName}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {p.unitName ?? p.propertyName}
+          </p>
         )}
       </div>
     ),
@@ -41,7 +47,7 @@ const COLUMNS: Column<Payment>[] = [
     header: "Type",
     render: (p) => (
       <span className="text-sm capitalize">
-        {((p as any).type ?? p.category ?? "").replace(/_/g, " ")}
+        {(p.category ?? "").replace(/_/g, " ")}
       </span>
     ),
   },
@@ -56,41 +62,54 @@ const COLUMNS: Column<Payment>[] = [
   {
     key: "paidAt",
     header: "Paid On",
-    render: (p) => (p.paidAt ? formatDate(p.paidAt) : "—"),
+    render: (p) => (
+      <span className="text-muted-foreground">{p.paidAt ? formatDate(p.paidAt) : "—"}</span>
+    ),
   },
 ];
 
+const IN_PROGRESS = ["initiated", "predicted", "routed", "pending", "reconciled", "allocated", "retry_scheduled"];
+const SUCCESS     = ["confirmed", "completed"];
+const FAILED      = ["failed", "permanently_failed", "predicted_failure"];
+
+const TAB_FILTERS: Record<string, FilterConfig[]> = {
+  all:       [],
+  pending:   [{ field: "state", operator: "in", value: IN_PROGRESS }],
+  confirmed: [{ field: "state", operator: "in", value: SUCCESS }],
+  failed:    [{ field: "state", operator: "in", value: FAILED }],
+  refunded:  [{ field: "state", operator: "eq", value: "refunded" }],
+};
+
+const TABS = ["all", "pending", "confirmed", "failed", "refunded"] as const;
+
 export default function PaymentsPage() {
   const router = useRouter();
+  const [tab, setTab] = useState<typeof TABS[number]>("all");
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState("all");
-  const { data, isLoading } = usePayments();
+
+  const { data, isLoading } = usePayments({
+    page,
+    pageSize: PAGE_SIZE,
+    search: search || undefined,
+    filters: TAB_FILTERS[tab],
+  });
+
   const { data: stats } = useDashboardStats();
 
-  const allPayments = data?.data ?? [];
+  const handleTabChange = (t: string) => {
+    setTab(t as typeof TABS[number]);
+    setPage(1);
+  };
 
-  const IN_PROGRESS_STATES = new Set([
-    "initiated", "predicted", "routed", "pending",
-    "reconciled", "allocated", "retry_scheduled",
-  ]);
-  const SUCCESS_STATES = new Set(["confirmed", "completed"]);
-  const FAILED_STATES = new Set(["failed", "permanently_failed", "predicted_failure"]);
-
-  const payments = allPayments.filter((p) => {
-    const state = p.state as string;
-    const tabMatch =
-      tab === "all" ||
-      (tab === "pending"   && IN_PROGRESS_STATES.has(state)) ||
-      (tab === "confirmed" && SUCCESS_STATES.has(state)) ||
-      (tab === "failed"    && FAILED_STATES.has(state)) ||
-      (tab === "refunded"  && state === "refunded");
-    const searchMatch =
-      !search || (p.reference ?? "").toLowerCase().includes(search.toLowerCase());
-    return tabMatch && searchMatch;
-  });
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Payments</h1>
@@ -107,12 +126,13 @@ export default function PaymentsPage() {
         </Button>
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           {
             label: "Expected",
             value: formatCurrency(
-              (stats?.monthlyRevenue ?? 0) / ((stats?.collectionRate ?? 100) / 100),
+              stats ? stats.monthlyRevenue / (stats.collectionRate / 100) : 0,
               "UGX",
             ),
             icon: TrendingUp,
@@ -135,7 +155,7 @@ export default function PaymentsPage() {
           },
           {
             label: "Collection Rate",
-            value: `${stats?.collectionRate ?? 0}%`,
+            value: `${stats?.collectionRate?.toFixed(0) ?? 0}%`,
             icon: CreditCard,
             color: "text-violet-600",
             bg: "bg-violet-50 dark:bg-violet-950/30",
@@ -153,14 +173,16 @@ export default function PaymentsPage() {
         ))}
       </div>
 
+      {/* Toolbar */}
       <FilterBar
         search={search}
-        onSearchChange={setSearch}
-        placeholder="Search by reference..."
+        onSearchChange={handleSearchChange}
+        placeholder="Search by reference or tenant..."
         className="max-w-sm"
       />
 
-      <Tabs value={tab} onValueChange={setTab}>
+      {/* Tabs + Table */}
+      <Tabs value={tab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="pending">Pending</TabsTrigger>
@@ -169,16 +191,24 @@ export default function PaymentsPage() {
           <TabsTrigger value="refunded">Refunded</TabsTrigger>
         </TabsList>
 
-        {["all", "pending", "confirmed", "failed", "refunded"].map((t) => (
+        {TABS.map((t) => (
           <TabsContent key={t} value={t} className="mt-3">
             <DataTable
-              data={payments}
+              data={data?.data ?? []}
               columns={COLUMNS}
               loading={isLoading}
               rowKey={(p) => p.id}
               onRowClick={(p) => router.push(`/payments/${p.id}`)}
               emptyTitle="No payments found"
-              emptyDescription="Payments will appear here once leases are active"
+              emptyDescription={
+                t === "all"
+                  ? "Payments will appear once leases are active"
+                  : "No payments match this filter"
+              }
+              pageSize={PAGE_SIZE}
+              totalItems={data?.total}
+              currentPage={page}
+              onPageChange={setPage}
             />
           </TabsContent>
         ))}

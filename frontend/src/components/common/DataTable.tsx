@@ -36,6 +36,15 @@ interface DataTableProps<T> {
   emptyTitle?: string;
   emptyDescription?: string;
   className?: string;
+  /* ── Server-side pagination ────────────────────────────────────────────
+     When onPageChange is provided the component operates in server-side
+     mode: data is shown as-is (no client slicing), totalItems drives the
+     footer counter, and page navigation calls onPageChange instead of
+     updating internal state.
+     ─────────────────────────────────────────────────────────────────── */
+  totalItems?: number;
+  currentPage?: number;
+  onPageChange?: (page: number) => void;
 }
 
 type SortDir = "asc" | "desc" | null;
@@ -53,10 +62,20 @@ function DataTableInner<T extends object>({
   emptyTitle = "No records found",
   emptyDescription,
   className,
+  totalItems,
+  currentPage: currentPageProp,
+  onPageChange,
 }: DataTableProps<T>) {
+  const isServerSide = typeof onPageChange === "function";
+
+  /* ── Sort (always client-side on visible rows) ──────────────────────── */
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>(null);
-  const [page, setPage] = useState(1);
+
+  /* ── Client-side page state (only used in client-side mode) ─────────── */
+  const [clientPage, setClientPage] = useState(1);
+
+  const page = isServerSide ? (currentPageProp ?? 1) : clientPage;
 
   const sorted = useMemo(() => {
     if (!sortKey || !sortDir) return data;
@@ -64,13 +83,24 @@ function DataTableInner<T extends object>({
       const av = (a as Record<string, unknown>)[sortKey];
       const bv = (b as Record<string, unknown>)[sortKey];
       if (av === bv) return 0;
-      const cmp = String(av ?? "").localeCompare(String(bv ?? ""), undefined, { numeric: true });
+      const cmp = String(av ?? "").localeCompare(String(bv ?? ""), undefined, {
+        numeric: true,
+      });
       return sortDir === "asc" ? cmp : -cmp;
     });
   }, [data, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
-  const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
+  /* ── Pagination maths ───────────────────────────────────────────────── */
+  const total = isServerSide ? (totalItems ?? data.length) : sorted.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const paginated = isServerSide
+    ? sorted                                              // backend already sliced
+    : sorted.slice((page - 1) * pageSize, page * pageSize);
+
+  const startItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endItem = isServerSide
+    ? Math.min(page * pageSize, total)
+    : Math.min(page * pageSize, sorted.length);
 
   const handleSort = (key: string) => {
     if (sortKey !== key) {
@@ -82,7 +112,12 @@ function DataTableInner<T extends object>({
       setSortKey(null);
       setSortDir(null);
     }
-    setPage(1);
+    if (!isServerSide) setClientPage(1);
+  };
+
+  const handlePageChange = (p: number) => {
+    if (isServerSide) onPageChange!(p);
+    else setClientPage(p);
   };
 
   const toggleRow = (key: string) => {
@@ -112,8 +147,7 @@ function DataTableInner<T extends object>({
     return <EmptyState title={emptyTitle} description={emptyDescription} />;
   }
 
-  const startItem = (page - 1) * pageSize + 1;
-  const endItem = Math.min(page * pageSize, sorted.length);
+  const showPagination = !loading && totalPages > 1;
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -144,11 +178,16 @@ function DataTableInner<T extends object>({
                     key={String(col.key)}
                     className={cn(
                       "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] whitespace-nowrap select-none",
-                      col.sortable && "cursor-pointer hover:text-[hsl(var(--foreground))] transition-colors",
+                      col.sortable &&
+                        "cursor-pointer hover:text-[hsl(var(--foreground))] transition-colors",
                       col.className,
                     )}
                     style={col.width ? { width: col.width } : undefined}
-                    onClick={col.sortable ? () => handleSort(String(col.key)) : undefined}
+                    onClick={
+                      col.sortable
+                        ? () => handleSort(String(col.key))
+                        : undefined
+                    }
                     aria-sort={
                       sortKey === String(col.key)
                         ? sortDir === "asc"
@@ -211,9 +250,13 @@ function DataTableInner<T extends object>({
                         key={key}
                         className={cn(
                           "transition-colors",
-                          rowIdx % 2 === 1 && !isSelected && "bg-[hsl(var(--muted))]/30",
-                          onRowClick && "cursor-pointer hover:bg-[hsl(var(--accent))]",
-                          isSelected && "bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]",
+                          rowIdx % 2 === 1 &&
+                            !isSelected &&
+                            "bg-[hsl(var(--muted))]/30",
+                          onRowClick &&
+                            "cursor-pointer hover:bg-[hsl(var(--accent))]",
+                          isSelected &&
+                            "bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]",
                         )}
                         onClick={() => onRowClick?.(row)}
                       >
@@ -244,7 +287,11 @@ function DataTableInner<T extends object>({
                           >
                             {col.render
                               ? col.render(row)
-                              : String((row as Record<string, unknown>)[String(col.key)] ?? "—")}
+                              : String(
+                                  (row as Record<string, unknown>)[
+                                    String(col.key)
+                                  ] ?? "—",
+                                )}
                           </td>
                         ))}
                       </tr>
@@ -255,24 +302,37 @@ function DataTableInner<T extends object>({
         </div>
 
         {/* Pagination footer */}
-        {!loading && totalPages > 1 && (
+        {showPagination && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--muted))]/50">
             <p className="text-xs text-[hsl(var(--muted-foreground))]">
-              Showing <span className="font-medium text-[hsl(var(--foreground))]">{startItem}–{endItem}</span> of{" "}
-              <span className="font-medium text-[hsl(var(--foreground))]">{sorted.length}</span> results
+              {total === 0 ? (
+                "No results"
+              ) : (
+                <>
+                  Showing{" "}
+                  <span className="font-medium text-[hsl(var(--foreground))]">
+                    {startItem}–{endItem}
+                  </span>{" "}
+                  of{" "}
+                  <span className="font-medium text-[hsl(var(--foreground))]">
+                    {total.toLocaleString()}
+                  </span>{" "}
+                  results
+                </>
+              )}
             </p>
             <div className="flex items-center gap-1">
               <Button
                 variant="outline"
                 size="icon-sm"
-                onClick={() => setPage((p) => p - 1)}
+                onClick={() => handlePageChange(page - 1)}
                 disabled={page === 1}
                 aria-label="Previous page"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
 
-              {/* Page numbers */}
+              {/* Page number buttons — sliding window of 5 */}
               <div className="flex items-center gap-0.5">
                 {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                   let pageNum: number;
@@ -288,7 +348,7 @@ function DataTableInner<T extends object>({
                   return (
                     <button
                       key={pageNum}
-                      onClick={() => setPage(pageNum)}
+                      onClick={() => handlePageChange(pageNum)}
                       className={cn(
                         "h-7 min-w-[28px] px-1.5 rounded-[6px] text-xs font-medium transition-colors",
                         page === pageNum
@@ -305,7 +365,7 @@ function DataTableInner<T extends object>({
               <Button
                 variant="outline"
                 size="icon-sm"
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => handlePageChange(page + 1)}
                 disabled={page === totalPages}
                 aria-label="Next page"
               >
