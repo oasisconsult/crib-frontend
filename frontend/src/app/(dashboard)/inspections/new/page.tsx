@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateInspection } from "@/hooks/useInspections";
-import { useProperties } from "@/hooks/useProperties";
+import { useProperties, useUnits } from "@/hooks/useProperties";
 
 const INSPECTION_TYPES = [
   { value: "routine", label: "Routine" },
@@ -33,6 +33,8 @@ export default function NewInspectionPage() {
   const { mutate: create, isPending } = useCreateInspection();
   const { data: propertiesData } = useProperties();
   const properties = propertiesData?.data ?? [];
+  const { data: unitsData } = useUnits(propertyId);
+  const units = unitsData?.data ?? [];
 
   const [propertyId, setPropertyId] = useState("");
   const [unitId, setUnitId] = useState("");
@@ -50,7 +52,7 @@ export default function NewInspectionPage() {
       {
         type: type as "routine",
         propertyId,
-        unitId: unitId || propertyId,
+        unitId: unitId || undefined,
         landlordId: "landlord-1",
         scheduledDate,
         scheduledTimeSlot: scheduledTimeSlot || undefined,
@@ -90,7 +92,7 @@ export default function NewInspectionPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="property">Property *</Label>
-                <Select value={propertyId} onValueChange={setPropertyId} required>
+                <Select value={propertyId} onValueChange={(v) => { setPropertyId(v); setUnitId(""); }} required>
                   <SelectTrigger id="property">
                     <SelectValue placeholder="Select property" />
                   </SelectTrigger>
@@ -103,13 +105,17 @@ export default function NewInspectionPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="unit">Unit / Reference</Label>
-                <Input
-                  id="unit"
-                  value={unitId}
-                  onChange={(e) => setUnitId(e.target.value)}
-                  placeholder="e.g. unit-1 or leave blank for whole property"
-                />
+                <Label htmlFor="unit">Unit (optional)</Label>
+                <Select value={unitId} onValueChange={setUnitId} disabled={!propertyId || units.length === 0}>
+                  <SelectTrigger id="unit">
+                    <SelectValue placeholder={propertyId ? (units.length === 0 ? "No units found" : "Whole property") : "Select property first"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {units.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>{u.name ?? `Unit #${u.id.slice(-4)}`}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1.5">
