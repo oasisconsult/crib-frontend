@@ -93,7 +93,7 @@ export function Header() {
               aria-label={`${label} mode`}
               aria-pressed={preference === value}
               className={cn(
-                "flex items-center justify-center h-9 w-9 rounded-[8px] transition-all duration-150",
+                "flex items-center justify-center h-10 w-10 rounded-[8px] transition-all duration-150 cursor-pointer",
                 preference === value
                   ? "bg-[hsl(var(--accent))] text-[hsl(var(--accent-foreground))] shadow-sm border border-[hsl(var(--primary))]/20"
                   : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))]",
@@ -108,7 +108,7 @@ export function Header() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative text-muted-foreground hover:text-foreground hover:bg-header h-9 w-9 rounded-[8px]"
+          className="relative text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))] h-10 w-10 rounded-[8px]"
           aria-label="Notifications"
           asChild
         >
@@ -122,7 +122,7 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="flex items-center gap-2 h-9 px-2 rounded-[8px] hover:bg-header transition-colors"
+              className="flex items-center gap-2 h-10 px-2.5 rounded-[8px] hover:bg-[hsl(var(--accent))] transition-colors duration-150 cursor-pointer"
               aria-label="User menu"
             >
               <Avatar className="h-7 w-7">

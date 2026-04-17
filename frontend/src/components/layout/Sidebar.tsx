@@ -175,9 +175,10 @@ export function Sidebar() {
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex items-center gap-2.5",
-                  "px-2.5 py-2 rounded-[7px]",
+                  "min-h-[40px] px-2.5 py-2 rounded-[7px]",
                   "text-[13.5px] font-medium",
-                  "transition-[background,color] duration-100",
+                  "transition-[background,color] duration-150",
+                  "cursor-pointer",
                   isActive
                     ? "bg-[hsl(var(--sidebar-active-bg))] text-[hsl(var(--sidebar-active-fg))] font-semibold"
                     : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[hsl(var(--foreground))]",
@@ -234,8 +235,8 @@ export function Sidebar() {
           <button
             onClick={toggleSidebar}
             className={cn(
-              "w-full flex items-center justify-center h-9 mt-1",
-              "text-[hsl(var(--sidebar-section-fg))] hover:text-[hsl(var(--sidebar-foreground))] transition-colors",
+              "w-full flex items-center justify-center min-h-[40px] mt-1",
+              "cursor-pointer text-[hsl(var(--sidebar-section-fg))] hover:text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] rounded-[6px] transition-colors duration-150",
             )}
             aria-label={
               sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
@@ -251,7 +252,7 @@ export function Sidebar() {
           {/* User info */}
           {!sidebarCollapsed ? (
             <div className="px-3 pb-3">
-              <div className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 hover:bg-[hsl(var(--sidebar-hover-bg))] group cursor-pointer transition-colors">
+              <div className="flex items-center gap-2.5 rounded-[8px] px-2 py-2.5 min-h-[44px] hover:bg-[hsl(var(--sidebar-hover-bg))] group cursor-pointer transition-colors duration-150">
                 <div className="h-7 w-7 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold text-[hsl(var(--primary-foreground))] bg-[hsl(var(--primary))]">
                   {getInitials(user?.name ?? "U")}
                 </div>

@@ -1,42 +1,44 @@
 /*
- * CRIB Design System — v4.0
+ * CRIB Design System — v4.1
  * Direction: Rightmove-style property platform — bright, warm, approachable
- * Brand palette: #14C6A3 teal · #1E2235 navy · #F5B000 yellow
+ * Brand palette: #14C6A3 teal · #0F766E trust-teal · #134E4A text · #F0FDFA bg
+ * ui-ux-pro-max: Real Estate palette — trust teal + professional
  * ─────────────────────────────────────────────────────────────────────────
  */
 
 /* ─── SHADCN / TAILWIND CSS VARIABLES ──────────────────────────────────────
    HSL triplets (no commas) — consumed as hsl(var(--*))
-   Calibrated to: background #FAFAFA · card #FFFFFF · primary #14C6A3
+   Calibrated: background #F0FDFA · card #FFFFFF · primary #14C6A3
+   Text #134E4A · Trust teal #0F766E (per ui-ux-pro-max real-estate palette)
    ─────────────────────────────────────────────────────────────────────── */
 
 /* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
 :root {
-  --background: 0 0% 97%;              /* #F7F7F7 — clean off-white canvas */
-  --foreground: 230 28% 16%;           /* #1E2235 — navy text */
+  --background: 168 77% 97%;           /* #F0FDFA — teal-mint canvas (ui-ux-pro-max) */
+  --foreground: 176 61% 19%;           /* #134E4A — deep teal text (ui-ux-pro-max) */
   --card: 0 0% 100%;                   /* #FFFFFF — white card surface */
-  --card-foreground: 230 28% 16%;
+  --card-foreground: 176 61% 19%;
   --popover: 0 0% 100%;
-  --popover-foreground: 230 28% 16%;
-  --primary: 168 82% 43%;              /* #14C6A3 — brand teal */
+  --popover-foreground: 176 61% 19%;
+  --primary: 168 82% 43%;              /* #14C6A3 — brand teal CTA */
   --primary-foreground: 0 0% 100%;     /* white on teal */
   --secondary: 168 42% 90%;            /* #CBF0E8 — light teal wash */
-  --secondary-foreground: 170 81% 25%; /* #0A7362 — dark teal text */
-  --muted: 210 20% 95%;                /* #EEF1F5 — light grey surface */
-  --muted-foreground: 215 16% 47%;     /* #6D7A92 — subtle text */
+  --secondary-foreground: 173 78% 25%; /* #0F766E — trust teal text */
+  --muted: 168 30% 94%;                /* #E6F5F1 — teal-tinted muted */
+  --muted-foreground: 176 30% 44%;     /* #4D7A74 — muted teal text */
   --accent: 168 55% 92%;               /* #D8F5EE — very light teal accent */
-  --accent-foreground: 170 81% 28%;    /* #0D8470 */
+  --accent-foreground: 173 78% 25%;    /* #0F766E — trust teal */
   --destructive: 0 72% 51%;            /* #DC2626 */
   --destructive-foreground: 0 0% 100%;
   --success: 158 64% 32%;              /* #18855A */
   --success-foreground: 0 0% 100%;
   --warning: 43 100% 48%;              /* #F5B000 */
-  --warning-foreground: 230 28% 16%;
-  --danger: 0 72% 51%;                 /* alias for destructive */
+  --warning-foreground: 176 61% 15%;
+  --danger: 0 72% 51%;
   --danger-foreground: 0 0% 100%;
   --info: 187 83% 34%;                 /* #0F8FA0 — cyan */
   --info-foreground: 0 0% 100%;
-  --border: 210 22% 88%;               /* #DDE3EE */
+  --border: 168 30% 86%;               /* #C4E0DA — teal-tinted border */
   --input: 0 0% 100%;                  /* white inputs */
   --ring: 168 82% 43%;                 /* teal focus ring */
   --radius: 0.75rem;
@@ -46,12 +48,12 @@
 
   /* Sidebar — white in light mode */
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 215 16% 47%;   /* #6D7A92 */
-  --sidebar-border: 210 22% 90%;
+  --sidebar-foreground: 176 30% 44%;   /* teal-muted */
+  --sidebar-border: 168 30% 88%;
   --sidebar-active-bg: 168 58% 92%;    /* #CCEEE7 — light teal */
-  --sidebar-active-fg: 170 81% 31%;    /* #0F8F7A — secondary teal */
+  --sidebar-active-fg: 173 78% 25%;    /* #0F766E — trust teal */
   --sidebar-hover-bg: 168 45% 96%;     /* #EDF9F6 — very light teal */
-  --sidebar-section-fg: 215 16% 58%;   /* subdued section labels */
+  --sidebar-section-fg: 176 25% 55%;   /* subdued section labels */
 }
 
 /* ── DARK MODE ──────────────────────────────────────────────────────────── */
@@ -111,25 +113,25 @@
   /* Sidebar */
   --color-sidebar-bg: #ffffff;
   --color-sidebar-hover: #edf9f6;
-  --color-sidebar-active: #0f8f7a;
-  --color-sidebar-text: #6d7a92;
-  --color-sidebar-text-active: #1e2235;
+  --color-sidebar-active: #0f766e;
+  --color-sidebar-text: #4d7a74;
+  --color-sidebar-text-active: #134e4a;
 
-  /* Text scale */
-  --color-text-primary: #1e2235;
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #6d7a92;
-  --color-text-disabled: #94a3b8;
+  /* Text scale — deep teal (ui-ux-pro-max real-estate palette) */
+  --color-text-primary: #134e4a;
+  --color-text-secondary: #336b65;
+  --color-text-tertiary: #4d7a74;
+  --color-text-disabled: #8ab5b0;
 
   /* Surfaces */
-  --color-canvas: #f7f7f7;
+  --color-canvas: #f0fdfa;
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
-  --color-surface-sunken: #f4f6f9;
+  --color-surface-sunken: #e6f5f1;
 
   /* Borders */
-  --color-border: #dde3ee;
-  --color-border-strong: #b8c4d9;
+  --color-border: #c4e0da;
+  --color-border-strong: #8cbdb6;
   --color-border-focus: #14c6a3;
 
   /* Semantic status */
