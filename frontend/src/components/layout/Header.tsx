@@ -68,7 +68,7 @@ export function Header() {
 
       {/* Search trigger */}
       <button
-        className="hidden md:flex flex-1 max-w-[380px] items-center gap-2 h-10 px-3 rounded-[8px] text-sm border transition-colors text-muted-foreground cursor-pointer bg-header border-border hover:border-[#0062FF]/30 focus:outline-none"
+        className="hidden md:flex flex-1 max-w-[380px] items-center gap-2 h-10 px-3 rounded-[8px] text-sm border transition-colors text-muted-foreground cursor-pointer bg-header border-border hover:border-primary/30 focus:outline-none"
         onClick={() => setCommandPaletteOpen(true)}
         aria-label="Open search"
       >
