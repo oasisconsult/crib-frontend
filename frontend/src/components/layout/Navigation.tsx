@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { cn } from '@/utils/cn';
+import React, { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { cn } from "@/utils/cn";
 import {
   Home,
   Building,
@@ -15,38 +15,38 @@ import {
   X,
   Bell,
   Search,
-  User
-} from 'lucide-react';
+  User,
+} from "lucide-react";
 
 const navigationItems = [
   {
-    name: 'Dashboard',
-    href: '/dashboard',
+    name: "Dashboard",
+    href: "/dashboard",
     icon: Home,
   },
   {
-    name: 'Properties',
-    href: '/properties',
+    name: "Properties",
+    href: "/properties",
     icon: Building,
   },
   {
-    name: 'Tenants',
-    href: '/tenants',
+    name: "Tenants",
+    href: "/tenants",
     icon: Users,
   },
   {
-    name: 'Payments',
-    href: '/payments',
+    name: "Payments",
+    href: "/payments",
     icon: CreditCard,
   },
   {
-    name: 'Reports',
-    href: '/reports',
+    name: "Reports",
+    href: "/reports",
     icon: FileText,
   },
   {
-    name: 'Settings',
-    href: '/settings',
+    name: "Settings",
+    href: "/settings",
     icon: Settings,
   },
 ];
@@ -57,27 +57,33 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
-export function Sidebar({ className, isMobile = false, onClose }: SidebarProps) {
+export function Sidebar({
+  className,
+  isMobile = false,
+  onClose,
+}: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <nav className={cn(
-      "flex flex-col h-full bg-white border-r border-gray-200",
-      isMobile ? "fixed inset-y-0 left-0 z-50 w-64" : "w-64",
-      className
-    )}>
+    <nav
+      className={cn(
+        "flex flex-col h-full bg-white border-r border-gray-200",
+        isMobile ? "fixed inset-y-0 left-0 z-50 w-64" : "w-64",
+        className,
+      )}
+    >
       {/* Logo */}
       <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#0B3D91] rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-lg">C</span>
           </div>
-          <span className="text-xl font-semibold text-gray-900">Crib</span>
+          <span className="text-xl font-semibold text-slate-900">Crib</span>
         </div>
         {isMobile && (
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-lg hover:bg-sky-50 transition-colors"
             aria-label="Close navigation"
           >
             <X className="w-5 h-5" />
@@ -89,7 +95,8 @@ export function Sidebar({ className, isMobile = false, onClose }: SidebarProps) 
       <div className="flex-1 px-4 py-6 space-y-1">
         {navigationItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+          const isActive =
+            pathname === item.href || pathname.startsWith(item.href + "/");
 
           return (
             <Link
@@ -99,8 +106,8 @@ export function Sidebar({ className, isMobile = false, onClose }: SidebarProps) 
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 isActive
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-700 hover:bg-gray-100"
+                  ? "bg-sky-50 text-sky-700"
+                  : "text-slate-700 hover:bg-sky-50",
               )}
             >
               <Icon className="w-5 h-5" />
@@ -113,12 +120,14 @@ export function Sidebar({ className, isMobile = false, onClose }: SidebarProps) 
       {/* User Section */}
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-            <User className="w-4 h-4 text-gray-600" />
+          <div className="w-8 h-8 bg-sky-100 rounded-full flex items-center justify-center">
+            <User className="w-4 h-4 text-sky-700" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">John Doe</p>
-            <p className="text-xs text-gray-500 truncate">john@example.com</p>
+            <p className="text-sm font-medium text-slate-900 truncate">
+              John Doe
+            </p>
+            <p className="text-xs text-slate-500 truncate">john@example.com</p>
           </div>
         </div>
       </div>
@@ -137,14 +146,17 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
   return (
     <>
       {/* Mobile Navigation Bar */}
-      <div className={cn(
-        "md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40",
-        className
-      )}>
+      <div
+        className={cn(
+          "md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40",
+          className,
+        )}
+      >
         <div className="flex items-center justify-around h-16">
           {navigationItems.slice(0, 4).map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            const isActive =
+              pathname === item.href || pathname.startsWith(item.href + "/");
 
             return (
               <Link
@@ -152,9 +164,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
                 href={item.href as any}
                 className={cn(
                   "flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium transition-colors",
-                  isActive
-                    ? "text-blue-600"
-                    : "text-gray-600"
+                  isActive ? "text-blue-600" : "text-gray-600",
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -162,7 +172,7 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
               </Link>
             );
           })}
-          
+
           {/* More button for remaining items */}
           <button
             onClick={() => setIsOpen(true)}
@@ -182,12 +192,9 @@ export function MobileNavigation({ className }: MobileNavigationProps) {
             className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* Sidebar */}
-          <Sidebar
-            isMobile={true}
-            onClose={() => setIsOpen(false)}
-          />
+          <Sidebar isMobile={true} onClose={() => setIsOpen(false)} />
         </>
       )}
     </>
@@ -201,10 +208,12 @@ interface HeaderProps {
 
 export function Header({ className, onMobileMenuOpen }: HeaderProps) {
   return (
-    <header className={cn(
-      "h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6",
-      className
-    )}>
+    <header
+      className={cn(
+        "h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6",
+        className,
+      )}
+    >
       {/* Mobile Menu Button */}
       <button
         onClick={onMobileMenuOpen}
@@ -294,7 +303,7 @@ export function Layout({ children, className }: LayoutProps) {
             className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          
+
           {/* Mobile Sidebar */}
           <div className="md:hidden fixed inset-y-0 left-0 z-50 w-64">
             <Sidebar

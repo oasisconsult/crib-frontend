@@ -12,37 +12,37 @@
 
 /* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
 :root {
-  --background: 214 60% 97%; /* #F0F5FF — clean light blue-white canvas */
-  --foreground: 222 47% 11%; /* #0F172A */
-  --card: 0 0% 100%; /* #FFFFFF — pure white cards */
-  --card-foreground: 222 47% 11%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --primary: 221 100% 50%; /* #0062FF */
-  --primary-foreground: 0 0% 100%; /* #FFFFFF — white text on primary */
-  --secondary: 214 32% 95%; /* #EDF2FA — clean light blue-grey */
-  --secondary-foreground: 222 47% 11%;
-  --muted: 214 32% 95%; /* #EDF2FA */
-  --muted-foreground: 215 20% 40%; /* #5A6C7D — darker for better contrast on light bg */
-  --accent: 221 100% 97%; /* #EEF4FF */
-  --accent-foreground: 221 100% 50%;
+  --background: 40 13% 98%; /* #FCFBF7 — cream white canvas */
+  --foreground: 215 22% 14%; /* #1F2B43 — dark navy text */
+  --card: 42 12% 99%; /* #FEFEFC — soft cream card surface */
+  --card-foreground: 215 22% 14%;
+  --popover: 42 12% 99%; /* cream white popover */
+  --popover-foreground: 215 22% 14%;
+  --primary: 217 86% 27%; /* #0B3D91 — trusted navy */
+  --primary-foreground: 0 0% 100%; /* #FFFFFF */
+  --secondary: 213 65% 91%; /* #D9E6FF — light-wash denim */
+  --secondary-foreground: 215 22% 14%;
+  --muted: 42 12% 96%; /* #F6F7F2 — cream muted surface */
+  --muted-foreground: 215 18% 45%; /* #6D7A92 */
+  --accent: 176 64% 74%; /* #6AD1CE — soft turquoise */
+  --accent-foreground: 215 22% 14%;
   --destructive: 0 72% 51%; /* #DC2626 */
   --destructive-foreground: 0 0% 100%;
-  --border: 214 32% 89%; /* #DEEAF8 — slightly blue-tinted border */
-  --input: 214 32% 89%;
-  --ring: 221 100% 50%; /* #0062FF */
+  --border: 210 26% 90%; /* #D9E2F5 — soft denim border */
+  --input: 40 13% 96%; /* warmer off-white fields */
+  --ring: 217 86% 31%; /* #1340A6 — deeper navy focus */
   --radius: 0.75rem; /* 12px — more modern rounded corners */
 
   /* Header */
-  --header: 0 0% 100%; /* #FFFFFF */
+  --header: 42 12% 99%; /* #FEFEFC */
 
   /* Sidebar — WHITE in light mode */
   --sidebar: 0 0% 100%; /* #FFFFFF */
   --sidebar-foreground: 215 16% 47%; /* #64748B inactive */
-  --sidebar-border: 214 32% 89%; /* matches --border */
-  --sidebar-active-bg: 221 100% 97%; /* #EEF4FF */
-  --sidebar-active-fg: 221 100% 50%; /* #0062FF */
-  --sidebar-hover-bg: 214 60% 97%; /* matches --background */
+  --sidebar-border: 210 26% 90%; /* matches --border */
+  --sidebar-active-bg: 215 100% 96%; /* #EEF4FF */
+  --sidebar-active-fg: 217 86% 27%; /* #0B3D91 */
+  --sidebar-hover-bg: 213 65% 96%; /* #ECF2FF */
   --sidebar-section-fg: 215 16% 47%; /* #64748B */
 }
 
@@ -86,17 +86,17 @@
    ────────────────────────────────────────────────────────────────────────── */
 :root {
   /* Brand */
-  --color-primary: #0062ff;
-  --color-primary-hover: #0052d9;
-  --color-primary-subtle: #e8f3ff;
-  --color-primary-border: #c7daff;
+  --color-primary: #0b3d91;
+  --color-primary-hover: #092f72;
+  --color-primary-subtle: #e4ecff;
+  --color-primary-border: #a5b9f2;
 
   /* Sidebar (light mode) */
   --color-sidebar-bg: #ffffff;
-  --color-sidebar-hover: #f3f4f6;
-  --color-sidebar-active: #0062ff;
+  --color-sidebar-hover: #ecf2ff;
+  --color-sidebar-active: #0b3d91;
   --color-sidebar-text: #64748b;
-  --color-sidebar-text-active: #0f172a;
+  --color-sidebar-text-active: #1f2b43;
 
   /* Text scale */
   --color-text-primary: #0f172a;
@@ -105,13 +105,13 @@
   --color-text-disabled: #94a3b8;
 
   /* Surfaces (light mode) */
-  --color-canvas: #f7f9fc;
-  --color-surface: #ffffff;
-  --color-surface-raised: #ffffff;
-  --color-surface-sunken: #f3f4f6;
+  --color-canvas: #fbfcfd;
+  --color-surface: #fcfdff;
+  --color-surface-raised: #fcfdff;
+  --color-surface-sunken: #f8f9fb;
 
   /* Borders */
-  --color-border: #e5e7eb;
+  --color-border: #e7edf3;
   --color-border-strong: #cbd5e1;
   --color-border-focus: #0062ff;
 
@@ -125,9 +125,9 @@
   --color-danger: #dc2626;
   --color-danger-subtle: #fee2e2;
   --color-danger-border: #fecaca;
-  --color-info: #2563eb;
-  --color-info-subtle: #eff6ff;
-  --color-info-border: #bae6fd;
+  --color-info: #4dc7c3;
+  --color-info-subtle: #e2f7f4;
+  --color-info-border: #8ad9d3;
 
   /* Shadows */
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
