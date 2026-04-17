@@ -11,21 +11,22 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InviteModal } from "./InviteModal";
 import { OnboardingProgress } from "./OnboardingProgress";
 import { formatDate, formatPhone, getInitials } from "@/utils/formatters";
+import { cn } from "@/utils/cn";
 import { useTenants } from "@/hooks/useTenants";
 import type { Tenant } from "@/types";
 
 const renderTenant = (tenant: Tenant) => (
-  <div className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors p-4">
+  <div className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] cursor-pointer transition-colors p-4">
     <div className="flex items-center gap-4">
       <Avatar className="h-10 w-10">
-        <AvatarFallback className="text-sm font-medium bg-blue-600 text-white">
+        <AvatarFallback className="text-sm font-medium bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
           {getInitials(`${tenant.firstName} ${tenant.lastName}`)}
         </AvatarFallback>
       </Avatar>
       <div className="flex-1 grid grid-cols-1 sm:grid-cols-5 gap-4 items-center">
         <div>
-          <p className="font-semibold text-base text-gray-900">{tenant.firstName} {tenant.lastName}</p>
-          <p className="text-sm text-gray-600">{tenant.email}</p>
+          <p className="font-semibold text-base text-[hsl(var(--foreground))]">{tenant.firstName} {tenant.lastName}</p>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">{tenant.email}</p>
         </div>
         <div className="hidden sm:block">
           <div className="flex items-center gap-2">
@@ -39,14 +40,18 @@ const renderTenant = (tenant: Tenant) => (
           {formatPhone(tenant.phone)}
         </div>
         <div className="hidden sm:block">
-          <span className={`text-sm font-medium capitalize px-3 py-1 rounded-full ${
-            tenant.status === "active" ? "bg-green-100 text-green-700" :
-            tenant.status === "blacklisted" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"
-          }`}>
+          <span className={cn(
+            "text-sm font-medium capitalize px-3 py-1 rounded-full",
+            tenant.status === "active"
+              ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
+              : tenant.status === "blacklisted"
+              ? "bg-[hsl(var(--destructive))]/10 text-[hsl(var(--destructive))]"
+              : "bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]"
+          )}>
             {tenant.status}
           </span>
         </div>
-        <div className="hidden sm:block text-sm text-gray-600">
+        <div className="hidden sm:block text-sm text-[hsl(var(--muted-foreground))]">
           {formatDate(tenant.createdAt)}
         </div>
       </div>
@@ -73,25 +78,17 @@ export function TenantTable() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Tenants</h1>
-          <p className="text-base text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-[hsl(var(--foreground))]">Tenants</h1>
+          <p className="text-base text-[hsl(var(--muted-foreground))] mt-1">
             Manage tenants, onboarding, and documents
           </p>
         </div>
         <div className="flex gap-3">
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
+          <Button variant="outline" size="sm">
             <Mail className="h-4 w-4 mr-2" />
             Bulk Message
           </Button>
-          <Button 
-            onClick={() => setInviteOpen(true)} 
-            size="sm"
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
+          <Button onClick={() => setInviteOpen(true)} size="sm">
             <UserPlus className="h-4 w-4 mr-2" />
             Invite Tenant
           </Button>
@@ -106,17 +103,13 @@ export function TenantTable() {
         height="600px"
         estimateSize={80}
         emptyState={
-          <div className="text-center py-16 bg-white rounded-lg">
-            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <UserPlus className="h-6 w-6 text-gray-400" />
+          <div className="text-center py-16 bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))]">
+            <div className="w-16 h-16 bg-[hsl(var(--muted))] rounded-full flex items-center justify-center mx-auto mb-4">
+              <UserPlus className="h-6 w-6 text-[hsl(var(--muted-foreground))]" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">No tenants yet</h3>
-            <p className="text-base text-gray-600 mb-4">Invite your first tenant to get started</p>
-            <Button 
-              onClick={() => setInviteOpen(true)} 
-              size="lg"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
-            >
+            <h3 className="text-lg font-semibold text-[hsl(var(--foreground))] mb-2">No tenants yet</h3>
+            <p className="text-base text-[hsl(var(--muted-foreground))] mb-4">Invite your first tenant to get started</p>
+            <Button onClick={() => setInviteOpen(true)} size="lg">
               <UserPlus className="h-5 w-5 mr-2" />
               Invite Your First Tenant
             </Button>

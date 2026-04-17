@@ -6,13 +6,15 @@ import {
   Building2,
   Loader2,
   ShieldCheck,
-  Star,
   Zap,
   Users,
   BarChart3,
   Clock,
   FlaskConical,
   ChevronRight,
+  CheckCircle2,
+  TrendingUp,
+  Home,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
@@ -24,23 +26,30 @@ const IS_MOCK = process.env.NEXT_PUBLIC_MOCK_API === "true";
 const BENEFITS = [
   {
     icon: Zap,
-    text: "Collect rent in one click — mobile money, bank, or card",
+    title: "Rent collection in one click",
+    text: "Mobile money, bank transfer, or card — all in one place",
   },
-  { icon: Users, text: "Onboard tenants in minutes, not days" },
+  {
+    icon: Users,
+    title: "Onboard tenants in minutes",
+    text: "Digital applications, e-signatures, and instant notifications",
+  },
   {
     icon: BarChart3,
-    text: "Know your occupancy and revenue the moment it changes",
+    title: "Live revenue dashboard",
+    text: "Know your occupancy and income the moment it changes",
   },
   {
     icon: Clock,
-    text: "Automated late-fee reminders so you never chase again",
+    title: "Automated reminders",
+    text: "Late-fee notices sent automatically so you never chase again",
   },
 ];
 
 const STATS = [
-  { value: "1,200+", label: "Units managed" },
-  { value: "98%", label: "On-time collection" },
-  { value: "4.9★", label: "Landlord rating" },
+  { value: "1,200+", label: "Units managed", icon: Home },
+  { value: "98%", label: "On-time collection", icon: TrendingUp },
+  { value: "4.9★", label: "Landlord rating", icon: CheckCircle2 },
 ];
 
 // ── Dev user catalogue ─────────────────────────────────────────────────────
@@ -56,8 +65,7 @@ const DEV_USERS = [
     description: "Full platform access",
     gradient: "from-violet-500 to-indigo-600",
     badge: "Superadmin",
-    badgeColor:
-      "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+    badgeColor: "bg-violet-100 text-violet-700",
   },
   {
     id: "user-landlord-1",
@@ -67,10 +75,9 @@ const DEV_USERS = [
     email: "robert@crib.ug",
     initials: "RM",
     description: "3 properties · Kampala",
-    gradient: "from-blue-500 to-cyan-600",
+    gradient: "from-[hsl(168,82%,35%)] to-[hsl(170,81%,25%)]",
     badge: "Owner",
-    badgeColor:
-      "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+    badgeColor: "bg-[hsl(168,55%,92%)] text-[hsl(170,81%,28%)]",
   },
   {
     id: "user-manager-1",
@@ -82,8 +89,7 @@ const DEV_USERS = [
     description: "Property Manager",
     gradient: "from-emerald-500 to-teal-600",
     badge: "Manager",
-    badgeColor:
-      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+    badgeColor: "bg-emerald-100 text-emerald-700",
   },
   {
     id: "superadmin-manager-1",
@@ -95,8 +101,7 @@ const DEV_USERS = [
     description: "Platform admin + property manager",
     gradient: "from-violet-500 to-emerald-600",
     badge: "Superadmin · Manager",
-    badgeColor:
-      "bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300",
+    badgeColor: "bg-violet-100 text-violet-700",
   },
   {
     id: "owner-manager-1",
@@ -106,10 +111,9 @@ const DEV_USERS = [
     email: "owner.manager@crib.ug",
     initials: "OM",
     description: "Owns & manages properties",
-    gradient: "from-blue-500 to-emerald-600",
+    gradient: "from-[hsl(168,82%,35%)] to-emerald-600",
     badge: "Owner · Manager",
-    badgeColor:
-      "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+    badgeColor: "bg-[hsl(168,55%,92%)] text-[hsl(170,81%,28%)]",
   },
   {
     id: "tenant-1",
@@ -121,8 +125,7 @@ const DEV_USERS = [
     description: "Unit 1 · Kololo Heights",
     gradient: "from-amber-500 to-orange-600",
     badge: "Tenant",
-    badgeColor:
-      "bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300",
+    badgeColor: "bg-amber-100 text-amber-700",
   },
 ];
 
@@ -141,24 +144,22 @@ function DevLoginPanel() {
         body: JSON.stringify({ userId: user.id, role: user.role, roles: user.roles }),
       });
       if (!res.ok) throw new Error("Dev login failed");
-      // Write localStorage BEFORE navigating so useAuth bootstrap finds it
       localStorage.setItem("crib:dev_user_id", user.id);
       const isStaff = user.roles.some((r) => r !== "tenant");
-      const dest = isStaff ? "/" : "/portal";
-      router.push(dest);
+      router.push(isStaff ? "/" : "/portal");
     } catch {
       setLoading(null);
     }
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <div className="flex items-center gap-2 mb-4">
         <FlaskConical className="h-4 w-4 text-amber-500" />
-        <span className="text-sm font-semibold text-foreground">
+        <span className="text-sm font-semibold text-[hsl(var(--foreground))]">
           Dev mode — sign in as
         </span>
-        <span className="rounded-full bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 text-[10px] font-medium px-2 py-0.5">
+        <span className="rounded-full bg-amber-100 text-amber-700 text-[10px] font-medium px-2 py-0.5">
           MOCK
         </span>
       </div>
@@ -168,13 +169,12 @@ function DevLoginPanel() {
           onClick={() => loginAs(user)}
           disabled={!!loading}
           className={cn(
-            "w-full flex items-center gap-3 rounded-xl border border-border bg-background px-3 py-2.5 text-left",
-            "hover:border-primary/50 hover:bg-muted/40 transition-all",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "w-full flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2.5 text-left",
+            "hover:border-[hsl(var(--primary))]/50 hover:bg-[hsl(var(--accent))] transition-all",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]",
             "disabled:opacity-50 disabled:cursor-not-allowed",
           )}
         >
-          {/* Avatar */}
           <div
             className={cn(
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white text-xs font-bold bg-gradient-to-br",
@@ -187,32 +187,83 @@ function DevLoginPanel() {
               user.initials
             )}
           </div>
-          {/* Info */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-foreground leading-none">
+              <span className="text-sm font-semibold text-[hsl(var(--foreground))] leading-none">
                 {user.name}
               </span>
-              <span
-                className={cn(
-                  "text-[10px] font-medium rounded-full px-1.5 py-0.5 leading-none",
-                  user.badgeColor,
-                )}
-              >
+              <span className={cn("text-[10px] font-medium rounded-full px-1.5 py-0.5 leading-none", user.badgeColor)}>
                 {user.badge}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
               {user.description}
             </p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+          <ChevronRight className="h-4 w-4 text-[hsl(var(--muted-foreground))] shrink-0" />
         </button>
       ))}
-      <p className="text-[11px] text-muted-foreground/60 text-center pt-1">
+      <p className="text-[11px] text-[hsl(var(--muted-foreground))]/60 text-center pt-1">
         Only available when{" "}
         <code className="font-mono">NEXT_PUBLIC_MOCK_API=true</code>
       </p>
+    </div>
+  );
+}
+
+// ── Marketing panel ────────────────────────────────────────────────────────
+
+function MarketingPanel() {
+  return (
+    <div className="flex flex-col justify-between h-full py-4">
+      {/* Headline */}
+      <div>
+        <div className="inline-flex items-center gap-2 rounded-full bg-white/15 border border-white/20 px-3 py-1 mb-6">
+          <span className="h-1.5 w-1.5 rounded-full bg-[hsl(43,100%,60%)]" />
+          <span className="text-[12px] font-medium text-white/90 tracking-wide">
+            Trusted by 200+ landlords in East Africa
+          </span>
+        </div>
+        <h2 className="text-3xl lg:text-4xl font-bold text-white leading-tight mb-4">
+          Property management<br />
+          <span className="text-[hsl(43,100%,68%)]">that works for you</span>
+        </h2>
+        <p className="text-white/75 text-base leading-relaxed max-w-sm">
+          Everything you need to run a profitable rental portfolio — from tenant onboarding to rent collection.
+        </p>
+      </div>
+
+      {/* Benefits list */}
+      <div className="space-y-3 my-8">
+        {BENEFITS.map((b) => {
+          const Icon = b.icon;
+          return (
+            <div key={b.title} className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 border border-white/20">
+                <Icon className="h-4 w-4 text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white leading-tight">{b.title}</p>
+                <p className="text-xs text-white/65 mt-0.5 leading-relaxed">{b.text}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/15">
+        {STATS.map((s) => {
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className="text-center">
+              <Icon className="h-4 w-4 text-[hsl(43,100%,68%)] mx-auto mb-1" />
+              <p className="text-xl font-bold text-white leading-none">{s.value}</p>
+              <p className="text-[11px] text-white/60 mt-0.5">{s.label}</p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -226,108 +277,126 @@ export default function LoginPage() {
 
   const handleLogin = () => {
     setLoading(true);
-    // Delegate to the server-side SDK sign-in route which handles PKCE,
-    // resource scoping, and org-scoped token requests correctly.
     window.location.href = `/api/logto/sign-in?redirectTo=${encodeURIComponent(redirect)}`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-8">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-        {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-lg">
-            <Building2 className="h-6 w-6" />
-          </div>
-          <span className="text-3xl font-bold text-gray-900">Crib</span>
-        </div>
+    <div className="min-h-screen flex bg-[hsl(var(--background))]">
 
-        {/* Heading */}
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {IS_MOCK ? "Choose your account" : "Welcome back"}
-          </h1>
-          <p className="text-gray-600">
-            {IS_MOCK
-              ? "Select a role to explore the dashboard."
-              : "Sign in to your Crib account to continue."}
-          </p>
-        </div>
+      {/* ── Left — Login form ───────────────────────────────────────────── */}
+      <div className="flex flex-col justify-center w-full md:w-[45%] lg:w-[42%] px-8 sm:px-12 py-12 bg-[hsl(var(--card))]">
+        <div className="w-full max-w-sm mx-auto">
 
-        {/* Dev picker OR Logto button */}
-        {IS_MOCK ? (
-          <DevLoginPanel />
-        ) : (
-          <>
-            <Button
-              className="w-full h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg"
-              size="lg"
-              onClick={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              ) : (
-                <Building2 className="h-5 w-5 mr-2" />
-              )}
-              {loading ? "Redirecting…" : "Continue with Logto"}
-            </Button>
-
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center">
-                <span className="flex items-center gap-1.5 bg-white px-3 text-xs text-gray-500">
-                  <ShieldCheck className="h-3.5 w-3.5 text-green-500" />
-                  Secured by Logto OIDC
-                </span>
-              </div>
+          {/* Logo */}
+          <div className="flex items-center gap-3 mb-10">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[0_2px_8px_hsl(168,82%,43%,0.35)]">
+              <Building2 className="h-5 w-5" />
             </div>
+            <span className="text-2xl font-bold text-[hsl(var(--foreground))]" style={{ fontFamily: "var(--font-poppins,'Poppins',sans-serif)" }}>
+              Crib
+            </span>
+          </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-8">
-              {["End-to-end encrypted", "GDPR compliant", "SOC 2 ready"].map(
-                (label) => (
+          {/* Heading */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-[hsl(var(--foreground))] mb-1.5">
+              {IS_MOCK ? "Choose your account" : "Welcome back"}
+            </h1>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              {IS_MOCK
+                ? "Select a role to explore the dashboard."
+                : "Sign in to your Crib account to continue."}
+            </p>
+          </div>
+
+          {/* Dev picker OR Logto button */}
+          {IS_MOCK ? (
+            <DevLoginPanel />
+          ) : (
+            <>
+              <Button
+                className="w-full h-11 text-sm font-semibold"
+                size="lg"
+                onClick={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Building2 className="h-4 w-4" />
+                )}
+                {loading ? "Redirecting…" : "Continue with Logto"}
+              </Button>
+
+              {/* Divider */}
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[hsl(var(--border))]" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="flex items-center gap-1.5 bg-[hsl(var(--card))] px-3 text-xs text-[hsl(var(--muted-foreground))]">
+                    <ShieldCheck className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
+                    Secured by Logto OIDC
+                  </span>
+                </div>
+              </div>
+
+              {/* Trust badges */}
+              <div className="grid grid-cols-3 gap-2 mb-8">
+                {["End-to-end encrypted", "GDPR compliant", "SOC 2 ready"].map((label) => (
                   <div
                     key={label}
-                    className="flex items-center justify-center rounded-lg border border-gray-200 bg-gray-50 px-2 py-2.5 text-center"
+                    className="flex items-center justify-center rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-2.5 text-center"
                   >
-                    <span className="text-[10px] font-medium text-gray-600 leading-tight">
+                    <span className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] leading-tight">
                       {label}
                     </span>
                   </div>
-                ),
-              )}
-            </div>
+                ))}
+              </div>
 
-            {/* Footer links */}
-            <p className="text-center text-sm text-gray-600">
-              Don&apos;t have an account?{" "}
-              <a
-                href="/signup"
-                className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
-              >
-                Sign up free
-              </a>
-            </p>
-            <p className="mt-6 text-center text-[11px] text-gray-500 leading-relaxed">
-              By continuing, you agree to our{" "}
-              <a
-                href="/terms"
-                className="underline hover:text-gray-700"
-              >
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a
-                href="/privacy"
-                className="underline hover:text-gray-700"
-              >
-                Privacy Policy
-              </a>
-            </p>
-          </>
-        )}
+              {/* Sign up link */}
+              <p className="text-center text-sm text-[hsl(var(--muted-foreground))]">
+                Don&apos;t have an account?{" "}
+                <a
+                  href="/signup"
+                  className="font-semibold text-[hsl(var(--primary))] hover:underline"
+                >
+                  Sign up free
+                </a>
+              </p>
+
+              {/* Legal */}
+              <p className="mt-6 text-center text-[11px] text-[hsl(var(--muted-foreground))]/70 leading-relaxed">
+                By continuing, you agree to our{" "}
+                <a href="/terms" className="underline hover:text-[hsl(var(--foreground))]">
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a href="/privacy" className="underline hover:text-[hsl(var(--foreground))]">
+                  Privacy Policy
+                </a>
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Right — Marketing panel (hidden on mobile) ──────────────────── */}
+      <div
+        className="hidden md:flex flex-col justify-center flex-1 px-10 lg:px-14 py-12 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, hsl(168,82%,35%) 0%, hsl(170,81%,25%) 60%, hsl(230,28%,22%) 100%)",
+        }}
+      >
+        {/* Decorative circles */}
+        <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/5" />
+        <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-white/5" />
+        <div className="absolute top-1/2 right-8 h-32 w-32 rounded-full bg-white/5" />
+
+        <div className="relative z-10 max-w-md">
+          <MarketingPanel />
+        </div>
       </div>
     </div>
   );

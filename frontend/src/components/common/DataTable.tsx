@@ -112,157 +112,209 @@ function DataTableInner<T extends object>({
     return <EmptyState title={emptyTitle} description={emptyDescription} />;
   }
 
+  const startItem = (page - 1) * pageSize + 1;
+  const endItem = Math.min(page * pageSize, sorted.length);
+
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full text-sm" role="table">
-          <thead>
-            <tr className="border-b bg-muted/40">
-              {selectable && (
-                <th className="w-12 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    className="rounded border-border"
-                    checked={
-                      paginated.length > 0 &&
-                      paginated.every((r) => selectedKeys.has(rowKey(r)))
+      {/* Table card */}
+      <div className="overflow-hidden rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm" role="table">
+
+            {/* Header */}
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                {selectable && (
+                  <th className="w-12 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      className="rounded border-[hsl(var(--border))] accent-[hsl(var(--primary))]"
+                      checked={
+                        paginated.length > 0 &&
+                        paginated.every((r) => selectedKeys.has(rowKey(r)))
+                      }
+                      onChange={toggleAll}
+                      aria-label="Select all rows"
+                    />
+                  </th>
+                )}
+                {columns.map((col) => (
+                  <th
+                    key={String(col.key)}
+                    className={cn(
+                      "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] whitespace-nowrap select-none",
+                      col.sortable && "cursor-pointer hover:text-[hsl(var(--foreground))] transition-colors",
+                      col.className,
+                    )}
+                    style={col.width ? { width: col.width } : undefined}
+                    onClick={col.sortable ? () => handleSort(String(col.key)) : undefined}
+                    aria-sort={
+                      sortKey === String(col.key)
+                        ? sortDir === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
                     }
-                    onChange={toggleAll}
-                    aria-label="Select all rows"
-                  />
-                </th>
-              )}
-              {columns.map((col) => (
-                <th
-                  key={String(col.key)}
-                  className={cn(
-                    "px-4 py-3 text-left font-semibold text-muted-foreground whitespace-nowrap",
-                    col.sortable && "cursor-pointer select-none hover:text-foreground",
-                    col.className,
-                  )}
-                  style={col.width ? { width: col.width } : undefined}
-                  onClick={col.sortable ? () => handleSort(String(col.key)) : undefined}
-                  aria-sort={
-                    sortKey === String(col.key)
-                      ? sortDir === "asc"
-                        ? "ascending"
-                        : "descending"
-                      : "none"
-                  }
-                >
-                  <span className="flex items-center gap-1">
-                    {col.header}
-                    {col.sortable && (
-                      <span className="text-muted-foreground/50" aria-hidden="true">
-                        {sortKey === String(col.key) ? (
-                          sortDir === "asc" ? (
-                            <ChevronUp className="h-3.5 w-3.5" />
-                          ) : (
-                            <ChevronDown className="h-3.5 w-3.5" />
-                          )
-                        ) : (
-                          <ChevronsUpDown className="h-3.5 w-3.5" />
-                        )}
-                      </span>
-                    )}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b">
-                    {selectable && (
-                      <td className="px-4 py-3">
-                        <Skeleton className="h-4 w-4" />
-                      </td>
-                    )}
-                    {columns.map((col) => (
-                      <td key={String(col.key)} className="px-4 py-3">
-                        <Skeleton className="h-4 w-full" />
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              : paginated.map((row) => {
-                  const key = rowKey(row);
-                  return (
-                    <tr
-                      key={key}
-                      className={cn(
-                        "border-b transition-colors",
-                        onRowClick && "cursor-pointer hover:bg-muted/50",
-                        selectedKeys.has(key) && "bg-primary/5",
-                      )}
-                      onClick={() => onRowClick?.(row)}
-                    >
-                      {selectable && (
-                        <td
-                          className="w-12 px-4 py-3"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleRow(key);
-                          }}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      {col.header}
+                      {col.sortable && (
+                        <span
+                          className={cn(
+                            "transition-colors",
+                            sortKey === String(col.key)
+                              ? "text-[hsl(var(--primary))]"
+                              : "text-[hsl(var(--muted-foreground))]/40",
+                          )}
+                          aria-hidden="true"
                         >
-                          <input
-                            type="checkbox"
-                            className="rounded border-border"
-                            checked={selectedKeys.has(key)}
-                            onChange={() => toggleRow(key)}
-                            aria-label={`Select row ${key}`}
-                          />
+                          {sortKey === String(col.key) ? (
+                            sortDir === "asc" ? (
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            )
+                          ) : (
+                            <ChevronsUpDown className="h-3.5 w-3.5" />
+                          )}
+                        </span>
+                      )}
+                    </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
+            {/* Body */}
+            <tbody className="divide-y divide-[hsl(var(--border))]">
+              {loading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      {selectable && (
+                        <td className="px-4 py-3.5">
+                          <Skeleton className="h-4 w-4" />
                         </td>
                       )}
                       {columns.map((col) => (
-                        <td
-                          key={String(col.key)}
-                          className={cn("px-4 py-3 text-foreground", col.className)}
-                        >
-                          {col.render
-                            ? col.render(row)
-                            : String((row as Record<string, unknown>)[String(col.key)] ?? "—")}
+                        <td key={String(col.key)} className="px-4 py-3.5">
+                          <Skeleton className="h-4 w-full max-w-[160px]" />
                         </td>
                       ))}
                     </tr>
+                  ))
+                : paginated.map((row, rowIdx) => {
+                    const key = rowKey(row);
+                    const isSelected = selectedKeys.has(key);
+                    return (
+                      <tr
+                        key={key}
+                        className={cn(
+                          "transition-colors",
+                          rowIdx % 2 === 1 && !isSelected && "bg-[hsl(var(--muted))]/30",
+                          onRowClick && "cursor-pointer hover:bg-[hsl(var(--accent))]",
+                          isSelected && "bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]",
+                        )}
+                        onClick={() => onRowClick?.(row)}
+                      >
+                        {selectable && (
+                          <td
+                            className="w-12 px-4 py-3.5"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleRow(key);
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              className="rounded border-[hsl(var(--border))] accent-[hsl(var(--primary))]"
+                              checked={isSelected}
+                              onChange={() => toggleRow(key)}
+                              aria-label={`Select row ${key}`}
+                            />
+                          </td>
+                        )}
+                        {columns.map((col) => (
+                          <td
+                            key={String(col.key)}
+                            className={cn(
+                              "px-4 py-3.5 text-[hsl(var(--foreground))]",
+                              col.className,
+                            )}
+                          >
+                            {col.render
+                              ? col.render(row)
+                              : String((row as Record<string, unknown>)[String(col.key)] ?? "—")}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination footer */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--muted))]/50">
+            <p className="text-xs text-[hsl(var(--muted-foreground))]">
+              Showing <span className="font-medium text-[hsl(var(--foreground))]">{startItem}–{endItem}</span> of{" "}
+              <span className="font-medium text-[hsl(var(--foreground))]">{sorted.length}</span> results
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setPage((p) => p - 1)}
+                disabled={page === 1}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+              </Button>
+
+              {/* Page numbers */}
+              <div className="flex items-center gap-0.5">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={cn(
+                        "h-7 min-w-[28px] px-1.5 rounded-[6px] text-xs font-medium transition-colors",
+                        page === pageNum
+                          ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                          : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]",
+                      )}
+                    >
+                      {pageNum}
+                    </button>
                   );
                 })}
-          </tbody>
-        </table>
-      </div>
+              </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between px-1">
-          <p className="text-sm text-muted-foreground">
-            {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, sorted.length)} of {sorted.length}
-          </p>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setPage((p) => p - 1)}
-              disabled={page === 1}
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm px-2">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page === totalPages}
-              aria-label="Next page"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page === totalPages}
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
