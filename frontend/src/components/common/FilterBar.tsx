@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Search, X, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,16 +40,18 @@ export function FilterBar({
   const [showFilters, setShowFilters] = useState(false);
   // Local value updates immediately for responsive UI; callback fires after debounce.
   const [localSearch, setLocalSearch] = useState(search);
+  const onSearchChangeRef = useRef(onSearchChange);
+  useEffect(() => { onSearchChangeRef.current = onSearchChange; });
 
   useEffect(() => {
     setLocalSearch(search);
   }, [search]);
 
   useEffect(() => {
-    if (!onSearchChange) return;
-    const id = setTimeout(() => onSearchChange(localSearch), debounceMs);
+    if (!onSearchChangeRef.current) return;
+    const id = setTimeout(() => onSearchChangeRef.current?.(localSearch), debounceMs);
     return () => clearTimeout(id);
-  }, [localSearch, debounceMs, onSearchChange]);
+  }, [localSearch, debounceMs]);
 
   return (
     <div className={cn("space-y-3", className)}>
