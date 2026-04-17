@@ -82,7 +82,7 @@ export function Header() {
       <div className="ml-auto flex items-center gap-1.5">
         {/* ── 3-way theme toggle ──────────────────────────────────── */}
         <div
-          className="hidden sm:flex items-center gap-0.5 rounded-[10px] bg-muted border border-border p-0.5"
+          className="hidden sm:flex items-center gap-0.5 rounded-[10px] bg-header border border-border p-0.5"
           role="group"
           aria-label="Theme preference"
         >
@@ -108,7 +108,7 @@ export function Header() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative text-muted-foreground hover:text-foreground hover:bg-muted h-9 w-9 rounded-[8px]"
+          className="relative text-muted-foreground hover:text-foreground hover:bg-header h-9 w-9 rounded-[8px]"
           aria-label="Notifications"
           asChild
         >
@@ -122,7 +122,7 @@ export function Header() {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="flex items-center gap-2 h-9 px-2 rounded-[8px] hover:bg-muted transition-colors"
+              className="flex items-center gap-2 h-9 px-2 rounded-[8px] hover:bg-header transition-colors"
               aria-label="User menu"
             >
               <Avatar className="h-7 w-7">
@@ -165,7 +165,7 @@ export function Header() {
                       "flex-1 flex flex-col items-center gap-1 py-1.5 rounded-[6px] text-[10px] font-medium transition-colors",
                       preference === value
                         ? "bg-[#0062FF]/10 text-[#0062FF]"
-                        : "text-muted-foreground hover:bg-muted",
+                        : "text-muted-foreground hover:bg-header",
                     )}
                   >
                     <Icon className="h-3.5 w-3.5" />
