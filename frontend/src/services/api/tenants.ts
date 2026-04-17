@@ -1,9 +1,10 @@
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "./client";
 import type { Tenant, TenantInvite, TenantDocument, OnboardingDraft, OnboardingSubmitPayload, PaginatedResponse, QueryParams } from "@/types";
+import { toTenantParams } from "@/utils/backendParams";
 
 export const tenantsApi = {
   list: (params?: QueryParams) =>
-    apiGet<PaginatedResponse<Tenant>>("/tenants", params),
+    apiGet<PaginatedResponse<Tenant>>("/tenants", toTenantParams(params)),
 
   get: (id: string) =>
     apiGet<Tenant>(`/tenants/${id}`),

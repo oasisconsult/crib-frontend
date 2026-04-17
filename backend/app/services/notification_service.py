@@ -205,15 +205,21 @@ async def list_notifications(
     org_id: uuid.UUID,
     db: AsyncSession,
     channel: str | None = None,
-    state: str | None = None,
+    states: list[str] | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
     q = select(Notification).where(Notification.organisation_id == org_id)
     if channel:
         q = q.where(Notification.channel == channel)
-    if state:
-        q = q.where(Notification.state == state)
+    if states:
+        q = q.where(Notification.state.in_(states))
+    if search:
+        term = f"%{search}%"
+        q = q.where(
+            Notification.subject.ilike(term) | Notification.recipient_name.ilike(term)
+        )
 
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(Notification.queued_at.desc()).offset((page - 1) * page_size).limit(page_size)

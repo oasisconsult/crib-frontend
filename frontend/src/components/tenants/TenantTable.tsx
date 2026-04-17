@@ -7,14 +7,37 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
+import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { InviteModal } from "./InviteModal";
 import { OnboardingProgress } from "./OnboardingProgress";
 import { formatDate, formatPhone, getInitials } from "@/utils/formatters";
 import { useTenants } from "@/hooks/useTenants";
-import type { Tenant } from "@/types";
+import type { Tenant, FilterConfig } from "@/types";
 
 const PAGE_SIZE = 20;
+
+const FILTER_FIELDS: FilterField[] = [
+  {
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "Active", value: "active" },
+      { label: "Inactive", value: "inactive" },
+    ],
+  },
+  {
+    key: "onboardingState",
+    label: "Onboarding",
+    options: [
+      { label: "Invited", value: "invited" },
+      { label: "Started", value: "started" },
+      { label: "Submitted", value: "submitted" },
+      { label: "Approved", value: "approved" },
+      { label: "Activated", value: "activated" },
+    ],
+  },
+];
 
 const COLUMNS: Column<Tenant>[] = [
   {
@@ -74,20 +97,33 @@ const COLUMNS: Column<Tenant>[] = [
   },
 ];
 
+function filtersToConfig(active: ActiveFilters): FilterConfig[] {
+  return Object.entries(active)
+    .filter(([, v]) => v)
+    .map(([field, value]) => ({ field, operator: "eq" as const, value }));
+}
+
 export function TenantTable() {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
   const [inviteOpen, setInviteOpen] = useState(false);
 
   const { data, isLoading } = useTenants({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
+    filters: filtersToConfig(activeFilters),
   });
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleFilterChange = (filters: ActiveFilters) => {
+    setActiveFilters(filters);
     setPage(1);
   };
 
@@ -112,6 +148,12 @@ export function TenantTable() {
           </Button>
         </div>
       </div>
+
+      <FilterPanel
+        fields={FILTER_FIELDS}
+        value={activeFilters}
+        onChange={handleFilterChange}
+      />
 
       {/* Table */}
       <DataTable

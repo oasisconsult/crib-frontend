@@ -37,7 +37,9 @@ payments_router = APIRouter(prefix="/payments", tags=["payments"])
 async def list_payments(
     lease_id: uuid.UUID | None = Query(None, alias="leaseId"),
     payment_status: str | None = Query(None, alias="status"),
+    states: str | None = Query(None),
     category: str | None = Query(None),
+    search: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
     current_user: CurrentUser = _read,
@@ -52,11 +54,13 @@ async def list_payments(
     tenant_record = await get_tenant_record(current_user, db)
     tenant_id_filter = tenant_record.id if tenant_record else None
 
+    status_list = [s.strip() for s in states.split(",")] if states else ([payment_status] if payment_status else None)
     return await svc.list_payments_org(
         current_user.org_id,
         db,
-        status_filter=payment_status,
+        status_filters=status_list,
         category=category,
+        search=search,
         lease_id_filter=lease_id,
         tenant_id_filter=tenant_id_filter,
         page=page,

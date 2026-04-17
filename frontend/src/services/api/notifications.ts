@@ -1,9 +1,10 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "./client";
 import type { Notification, NotificationTemplate, NotificationStats, PaginatedResponse, QueryParams } from "@/types";
+import { toNotificationParams } from "@/utils/backendParams";
 
 export const notificationsApi = {
   list: (params?: QueryParams) =>
-    apiGet<PaginatedResponse<Notification>>("/notifications", params),
+    apiGet<PaginatedResponse<Notification>>("/notifications", toNotificationParams(params)),
 
   send: (data: Omit<Notification, "id" | "state" | "queuedAt" | "retryCount">) =>
     apiPost<Notification>("/notifications/send", data),

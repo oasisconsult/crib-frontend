@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
+import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/utils/formatters";
 import { useNotifications, useNotificationStats, useSendNotification } from "@/hooks/useNotifications";
@@ -19,7 +20,6 @@ import type { Notification, NotificationChannel, FilterConfig } from "@/types";
 
 const PAGE_SIZE = 20;
 
-/* ── Channel display — icons only, no emojis ─────────────────────────────── */
 const CHANNEL_META: Record<string, { icon: React.ComponentType<{ className?: string }>; label: string }> = {
   email:    { icon: Mail,            label: "Email"    },
   sms:      { icon: Smartphone,      label: "SMS"      },
@@ -91,6 +91,25 @@ const TAB_LABELS: Record<typeof TABS[number], string> = {
   all: "All", delivered: "Delivered", pending: "Pending", failed: "Failed",
 };
 
+const FILTER_FIELDS: FilterField[] = [
+  {
+    key: "channel",
+    label: "Channel",
+    options: [
+      { label: "Email", value: "email" },
+      { label: "SMS", value: "sms" },
+      { label: "WhatsApp", value: "whatsapp" },
+      { label: "In-App", value: "in_app" },
+    ],
+  },
+];
+
+function panelFiltersToConfig(active: ActiveFilters): FilterConfig[] {
+  return Object.entries(active)
+    .filter(([, v]) => v)
+    .map(([field, value]) => ({ field, operator: "eq" as const, value }));
+}
+
 /* ── Compose Dialog ──────────────────────────────────────────────────────── */
 
 function ComposeDialog({ onClose }: { onClose: () => void }) {
@@ -140,15 +159,11 @@ function ComposeDialog({ onClose }: { onClose: () => void }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">New Notification</h3>
-        <button
-          onClick={onClose}
-          className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-        >
+        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      {/* Channel */}
       <div>
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Channel</p>
         <div className="grid grid-cols-4 gap-2">
@@ -174,90 +189,50 @@ function ComposeDialog({ onClose }: { onClose: () => void }) {
         </div>
       </div>
 
-      {/* Recipient */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Recipient Name *
-          </label>
-          <input
-            type="text"
-            value={recipientName}
-            onChange={(e) => setRecipientName(e.target.value)}
-            placeholder="e.g. Aisha Nakawunde"
-            className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recipient Name *</label>
+          <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="e.g. Aisha Nakawunde"
+            className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
         {needsPhone && (
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Phone Number *
-            </label>
-            <input
-              type="tel"
-              value={recipientPhone}
-              onChange={(e) => setRecipientPhone(e.target.value)}
-              placeholder="+256 700 000000"
-              className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phone Number *</label>
+            <input type="tel" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="+256 700 000000"
+              className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
           </div>
         )}
         {needsEmail && (
           <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Email *
-            </label>
-            <input
-              type="email"
-              value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
-              placeholder="tenant@example.com"
-              className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            />
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email *</label>
+            <input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="tenant@example.com"
+              className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
           </div>
         )}
       </div>
 
       {needsEmail && (
         <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Subject
-          </label>
-          <input
-            type="text"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            placeholder="Email subject line"
-            className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-          />
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subject</label>
+          <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject line"
+            className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
         </div>
       )}
 
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Message *
-          </label>
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Message *</label>
           {(channel === "sms" || channel === "whatsapp") && (
             <span className={cn("text-xs", body.length > 160 ? "text-amber-600" : "text-muted-foreground")}>
               {body.length} chars · {Math.ceil(body.length / 160) || 1} segment
             </span>
           )}
         </div>
-        <textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Type your message…"
-          rows={4}
-          className="w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-        />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Type your message…" rows={4}
+          className="w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
       </div>
 
-      <Button
-        className="w-full"
-        disabled={!recipientName.trim() || !body.trim() || isPending}
-        onClick={handleSend}
-      >
+      <Button className="w-full" disabled={!recipientName.trim() || !body.trim() || isPending} onClick={handleSend}>
         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         {isPending ? "Sending…" : "Send Notification"}
       </Button>
@@ -272,13 +247,14 @@ export default function NotificationsPage() {
   const [tab, setTab] = useState<typeof TABS[number]>("all");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
   const [composing, setComposing] = useState(false);
 
   const { data, isLoading } = useNotifications({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
-    filters: TAB_FILTERS[tab],
+    filters: [...TAB_FILTERS[tab], ...panelFiltersToConfig(activeFilters)],
   } as any);
 
   const { data: stats } = useNotificationStats();
@@ -290,6 +266,11 @@ export default function NotificationsPage() {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleFilterChange = (filters: ActiveFilters) => {
+    setActiveFilters(filters);
     setPage(1);
   };
 
@@ -338,12 +319,19 @@ export default function NotificationsPage() {
       )}
 
       {/* Toolbar */}
-      <FilterBar
-        search={search}
-        onSearchChange={handleSearchChange}
-        placeholder="Search by subject or recipient…"
-        className="max-w-sm"
-      />
+      <div className="space-y-2">
+        <FilterBar
+          search={search}
+          onSearchChange={handleSearchChange}
+          placeholder="Search by subject or recipient…"
+          className="max-w-sm"
+        />
+        <FilterPanel
+          fields={FILTER_FIELDS}
+          value={activeFilters}
+          onChange={handleFilterChange}
+        />
+      </div>
 
       {/* Tabs + Table */}
       <Tabs value={tab} onValueChange={handleTabChange}>

@@ -1,6 +1,7 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "./client";
 import type { Lease, LeaseAuditEntry, PaginatedResponse, QueryParams } from "@/types";
 import type { LeaseState, LeaseType } from "@/types";
+import { toLeaseParams } from "@/utils/backendParams";
 
 /**
  * Transform the flat backend LeaseOut shape into the nested frontend Lease type.
@@ -104,7 +105,7 @@ function toLeaseCreatePayload(data: Omit<Lease, "id" | "createdAt" | "updatedAt"
 
 export const leasesApi = {
   list: async (params?: QueryParams) => {
-    const raw = await apiGet<Record<string, unknown>>("/leases", params);
+    const raw = await apiGet<Record<string, unknown>>("/leases", toLeaseParams(params));
     return toPaginatedLeases(raw);
   },
 

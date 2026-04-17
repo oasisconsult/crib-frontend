@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
+import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/utils/formatters";
 import { useInspections } from "@/hooks/useInspections";
@@ -79,17 +80,37 @@ const TAB_LABELS: Record<typeof TABS[number], string> = {
   all: "All", scheduled: "Scheduled", in_progress: "In Progress", completed: "Completed",
 };
 
+const FILTER_FIELDS: FilterField[] = [
+  {
+    key: "type",
+    label: "Type",
+    options: [
+      { label: "Move-In", value: "move_in" },
+      { label: "Move-Out", value: "move_out" },
+      { label: "Routine", value: "routine" },
+      { label: "Emergency", value: "emergency" },
+    ],
+  },
+];
+
+function panelFiltersToConfig(active: ActiveFilters): FilterConfig[] {
+  return Object.entries(active)
+    .filter(([, v]) => v)
+    .map(([field, value]) => ({ field, operator: "eq" as const, value }));
+}
+
 export default function InspectionsPage() {
   const router = useRouter();
   const [tab, setTab] = useState<typeof TABS[number]>("all");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
 
   const { data, isLoading } = useInspections({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
-    filters: TAB_FILTERS[tab],
+    filters: [...TAB_FILTERS[tab], ...panelFiltersToConfig(activeFilters)],
   });
 
   const handleTabChange = (t: string) => {
@@ -99,6 +120,11 @@ export default function InspectionsPage() {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleFilterChange = (filters: ActiveFilters) => {
+    setActiveFilters(filters);
     setPage(1);
   };
 
@@ -119,12 +145,19 @@ export default function InspectionsPage() {
       </div>
 
       {/* Toolbar */}
-      <FilterBar
-        search={search}
-        onSearchChange={handleSearchChange}
-        placeholder="Search by reference or property..."
-        className="max-w-sm"
-      />
+      <div className="space-y-2">
+        <FilterBar
+          search={search}
+          onSearchChange={handleSearchChange}
+          placeholder="Search by reference or property..."
+          className="max-w-sm"
+        />
+        <FilterPanel
+          fields={FILTER_FIELDS}
+          value={activeFilters}
+          onChange={handleFilterChange}
+        />
+      </div>
 
       {/* Tabs + Table */}
       <Tabs value={tab} onValueChange={handleTabChange}>

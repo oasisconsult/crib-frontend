@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
+import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { formatCurrency, formatDate, formatDateRange } from "@/utils/formatters";
 import { useLeases } from "@/hooks/useLeases";
 import type { Lease, FilterConfig } from "@/types";
@@ -22,6 +23,17 @@ const TABS: { value: string; label: string; states: LeaseState[] }[] = [
   { value: "draft",   label: "Drafts",             states: ["draft"] },
   { value: "notice",  label: "Notice",             states: ["onboarding_started", "agreement_previewed", "terms_accepted"] },
   { value: "closed",  label: "Closed / Terminated", states: ["expired", "terminated"] },
+];
+
+const FILTER_FIELDS: FilterField[] = [
+  {
+    key: "type",
+    label: "Type",
+    options: [
+      { label: "Fixed Term", value: "fixed_term" },
+      { label: "Periodic", value: "periodic" },
+    ],
+  },
 ];
 
 const COLUMNS: Column<Lease>[] = [
@@ -80,7 +92,14 @@ const COLUMNS: Column<Lease>[] = [
 function tabFilters(tab: string): FilterConfig[] {
   const t = TABS.find((x) => x.value === tab);
   if (!t || t.states.length === 0) return [];
+  if (t.states.length === 1) return [{ field: "state", operator: "eq", value: t.states[0] }];
   return [{ field: "state", operator: "in", value: t.states }];
+}
+
+function panelFiltersToConfig(active: ActiveFilters): FilterConfig[] {
+  return Object.entries(active)
+    .filter(([, v]) => v)
+    .map(([field, value]) => ({ field, operator: "eq" as const, value }));
 }
 
 export function LeaseTable() {
@@ -88,12 +107,13 @@ export function LeaseTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
 
   const { data, isLoading } = useLeases({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
-    filters: tabFilters(activeTab),
+    filters: [...tabFilters(activeTab), ...panelFiltersToConfig(activeFilters)],
   });
 
   const handleTabChange = (tab: string) => {
@@ -103,6 +123,11 @@ export function LeaseTable() {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleFilterChange = (filters: ActiveFilters) => {
+    setActiveFilters(filters);
     setPage(1);
   };
 
@@ -121,6 +146,12 @@ export function LeaseTable() {
           New Lease
         </Button>
       </div>
+
+      <FilterPanel
+        fields={FILTER_FIELDS}
+        value={activeFilters}
+        onChange={handleFilterChange}
+      />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={handleTabChange}>

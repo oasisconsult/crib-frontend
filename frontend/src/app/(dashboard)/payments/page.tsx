@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
+import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayments, useDashboardStats } from "@/hooks/usePayments";
 import type { Payment, FilterConfig } from "@/types";
@@ -82,17 +83,38 @@ const TAB_FILTERS: Record<string, FilterConfig[]> = {
 
 const TABS = ["all", "pending", "confirmed", "failed", "refunded"] as const;
 
+const FILTER_FIELDS: FilterField[] = [
+  {
+    key: "category",
+    label: "Category",
+    options: [
+      { label: "Rent", value: "rent" },
+      { label: "Deposit", value: "deposit" },
+      { label: "Utility", value: "utility" },
+      { label: "Late Fee", value: "late_fee" },
+      { label: "Other", value: "other" },
+    ],
+  },
+];
+
+function panelFiltersToConfig(active: ActiveFilters): FilterConfig[] {
+  return Object.entries(active)
+    .filter(([, v]) => v)
+    .map(([field, value]) => ({ field, operator: "eq" as const, value }));
+}
+
 export default function PaymentsPage() {
   const router = useRouter();
   const [tab, setTab] = useState<typeof TABS[number]>("all");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
 
   const { data, isLoading } = usePayments({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
-    filters: TAB_FILTERS[tab],
+    filters: [...TAB_FILTERS[tab], ...panelFiltersToConfig(activeFilters)],
   });
 
   const { data: stats } = useDashboardStats();
@@ -104,6 +126,11 @@ export default function PaymentsPage() {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleFilterChange = (filters: ActiveFilters) => {
+    setActiveFilters(filters);
     setPage(1);
   };
 
@@ -174,12 +201,19 @@ export default function PaymentsPage() {
       </div>
 
       {/* Toolbar */}
-      <FilterBar
-        search={search}
-        onSearchChange={handleSearchChange}
-        placeholder="Search by reference or tenant..."
-        className="max-w-sm"
-      />
+      <div className="space-y-2">
+        <FilterBar
+          search={search}
+          onSearchChange={handleSearchChange}
+          placeholder="Search by reference or tenant..."
+          className="max-w-sm"
+        />
+        <FilterPanel
+          fields={FILTER_FIELDS}
+          value={activeFilters}
+          onChange={handleFilterChange}
+        />
+      </div>
 
       {/* Tabs + Table */}
       <Tabs value={tab} onValueChange={handleTabChange}>

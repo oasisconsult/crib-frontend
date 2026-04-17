@@ -108,16 +108,20 @@ async def preview_template(
 async def list_notifications(
     channel: str | None = Query(None),
     state: str | None = Query(None),
+    states: str | None = Query(None),
+    search: str | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    state_list = [s.strip() for s in states.split(",")] if states else ([state] if state else None)
     return await notification_service.list_notifications(
         org_id=current_user.org_id,
         db=db,
         channel=channel,
-        state=state,
+        states=state_list,
+        search=search,
         page=page,
         page_size=page_size,
     )

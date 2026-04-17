@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Wrench, AlertTriangle } from "lucide-react";
+import { Plus, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
+import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { formatDate } from "@/utils/formatters";
 import { useMaintenanceIssues, useCreateMaintenanceIssue } from "@/hooks/useInspections";
 import { useProperties } from "@/hooks/useProperties";
@@ -113,6 +113,30 @@ const TAB_LABELS: Record<typeof TABS[number], string> = {
   open: "Open", resolved: "Resolved", all: "All",
 };
 
+const FILTER_FIELDS: FilterField[] = [
+  {
+    key: "priority",
+    label: "Priority",
+    options: [
+      { label: "Urgent", value: "urgent" },
+      { label: "High", value: "high" },
+      { label: "Medium", value: "medium" },
+      { label: "Low", value: "low" },
+    ],
+  },
+  {
+    key: "category",
+    label: "Category",
+    options: CATEGORIES.map((c) => ({ label: c.charAt(0).toUpperCase() + c.slice(1), value: c })),
+  },
+];
+
+function panelFiltersToConfig(active: ActiveFilters): FilterConfig[] {
+  return Object.entries(active)
+    .filter(([, v]) => v)
+    .map(([field, value]) => ({ field, operator: "eq" as const, value }));
+}
+
 function NewIssueDialog({ onClose }: { onClose: () => void }) {
   const { mutate: create, isPending } = useCreateMaintenanceIssue();
   const { data: propertiesData } = useProperties();
@@ -155,17 +179,14 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
           </SelectContent>
         </Select>
       </div>
-
       <div className="space-y-1.5">
         <Label htmlFor="n-title">Title *</Label>
         <Input id="n-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Leaking tap in kitchen" required />
       </div>
-
       <div className="space-y-1.5">
         <Label htmlFor="n-desc">Description</Label>
         <Textarea id="n-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the issue in detail..." rows={3} />
       </div>
-
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <Label htmlFor="n-cat">Category</Label>
@@ -188,7 +209,6 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
           </Select>
         </div>
       </div>
-
       <Separator />
       <div className="flex justify-end gap-3">
         <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -205,13 +225,14 @@ export default function MaintenancePage() {
   const [tab, setTab] = useState<typeof TABS[number]>("open");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const { data, isLoading } = useMaintenanceIssues({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
-    filters: TAB_FILTERS[tab],
+    filters: [...TAB_FILTERS[tab], ...panelFiltersToConfig(activeFilters)],
   });
 
   const handleTabChange = (t: string) => {
@@ -221,6 +242,11 @@ export default function MaintenancePage() {
 
   const handleSearchChange = (value: string) => {
     setSearch(value);
+    setPage(1);
+  };
+
+  const handleFilterChange = (filters: ActiveFilters) => {
+    setActiveFilters(filters);
     setPage(1);
   };
 
@@ -234,10 +260,7 @@ export default function MaintenancePage() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4" />
-              Report Issue
-            </Button>
+            <Button><Plus className="h-4 w-4" />Report Issue</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
@@ -249,12 +272,19 @@ export default function MaintenancePage() {
       </div>
 
       {/* Toolbar */}
-      <FilterBar
-        search={search}
-        onSearchChange={handleSearchChange}
-        placeholder="Search by title or property..."
-        className="max-w-sm"
-      />
+      <div className="space-y-2">
+        <FilterBar
+          search={search}
+          onSearchChange={handleSearchChange}
+          placeholder="Search by title or property..."
+          className="max-w-sm"
+        />
+        <FilterPanel
+          fields={FILTER_FIELDS}
+          value={activeFilters}
+          onChange={handleFilterChange}
+        />
+      </div>
 
       {/* Tabs + Table */}
       <Tabs value={tab} onValueChange={handleTabChange}>

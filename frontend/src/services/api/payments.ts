@@ -19,31 +19,7 @@ import type {
   RevenueDataPoint,
   CashFlowDataPoint,
 } from "@/types";
-
-function mapQueryParamsToBackend(params?: QueryParams): Record<string, unknown> | undefined {
-  if (!params) return undefined;
-
-  const out: Record<string, unknown> = {};
-  if (params.page != null) out.page = params.page;
-  if (params.pageSize != null) out.pageSize = params.pageSize;
-
-  // Best-effort mapping from the generic UI filter model to backend query params.
-  // Backend currently supports: status, category, leaseId (+ pagination).
-  for (const f of params.filters ?? []) {
-    if (f.field === "state" && (f.operator === "eq" || f.operator === "in")) {
-      const v = Array.isArray(f.value) ? f.value[0] : f.value;
-      if (typeof v === "string") out.status = v;
-    }
-    if (f.field === "category" && f.operator === "eq" && typeof f.value === "string") {
-      out.category = f.value;
-    }
-    if (f.field === "leaseId" && f.operator === "eq" && typeof f.value === "string") {
-      out.leaseId = f.value;
-    }
-  }
-
-  return out;
-}
+import { toPaymentParams } from "@/utils/backendParams";
 
 // Backend PaymentOut uses `status`; frontend Payment type uses `state`.
 function mapPayment(raw: Record<string, unknown>): Payment {
@@ -59,7 +35,7 @@ function mapPaymentList(raw: PaginatedResponse<Record<string, unknown>>): Pagina
 
 export const paymentsApi = {
   list: async (params?: QueryParams) => {
-    const raw = await apiGet<PaginatedResponse<Record<string, unknown>>>("/payments", mapQueryParamsToBackend(params));
+    const raw = await apiGet<PaginatedResponse<Record<string, unknown>>>("/payments", toPaymentParams(params));
     return mapPaymentList(raw);
   },
 

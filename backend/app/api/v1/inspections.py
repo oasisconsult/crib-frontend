@@ -42,18 +42,22 @@ router = APIRouter(tags=["inspections"])
 async def list_inspections(
     property_id: str | None = Query(None),
     state: str | None = Query(None),
+    states: str | None = Query(None),
     type: str | None = Query(None, alias="type"),
+    search: str | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    state_list = [s.strip() for s in states.split(",")] if states else ([state] if state else None)
     return await inspection_service.list_inspections(
         org_id=current_user.org_id,
         db=db,
         property_id=property_id,
-        state=state,
+        states=state_list,
         type_filter=type,
+        search=search,
         page=page,
         page_size=page_size,
     )
@@ -117,19 +121,25 @@ async def add_inspection_photos(
 async def list_maintenance(
     property_id: str | None = Query(None),
     state: str | None = Query(None),
+    states: str | None = Query(None),
     priority: str | None = Query(None),
+    category: str | None = Query(None),
+    search: str | None = Query(None),
     reported_by: str | None = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    state_list = [s.strip() for s in states.split(",")] if states else ([state] if state else None)
     return await inspection_service.list_maintenance(
         org_id=current_user.org_id,
         db=db,
         property_id=property_id,
-        state=state,
+        states=state_list,
         priority=priority,
+        category=category,
+        search=search,
         reported_by=reported_by,
         page=page,
         page_size=page_size,

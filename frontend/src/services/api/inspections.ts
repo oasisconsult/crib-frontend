@@ -1,10 +1,11 @@
 import { apiGet, apiPost, apiPut, apiPatch } from "./client";
 import type { Inspection, MaintenanceIssue, PaginatedResponse, QueryParams } from "@/types";
 import type { InspectionEvent, MaintenanceEvent } from "@/types/states";
+import { toInspectionParams, toMaintenanceParams } from "@/utils/backendParams";
 
 export const inspectionsApi = {
   list: (params?: QueryParams) =>
-    apiGet<PaginatedResponse<Inspection>>("/inspections", params),
+    apiGet<PaginatedResponse<Inspection>>("/inspections", toInspectionParams(params)),
 
   get: (id: string) =>
     apiGet<Inspection>(`/inspections/${id}`),
@@ -23,7 +24,7 @@ export const inspectionsApi = {
 
   // Maintenance
   listMaintenance: (params?: QueryParams) =>
-    apiGet<PaginatedResponse<MaintenanceIssue>>("/maintenance", params),
+    apiGet<PaginatedResponse<MaintenanceIssue>>("/maintenance", toMaintenanceParams(params)),
 
   getMaintenance: (id: string) =>
     apiGet<MaintenanceIssue>(`/maintenance/${id}`),

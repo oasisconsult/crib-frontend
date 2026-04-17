@@ -57,6 +57,8 @@ async def list_leases(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
     status_filter: str | None = Query(None, alias="status"),
+    states: str | None = Query(None),
+    search: str | None = Query(None),
     unit_id: str | None = Query(None, alias="unitId"),
     tenant_id: str | None = Query(None, alias="tenantId"),
     property_id: str | None = Query(None, alias="propertyId"),
@@ -68,10 +70,12 @@ async def list_leases(
     if tenant_record is not None:
         tenant_id = str(tenant_record.id)
 
+    state_list = [s.strip() for s in states.split(",")] if states else ([status_filter] if status_filter else None)
     return await svc.list_leases(
         current_user.org_id,
         db,
-        status_filter=status_filter,
+        status_filters=state_list,
+        search=search,
         unit_id=unit_id,
         tenant_id=tenant_id,
         property_id=property_id,

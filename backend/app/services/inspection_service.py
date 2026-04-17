@@ -181,8 +181,9 @@ async def list_inspections(
     org_id: uuid.UUID,
     db: AsyncSession,
     property_id: str | None = None,
-    state: str | None = None,
+    states: list[str] | None = None,
     type_filter: str | None = None,
+    search: str | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
@@ -191,10 +192,13 @@ async def list_inspections(
     )
     if property_id:
         q = q.where(Inspection.property_id == uuid.UUID(property_id))
-    if state:
-        q = q.where(Inspection.state == state)
+    if states:
+        q = q.where(Inspection.state.in_(states))
     if type_filter:
         q = q.where(Inspection.type == type_filter)
+    if search:
+        term = f"%{search}%"
+        q = q.where(Inspection.type.ilike(term))
 
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(Inspection.scheduled_date.desc()).offset((page - 1) * page_size).limit(page_size)
@@ -337,8 +341,10 @@ async def list_maintenance(
     org_id: uuid.UUID,
     db: AsyncSession,
     property_id: str | None = None,
-    state: str | None = None,
+    states: list[str] | None = None,
     priority: str | None = None,
+    category: str | None = None,
+    search: str | None = None,
     reported_by: str | None = None,
     page: int = 1,
     page_size: int = 20,
@@ -348,10 +354,15 @@ async def list_maintenance(
     )
     if property_id:
         q = q.where(MaintenanceIssue.property_id == uuid.UUID(property_id))
-    if state:
-        q = q.where(MaintenanceIssue.state == state)
+    if states:
+        q = q.where(MaintenanceIssue.state.in_(states))
     if priority:
         q = q.where(MaintenanceIssue.priority == priority)
+    if category:
+        q = q.where(MaintenanceIssue.category == category)
+    if search:
+        term = f"%{search}%"
+        q = q.where(MaintenanceIssue.title.ilike(term))
     if reported_by:
         q = q.where(MaintenanceIssue.reported_by == reported_by)
 

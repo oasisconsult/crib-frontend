@@ -973,8 +973,9 @@ async def export_payments_csv(
 async def list_payments_org(
     org_id: uuid.UUID,
     db: AsyncSession,
-    status_filter: str | None = None,
+    status_filters: list[str] | None = None,
     category: str | None = None,
+    search: str | None = None,
     lease_id_filter: uuid.UUID | None = None,
     tenant_id_filter: uuid.UUID | None = None,
     page: int = 1,
@@ -982,10 +983,13 @@ async def list_payments_org(
 ) -> dict:
     from app.models.lease import Lease
     q = select(Payment).where(Payment.organisation_id == org_id)
-    if status_filter:
-        q = q.where(Payment.status == status_filter)
+    if status_filters:
+        q = q.where(Payment.status.in_(status_filters))
     if category:
         q = q.where(Payment.category == category)
+    if search:
+        term = f"%{search}%"
+        q = q.where(Payment.reference.ilike(term))
     if lease_id_filter:
         q = q.where(Payment.lease_id == lease_id_filter)
     if tenant_id_filter:

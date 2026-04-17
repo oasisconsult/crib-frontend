@@ -246,7 +246,8 @@ async def get_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) ->
 async def list_leases(
     org_id: uuid.UUID,
     db: AsyncSession,
-    status_filter: str | None = None,
+    status_filters: list[str] | None = None,
+    search: str | None = None,
     unit_id: str | None = None,
     tenant_id: str | None = None,
     property_id: str | None = None,
@@ -256,8 +257,11 @@ async def list_leases(
     from sqlalchemy import func
 
     q = select(Lease).where(Lease.organisation_id == org_id)
-    if status_filter:
-        q = q.where(Lease.status == status_filter)
+    if status_filters:
+        q = q.where(Lease.status.in_(status_filters))
+    if search:
+        term = f"%{search}%"
+        q = q.where(Lease.id.cast(str).ilike(term))
     if unit_id:
         q = q.where(Lease.unit_id == uuid.UUID(unit_id))
     if tenant_id:
