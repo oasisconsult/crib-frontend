@@ -9,6 +9,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatCurrency, formatDate } from "@/utils/formatters";
@@ -80,9 +84,9 @@ function PayDialog({ lease, onClose }: PayDialogProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground">Pay Rent</h3>
-        <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground transition-colors">
-          <X className="h-4 w-4" aria-hidden="true" />
-        </button>
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
+          <X className="h-4 w-4" />
+        </Button>
       </div>
 
       <div className="rounded-lg bg-muted/50 px-4 py-3 flex items-center justify-between">
@@ -112,16 +116,15 @@ function PayDialog({ lease, onClose }: PayDialogProps) {
         </div>
       </div>
 
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Transaction reference <span className="font-normal normal-case">(optional)</span>
-        </label>
-        <input
+        </Label>
+        <Input
           type="text"
           value={ref}
           onChange={(e) => setRef(e.target.value)}
           placeholder="e.g. MTN transaction ID"
-          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
 
@@ -150,9 +153,9 @@ function PaymentDetailSheet({ payment, onClose }: { payment: Payment; onClose: (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground">Payment Details</h3>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
       <dl className="divide-y divide-border">
         {rows.map(([label, value]) => (
@@ -221,22 +224,25 @@ function MaintenanceDialog({ userId, leaseId, propertyId, unitId, onClose }: Mai
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground">New Maintenance Request</h3>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</label>
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-        >
-          {MAINTENANCE_CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}</option>
-          ))}
-        </select>
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</Label>
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MAINTENANCE_CATEGORIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
@@ -259,14 +265,14 @@ function MaintenanceDialog({ userId, leaseId, propertyId, unitId, onClose }: Mai
         </div>
       </div>
 
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</label>
-        <textarea
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</Label>
+        <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Describe the issue in detail…"
           rows={4}
-          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+          className="resize-none"
         />
       </div>
 
@@ -314,25 +320,25 @@ function SignLeaseDialog({ leaseId, onClose }: SignLeaseDialogProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground">Sign Lease Agreement</h3>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
         By signing, you confirm that you have read and agree to all terms and conditions of this lease agreement.
       </div>
 
-      <div>
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="space-y-1.5">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Type your full name to sign
-        </label>
-        <input
+        </Label>
+        <Input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Your full legal name"
-          className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-medium"
+          className="font-medium"
         />
         {name && (
           <p className="mt-2 font-serif text-xl text-muted-foreground italic px-1">{name}</p>
@@ -368,7 +374,7 @@ function DialogOverlay({ children, onClose }: { children: React.ReactNode; onClo
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto bg-background rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto bg-[hsl(var(--card))] rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
         {children}
       </div>
     </div>

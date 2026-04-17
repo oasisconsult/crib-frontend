@@ -31,10 +31,6 @@ const DEFAULT_CHECKLIST = [
 export default function NewInspectionPage() {
   const router = useRouter();
   const { mutate: create, isPending } = useCreateInspection();
-  const { data: propertiesData } = useProperties();
-  const properties = propertiesData?.data ?? [];
-  const { data: unitsData } = useUnits(propertyId);
-  const units = unitsData?.data ?? [];
 
   const [propertyId, setPropertyId] = useState("");
   const [unitId, setUnitId] = useState("");
@@ -43,6 +39,11 @@ export default function NewInspectionPage() {
   const [scheduledTimeSlot, setScheduledTimeSlot] = useState("");
   const [inspectorName, setInspectorName] = useState("");
   const [notes, setNotes] = useState("");
+
+  const { data: propertiesData } = useProperties();
+  const properties = propertiesData?.data ?? [];
+  const { data: unitsData } = useUnits(propertyId);
+  const units = unitsData?.data ?? [];
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
