@@ -1,6 +1,16 @@
 "use client";
 
-import { Bell, Search, Menu, LogOut, Settings, ChevronDown, Sun, Moon, Monitor } from "lucide-react";
+import {
+  Bell,
+  Search,
+  Menu,
+  LogOut,
+  Settings,
+  ChevronDown,
+  Sun,
+  Moon,
+  Monitor,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUIStore } from "@/store/useUIStore";
@@ -22,9 +32,13 @@ import { PropertySwitcher } from "./PropertySwitcher";
 
 type ThemeOption = "light" | "dark" | "system";
 
-const THEME_OPTIONS: { value: ThemeOption; icon: React.ComponentType<{ className?: string }>; label: string }[] = [
-  { value: "light",  icon: Sun,     label: "Light" },
-  { value: "dark",   icon: Moon,    label: "Dark" },
+const THEME_OPTIONS: {
+  value: ThemeOption;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}[] = [
+  { value: "light", icon: Sun, label: "Light" },
+  { value: "dark", icon: Moon, label: "Dark" },
   { value: "system", icon: Monitor, label: "System" },
 ];
 
@@ -54,7 +68,7 @@ export function Header() {
 
       {/* Search trigger */}
       <button
-        className="hidden md:flex flex-1 max-w-[380px] items-center gap-2 h-10 px-3 rounded-[8px] text-sm border transition-colors text-muted-foreground cursor-pointer bg-muted border-border hover:border-[#0062FF]/30 focus:outline-none"
+        className="hidden md:flex flex-1 max-w-[380px] items-center gap-2 h-10 px-3 rounded-[8px] text-sm border transition-colors text-muted-foreground cursor-pointer bg-header border-border hover:border-[#0062FF]/30 focus:outline-none"
         onClick={() => setCommandPaletteOpen(true)}
         aria-label="Open search"
       >
@@ -128,14 +142,20 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-0.5">
-                <span className="font-semibold text-sm">{user?.name ?? "User"}</span>
-                <span className="text-xs text-muted-foreground font-normal">{user?.email}</span>
+                <span className="font-semibold text-sm">
+                  {user?.name ?? "User"}
+                </span>
+                <span className="text-xs text-muted-foreground font-normal">
+                  {user?.email}
+                </span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             {/* Mobile theme toggle inside dropdown */}
             <div className="sm:hidden px-1 py-1.5">
-              <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Theme</p>
+              <p className="px-2 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Theme
+              </p>
               <div className="flex items-center gap-1">
                 {THEME_OPTIONS.map(({ value, icon: Icon, label }) => (
                   <button
