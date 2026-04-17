@@ -92,8 +92,8 @@ const SelectContent = React.forwardRef<
       ref={ref}
       className={cn(
         "relative z-50 max-h-80 min-w-[8rem] overflow-hidden",
-        "rounded-[10px] border border-border bg-card text-popover-foreground",
-        "shadow-[0_4px_16px_rgba(15,23,42,0.10),0_1px_4px_rgba(15,23,42,0.06)]",
+        "rounded-[10px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-[hsl(var(--foreground))]",
+        "shadow-[0_4px_16px_rgba(15,23,42,0.10),0_1px_4px_rgba(15,23,42,0.06)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)]",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
