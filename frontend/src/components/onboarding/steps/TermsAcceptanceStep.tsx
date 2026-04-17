@@ -64,7 +64,7 @@ export function TermsAcceptanceStep({ token, onNext, onBack }: Props) {
                 type="checkbox"
                 checked={checkedTerms}
                 onChange={(e) => setCheckedTerms(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                className="h-4 w-4 rounded border-[hsl(var(--border))] accent-[hsl(var(--primary))] focus:ring-[hsl(var(--ring))]"
               />
             </div>
             <span className="text-sm leading-relaxed">
@@ -80,7 +80,7 @@ export function TermsAcceptanceStep({ token, onNext, onBack }: Props) {
                 type="checkbox"
                 checked={checkedPayment}
                 onChange={(e) => setCheckedPayment(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                className="h-4 w-4 rounded border-[hsl(var(--border))] accent-[hsl(var(--primary))] focus:ring-[hsl(var(--ring))]"
               />
             </div>
             <span className="text-sm leading-relaxed">

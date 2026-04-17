@@ -11,20 +11,20 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       className={cn(
         "flex min-h-[88px] w-full",
         "rounded-[8px]",
-        "border border-input",
-        "bg-background",
+        "border border-[hsl(var(--border))]",
+        "bg-[hsl(var(--input))]",
         "px-3 py-2",
-        "text-sm text-foreground",
-        "placeholder:text-muted-foreground/60",
+        "text-sm text-[hsl(var(--foreground))]",
+        "placeholder:text-[hsl(var(--muted-foreground))]/60",
         "resize-y",
         "transition-[border-color,box-shadow] duration-150",
         // WCAG 2.4.7 — visible focus indicator
         "focus-visible:outline-none",
-        "focus-visible:border-primary",
-        "focus-visible:ring-2 focus-visible:ring-ring/20",
-        "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground",
+        "focus-visible:border-[hsl(var(--primary))]",
+        "focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]/20",
+        "disabled:cursor-not-allowed disabled:bg-[hsl(var(--muted))] disabled:text-[hsl(var(--muted-foreground))]",
         // WCAG 1.3.1 — error uses border change + aria-invalid, not colour alone
-        error && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
+        error && "border-[hsl(var(--destructive))] focus-visible:border-[hsl(var(--destructive))] focus-visible:ring-[hsl(var(--destructive))]/20",
         className,
       )}
       ref={ref}

@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
@@ -159,9 +162,9 @@ function ComposeDialog({ onClose }: { onClose: () => void }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">New Notification</h3>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       <div>
@@ -190,46 +193,41 @@ function ComposeDialog({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recipient Name *</label>
-          <input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="e.g. Aisha Nakawunde"
-            className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recipient Name *</Label>
+          <Input type="text" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} placeholder="e.g. Aisha Nakawunde" />
         </div>
         {needsPhone && (
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phone Number *</label>
-            <input type="tel" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="+256 700 000000"
-              className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Phone Number *</Label>
+            <Input type="tel" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="+256 700 000000" />
           </div>
         )}
         {needsEmail && (
-          <div>
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email *</label>
-            <input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="tenant@example.com"
-              className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email *</Label>
+            <Input type="email" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} placeholder="tenant@example.com" />
           </div>
         )}
       </div>
 
       {needsEmail && (
-        <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subject</label>
-          <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject line"
-            className="mt-1 w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subject</Label>
+          <Input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Email subject line" />
         </div>
       )}
 
-      <div>
-        <div className="flex items-center justify-between mb-1">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Message *</label>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Message *</Label>
           {(channel === "sms" || channel === "whatsapp") && (
             <span className={cn("text-xs", body.length > 160 ? "text-amber-600" : "text-muted-foreground")}>
               {body.length} chars · {Math.ceil(body.length / 160) || 1} segment
             </span>
           )}
         </div>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Type your message…" rows={4}
-          className="w-full rounded-md border border-border bg-[hsl(var(--input))] px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+        <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Type your message…" rows={4} className="resize-none" />
       </div>
 
       <Button className="w-full" disabled={!recipientName.trim() || !body.trim() || isPending} onClick={handleSend}>

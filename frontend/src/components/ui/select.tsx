@@ -20,17 +20,17 @@ const SelectTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       "flex h-9 w-full items-center justify-between gap-2",
-      "rounded-[8px] border border-input bg-background",
-      "px-3 text-sm text-foreground",
+      "rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--input))]",
+      "px-3 text-sm text-[hsl(var(--foreground))]",
       "transition-[border-color,box-shadow] duration-150",
-      "placeholder:text-muted-foreground/60",
+      "placeholder:text-[hsl(var(--muted-foreground))]/60",
       // WCAG 2.4.7 — visible focus indicator
-      "focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/20",
-      "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground",
-      "data-[placeholder]:text-muted-foreground/60",
+      "focus:outline-none focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring))]/20",
+      "disabled:cursor-not-allowed disabled:bg-[hsl(var(--muted))] disabled:text-[hsl(var(--muted-foreground))]",
+      "data-[placeholder]:text-[hsl(var(--muted-foreground))]/60",
       "[&>span]:line-clamp-1",
       error &&
-        "border-destructive focus:border-destructive focus:ring-destructive/20",
+        "border-[hsl(var(--destructive))] focus:border-[hsl(var(--destructive))] focus:ring-[hsl(var(--destructive))]/20",
       className,
     )}
     {...props}
