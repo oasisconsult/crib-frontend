@@ -20,6 +20,7 @@ import {
   Phone,
   Building2,
   Banknote,
+  Receipt,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -120,9 +121,10 @@ interface PaymentRowProps {
   schedules?: RentSchedule[];
   isLast: boolean;
   onRetried?: (updated: Payment) => void;
+  onViewReceipt?: (payment: Payment) => void;
 }
 
-function PaymentRow({ payment, leaseId, schedules, isLast, onRetried }: PaymentRowProps) {
+function PaymentRow({ payment, leaseId, schedules, isLast, onRetried, onViewReceipt }: PaymentRowProps) {
   const [expanded, setExpanded] = useState(false);
 
   const paymentStatus = (payment as any).status ?? payment.state;
@@ -217,6 +219,17 @@ function PaymentRow({ payment, leaseId, schedules, isLast, onRetried }: PaymentR
             />
           </div>
         )}
+
+        {/* View receipt link */}
+        {onViewReceipt && (
+          <button
+            onClick={() => onViewReceipt(payment)}
+            className="mt-1 flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+          >
+            <Receipt className="h-3 w-3" />
+            View receipt
+          </button>
+        )}
       </div>
     </div>
   );
@@ -229,8 +242,8 @@ interface PaymentTimelineProps {
   payments: Payment[];
   schedules?: RentSchedule[];
   isLoading?: boolean;
-  /** Called after a failed payment is successfully retried. */
   onRetried?: (updated: Payment) => void;
+  onViewReceipt?: (payment: Payment) => void;
 }
 
 export function PaymentTimeline({
@@ -239,6 +252,7 @@ export function PaymentTimeline({
   schedules,
   isLoading,
   onRetried,
+  onViewReceipt,
 }: PaymentTimelineProps) {
   if (isLoading) {
     return (
@@ -285,6 +299,7 @@ export function PaymentTimeline({
           schedules={schedules}
           isLast={i === sorted.length - 1}
           onRetried={onRetried}
+          onViewReceipt={onViewReceipt}
         />
       ))}
     </div>

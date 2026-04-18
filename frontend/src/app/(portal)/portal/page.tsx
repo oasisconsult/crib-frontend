@@ -25,6 +25,7 @@ import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/utils/cn";
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { WalletBalanceCard } from "@/components/payments/WalletBalanceCard";
+import { PaymentReceipt } from "@/components/payments/PaymentReceipt";
 import type { Payment } from "@/types";
 import type { Message } from "@/services/api/messages";
 
@@ -744,6 +745,7 @@ export default function TenantPortalPage() {
   const [tab, setTab] = useState("overview");
   const [dialog, setDialog] = useState<Dialog>(null);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
 
   const user = useAppStore((s) => s.user);
   const userId = user?.id ?? "";
@@ -951,13 +953,37 @@ export default function TenantPortalPage() {
           <TabsContent value="payments" className="mt-4 space-y-4">
             {myLease && (
               <div className="flex items-center justify-between">
-                <SectionHeading>Payment History</SectionHeading>
+                <SectionHeading>Payment Records</SectionHeading>
                 <Button size="sm" onClick={() => setDialog("pay")}>
                   <CreditCard className="h-3.5 w-3.5" />
                   Pay Rent
                 </Button>
               </div>
             )}
+
+            {/* Payment summary stats */}
+            {myPayments.length > 0 && (() => {
+              const settled = myPayments.filter((p) =>
+                ["completed", "confirmed", "reconciled", "allocated"].includes((p as any).status ?? p.state)
+              );
+              const totalPaid = settled.reduce((sum, p) => sum + p.amount, 0);
+              const currency = myPayments[0]?.currency ?? "UGX";
+              const lastPaid = myPayments[0];
+              return (
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Total Paid", value: formatCurrency(totalPaid, currency) },
+                    { label: "Payments Made", value: String(settled.length) },
+                    { label: "Last Payment", value: lastPaid ? formatDate(lastPaid.paidAt ?? lastPaid.createdAt) : "—" },
+                  ].map((s) => (
+                    <div key={s.label} className="rounded-[6px] border border-border bg-card px-3 py-2.5 text-center">
+                      <p className="text-xs text-muted-foreground mb-0.5">{s.label}</p>
+                      <p className="text-sm font-semibold text-foreground">{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
             {userId && <WalletBalanceCard tenantId={userId} />}
 
@@ -968,6 +994,7 @@ export default function TenantPortalPage() {
                   payments={myPayments}
                   schedules={schedulesData?.data ?? []}
                   isLoading={paymentsLoading}
+                  onViewReceipt={setReceiptPayment}
                 />
                 {!paymentsLoading && myPayments.length === 0 && myLease && (
                   <div className="flex justify-center mt-2">
@@ -978,6 +1005,14 @@ export default function TenantPortalPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Receipt disclaimer */}
+            {myPayments.length > 0 && (
+              <div className="rounded-[6px] border border-primary/15 bg-primary/5 px-3 py-2.5 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground mb-0.5">Keep your payment records safe</p>
+                Click <span className="font-medium text-foreground">View receipt</span> on any payment to see full details including date, time, reference, and what period it covered. You can print or save receipts for your records.
+              </div>
+            )}
           </TabsContent>
 
           {/* ── Lease ────────────────────────────────────────────────── */}
@@ -1198,6 +1233,17 @@ export default function TenantPortalPage() {
           <PaymentDetailSheet payment={selectedPayment} onClose={closeDialog} />
         </DialogOverlay>
       )}
+
+      <PaymentReceipt
+        payment={receiptPayment}
+        leaseRef={myLease?.reference}
+        propertyName={(myLease as any)?.propertyName ?? undefined}
+        unitName={(myLease as any)?.unitName ?? undefined}
+        leaseId={myLease?.id}
+        schedules={schedulesData?.data ?? []}
+        open={!!receiptPayment}
+        onClose={() => setReceiptPayment(null)}
+      />
     </div>
   );
 }
