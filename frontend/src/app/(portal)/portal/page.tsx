@@ -624,7 +624,7 @@ function MessagesTab({ leaseId, userId, userSub }: { leaseId: string; userId: st
                             className={cn(
                               "px-3.5 py-2 text-sm leading-relaxed shadow-sm",
                               isMe
-                                ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
+                                ? "bg-teal-700 text-white rounded-2xl rounded-br-sm"
                                 : "bg-card text-foreground rounded-2xl rounded-bl-sm border border-border/50",
                             )}
                           >
@@ -632,7 +632,7 @@ function MessagesTab({ leaseId, userId, userSub }: { leaseId: string; userId: st
                           </div>
                           <span className="text-[10px] text-muted-foreground px-1">
                             {formatMsgTime(msg.createdAt)}
-                            {isMe && <span className="ml-1 text-primary/60">✓</span>}
+                            {isMe && <span className="ml-1 text-teal-600">✓</span>}
                           </span>
                         </div>
                       </div>
