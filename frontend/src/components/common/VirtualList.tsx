@@ -64,7 +64,7 @@ export function VirtualList<T>({
         {loadingSkeleton || (
           <div className="p-4 space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 bg-muted rounded animate-pulse" />
+              <div key={i} className="h-12 skeleton-shimmer rounded" />
             ))}
           </div>
         )}
@@ -181,7 +181,7 @@ export function VirtualGrid<T>({
         {loadingSkeleton || (
           <div className="p-4 grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-48 bg-muted rounded-lg animate-pulse" />
+              <div key={i} className="h-48 skeleton-shimmer rounded-lg" />
             ))}
           </div>
         )}

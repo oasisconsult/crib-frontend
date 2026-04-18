@@ -26,6 +26,8 @@
   --secondary-foreground: 173 78% 25%; /* #0F766E — trust teal text */
   --muted: 168 30% 94%;                /* #E6F5F1 — teal-tinted muted */
   --muted-foreground: 176 30% 44%;     /* #4D7A74 — muted teal text */
+  --skeleton-base: 168 28% 88%;        /* #D3EAE5 — teal-tinted skeleton base */
+  --skeleton-highlight: 168 45% 96%;   /* #EAF7F3 — lighter shimmer flash */
   --accent: 168 55% 92%;               /* #D8F5EE — very light teal accent */
   --accent-foreground: 173 78% 25%;    /* #0F766E — trust teal */
   --destructive: 0 72% 51%;            /* #DC2626 */
@@ -70,6 +72,8 @@
   --secondary-foreground: 210 15% 75%;
   --muted: 230 22% 19%;                /* #212636 */
   --muted-foreground: 215 15% 55%;
+  --skeleton-base: 230 20% 24%;        /* #2C3248 — slightly lighter dark navy */
+  --skeleton-highlight: 230 18% 31%;   /* #3A4160 — lighter shimmer flash */
   --accent: 230 22% 21%;
   --accent-foreground: 168 60% 70%;
   --destructive: 0 63% 50%;
@@ -680,6 +684,26 @@ body {
 *:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* ─── SKELETON SHIMMER ───────────────────────────────────────────────────── */
+
+@keyframes skeleton-wave {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--skeleton-base))      0%,
+    hsl(var(--skeleton-base))      30%,
+    hsl(var(--skeleton-highlight)) 50%,
+    hsl(var(--skeleton-base))      70%,
+    hsl(var(--skeleton-base))      100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.6s ease-in-out infinite;
 }
 
 /* ─── MOTION ─────────────────────────────────────────────────────────────── */

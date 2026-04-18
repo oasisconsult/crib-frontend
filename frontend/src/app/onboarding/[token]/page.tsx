@@ -35,9 +35,9 @@ export default function OnboardingPage({ params }: Props) {
 
         {isLoading ? (
           <div className="space-y-4">
-            <div className="h-8 w-64 bg-muted rounded animate-pulse" />
-            <div className="h-4 w-48 bg-muted rounded animate-pulse" />
-            <div className="h-96 bg-muted rounded-xl animate-pulse" />
+            <div className="h-8 w-64 skeleton-shimmer rounded" />
+            <div className="h-4 w-48 skeleton-shimmer rounded" />
+            <div className="h-96 skeleton-shimmer rounded-xl" />
           </div>
         ) : error ? (
           isExpiredError(error) ? (

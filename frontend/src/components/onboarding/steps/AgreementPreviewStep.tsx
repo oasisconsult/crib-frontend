@@ -54,10 +54,10 @@ export function AgreementPreviewStep({
     return (
       <Card>
         <CardContent className="pt-6 space-y-3">
-          <div className="h-5 w-64 bg-muted rounded animate-pulse" />
-          <div className="h-4 w-full bg-muted rounded animate-pulse" />
-          <div className="h-4 w-3/4 bg-muted rounded animate-pulse" />
-          <div className="h-96 bg-muted rounded animate-pulse" />
+          <div className="h-5 w-64 skeleton-shimmer rounded" />
+          <div className="h-4 w-full skeleton-shimmer rounded" />
+          <div className="h-4 w-3/4 skeleton-shimmer rounded" />
+          <div className="h-96 skeleton-shimmer rounded" />
         </CardContent>
       </Card>
     );

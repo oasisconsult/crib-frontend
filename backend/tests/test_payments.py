@@ -436,6 +436,101 @@ class TestDeposit:
         assert resp.status_code == 404
 
 
+# ── Tenant pays via flat endpoint (portal flow) ───────────────────────────────
+
+class TestTenantFlatPayment:
+    """Scenario: tenant sees an overdue rent schedule and submits payment via the portal."""
+
+    async def test_tenant_can_create_cash_payment(
+        self, client: AsyncClient, active_lease, schedule
+    ):
+        """Tenant submits a cash payment — should succeed with status initiated."""
+        resp = await client.post(
+            "/api/v1/payments",
+            json={
+                "leaseId": str(active_lease.id),
+                "rentScheduleId": str(schedule.id),
+                "amount": 500_000,
+                "currency": "UGX",
+                "category": "rent",
+                "method": "cash",
+                "reference": "CASH-001",
+            },
+            headers=auth_headers("tenant-1"),
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["amount"] == 500_000.0
+        assert body["method"] == "cash"
+        assert body["status"] == "initiated"
+
+    async def test_tenant_can_create_mobile_money_payment(
+        self, client: AsyncClient, active_lease, schedule
+    ):
+        """Tenant submits MTN mobile money — response includes a check-your-phone message."""
+        resp = await client.post(
+            "/api/v1/payments",
+            json={
+                "leaseId": str(active_lease.id),
+                "rentScheduleId": str(schedule.id),
+                "amount": 500_000,
+                "currency": "UGX",
+                "category": "rent",
+                "method": "mobile_money_mtn",
+                "phone": "256700000001",
+            },
+            headers=auth_headers("tenant-1"),
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["status"] == "initiated"
+        # message field should be present — either success or error from STK push
+        assert body.get("message") is not None
+
+    async def test_manager_cannot_be_blocked_by_flat_endpoint(
+        self, client: AsyncClient, active_lease, schedule
+    ):
+        """Manager can still use the flat endpoint (regression guard)."""
+        resp = await client.post(
+            "/api/v1/payments",
+            json={
+                "leaseId": str(active_lease.id),
+                "amount": 250_000,
+                "currency": "UGX",
+                "category": "rent",
+                "method": "cash",
+            },
+            headers=auth_headers("manager-1"),
+        )
+        assert resp.status_code == 201, resp.text
+
+    async def test_flat_payment_appears_in_list(
+        self, client: AsyncClient, active_lease, schedule
+    ):
+        """Payment created via flat endpoint is visible in the lease payments list."""
+        create_resp = await client.post(
+            "/api/v1/payments",
+            json={
+                "leaseId": str(active_lease.id),
+                "rentScheduleId": str(schedule.id),
+                "amount": 500_000,
+                "method": "cash",
+                "category": "rent",
+            },
+            headers=auth_headers("tenant-1"),
+        )
+        assert create_resp.status_code == 201
+        payment_id = create_resp.json()["id"]
+
+        list_resp = await client.get(
+            f"/api/v1/leases/{active_lease.id}/payments",
+            headers=auth_headers("manager-1"),
+        )
+        assert list_resp.status_code == 200
+        ids = [p["id"] for p in list_resp.json()["data"]]
+        assert payment_id in ids
+
+
 # ── Ledger tests ──────────────────────────────────────────────────────────────
 
 class TestLedger:
