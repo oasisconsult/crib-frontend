@@ -15,6 +15,7 @@ import { useProperties } from "@/hooks/useProperties";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/utils/cn";
 import { PageHeader } from "@/components/common/PageHeader";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
 
 // WCAG 1.4.1 — status is always shown as text label; colour is supplementary
@@ -322,25 +323,30 @@ export default function PropertiesPage() {
           placeholder="Search by name or city..."
           className="flex-1 min-w-[200px]"
         />
-        {/* WCAG 3.3.2 — labels are visually implicit but select has title for AT */}
-        <select
-          value={typeFilter}
-          onChange={(e) => setTypeFilter(e.target.value as PropertyType | "all")}
-          aria-label="Filter by property type"
-          className="h-9 rounded-[8px] border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/20"
-        >
-          <option value="all">All types</option>
-          {ALL_TYPES.map((t) => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
-        </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as PropertyStatus | "all")}
-          aria-label="Filter by status"
-          className="h-9 rounded-[8px] border border-input bg-background px-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-ring/20"
-        >
-          <option value="all">All statuses</option>
-          {ALL_STATUSES.map((s) => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-        </select>
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as PropertyType | "all")}>
+          <SelectTrigger className="w-[130px]" aria-label="Filter by property type">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {ALL_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>{TYPE_LABELS[t]}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as PropertyStatus | "all")}>
+          <SelectTrigger className="w-[130px]" aria-label="Filter by status">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {ALL_STATUSES.map((s) => (
+              <SelectItem key={s} value={s} className="capitalize">
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {/* WCAG 1.3.3 — view toggle uses aria-pressed not just icon */}
         <div className="flex items-center gap-1 rounded-[8px] bg-primary/10 p-1" role="group" aria-label="View mode">
           <Button
