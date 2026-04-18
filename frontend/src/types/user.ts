@@ -18,6 +18,8 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
+  /** Logto subject identifier — used as fallback for legacy message sender_id matching. */
+  logtoSub?: string;
   // Landlord-specific
   propertyIds?: string[];
   // Tenant-specific

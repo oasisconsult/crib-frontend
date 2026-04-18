@@ -506,7 +506,23 @@ function DialogOverlay({ children, onClose }: { children: React.ReactNode; onClo
 
 // ─── Messages Tab ─────────────────────────────────────────────────────────────
 
-function MessagesTab({ leaseId, userId }: { leaseId: string; userId: string }) {
+function formatMsgTime(iso: string) {
+  return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+}
+function formatMsgDate(iso: string) {
+  const d = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+function getInitialsFromName(name: string) {
+  return name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function MessagesTab({ leaseId, userId, userSub }: { leaseId: string; userId: string; userSub?: string }) {
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const { data, isLoading, refetch, isFetching } = useMessages(leaseId);
@@ -531,6 +547,15 @@ function MessagesTab({ leaseId, userId }: { leaseId: string; userId: string }) {
     }
   }
 
+  // Group messages by date for separators
+  const grouped: { date: string; msgs: Message[] }[] = [];
+  for (const msg of messages) {
+    const label = formatMsgDate(msg.createdAt);
+    const last = grouped[grouped.length - 1];
+    if (!last || last.date !== label) grouped.push({ date: label, msgs: [msg] });
+    else last.msgs.push(msg);
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -545,74 +570,101 @@ function MessagesTab({ leaseId, userId }: { leaseId: string; userId: string }) {
         </button>
       </div>
 
-      <Card>
-        <CardContent className="pt-4 pb-3">
+      <div className="rounded-2xl overflow-hidden border border-border shadow-sm flex flex-col" style={{ minHeight: 420 }}>
+        {/* Chat body */}
+        <div
+          className="flex-1 overflow-y-auto px-3 py-4 space-y-1"
+          style={{
+            background: "linear-gradient(135deg, hsl(var(--accent)/0.3) 0%, hsl(var(--background)) 100%)",
+            maxHeight: 420,
+          }}
+        >
           {isLoading ? (
-            <div className="flex items-center justify-center py-10 gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center justify-center h-full py-16 gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading messages…
             </div>
           ) : messages.length === 0 ? (
-            <div className="text-center py-10">
-              <MessageCircle className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No messages yet.</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">
-                Send a message to your landlord or property manager.
-              </p>
+            <div className="flex flex-col items-center justify-center h-full py-16 gap-2">
+              <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                <MessageCircle className="h-7 w-7 text-primary/50" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">No messages yet</p>
+              <p className="text-xs text-muted-foreground/60">Send a message to your property manager</p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {messages.map((msg: Message) => {
-                const isMe = msg.senderId === userId;
-                return (
-                  <div
-                    key={msg.id}
-                    className={cn("flex flex-col gap-0.5", isMe ? "items-end" : "items-start")}
-                  >
-                    <div
-                      className={cn(
-                        "max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm",
-                        isMe
-                          ? "bg-primary text-primary-foreground rounded-br-sm"
-                          : "bg-muted text-foreground rounded-bl-sm",
-                      )}
-                    >
-                      {msg.content}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
-                      {!isMe && <span className="font-medium capitalize">{msg.senderRole}</span>}
-                      <span>{new Date(msg.createdAt).toLocaleTimeString("en-UG", { hour: "2-digit", minute: "2-digit" })}</span>
-                      <span>·</span>
-                      <span>{new Date(msg.createdAt).toLocaleDateString("en-UG", { month: "short", day: "numeric" })}</span>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={bottomRef} />
-            </div>
+            grouped.map(({ date, msgs }) => (
+              <div key={date}>
+                {/* Date separator */}
+                <div className="flex items-center gap-2 my-3">
+                  <div className="flex-1 h-px bg-border/60" />
+                  <span className="text-[10px] font-medium text-muted-foreground bg-background/80 px-2 py-0.5 rounded-full border border-border/50">
+                    {date}
+                  </span>
+                  <div className="flex-1 h-px bg-border/60" />
+                </div>
+                <div className="space-y-1">
+                  {msgs.map((msg) => {
+                    const isMe = msg.senderId === userId || (!!userSub && msg.senderId === userSub);
+                    return (
+                      <div key={msg.id} className={cn("flex gap-2 items-end", isMe ? "flex-row-reverse" : "flex-row")}>
+                        {/* Avatar for others */}
+                        {!isMe && (
+                          <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-[10px] font-bold text-primary mb-0.5">
+                            {getInitialsFromName(msg.senderName)}
+                          </div>
+                        )}
+                        <div className={cn("flex flex-col gap-0.5 max-w-[75%]", isMe ? "items-end" : "items-start")}>
+                          {!isMe && (
+                            <span className="text-[10px] font-semibold text-primary pl-1 capitalize">
+                              {msg.senderName} · {msg.senderRole}
+                            </span>
+                          )}
+                          <div
+                            className={cn(
+                              "px-3.5 py-2 text-sm leading-relaxed shadow-sm",
+                              isMe
+                                ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
+                                : "bg-card text-foreground rounded-2xl rounded-bl-sm border border-border/50",
+                            )}
+                          >
+                            {msg.content}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground px-1">
+                            {formatMsgTime(msg.createdAt)}
+                            {isMe && <span className="ml-1 text-primary/60">✓</span>}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
           )}
+          <div ref={bottomRef} />
+        </div>
 
-          {/* Compose */}
-          <div className="mt-4 flex gap-2 items-end border-t border-border pt-3">
-            <Textarea
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message… (Enter to send)"
-              rows={2}
-              className="resize-none flex-1 text-sm"
-            />
-            <Button
-              size="icon"
-              onClick={handleSend}
-              disabled={!draft.trim() || sending}
-              className="shrink-0"
-            >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Compose bar */}
+        <div className="flex gap-2 items-end px-3 py-3 border-t border-border bg-card">
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message…"
+            rows={1}
+            className="resize-none flex-1 text-sm rounded-2xl min-h-[40px] max-h-[120px] py-2.5 px-4 border-border/60 bg-background focus-visible:ring-1"
+          />
+          <Button
+            size="icon"
+            onClick={handleSend}
+            disabled={!draft.trim() || sending}
+            className="shrink-0 h-10 w-10 rounded-full"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1103,7 +1155,7 @@ export default function TenantPortalPage() {
           {/* ── Messages ──────────────────────────────────────────────── */}
           <TabsContent value="messages" className="mt-4">
             {myLease ? (
-              <MessagesTab leaseId={myLease.id} userId={userId} />
+              <MessagesTab leaseId={myLease.id} userId={userId} userSub={user?.logtoSub} />
             ) : (
               <Card>
                 <CardContent className="py-12 text-center">
