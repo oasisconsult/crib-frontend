@@ -255,7 +255,7 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
                 "rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer",
                 dragOver
                   ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/40",
+                  : "border-border hover:border-primary/50 hover:bg-primary/5",
               )}
               onClick={() => fileRef.current?.click()}
               onDragOver={(e) => {
@@ -339,12 +339,12 @@ function DocumentRow({ doc, tenantId, canVerify, canDelete }: DocRowProps) {
   const expired = isExpired(doc.expiresAt);
 
   return (
-    <div className="group flex items-start gap-3 rounded-lg border p-3 hover:bg-muted/30 transition-colors">
+    <div className="group flex items-start gap-3 rounded-lg border p-3 hover:bg-primary/5 transition-colors">
       {/* Icon */}
       <div
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-          doc.verified ? "bg-emerald-100 dark:bg-emerald-100/40" : "bg-muted",
+          doc.verified ? "bg-emerald-100 dark:bg-emerald-100/40" : "bg-primary/10",
         )}
       >
         <Icon
@@ -604,8 +604,8 @@ export function TenantDocumentsSection({
             </div>
           ) : documents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted">
-                <FileText className="h-5 w-5 text-muted-foreground" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <FileText className="h-5 w-5 text-primary" />
               </div>
               <p className="text-sm font-medium">No documents yet</p>
               <p className="text-xs text-muted-foreground">

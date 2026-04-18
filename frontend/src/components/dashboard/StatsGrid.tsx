@@ -67,7 +67,7 @@ function StatCard({ title, value, trend, icon: Icon, color, progress }: StatCard
               <span>Progress</span>
               <span className="font-semibold text-foreground">{progress}%</span>
             </div>
-            <div className="h-2 w-full rounded-full overflow-hidden bg-muted">
+            <div className="h-2 w-full rounded-full overflow-hidden bg-primary/10">
               <div
                 className={cn("h-full rounded-full transition-all duration-500", progressColor)}
                 style={{ width: `${Math.min(progress, 100)}%` }}

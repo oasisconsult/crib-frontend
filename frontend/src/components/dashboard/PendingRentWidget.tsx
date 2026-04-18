@@ -88,7 +88,7 @@ export function PendingRentWidget() {
                 return (
                   <li
                     key={payment.id}
-                    className="grid sm:grid-cols-[1fr_auto_auto] gap-3 sm:gap-4 items-center px-4 sm:px-6 py-3 transition-colors hover:bg-muted/30"
+                    className="grid sm:grid-cols-[1fr_auto_auto] gap-3 sm:gap-4 items-center px-4 sm:px-6 py-3 transition-colors hover:bg-primary/5"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">

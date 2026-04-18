@@ -120,7 +120,7 @@ export function AdaptivePaymentButton({
 
       {/* Expanded cost breakdown */}
       {showBreakdown && decision && (
-        <div className="rounded-lg border bg-muted/30 p-3">
+        <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
           <CostComparisonCard decision={decision} currency={currency} />
         </div>
       )}

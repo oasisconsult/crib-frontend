@@ -79,7 +79,7 @@ export default function SignupPage() {
               ].map((f) => (
                 <div
                   key={f.title}
-                  className="flex items-center gap-3 rounded-lg border border-border/50 p-3 bg-muted/30"
+                  className="flex items-center gap-3 rounded-lg border border-primary/15 p-3 bg-primary/5"
                 >
                   <span className="text-xl">{f.icon}</span>
                   <div>

@@ -202,7 +202,7 @@ export default function AdminPage() {
                     return (
                       <div
                         key={u.id}
-                        className="grid sm:grid-cols-[1fr_auto_auto_auto_auto] gap-3 sm:gap-4 items-center py-3 px-3 hover:bg-muted/30 rounded-lg transition-colors"
+                        className="grid sm:grid-cols-[1fr_auto_auto_auto_auto] gap-3 sm:gap-4 items-center py-3 px-3 hover:bg-primary/5 rounded-lg transition-colors"
                       >
                         {/* User info */}
                         <div className="flex items-center gap-3">

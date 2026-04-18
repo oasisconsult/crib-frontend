@@ -57,7 +57,7 @@ function PermissionMatrix({
         </thead>
         <tbody>
           {resources.map((res) => (
-            <tr key={res.name} className="border-b last:border-0 hover:bg-muted/30">
+            <tr key={res.name} className="border-b last:border-0 hover:bg-primary/5">
               <td className="py-2 pr-3 font-mono text-[11px] text-foreground">{res.name}</td>
               {ACTIONS.map((action) => {
                 const key = `${res.name}:${action}`;
@@ -73,7 +73,7 @@ function PermissionMatrix({
                         "inline-flex h-5 w-5 items-center justify-center rounded transition-colors",
                         granted
                           ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80",
+                          : "bg-slate-100 text-slate-700 dark:bg-slate-800/40 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/40",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
                       )}
                       aria-label={`${granted ? "Revoke" : "Grant"} ${action} on ${res.name}`}
@@ -143,7 +143,7 @@ function CreateRoleForm({ onCreated }: { onCreated: (role: RoleOut) => void }) {
   }
 
   return (
-    <div className="border rounded-lg p-3 space-y-2 bg-muted/20">
+    <div className="border border-primary/15 rounded-lg p-3 space-y-2 bg-primary/5">
       <p className="text-xs font-medium">New Role</p>
       <Input
         placeholder="role_name"
@@ -305,8 +305,8 @@ export function RbacPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted">
-          <Shield className="h-5 w-5 text-muted-foreground" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+          <Shield className="h-5 w-5 text-primary" />
         </div>
         <div>
           <h2 className="text-base font-semibold">Access Control</h2>
@@ -330,7 +330,7 @@ export function RbacPanel() {
                   "group flex items-center justify-between gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
                   selectedRoleId === role.id
                     ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted",
+                    : "hover:bg-primary/5",
                 )}
                 onClick={() => setSelectedRoleId(role.id)}
               >

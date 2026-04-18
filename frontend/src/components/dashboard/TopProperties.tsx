@@ -55,7 +55,7 @@ export function TopProperties() {
                 <button
                   key={prop.id}
                   onClick={() => router.push(`/properties/${prop.id}`)}
-                  className="w-full flex items-center gap-3 rounded-lg py-2.5 px-2 hover:bg-muted/40 transition-colors text-left"
+                  className="w-full flex items-center gap-3 rounded-lg py-2.5 px-2 hover:bg-primary/5 transition-colors text-left"
                 >
                   {/* Icon */}
                   <div

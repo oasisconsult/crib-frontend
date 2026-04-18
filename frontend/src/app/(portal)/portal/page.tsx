@@ -174,7 +174,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
           <p className="font-semibold text-foreground">Check your phone!</p>
           <p className="text-sm text-muted-foreground max-w-xs">{pendingMessage}</p>
         </div>
-        <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground text-center max-w-xs">
+        <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground text-center max-w-xs">
           Once you enter your PIN, your payment will be confirmed automatically.
           You can close this dialog.
         </div>
@@ -242,7 +242,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
             <button
               key={m.id}
               onClick={() => handleMethodSelect(m)}
-              className="flex items-center gap-3 rounded-lg border border-border px-3 py-3 text-left hover:border-primary/40 hover:bg-muted/40 transition-all"
+              className="flex items-center gap-3 rounded-lg border border-border px-3 py-3 text-left hover:border-primary/40 hover:bg-primary/5 transition-all"
             >
               <m.icon className={cn("h-5 w-5", m.color)} />
               <span className="text-sm font-medium">{m.label}</span>
@@ -728,7 +728,7 @@ function InspectionsTab({ unitId, propertyId }: { unitId: string; propertyId: st
         </CardContent>
       </Card>
 
-      <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+      <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
         <p className="font-medium text-foreground mb-1">Not available for an inspection?</p>
         Send a message to your property manager via the Messages tab to reschedule.
       </div>

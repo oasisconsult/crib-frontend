@@ -26,7 +26,7 @@ function PortalNav() {
           <button
             onClick={() => setPreference(isDark ? "light" : "dark")}
             aria-label="Toggle theme"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors"
           >
             {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
@@ -38,7 +38,7 @@ function PortalNav() {
               </div>
               <button
                 onClick={() => logout()}
-                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors"
               >
                 <LogOut className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Sign out</span>

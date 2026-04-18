@@ -159,7 +159,7 @@ const UnitRow = React.memo(function UnitRow({
   const styles = STATUS_STYLES[unit.status];
   return (
     <tr
-      className="group border-b last:border-0 hover:bg-muted/40 cursor-pointer transition-colors"
+      className="group border-b last:border-0 hover:bg-primary/5 cursor-pointer transition-colors"
       onClick={onClick}
     >
       <td
@@ -420,7 +420,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
         <div className="rounded-lg border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-muted/40">
+              <tr className="border-b bg-primary/5">
                 <th className="py-2.5 px-4 w-8 text-left">
                   <input
                     type="checkbox"
@@ -470,7 +470,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
               ))}
             </tbody>
           </table>
-          <div className="px-4 py-2 border-t bg-muted/20 text-xs text-muted-foreground">
+          <div className="px-4 py-2 border-t bg-primary/5 text-xs text-muted-foreground">
             {filtered.length} of {units.length} unit
             {units.length !== 1 ? "s" : ""}
           </div>

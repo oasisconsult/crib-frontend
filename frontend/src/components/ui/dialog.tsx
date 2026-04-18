@@ -56,7 +56,7 @@ const DialogContent = React.forwardRef<
         className={cn(
           "absolute right-4 top-4 h-7 w-7 rounded-[6px]",
           "flex items-center justify-center",
-          "text-muted-foreground hover:text-foreground hover:bg-muted",
+          "text-muted-foreground hover:text-foreground hover:bg-primary/10",
           "transition-colors",
           "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-card",
         )}

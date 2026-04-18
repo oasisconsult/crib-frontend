@@ -352,7 +352,7 @@ function ChecklistEditor({
         {/* Progress bar */}
         {total > 0 && (
           <div className="mt-2 space-y-1">
-            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+            <div className="h-1.5 w-full rounded-full bg-primary/10 overflow-hidden">
               <div
                 className={cn(
                   "h-full rounded-full transition-all",
@@ -832,7 +832,7 @@ export default function InspectionDetailPage({ params }: Props) {
                       {linkedMaint.map((m) => (
                         <button
                           key={m.id}
-                          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-primary/5 transition-colors"
                           onClick={() => router.push(`/maintenance/${m.id}`)}
                         >
                           <div>
@@ -969,7 +969,7 @@ export default function InspectionDetailPage({ params }: Props) {
                       <Badge variant="secondary">{unassessed}</Badge>
                     </div>
                     <Separator />
-                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex">
+                    <div className="h-2 w-full rounded-full bg-primary/10 overflow-hidden flex">
                       {checklist.length > 0 && (
                         <>
                           <div

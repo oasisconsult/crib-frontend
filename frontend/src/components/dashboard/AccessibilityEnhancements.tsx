@@ -287,7 +287,7 @@ export function AccessibleStatCard({
               </span>
             </div>
             <div
-              className="h-1.5 w-full rounded-full bg-muted overflow-hidden"
+              className="h-1.5 w-full rounded-full bg-primary/10 overflow-hidden"
               role="progressbar"
               aria-valuenow={progress}
               aria-valuemin={0}
@@ -473,7 +473,7 @@ export function AccessibleTable({
             <tr
               key={row.id}
               role="row"
-              className="hover:bg-muted/30 transition-colors"
+              className="hover:bg-primary/5 transition-colors"
             >
               {row.cells.map((cell, index) => (
                 <td

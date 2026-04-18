@@ -90,7 +90,7 @@ export function CookieConsentBanner() {
       </p>
 
       {expanded && (
-        <div className="space-y-2 text-xs text-muted-foreground border rounded-lg p-3 bg-muted/40">
+        <div className="space-y-2 text-xs text-muted-foreground border border-primary/15 rounded-lg p-3 bg-primary/5">
           <div>
             <p className="font-medium text-foreground">Essential (always on)</p>
             <p>Session authentication, CSRF protection, theme preference.</p>

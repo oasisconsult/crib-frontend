@@ -108,7 +108,7 @@ function ChannelRow({
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
             isRecommended
               ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-100/40 dark:text-emerald-300"
-              : "bg-muted text-muted-foreground",
+              : "bg-slate-100 text-slate-700 dark:bg-slate-800/40 dark:text-slate-300",
           )}
         >
           <Icon className="h-4 w-4" />

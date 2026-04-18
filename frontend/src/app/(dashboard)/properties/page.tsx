@@ -20,7 +20,7 @@ import type { Property, PropertyStatus, PropertyType } from "@/types";
 // WCAG 1.4.1 — status is always shown as text label; colour is supplementary
 const STATUS_STYLES: Record<PropertyStatus, string> = {
   active:      "bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300",
-  inactive:    "bg-muted text-muted-foreground",
+  inactive:    "bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700",
   maintenance: "bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300",
 };
 
@@ -190,7 +190,7 @@ function PropertyRow({ property, onClick }: { property: Property; onClick: () =>
 
   return (
     <tr
-      className="group border-b last:border-0 hover:bg-muted/40 cursor-pointer transition-colors focus-within:bg-muted/40"
+      className="group border-b last:border-0 hover:bg-primary/5 cursor-pointer transition-colors focus-within:bg-primary/5"
       onClick={onClick}
     >
       <td className="py-3 px-4">
@@ -222,7 +222,7 @@ function PropertyRow({ property, onClick }: { property: Property; onClick: () =>
         <div className="flex items-center gap-2">
           {/* WCAG 4.1.3 — progress bar with aria attributes */}
           <div
-            className="h-1.5 w-20 rounded-full bg-muted overflow-hidden"
+            className="h-1.5 w-20 rounded-full bg-primary/10 overflow-hidden"
             role="progressbar"
             aria-valuenow={occupancyPct}
             aria-valuemin={0}
@@ -342,7 +342,7 @@ export default function PropertiesPage() {
           {ALL_STATUSES.map((s) => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
         </select>
         {/* WCAG 1.3.3 — view toggle uses aria-pressed not just icon */}
-        <div className="flex items-center gap-1 rounded-[8px] bg-muted p-1" role="group" aria-label="View mode">
+        <div className="flex items-center gap-1 rounded-[8px] bg-primary/10 p-1" role="group" aria-label="View mode">
           <Button
             variant={viewMode === "grid" ? "default" : "ghost"}
             size="icon-sm"
@@ -408,7 +408,7 @@ export default function PropertiesPage() {
         <div className="rounded-[12px] border border-border overflow-hidden bg-[hsl(var(--card))] shadow-[0_1px_3px_rgba(15,23,42,0.06)] dark:shadow-none">
           <table className="w-full text-sm" role="table" aria-label="Properties list">
             <thead>
-              <tr className="border-b border-border bg-muted/40">
+              <tr className="border-b border-border bg-primary/5">
                 <th scope="col" className="py-2.5 px-4 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Property</th>
                 <th scope="col" className="py-2.5 px-4 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden sm:table-cell">Type</th>
                 <th scope="col" className="py-2.5 px-4 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hidden md:table-cell">Units</th>
@@ -424,7 +424,7 @@ export default function PropertiesPage() {
               ))}
             </tbody>
           </table>
-          <div className="px-4 py-2 border-t border-border bg-muted/20 text-xs text-muted-foreground">
+          <div className="px-4 py-2 border-t border-border bg-primary/5 text-xs text-muted-foreground">
             {properties.length} of {allProperties.length} propert{allProperties.length !== 1 ? "ies" : "y"}
           </div>
         </div>

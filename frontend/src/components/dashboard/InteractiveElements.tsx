@@ -144,7 +144,7 @@ export function InteractiveRow({ children, onClick, className, hover = true }: I
     <div
       className={cn(
         "transition-all duration-200 cursor-pointer",
-        hover && "hover:bg-muted/50 hover:shadow-sm",
+        hover && "hover:bg-primary/5 hover:shadow-sm",
         onClick && "active:scale-[0.99]",
         className
       )}
@@ -272,7 +272,7 @@ export function ActionButtons({
                     onShare();
                     setIsOpen(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-primary/5 flex items-center gap-2"
                 >
                   <Share2 className="h-4 w-4" />
                   Share
@@ -284,7 +284,7 @@ export function ActionButtons({
                     onExport();
                     setIsOpen(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-primary/5 flex items-center gap-2"
                 >
                   <Download className="h-4 w-4" />
                   Export
@@ -296,7 +296,7 @@ export function ActionButtons({
                     onDelete();
                     setIsOpen(false);
                   }}
-                  className="w-full px-3 py-2 text-left text-sm hover:bg-muted text-destructive flex items-center gap-2"
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 dark:hover:bg-red-950/30 text-destructive flex items-center gap-2"
                 >
                   <EyeOff className="h-4 w-4" />
                   Delete
@@ -321,7 +321,7 @@ interface QuickStatsProps {
 
 export function QuickStats({ stats }: QuickStatsProps) {
   return (
-    <div className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+    <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-lg">
       {stats.map((stat, index) => (
         <div 
           key={stat.label}
@@ -348,7 +348,7 @@ interface FilterToggleProps {
 
 export function FilterToggle({ filters, activeFilters, onToggle }: FilterToggleProps) {
   return (
-    <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg flex-wrap">
+    <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg flex-wrap">
       <Filter className="h-4 w-4 text-muted-foreground" />
       {filters.map((filter) => (
         <button
@@ -358,7 +358,7 @@ export function FilterToggle({ filters, activeFilters, onToggle }: FilterToggleP
             "px-3 py-1 text-xs rounded-full transition-all duration-200",
             activeFilters.includes(filter)
               ? "bg-primary text-primary-foreground shadow-sm"
-              : "bg-background text-muted-foreground hover:bg-muted"
+              : "bg-background text-muted-foreground hover:bg-primary/5"
           )}
         >
           {filter}
