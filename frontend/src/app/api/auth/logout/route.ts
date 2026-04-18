@@ -15,7 +15,7 @@
 export const runtime = "edge";
 
 import { type NextRequest, NextResponse } from "next/server";
-import { LOGTO_PUBLIC_URL, APP_URL } from "@/lib/config";
+import { LOGTO_PUBLIC_URL, LOGTO_APP_ID, APP_URL } from "@/lib/config";
 import { COOKIE, clearAuthCookies } from "@/lib/cookies";
 import { revokeToken } from "@/lib/oidc";
 
@@ -26,10 +26,8 @@ export async function POST(request: NextRequest) {
   if (refreshToken) await revokeToken(refreshToken);
 
   const endSessionUrl = new URL(`${LOGTO_PUBLIC_URL}/oidc/session/end`);
-  endSessionUrl.searchParams.set(
-    "post_logout_redirect_uri",
-    `${APP_URL}/login`,
-  );
+  endSessionUrl.searchParams.set("client_id", LOGTO_APP_ID);
+  endSessionUrl.searchParams.set("post_logout_redirect_uri", `${APP_URL}/login`);
 
   const response = NextResponse.json({ logoutUrl: endSessionUrl.toString() });
   clearAuthCookies(response);
