@@ -133,7 +133,7 @@ function PropertyRow({ p }: { p: Property }) {
   return (
     <Link
       href={`/properties/${p.id}` as any}
-      className="flex items-center gap-3 py-3 px-5 border-b border-border/60 last:border-0 hover:bg-muted/40 transition-colors cursor-pointer group"
+      className="flex items-center gap-3 py-3 px-5 border-b border-border/60 last:border-0 hover:bg-primary/5 transition-colors cursor-pointer group"
     >
       <div
         className="h-8 w-8 rounded-[7px] bg-accent flex items-center justify-center shrink-0"
@@ -156,7 +156,7 @@ function PropertyRow({ p }: { p: Property }) {
           <span className="text-muted-foreground">{p.occupiedUnits}/{p.totalUnits}</span>
         </div>
         <div
-          className="h-1.5 bg-muted rounded-full overflow-hidden"
+          className="h-1.5 bg-primary/10 rounded-full overflow-hidden"
           role="progressbar"
           aria-valuenow={pct}
           aria-valuemin={0}
