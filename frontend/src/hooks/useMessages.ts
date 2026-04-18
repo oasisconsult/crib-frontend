@@ -10,7 +10,7 @@ export function useMessages(leaseId: string, page = 1) {
     queryKey: queryKeys.messages.list(leaseId, page),
     queryFn: () => messagesApi.list(leaseId, page),
     enabled: !!leaseId,
-    refetchInterval: 15_000, // poll every 15s for new messages
+    refetchInterval: 15_000,
   });
 }
 
@@ -32,5 +32,22 @@ export function useMarkMessageRead(leaseId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.messages.all() });
     },
+  });
+}
+
+export function useUnreadMessageCount() {
+  return useQuery({
+    queryKey: queryKeys.messages.unreadCount(),
+    queryFn: () => messagesApi.unreadCount(),
+    refetchInterval: 30_000,
+    staleTime: 20_000,
+  });
+}
+
+export function useAllMessages(page = 1, unreadOnly = false) {
+  return useQuery({
+    queryKey: queryKeys.messages.listAll(page, unreadOnly),
+    queryFn: () => messagesApi.listAll(page, 20, unreadOnly),
+    refetchInterval: 30_000,
   });
 }

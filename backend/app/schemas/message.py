@@ -21,3 +21,12 @@ class MessageOut(CamelModel):
     read_at: str | None
     created_at: str
     updated_at: str
+
+
+class MessageWithLeaseOut(MessageOut):
+    """Extended schema used in flat org-level listings — same fields, explicit alias."""
+    pass
+
+
+class UnreadCountOut(CamelModel):
+    count: int

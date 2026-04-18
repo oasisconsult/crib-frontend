@@ -62,20 +62,23 @@ export function WorkflowStepper({
             <div className={cn(orientation === "horizontal" && "flex flex-col items-center flex-1")}>
               <div
                 className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-bold transition-all duration-300",
+                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-bold transition-all duration-200",
+                  // Done: white bg, teal border + teal check — clean tick-box feel
                   status === "done" &&
-                    "border-primary bg-primary text-primary-foreground",
+                    "border-primary bg-white dark:bg-card text-primary shadow-sm",
+                  // Active: solid teal fill — clearly the current step
                   status === "active" &&
-                    "border-primary bg-primary/10 text-primary ring-4 ring-primary/20",
+                    "border-primary bg-primary text-white shadow-md ring-4 ring-primary/20",
+                  // Upcoming: subtle grey — not done yet, not in the way
                   status === "upcoming" &&
-                    "border-muted-foreground/30 bg-background text-muted-foreground",
+                    "border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500",
                   status === "error" &&
                     "border-destructive bg-destructive text-destructive-foreground",
                 )}
                 aria-current={status === "active" ? "step" : undefined}
               >
                 {status === "done" ? (
-                  <Check className="h-4 w-4" aria-label="Completed" />
+                  <Check className="h-3.5 w-3.5 stroke-[2.5]" aria-label="Completed" />
                 ) : (
                   <span aria-hidden="true">{step.step}</span>
                 )}
@@ -85,7 +88,9 @@ export function WorkflowStepper({
               <span
                 className={cn(
                   "mt-1.5 text-[10px] font-medium text-center leading-tight max-w-[56px] break-words",
-                  status === "active" ? "text-primary" : "text-muted-foreground",
+                  status === "active" && "text-primary font-semibold",
+                  status === "done" && "text-primary/70",
+                  status === "upcoming" && "text-slate-400 dark:text-slate-500",
                   orientation === "vertical" && "mt-0 max-w-none text-left text-xs",
                 )}
               >
@@ -97,8 +102,10 @@ export function WorkflowStepper({
             {!isLast && orientation === "horizontal" && (
               <div
                 className={cn(
-                  "flex-1 mt-4 h-0.5 mx-1 transition-all duration-300",
-                  step.step < currentStep ? "bg-primary" : "bg-muted",
+                  "flex-1 mt-3.5 h-0.5 mx-1 rounded-full transition-all duration-300",
+                  step.step < currentStep
+                    ? "bg-primary"
+                    : "bg-slate-200 dark:bg-slate-700",
                 )}
                 aria-hidden="true"
               />

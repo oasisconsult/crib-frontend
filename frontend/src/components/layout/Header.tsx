@@ -10,6 +10,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,7 +18,7 @@ import { useUIStore } from "@/store/useUIStore";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
-import { getInitials } from "@/utils/formatters";
+import { getInitials, formatRelative } from "@/utils/formatters";
 import Link from "next/link";
 import { cn } from "@/utils/cn";
 import {
@@ -29,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PropertySwitcher } from "./PropertySwitcher";
+import { useUnreadMessageCount, useAllMessages } from "@/hooks/useMessages";
 
 type ThemeOption = "light" | "dark" | "system";
 
@@ -47,6 +49,9 @@ export function Header() {
   const user = useAppStore((s) => s.user);
   const { logout } = useAuth();
   const { preference, setPreference } = useTheme();
+  const { data: unreadData } = useUnreadMessageCount();
+  const { data: recentMessages } = useAllMessages(1, false);
+  const unreadCount = unreadData?.count ?? 0;
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-3 px-4 md:px-6 bg-header border-b border-sidebar-border shadow-[0_1px_4px_rgba(0,0,0,0.04)]">
@@ -105,18 +110,64 @@ export function Header() {
         </div>
 
         {/* Notifications */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))] h-10 w-10 rounded-[8px]"
-          aria-label="Notifications"
-          asChild
-        >
-          <Link href="/notifications">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-red-500 border-2 border-header" />
-          </Link>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))] h-10 w-10 rounded-[8px]"
+              aria-label="Message notifications"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 border-2 border-header text-[9px] font-bold text-white leading-none">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <DropdownMenuLabel className="flex items-center justify-between">
+              <span>Messages</span>
+              {unreadCount > 0 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  {unreadCount} unread
+                </span>
+              )}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {recentMessages?.data?.length ? (
+              recentMessages.data.slice(0, 5).map((msg) => (
+                <DropdownMenuItem key={msg.id} asChild>
+                  <Link
+                    href={msg.leaseId ? `/leases/${msg.leaseId}` : "/messages"}
+                    className="flex flex-col items-start gap-0.5 py-2.5 cursor-pointer"
+                  >
+                    <div className="flex items-center gap-1.5 w-full">
+                      <MessageCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="font-medium text-sm truncate flex-1">{msg.senderName}</span>
+                      {!msg.readAt && (
+                        <span className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-1 pl-5">{msg.content}</p>
+                    <span className="text-[10px] text-muted-foreground pl-5">{formatRelative(msg.createdAt)}</span>
+                  </Link>
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                No messages yet
+              </div>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/notifications" className="justify-center text-xs text-primary cursor-pointer">
+                View all notifications
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* User menu */}
         <DropdownMenu>

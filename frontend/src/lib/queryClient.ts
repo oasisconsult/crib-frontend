@@ -88,6 +88,8 @@ export const queryKeys = {
   messages: {
     all: () => ["messages"] as const,
     list: (leaseId: string, page?: number) => ["messages", "list", leaseId, page] as const,
+    unreadCount: () => ["messages", "unread-count"] as const,
+    listAll: (page?: number, unreadOnly?: boolean) => ["messages", "all", page, unreadOnly] as const,
   },
   // Notifications
   notifications: {

@@ -402,7 +402,7 @@ async def test_assign_tenant_role_existing_role():
     from app.services.logto_service import _assign_tenant_role
 
     role_id = "role_tenant_abc"
-    
+
     class _RoleClient(_FakeClient):
         def __init__(self, responses):
             super().__init__(responses)
@@ -410,13 +410,14 @@ async def test_assign_tenant_role_existing_role():
 
         async def post(self, url, **kwargs):
             self.calls.append(("POST", url))
-            if "roles" in url and "organizationRoleIds" in str(kwargs.get("json", {})):
+            if "/users/" in url and "/roles" in url:
                 self.role_assignment_calls.append((url, kwargs))
                 return _resp(201, {})
             return self._find(url)
 
+    # Service now calls GET /roles (global), not /organizations/{id}/roles
     client = _RoleClient({
-        "/organizations/org_test/roles": _resp(200, [
+        "/roles": _resp(200, [
             {"id": role_id, "name": "tenant"}
         ])
     })
@@ -429,8 +430,8 @@ async def test_assign_tenant_role_existing_role():
     assert result is True
     assert len(client.role_assignment_calls) == 1
     url, kwargs = client.role_assignment_calls[0]
-    assert "org_test" in url and "user_123" in url
-    assert kwargs["json"]["organizationRoleIds"] == [role_id]
+    assert "user_123" in url and "/roles" in url
+    assert kwargs["json"]["roleIds"] == [role_id]
 
 
 @pytest.mark.asyncio
@@ -439,7 +440,7 @@ async def test_assign_tenant_role_create_new_role():
     from app.services.logto_service import _assign_tenant_role
 
     new_role_id = "role_tenant_new"
-    
+
     class _CreateRoleClient(_FakeClient):
         def __init__(self, responses):
             super().__init__(responses)
@@ -448,16 +449,19 @@ async def test_assign_tenant_role_create_new_role():
 
         async def post(self, url, **kwargs):
             self.calls.append(("POST", url))
-            if "roles" in url and "name" in str(kwargs.get("json", {})):
+            # Role creation: POST /roles with name in body
+            if url.rstrip("/").endswith("/roles") and "name" in str(kwargs.get("json", {})):
                 self.role_creation_calls.append((url, kwargs))
                 return _resp(201, {"id": new_role_id})
-            if "roles" in url and "organizationRoleIds" in str(kwargs.get("json", {})):
+            # Role assignment: POST /users/{id}/roles with roleIds
+            if "/users/" in url and "/roles" in url:
                 self.role_assignment_calls.append((url, kwargs))
                 return _resp(201, {})
             return self._find(url)
 
+    # Service calls GET /roles (global) — no tenant role found
     client = _CreateRoleClient({
-        "/organizations/org_test/roles": _resp(200, [
+        "/roles": _resp(200, [
             {"id": "role_other", "name": "manager"}
         ])
     })
@@ -470,44 +474,32 @@ async def test_assign_tenant_role_create_new_role():
     assert result is True
     assert len(client.role_creation_calls) == 1
     assert len(client.role_assignment_calls) == 1
-    
-    # Check role creation
+
+    # Check role creation: POST /roles
     url, kwargs = client.role_creation_calls[0]
-    assert "org_test" in url and "roles" in url
+    assert url.rstrip("/").endswith("/roles")
     assert kwargs["json"]["name"] == "tenant"
     assert kwargs["json"]["description"] == "Tenant role for property tenants"
-    
-    # Check role assignment
+
+    # Check role assignment: POST /users/{user_id}/roles with roleIds
     url, kwargs = client.role_assignment_calls[0]
-    assert "org_test" in url and "user_123" in url
-    assert kwargs["json"]["organizationRoleIds"] == [new_role_id]
+    assert "user_123" in url and "/roles" in url
+    assert kwargs["json"]["roleIds"] == [new_role_id]
 
 
 @pytest.mark.asyncio
 async def test_assign_tenant_role_organization_not_found():
-    """Test role assignment when organization has no roles (404)."""
+    """Test role assignment when GET /roles returns 404 (Logto error) — should return False."""
     from app.services.logto_service import _assign_tenant_role
 
-    new_role_id = "role_tenant_created"
-    
-    class _OrgNotFoundClient(_FakeClient):
-        def __init__(self, responses):
-            super().__init__(responses)
-            self.role_creation_calls = []
-            self.role_assignment_calls = []
-
+    class _RolesNotFoundClient(_FakeClient):
         async def post(self, url, **kwargs):
             self.calls.append(("POST", url))
-            if "roles" in url and "name" in str(kwargs.get("json", {})):
-                self.role_creation_calls.append((url, kwargs))
-                return _resp(201, {"id": new_role_id})
-            if "roles" in url and "organizationRoleIds" in str(kwargs.get("json", {})):
-                self.role_assignment_calls.append((url, kwargs))
-                return _resp(201, {})
             return self._find(url)
 
-    client = _OrgNotFoundClient({
-        "/organizations/org_test/roles": _resp(404, {})
+    # Service calls GET /roles; if that fails with 404, it returns False
+    client = _RolesNotFoundClient({
+        "/roles": _resp(404, {})
     })
 
     with patch("app.services.logto_service.httpx.AsyncClient", return_value=client):
@@ -515,9 +507,7 @@ async def test_assign_tenant_role_organization_not_found():
             client, "http://logto:3001/api", "org_test", "user_123", {"Authorization": "Bearer tok"}
         )
 
-    assert result is True
-    assert len(client.role_creation_calls) == 1
-    assert len(client.role_assignment_calls) == 1
+    assert result is False
 
 
 @pytest.mark.asyncio
@@ -670,16 +660,14 @@ async def test_resend_login_credentials_happy_path():
 
 
 @pytest.mark.asyncio
-async def test_resend_login_credentials_patch_fails_returns_false():
-    """If the PATCH /users call returns non-2xx, return False and skip email."""
+async def test_resend_login_credentials_set_password_fails_returns_false():
+    """If _set_user_password returns False, resend_login_credentials returns False."""
     from app.services.logto_service import resend_login_credentials
-
-    client = _FakeClient({"/users/usr_abc": _resp(500, {})})
 
     with patch("app.services.logto_service._is_configured", return_value=True), \
          patch("app.services.logto_service._get_m2m_token", new=AsyncMock(return_value="tok")), \
          patch("app.core.config.get_settings", return_value=_mock_settings()), \
-         patch("app.services.logto_service.httpx.AsyncClient", return_value=client), \
+         patch("app.services.logto_service._set_user_password", new=AsyncMock(return_value=False)), \
          patch("app.services.logto_service._send_welcome_email",
                new=AsyncMock()) as mock_email:
 

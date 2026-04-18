@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Check,
   CheckSquare,
   AlertCircle,
   Building2,
@@ -739,39 +740,41 @@ export default function InspectionDetailPage({ params }: Props) {
           {/* ── State flow ────────────────────────────────── */}
           <Card>
             <CardContent className="py-4">
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {stateFlow.map((s, i) => {
-                  const cfg = INSPECTION_STATE_DISPLAY[s];
                   const isActive = s === currentState;
                   const isPast = currentFlowIdx > i;
                   return (
-                    <div key={s} className="flex items-center gap-2">
+                    <div key={s} className="flex items-center gap-1.5">
                       {i > 0 && (
-                        <div className={cn("h-px w-8 shrink-0", isPast || isActive ? "bg-primary" : "bg-border")} />
+                        <div className={cn(
+                          "h-px w-6 shrink-0 rounded-full",
+                          isPast ? "bg-primary" : isActive ? "bg-primary/50" : "bg-slate-200 dark:bg-slate-700",
+                        )} />
                       )}
                       <span
                         className={cn(
-                          "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize",
+                          "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium capitalize transition-all",
                           isActive
-                            ? `${cfg.color} ${cfg.bgColor} ring-1 ring-current`
+                            // Current step: solid teal, white text, subtle ring
+                            ? "bg-primary text-white shadow-sm ring-2 ring-primary/20"
                             : isPast
-                              ? "text-muted-foreground bg-muted line-through"
-                              : "text-muted-foreground",
+                              // Completed step: soft teal tint, teal text, check mark
+                              ? "bg-primary/10 text-primary/80 dark:bg-primary/15 dark:text-primary/70"
+                              // Upcoming step: grey outline, muted text
+                              : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700",
                         )}
                       >
-                        {cfg.label}
+                        {isPast && <Check className="h-3 w-3 shrink-0" />}
+                        {INSPECTION_STATE_DISPLAY[s]?.label ?? s.replace(/_/g, " ")}
                       </span>
                     </div>
                   );
                 })}
                 {(currentState === "failed" || currentState === "cancelled") && (
                   <>
-                    <div className="h-px w-8 bg-red-300" />
-                    <span className={cn(
-                      "rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-current",
-                      INSPECTION_STATE_DISPLAY[currentState].color,
-                      INSPECTION_STATE_DISPLAY[currentState].bgColor,
-                    )}>
+                    <div className="h-px w-6 bg-red-300 rounded-full" />
+                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800">
                       {INSPECTION_STATE_DISPLAY[currentState].label}
                     </span>
                   </>

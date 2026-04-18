@@ -136,6 +136,7 @@ def create_app() -> FastAPI:
     application.include_router(onboarding.router, prefix=settings.api_prefix)
     application.include_router(leases.router, prefix=settings.api_prefix)
     application.include_router(messages.router, prefix=settings.api_prefix)
+    application.include_router(messages.flat_router, prefix=settings.api_prefix)
     application.include_router(payments.router, prefix=settings.api_prefix)
     # Flat (org-level) payment endpoints
     application.include_router(payments_router, prefix=settings.api_prefix)

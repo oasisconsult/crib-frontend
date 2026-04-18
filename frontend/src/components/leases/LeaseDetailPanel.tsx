@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { LeaseWorkflowStepper } from "./WorkflowStepper";
 import { TerminateModal } from "./TerminateModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
+import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments } from "@/hooks/useLeases";
 import { leasesApi } from "@/services/api/leases";
@@ -325,6 +326,9 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Messages */}
+      <LeaseMessagesPanel leaseId={lease.id} />
 
       {/* Confirm transition dialog */}
       <ConfirmDialog

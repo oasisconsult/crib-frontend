@@ -30,4 +30,10 @@ export const messagesApi = {
 
   markRead: (leaseId: string, messageId: string) =>
     apiPatch<Message>(`/leases/${leaseId}/messages/${messageId}/read`, {}),
+
+  unreadCount: () =>
+    apiGet<{ count: number }>("/messages/unread-count"),
+
+  listAll: (page = 1, pageSize = 20, unreadOnly = false) =>
+    apiGet<MessagePage>("/messages", { page, pageSize, unreadOnly }),
 };

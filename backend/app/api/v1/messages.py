@@ -1,27 +1,38 @@
 """
-Messages REST API — nested under /leases/{lease_id}.
+Messages REST API.
 
-Endpoints:
-  GET   /leases/{lease_id}/messages                    — list messages
+Lease-nested endpoints:
+  GET   /leases/{lease_id}/messages                    — list messages for a lease
   POST  /leases/{lease_id}/messages                    — send a message
   PATCH /leases/{lease_id}/messages/{message_id}/read  — mark as read
+
+Flat (org-level) endpoints:
+  GET   /messages                  — list all messages across org (managers)
+  GET   /messages/unread-count     — count of unread messages for current user
 """
 
 from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user, require_org_access
+from app.api.deps import CurrentUser, require_org_access
 from app.core.database import get_db
-from app.schemas.message import MessageCreate, MessageOut
+from app.schemas.message import MessageCreate, MessageOut, MessageWithLeaseOut, UnreadCountOut
 from app.services import message_service as svc
 
 router = APIRouter(prefix="/leases", tags=["messages"])
+flat_router = APIRouter(prefix="/messages", tags=["messages"])
 
 _access = Depends(require_org_access(allow_tenant_own=True))
+
+
+def _require_org(current_user: CurrentUser) -> uuid.UUID:
+    if current_user.org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No organisation context")
+    return current_user.org_id
 
 
 @router.get("/{lease_id}/messages", response_model=dict)
@@ -32,7 +43,7 @@ async def list_messages(
     current_user: CurrentUser = _access,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.list_messages(lease_id, current_user.org_id, db, page, page_size)
+    return await svc.list_messages(lease_id, _require_org(current_user), db, page, page_size)
 
 
 @router.post("/{lease_id}/messages", response_model=MessageOut, status_code=201)
@@ -52,4 +63,32 @@ async def mark_message_read(
     current_user: CurrentUser = _access,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.mark_read(lease_id, message_id, current_user.org_id, db)
+    return await svc.mark_read(lease_id, message_id, _require_org(current_user), db)
+
+
+# ── Flat (org-level) endpoints ────────────────────────────────────────────────
+
+@flat_router.get("/unread-count", response_model=UnreadCountOut)
+async def get_unread_count(
+    current_user: CurrentUser = _access,
+    db: AsyncSession = Depends(get_db),
+):
+    org_id = _require_org(current_user)
+    count = await svc.unread_count(org_id, str(current_user.profile.id), db)
+    return UnreadCountOut(count=count)
+
+
+@flat_router.get("", response_model=dict)
+async def list_all_messages(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
+    unread_only: bool = Query(False, alias="unreadOnly"),
+    current_user: CurrentUser = _access,
+    db: AsyncSession = Depends(get_db),
+):
+    org_id = _require_org(current_user)
+    return await svc.list_messages_flat(
+        org_id, db, page, page_size,
+        unread_only=unread_only,
+        profile_id=str(current_user.profile.id),
+    )

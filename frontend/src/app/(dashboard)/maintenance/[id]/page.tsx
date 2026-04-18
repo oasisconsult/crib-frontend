@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Check,
   Wrench,
   AlertTriangle,
   User,
@@ -571,29 +572,31 @@ export default function MaintenanceDetailPage({ params }: Props) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {(["reported", "assigned", "in_progress", "resolved", "closed"] as MaintenanceState[]).map((s, i, arr) => {
                   const cfg = MAINTENANCE_STATE_DISPLAY[s];
                   const isActive = s === currentState;
-                  const isDone =
-                    arr.indexOf(currentState) > i ||
-                    currentState === "closed" ||
-                    currentState === "resolved";
+                  const currentIdx = arr.indexOf(currentState);
+                  const isPast = currentIdx > i;
                   return (
-                    <div key={s} className="flex items-center gap-2">
+                    <div key={s} className="flex items-center gap-1.5">
                       {i > 0 && (
-                        <div className={cn("h-px w-6 shrink-0", isDone || isActive ? "bg-primary" : "bg-border")} />
+                        <div className={cn(
+                          "h-px w-5 shrink-0 rounded-full",
+                          isPast ? "bg-primary" : isActive ? "bg-primary/50" : "bg-slate-200 dark:bg-slate-700",
+                        )} />
                       )}
                       <span
                         className={cn(
-                          "rounded-full px-2.5 py-0.5 text-xs font-medium capitalize border",
+                          "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium capitalize transition-all",
                           isActive
-                            ? `${cfg.color} ${cfg.bgColor} border-current`
-                            : arr.indexOf(currentState) > i
-                              ? "text-muted-foreground bg-muted border-transparent line-through"
-                              : "text-muted-foreground border-transparent",
+                            ? "bg-primary text-white shadow-sm ring-2 ring-primary/20"
+                            : isPast
+                              ? "bg-primary/10 text-primary/80 dark:bg-primary/15 dark:text-primary/70"
+                              : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700",
                         )}
                       >
+                        {isPast && <Check className="h-3 w-3 shrink-0" />}
                         {cfg.label}
                       </span>
                     </div>
@@ -601,8 +604,8 @@ export default function MaintenanceDetailPage({ params }: Props) {
                 })}
                 {currentState === "cancelled" && (
                   <>
-                    <div className="h-px w-6 bg-red-300" />
-                    <span className="rounded-full px-2.5 py-0.5 text-xs font-medium text-red-600 bg-red-50 border border-red-200">
+                    <div className="h-px w-5 bg-red-300 rounded-full" />
+                    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-red-50 text-red-600 border border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800">
                       Cancelled
                     </span>
                   </>

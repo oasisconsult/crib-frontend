@@ -101,11 +101,11 @@ async def test_provision_conflict_if_already_in_org(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_provision_dev_skips_logto_call(client: AsyncClient):
     """In dev mode with no M2M credentials, Logto call is skipped (stub org ID used)."""
-    # The conftest sets ENVIRONMENT=development and logto_m2m_app_id=""
-    # so _create_logto_org should NOT be called
+    import app.api.v1.organisations as org_module
     with patch(
         "app.api.v1.organisations._create_logto_org"
-    ) as mock_logto:
+    ) as mock_logto, \
+    patch.object(org_module.settings, "logto_m2m_app_id", ""):
         resp = await client.post(
             "/api/v1/organisations/provision",
             headers=auth_headers("manager-1"),
