@@ -109,9 +109,12 @@ const config: Config = {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "6px",
+        md: "5px",
+        sm: "4px",
+        xl: "6px",
+        "2xl": "8px",
+        "3xl": "12px",
       },
       fontFamily: {
         sans: ["var(--font-poppins)", "var(--font-inter)", "Inter", ...fontFamily.sans],
