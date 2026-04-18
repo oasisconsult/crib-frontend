@@ -908,7 +908,7 @@ export default function TenantPortalPage() {
                     key={a.label}
                     onClick={a.action}
                     disabled={a.disabled}
-                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-border hover:bg-muted/50 hover:border-primary/30 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-border hover:bg-primary/5 hover:border-primary/30 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <a.icon className={cn("h-5 w-5", a.color)} />
                     <span className="text-center leading-tight">{a.label}</span>
