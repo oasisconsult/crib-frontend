@@ -3,6 +3,7 @@ from app.models import (  # noqa: F401
     inspection,
     lease,
     ledger,
+    message,
     mobile_money,
     notification,
     organisation,

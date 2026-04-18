@@ -1,13 +1,15 @@
 "use client";
 
-import { Building2, LogOut } from "lucide-react";
+import { Building2, LogOut, Sun, Moon } from "lucide-react";
 import { AuthInitializer } from "@/components/providers/AuthInitializer";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
 
 function PortalNav() {
   const user = useAppStore((s) => s.user);
   const { logout } = useAuth();
+  const { isDark, setPreference } = useTheme();
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -20,21 +22,30 @@ function PortalNav() {
           <span className="text-muted-foreground/50 text-sm">·</span>
           <span className="text-sm text-muted-foreground">Tenant Portal</span>
         </div>
-        {user && (
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium leading-none">{user.name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
-            </div>
-            <button
-              onClick={() => logout()}
-              className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Sign out</span>
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPreference(isDark ? "light" : "dark")}
+            aria-label="Toggle theme"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          </button>
+          {user && (
+            <>
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium leading-none">{user.name}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
+              </div>
+              <button
+                onClick={() => logout()}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </header>
   );

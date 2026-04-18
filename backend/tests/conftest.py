@@ -9,6 +9,7 @@ Strategy:
     (no permanent state between tests)
 """
 
+import inspect
 from collections.abc import AsyncGenerator
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -18,6 +19,20 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
+
+
+def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
+    """Force all async test functions to share the session event loop.
+
+    pytest-asyncio 0.24.x no longer shares the session loop with test
+    functions by default.  Without this, test functions run in a per-function
+    loop while fixtures (including test_engine/db_session) were set up in the
+    session loop → asyncpg "Future attached to a different loop" errors.
+    """
+    session_scope = pytest.mark.asyncio(loop_scope="session")
+    for item in items:
+        if isinstance(item, pytest.Function) and inspect.iscoroutinefunction(item.function):
+            item.add_marker(session_scope, append=False)
 
 import app.models  # noqa: F401 — registers all ORM models with Base.metadata
 from app.core.config import get_settings
@@ -31,23 +46,6 @@ settings = get_settings()
 # accidentally replacing the username if it shares a prefix with the DB name.
 _db_base, _db_sep, _db_name = settings.database_url.rpartition("/")
 TEST_DATABASE_URL = f"{_db_base}/crib_test"
-
-
-# ── Event loop (pytest-asyncio 0.21.x requires session-scoped override) ───────
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Provide a single event loop for the entire test session.
-
-    Required because test_engine is session-scoped: pytest-asyncio 0.21.x
-    defaults the event_loop fixture to function scope, which causes a
-    ScopeMismatch when session-scoped async fixtures try to use it.
-    """
-    import asyncio
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    loop.close()
 
 
 # ── Database ──────────────────────────────────────────────────────────────────

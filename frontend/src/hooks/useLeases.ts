@@ -102,6 +102,13 @@ export function usePresignAgreement() {
   });
 }
 
+export function useGenerateLeaseDocument() {
+  return useMutation({
+    mutationFn: (id: string) => leasesApi.generateDocument(id),
+    onError: () => toast.error("Failed to generate document"),
+  });
+}
+
 export function useSignLease() {
   const qc = useQueryClient();
   return useMutation({

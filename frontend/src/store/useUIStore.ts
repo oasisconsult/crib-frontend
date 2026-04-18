@@ -47,7 +47,7 @@ export const useUIStore = create<UIState>()(
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
 
-      theme: "system",
+      theme: "light",
       setTheme: (theme) => set({ theme }),
 
       activePropertyId: null,

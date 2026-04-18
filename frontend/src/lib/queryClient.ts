@@ -84,6 +84,11 @@ export const queryKeys = {
     list: (params?: object) => ["maintenance", "list", params] as const,
     detail: (id: string) => ["maintenance", id] as const,
   },
+  // Messages
+  messages: {
+    all: () => ["messages"] as const,
+    list: (leaseId: string, page?: number) => ["messages", "list", leaseId, page] as const,
+  },
   // Notifications
   notifications: {
     all: () => ["notifications"] as const,

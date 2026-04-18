@@ -116,7 +116,7 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1 import (
-        analytics, health, inspections, leases, me,
+        analytics, health, inspections, leases, me, messages,
         mobile_money, notifications, onboarding, organisations, payments, properties,
         rbac, system_settings, tenants, uploads, wallet, webhooks,
     )
@@ -135,6 +135,7 @@ def create_app() -> FastAPI:
     # routes are registered here, before any catch-all tenant routes.
     application.include_router(onboarding.router, prefix=settings.api_prefix)
     application.include_router(leases.router, prefix=settings.api_prefix)
+    application.include_router(messages.router, prefix=settings.api_prefix)
     application.include_router(payments.router, prefix=settings.api_prefix)
     # Flat (org-level) payment endpoints
     application.include_router(payments_router, prefix=settings.api_prefix)

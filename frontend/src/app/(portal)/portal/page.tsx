@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download,
-  Smartphone, Building2, Banknote, CreditCard as CardIcon,
+  Smartphone, Building2, Banknote, Calendar, MessageCircle,
+  Send, RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,13 +18,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayments, useRecordPayment, useRentSchedule } from "@/hooks/usePayments";
-import { useLeases, useSignLease } from "@/hooks/useLeases";
-import { useMaintenanceIssues, useCreateMaintenanceIssue } from "@/hooks/useInspections";
+import { useLeases, useLease, useGenerateLeaseDocument } from "@/hooks/useLeases";
+import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
+import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/utils/cn";
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { WalletBalanceCard } from "@/components/payments/WalletBalanceCard";
 import type { Payment } from "@/types";
+import type { Message } from "@/services/api/messages";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -31,41 +34,106 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="text-base font-semibold text-foreground mb-3">{children}</h2>;
 }
 
-// ─── Pay Rent Dialog ─────────────────────────────────────────────────────────
+// ─── Payment method config ───────────────────────────────────────────────────
 
-const PAYMENT_METHODS = [
-  { id: "mtn_momo",    label: "MTN Mobile Money", icon: Smartphone, color: "text-yellow-600" },
-  { id: "airtel_money",label: "Airtel Money",      icon: Smartphone, color: "text-red-500" },
-  { id: "bank_transfer",label: "Bank Transfer",    icon: Building2,  color: "text-blue-600" },
-  { id: "cash",        label: "Cash",              icon: Banknote,   color: "text-emerald-600" },
-  { id: "card",        label: "Card",              icon: CardIcon,   color: "text-violet-600" },
+// Maps portal method IDs → backend PaymentMethod enum values
+const METHOD_BACKEND_MAP: Record<string, string> = {
+  mtn_momo:     "mobile_money_mtn",
+  airtel_money: "mobile_money_airtel",
+  bank_transfer: "bank_transfer",
+  cash:         "cash",
+};
+
+interface PayMethod {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  requiresPhone: boolean;
+  instructions: string;
+  bankDetails?: string;
+}
+
+const PAY_METHODS: PayMethod[] = [
+  {
+    id: "mtn_momo",
+    label: "MTN Mobile Money",
+    icon: Smartphone,
+    color: "text-yellow-600",
+    requiresPhone: true,
+    instructions: "Dial *165# on your MTN line and follow the prompts to pay, then enter the transaction ID below.",
+  },
+  {
+    id: "airtel_money",
+    label: "Airtel Money",
+    icon: Smartphone,
+    color: "text-red-500",
+    requiresPhone: true,
+    instructions: "Dial *185# on your Airtel line and follow the prompts to pay, then enter the transaction ID below.",
+  },
+  {
+    id: "bank_transfer",
+    label: "Bank Transfer",
+    icon: Building2,
+    color: "text-blue-600",
+    requiresPhone: false,
+    instructions: "Transfer to the account below and enter the transaction/reference number.",
+    bankDetails: "Stanbic Bank · Account: 9030012345678 · Account Name: Crib Properties Ltd",
+  },
+  {
+    id: "cash",
+    label: "Cash",
+    icon: Banknote,
+    color: "text-emerald-600",
+    requiresPhone: false,
+    instructions: "Pay cash to your property manager and enter the receipt number below.",
+  },
 ];
 
+// ─── Multi-step Pay Dialog ────────────────────────────────────────────────────
+
+type PayStep = "method" | "form" | "confirm" | "success";
+
 interface PayDialogProps {
-  lease: { id: string; tenantId: string; landlordId: string; propertyId: string; unitId: string; terms: { monthlyRent: number; currency: string } };
+  lease: { id: string; terms: { monthlyRent: number; currency: string } };
+  userPhone?: string;
   onClose: () => void;
 }
 
-function PayDialog({ lease, onClose }: PayDialogProps) {
-  const [method, setMethod] = useState<string | null>(null);
-  const [ref, setRef] = useState("");
-  const { mutate, isPending, isSuccess } = useRecordPayment();
+function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
+  const [step, setStep] = useState<PayStep>("method");
+  const [selectedMethod, setSelectedMethod] = useState<PayMethod | null>(null);
+  const [phone, setPhone] = useState(userPhone ?? "");
+  const [amount, setAmount] = useState(String(lease.terms.monthlyRent));
+  const [reference, setReference] = useState("");
+  const { mutate, isPending } = useRecordPayment();
 
-  function handlePay() {
-    if (!method) return;
-    mutate({
-      state: "initiated",
-      category: "rent",
-      method: method as Payment["method"],
-      leaseId: lease.id,
-      amount: lease.terms.monthlyRent,
-      currency: lease.terms.currency,
-      reference: ref || `PAY-${Date.now()}`,
-      notes: ref ? `External ref: ${ref}` : undefined,
-    } as Omit<Payment, "id" | "createdAt" | "updatedAt">);
+  function handleMethodSelect(m: PayMethod) {
+    setSelectedMethod(m);
+    setStep("form");
   }
 
-  if (isSuccess) {
+  function handleProceedToConfirm() {
+    setStep("confirm");
+  }
+
+  function handleSubmit() {
+    if (!selectedMethod || !reference.trim()) return;
+    mutate(
+      {
+        category: "rent",
+        method: METHOD_BACKEND_MAP[selectedMethod.id] as Payment["method"],
+        leaseId: lease.id,
+        amount: parseFloat(amount) || lease.terms.monthlyRent,
+        currency: lease.terms.currency,
+        reference: reference.trim(),
+        notes: selectedMethod.requiresPhone && phone ? `Phone: ${phone}` : undefined,
+      } as Omit<Payment, "id" | "createdAt" | "updatedAt">,
+      { onSuccess: () => setStep("success") },
+    );
+  }
+
+  if (step === "success") {
     return (
       <div className="flex flex-col items-center gap-4 py-6">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40">
@@ -83,55 +151,124 @@ function PayDialog({ lease, onClose }: PayDialogProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-foreground">Pay Rent</h3>
+        <div className="flex items-center gap-2">
+          {step !== "method" && (
+            <button
+              onClick={() => setStep(step === "confirm" ? "form" : "method")}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Back"
+            >
+              <ChevronRight className="h-4 w-4 rotate-180" />
+            </button>
+          )}
+          <h3 className="font-semibold text-foreground">
+            {step === "method" && "Pay Rent"}
+            {step === "form" && selectedMethod?.label}
+            {step === "confirm" && "Confirm Payment"}
+          </h3>
+        </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
         </Button>
       </div>
 
+      {/* Amount pill */}
       <div className="rounded-lg bg-muted/50 px-4 py-3 flex items-center justify-between">
         <span className="text-sm text-muted-foreground">Amount due</span>
         <span className="text-lg font-bold">{formatCurrency(lease.terms.monthlyRent, lease.terms.currency)}</span>
       </div>
 
-      <div>
-        <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Payment method</p>
+      {/* Step: select method */}
+      {step === "method" && (
         <div className="grid grid-cols-1 gap-2">
-          {PAYMENT_METHODS.map((m) => (
+          {PAY_METHODS.map((m) => (
             <button
               key={m.id}
-              onClick={() => setMethod(m.id)}
-              className={cn(
-                "flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all",
-                method === m.id
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/40 hover:bg-muted/40",
-              )}
+              onClick={() => handleMethodSelect(m)}
+              className="flex items-center gap-3 rounded-lg border border-border px-3 py-3 text-left hover:border-primary/40 hover:bg-muted/40 transition-all"
             >
-              <m.icon className={cn("h-4 w-4", m.color)} />
+              <m.icon className={cn("h-5 w-5", m.color)} />
               <span className="text-sm font-medium">{m.label}</span>
-              {method === m.id && <CheckCircle2 className="h-3.5 w-3.5 text-primary ml-auto" />}
+              <ChevronRight className="h-4 w-4 text-muted-foreground ml-auto" />
             </button>
           ))}
         </div>
-      </div>
+      )}
 
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Transaction reference <span className="font-normal normal-case">(optional)</span>
-        </Label>
-        <Input
-          type="text"
-          value={ref}
-          onChange={(e) => setRef(e.target.value)}
-          placeholder="e.g. MTN transaction ID"
-        />
-      </div>
+      {/* Step: fill form */}
+      {step === "form" && selectedMethod && (
+        <div className="space-y-3">
+          {selectedMethod.bankDetails && (
+            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-xs text-blue-800 dark:text-blue-300">
+              <p className="font-medium mb-0.5">Bank Details</p>
+              {selectedMethod.bankDetails}
+            </div>
+          )}
 
-      <Button className="w-full" disabled={!method || isPending} onClick={handlePay}>
-        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-        {isPending ? "Submitting…" : "Submit Payment"}
-      </Button>
+          {selectedMethod.requiresPhone && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Mobile Money Number
+              </Label>
+              <Input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. 256775000000"
+              />
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Amount (UGX)</Label>
+            <Input
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              min={1}
+            />
+          </div>
+
+          <Button
+            className="w-full"
+            onClick={handleProceedToConfirm}
+            disabled={selectedMethod.requiresPhone && !phone.trim()}
+          >
+            I&apos;ve Made Payment
+          </Button>
+        </div>
+      )}
+
+      {/* Step: enter reference */}
+      {step === "confirm" && selectedMethod && (
+        <div className="space-y-3">
+          <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
+            {selectedMethod.instructions}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Transaction / Receipt Reference
+            </Label>
+            <Input
+              type="text"
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              placeholder="e.g. TXN123456789"
+              autoFocus
+            />
+          </div>
+
+          <Button
+            className="w-full"
+            disabled={!reference.trim() || isPending}
+            onClick={handleSubmit}
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+            {isPending ? "Submitting…" : "Submit Payment"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -148,7 +285,6 @@ function PaymentDetailSheet({ payment, onClose }: { payment: Payment; onClose: (
     ["Status", payment.state],
     ["Notes", payment.notes ?? "—"],
   ];
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -174,18 +310,18 @@ function PaymentDetailSheet({ payment, onClose }: { payment: Payment; onClose: (
 const MAINTENANCE_CATEGORIES = [
   "plumbing", "electrical", "hvac", "structural", "appliance", "pest_control", "cleaning", "security", "other",
 ];
-
 const PRIORITIES = ["low", "medium", "high", "urgent"] as const;
 
 interface MaintenanceDialogProps {
   userId: string;
+  userName: string;
   leaseId: string;
   propertyId: string;
   unitId: string;
   onClose: () => void;
 }
 
-function MaintenanceDialog({ userId, leaseId, propertyId, unitId, onClose }: MaintenanceDialogProps) {
+function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onClose }: MaintenanceDialogProps) {
   const [category, setCategory] = useState("plumbing");
   const [priority, setPriority] = useState<typeof PRIORITIES[number]>("medium");
   const [description, setDescription] = useState("");
@@ -197,7 +333,8 @@ function MaintenanceDialog({ userId, leaseId, propertyId, unitId, onClose }: Mai
       category,
       priority,
       description,
-      reportedBy: userId,
+      reportedBy: userName || "Tenant",
+      reportedById: userId,
       leaseId,
       propertyId,
       unitId,
@@ -232,9 +369,7 @@ function MaintenanceDialog({ userId, leaseId, propertyId, unitId, onClose }: Mai
       <div className="space-y-1.5">
         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Category</Label>
         <Select value={category} onValueChange={setCategory}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
+          <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
             {MAINTENANCE_CATEGORIES.map((c) => (
               <SelectItem key={c} value={c}>
@@ -284,87 +419,6 @@ function MaintenanceDialog({ userId, leaseId, propertyId, unitId, onClose }: Mai
   );
 }
 
-// ─── Sign Lease Dialog ────────────────────────────────────────────────────────
-
-interface SignLeaseDialogProps {
-  leaseId: string;
-  onClose: () => void;
-}
-
-function SignLeaseDialog({ leaseId, onClose }: SignLeaseDialogProps) {
-  const [name, setName] = useState("");
-  const [agreed, setAgreed] = useState(false);
-  const { mutate, isPending, isSuccess } = useSignLease();
-
-  function handleSign() {
-    if (!name.trim() || !agreed) return;
-    mutate({ id: leaseId, party: "tenant", signatureDataUrl: `typed:${name}` });
-  }
-
-  if (isSuccess) {
-    return (
-      <div className="flex flex-col items-center gap-4 py-6">
-        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-950/40">
-          <CheckCircle2 className="h-7 w-7 text-emerald-600" />
-        </div>
-        <div className="text-center">
-          <p className="font-semibold text-foreground">Lease signed!</p>
-          <p className="text-sm text-muted-foreground mt-1">Your signature has been recorded.</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={onClose}>Close</Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-foreground">Sign Lease Agreement</h3>
-        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
-        By signing, you confirm that you have read and agree to all terms and conditions of this lease agreement.
-      </div>
-
-      <div className="space-y-1.5">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-          Type your full name to sign
-        </Label>
-        <Input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Your full legal name"
-          className="font-medium"
-        />
-        {name && (
-          <p className="mt-2 font-serif text-xl text-muted-foreground italic px-1">{name}</p>
-        )}
-      </div>
-
-      <label className="flex items-start gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={agreed}
-          onChange={(e) => setAgreed(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
-        />
-        <span className="text-sm text-muted-foreground leading-snug">
-          I have read and agree to all terms and conditions in this lease agreement.
-        </span>
-      </label>
-
-      <Button className="w-full" disabled={!name.trim() || !agreed || isPending} onClick={handleSign}>
-        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-        {isPending ? "Signing…" : "Sign Lease"}
-      </Button>
-    </div>
-  );
-}
-
 // ─── Dialog wrapper ───────────────────────────────────────────────────────────
 
 function DialogOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
@@ -381,9 +435,189 @@ function DialogOverlay({ children, onClose }: { children: React.ReactNode; onClo
   );
 }
 
+// ─── Messages Tab ─────────────────────────────────────────────────────────────
+
+function MessagesTab({ leaseId, userId }: { leaseId: string; userId: string }) {
+  const [draft, setDraft] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const { data, isLoading, refetch, isFetching } = useMessages(leaseId);
+  const { mutate: send, isPending: sending } = useSendMessage(leaseId);
+  const messages = data?.data ?? [];
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]);
+
+  function handleSend() {
+    const text = draft.trim();
+    if (!text) return;
+    setDraft("");
+    send(text);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <SectionHeading>Messages</SectionHeading>
+        <button
+          onClick={() => refetch()}
+          disabled={isFetching}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Refresh messages"
+        >
+          <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
+        </button>
+      </div>
+
+      <Card>
+        <CardContent className="pt-4 pb-3">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10 gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading messages…
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center py-10">
+              <MessageCircle className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No messages yet.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                Send a message to your landlord or property manager.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {messages.map((msg: Message) => {
+                const isMe = msg.senderId === userId;
+                return (
+                  <div
+                    key={msg.id}
+                    className={cn("flex flex-col gap-0.5", isMe ? "items-end" : "items-start")}
+                  >
+                    <div
+                      className={cn(
+                        "max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm",
+                        isMe
+                          ? "bg-primary text-primary-foreground rounded-br-sm"
+                          : "bg-muted text-foreground rounded-bl-sm",
+                      )}
+                    >
+                      {msg.content}
+                    </div>
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground px-1">
+                      {!isMe && <span className="font-medium capitalize">{msg.senderRole}</span>}
+                      <span>{new Date(msg.createdAt).toLocaleTimeString("en-UG", { hour: "2-digit", minute: "2-digit" })}</span>
+                      <span>·</span>
+                      <span>{new Date(msg.createdAt).toLocaleDateString("en-UG", { month: "short", day: "numeric" })}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              <div ref={bottomRef} />
+            </div>
+          )}
+
+          {/* Compose */}
+          <div className="mt-4 flex gap-2 items-end border-t border-border pt-3">
+            <Textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message… (Enter to send)"
+              rows={2}
+              className="resize-none flex-1 text-sm"
+            />
+            <Button
+              size="icon"
+              onClick={handleSend}
+              disabled={!draft.trim() || sending}
+              className="shrink-0"
+            >
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── Inspections Tab ──────────────────────────────────────────────────────────
+
+function InspectionsTab({ unitId, propertyId }: { unitId: string; propertyId: string }) {
+  const { data, isLoading } = useInspections({ unitId } as any);
+  const inspections = (data?.data ?? []) as any[];
+
+  const INSP_TYPE_LABELS: Record<string, string> = {
+    move_in: "Move-In",
+    move_out: "Move-Out",
+    routine: "Routine",
+    emergency: "Emergency",
+    maintenance: "Maintenance",
+    complaint: "Complaint",
+  };
+
+  return (
+    <div className="space-y-3">
+      <SectionHeading>Upcoming Inspections</SectionHeading>
+      <Card>
+        <CardContent className="pt-4">
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading inspections…
+            </div>
+          ) : inspections.length === 0 ? (
+            <div className="text-center py-10">
+              <Calendar className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No upcoming inspections.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {inspections.map((insp: any) => (
+                <div key={insp.id} className="py-3 flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">
+                      {INSP_TYPE_LABELS[insp.type] ?? insp.type}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      {insp.scheduledDate ? formatDate(insp.scheduledDate) : "—"}
+                      {insp.scheduledTimeSlot && (
+                        <span className="ml-1 font-medium">{insp.scheduledTimeSlot}</span>
+                      )}
+                    </div>
+                    {insp.inspectorName && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Inspector: {insp.inspectorName}
+                      </p>
+                    )}
+                  </div>
+                  <StatusBadge state={insp.state} domain="inspection" />
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+        <p className="font-medium text-foreground mb-1">Not available for an inspection?</p>
+        Send a message to your property manager via the Messages tab to reschedule.
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-type Dialog = "pay" | "maintenance" | "sign" | null;
+type Dialog = "pay" | "maintenance" | null;
 
 export default function TenantPortalPage() {
   const [tab, setTab] = useState("overview");
@@ -391,25 +625,26 @@ export default function TenantPortalPage() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
 
   const user = useAppStore((s) => s.user);
+  const userId = user?.id ?? "";
 
   const { data: leasesData, isLoading: leasesLoading } = useLeases();
   const { data: paymentsData, isLoading: paymentsLoading } = usePayments();
   const { data: maintenanceData } = useMaintenanceIssues();
 
-  // Resolve tenant's data
   const allLeases = leasesData?.data ?? [];
   const allPayments = paymentsData?.data ?? [];
   const allMaintenance = maintenanceData?.data ?? [];
 
-  const userId = user?.id ?? "";
+  // Find tenant's lease from list (for IDs), then fetch detail (for signatures)
+  const leaseStub = allLeases.find((l) => l.tenantId === userId) ?? allLeases[0];
+  const { data: myLease } = useLease(leaseStub?.id ?? "");
 
-  // Filter to this tenant's data (by tenantId or reportedBy)
-  const myLease = allLeases.find((l) => l.tenantId === userId) ?? allLeases[0];
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
+  const { mutate: generateDoc, isPending: generatingDoc } = useGenerateLeaseDocument();
+
   const myPayments = allPayments.filter((p) => !myLease || p.leaseId === myLease.id);
   const hasOverdueRent = (schedulesData?.data ?? []).some((s) => s.state === "overdue");
-  const myMaintenance = allMaintenance.filter((m) => (m as any).reportedBy === userId);
+  const myMaintenance = allMaintenance.filter((m) => (m as any).reportedById === userId || (m as any).reportedBy === userId);
   const openRequests = myMaintenance.filter((m) => !["resolved", "closed"].includes(m.state));
 
   const nextPaymentDate = myLease?.terms
@@ -422,7 +657,16 @@ export default function TenantPortalPage() {
 
   const tenantSig = myLease?.signatures?.find((s: any) => s.party === "tenant");
   const landlordSig = myLease?.signatures?.find((s: any) => s.party === "landlord");
-  const needsTenantSignature = tenantSig?.status !== "signed";
+
+  function handleDownloadLease() {
+    if (!myLease) return;
+    generateDoc(myLease.id, {
+      onSuccess: (result) => {
+        const url = (result as any).url;
+        if (url) window.open(url, "_blank");
+      },
+    });
+  }
 
   function closeDialog() {
     setDialog(null);
@@ -468,30 +712,38 @@ export default function TenantPortalPage() {
         )}
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full sm:w-auto">
+          <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:flex">
             <TabsTrigger value="overview" className="gap-1.5">
               <Home className="h-3.5 w-3.5" />
-              Overview
+              <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
             <TabsTrigger value="payments" className="gap-1.5">
               <CreditCard className="h-3.5 w-3.5" />
-              Payments
+              <span className="hidden sm:inline">Payments</span>
               {hasOverdueRent && (
                 <span className="ml-1 flex h-2 w-2 rounded-full bg-destructive" />
               )}
             </TabsTrigger>
             <TabsTrigger value="lease" className="gap-1.5">
               <FileText className="h-3.5 w-3.5" />
-              Lease
+              <span className="hidden sm:inline">Lease</span>
             </TabsTrigger>
             <TabsTrigger value="maintenance" className="gap-1.5">
               <Wrench className="h-3.5 w-3.5" />
-              Maintenance
+              <span className="hidden sm:inline">Maintenance</span>
               {openRequests.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
                   {openRequests.length}
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="inspections" className="gap-1.5">
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Inspections</span>
+            </TabsTrigger>
+            <TabsTrigger value="messages" className="gap-1.5">
+              <MessageCircle className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Messages</span>
             </TabsTrigger>
           </TabsList>
 
@@ -524,11 +776,12 @@ export default function TenantPortalPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <CardContent className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "Pay Rent", icon: CreditCard, action: () => setDialog("pay"), color: "text-primary", disabled: !myLease },
-                  { label: "Maintenance Request", icon: Wrench, action: () => setDialog("maintenance"), color: "text-amber-600", disabled: !myLease },
-                  { label: "View Lease", icon: FileText, action: () => setTab("lease"), color: "text-violet-600", disabled: !myLease },
+                  { label: "Maintenance", icon: Wrench, action: () => setDialog("maintenance"), color: "text-amber-600", disabled: !myLease },
+                  { label: "Inspections", icon: Calendar, action: () => setTab("inspections"), color: "text-violet-600", disabled: !myLease },
+                  { label: "Messages", icon: MessageCircle, action: () => setTab("messages"), color: "text-emerald-600", disabled: !myLease },
                 ].map((a) => (
                   <button
                     key={a.label}
@@ -543,7 +796,6 @@ export default function TenantPortalPage() {
               </CardContent>
             </Card>
 
-            {/* Recent payment */}
             {myPayments.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
@@ -555,7 +807,7 @@ export default function TenantPortalPage() {
                     return (
                       <button
                         className="w-full flex items-center justify-between py-1 text-sm hover:text-primary transition-colors"
-                        onClick={() => { setSelectedPayment(last); }}
+                        onClick={() => setSelectedPayment(last)}
                       >
                         <div className="text-left">
                           <p className="font-mono font-medium">{last.reference}</p>
@@ -586,10 +838,8 @@ export default function TenantPortalPage() {
               </div>
             )}
 
-            {/* Wallet credit balance — only shows when balance > 0 */}
             {userId && <WalletBalanceCard tenantId={userId} />}
 
-            {/* Payment timeline — expandable allocation details per entry */}
             <Card>
               <CardContent className="pt-4">
                 <PaymentTimeline
@@ -623,7 +873,7 @@ export default function TenantPortalPage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">Lease Terms</CardTitle>
+                      <CardTitle className="text-base">Lease Summary</CardTitle>
                       <StatusBadge state={myLease.state} domain="lease" />
                     </div>
                   </CardHeader>
@@ -648,53 +898,56 @@ export default function TenantPortalPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Signatures</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {[
-                      { party: "Tenant", sig: tenantSig },
-                      { party: "Landlord", sig: landlordSig },
-                    ].map(({ party, sig }) => (
-                      <div key={party} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
-                        <div>
-                          <p className="text-sm font-medium">{party}</p>
-                          {sig?.name && <p className="text-xs text-muted-foreground">{sig.name}</p>}
+                {/* Signatures — read-only summary */}
+                {(tenantSig || landlordSig) && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Signatures</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {[
+                        { party: "Tenant", sig: tenantSig },
+                        { party: "Landlord", sig: landlordSig },
+                      ].map(({ party, sig }) => (
+                        <div key={party} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                          <div>
+                            <p className="text-sm font-medium">{party}</p>
+                            {sig?.name && <p className="text-xs text-muted-foreground">{sig.name}</p>}
+                          </div>
+                          {sig?.status === "signed" ? (
+                            <div className="flex items-center gap-1.5 text-xs text-emerald-600">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Signed {sig.signedAt ? formatDate(sig.signedAt) : ""}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                              <Clock className="h-3.5 w-3.5" />
+                              Pending
+                            </div>
+                          )}
                         </div>
-                        {sig?.status === "signed" ? (
-                          <div className="flex items-center gap-1.5 text-xs text-emerald-600">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Signed {sig.signedAt ? formatDate(sig.signedAt) : ""}
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-xs text-amber-600">
-                            <Clock className="h-3.5 w-3.5" />
-                            Pending signature
-                          </div>
-                        )}
-                      </div>
-                    ))}
-
-                    {needsTenantSignature && (
-                      <Button className="w-full mt-2" onClick={() => setDialog("sign")}>
-                        <FileText className="h-4 w-4" />
-                        Sign Lease Agreement
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card>
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm font-medium">Lease Document</p>
-                        <p className="text-xs text-muted-foreground">PDF format</p>
+                        <p className="text-sm font-medium">Lease Agreement</p>
+                        <p className="text-xs text-muted-foreground">Download your signed lease document</p>
                       </div>
-                      <Button variant="outline" size="sm">
-                        <Download className="h-3.5 w-3.5" />
-                        Download PDF
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDownloadLease}
+                        disabled={generatingDoc}
+                      >
+                        {generatingDoc
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          : <Download className="h-3.5 w-3.5" />}
+                        {generatingDoc ? "Generating…" : "Download PDF"}
                       </Button>
                     </div>
                   </CardContent>
@@ -760,13 +1013,48 @@ export default function TenantPortalPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* ── Inspections ───────────────────────────────────────────── */}
+          <TabsContent value="inspections" className="mt-4">
+            {myLease ? (
+              <InspectionsTab
+                unitId={myLease.unitId ?? ""}
+                propertyId={myLease.propertyId ?? ""}
+              />
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Calendar className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No active lease found.</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* ── Messages ──────────────────────────────────────────────── */}
+          <TabsContent value="messages" className="mt-4">
+            {myLease ? (
+              <MessagesTab leaseId={myLease.id} userId={userId} />
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <MessageCircle className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No active lease found.</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
         </Tabs>
       </div>
 
       {/* ── Dialogs ───────────────────────────────────────────────── */}
       {dialog === "pay" && myLease && (
         <DialogOverlay onClose={closeDialog}>
-          <PayDialog lease={myLease as any} onClose={closeDialog} />
+          <PayDialog
+            lease={myLease as any}
+            userPhone={user?.phone}
+            onClose={closeDialog}
+          />
         </DialogOverlay>
       )}
 
@@ -774,17 +1062,12 @@ export default function TenantPortalPage() {
         <DialogOverlay onClose={closeDialog}>
           <MaintenanceDialog
             userId={userId}
+            userName={user?.name ?? "Tenant"}
             leaseId={myLease.id}
             propertyId={myLease.propertyId}
-            unitId={myLease.unitId}
+            unitId={myLease.unitId ?? ""}
             onClose={closeDialog}
           />
-        </DialogOverlay>
-      )}
-
-      {dialog === "sign" && myLease && (
-        <DialogOverlay onClose={closeDialog}>
-          <SignLeaseDialog leaseId={myLease.id} onClose={closeDialog} />
         </DialogOverlay>
       )}
 

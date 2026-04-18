@@ -65,12 +65,13 @@ export function toPaymentParams(params?: QueryParams): Record<string, unknown> |
   return out;
 }
 
-export function toInspectionParams(params?: QueryParams): Record<string, unknown> | undefined {
+export function toInspectionParams(params?: QueryParams & { unitId?: string }): Record<string, unknown> | undefined {
   if (!params) return undefined;
   const out: Record<string, unknown> = {};
   if (params.page != null) out.page = params.page;
   if (params.pageSize != null) out.pageSize = params.pageSize;
   if (params.search) out.search = params.search;
+  if ((params as any).unitId) out.unit_id = (params as any).unitId;
   Object.assign(out, resolveFilters(params.filters ?? [], {
     state: "state",
     type: "type",

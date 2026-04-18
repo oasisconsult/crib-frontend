@@ -41,6 +41,7 @@ router = APIRouter(tags=["inspections"])
 @router.get("/inspections", response_model=dict)
 async def list_inspections(
     property_id: str | None = Query(None),
+    unit_id: str | None = Query(None),
     state: str | None = Query(None),
     states: str | None = Query(None),
     type: str | None = Query(None, alias="type"),
@@ -55,6 +56,7 @@ async def list_inspections(
         org_id=current_user.org_id,
         db=db,
         property_id=property_id,
+        unit_id=unit_id,
         states=state_list,
         type_filter=type,
         search=search,

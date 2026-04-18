@@ -181,6 +181,7 @@ async def list_inspections(
     org_id: uuid.UUID,
     db: AsyncSession,
     property_id: str | None = None,
+    unit_id: str | None = None,
     states: list[str] | None = None,
     type_filter: str | None = None,
     search: str | None = None,
@@ -192,6 +193,8 @@ async def list_inspections(
     )
     if property_id:
         q = q.where(Inspection.property_id == uuid.UUID(property_id))
+    if unit_id:
+        q = q.where(Inspection.unit_id == uuid.UUID(unit_id))
     if states:
         q = q.where(Inspection.state.in_(states))
     if type_filter:

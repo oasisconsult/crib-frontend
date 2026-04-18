@@ -4,7 +4,7 @@ import type { InspectionEvent, MaintenanceEvent } from "@/types/states";
 import { toInspectionParams, toMaintenanceParams } from "@/utils/backendParams";
 
 export const inspectionsApi = {
-  list: (params?: QueryParams) =>
+  list: (params?: QueryParams & { unitId?: string }) =>
     apiGet<PaginatedResponse<Inspection>>("/inspections", toInspectionParams(params)),
 
   get: (id: string) =>

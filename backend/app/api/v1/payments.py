@@ -24,11 +24,11 @@ Endpoints:
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_org_access
+from app.api.deps import CurrentUser, get_current_user, require_org_access
 from app.core.database import get_db
 from app.schemas.payment import (
     ChannelCostEstimateOut,
@@ -49,11 +49,33 @@ from app.schemas.payment import (
 from app.services import payment_service as svc
 from app.services.ledger_service import get_ledger_entries
 from app.services.payment_allocation_service import get_allocations_for_payment
+from app.services.policy_service import PolicyService, get_policy_service
 
 router = APIRouter(prefix="/leases", tags=["payments"])
 
 _read  = Depends(require_org_access(allow_tenant_own=True))
 _write = Depends(require_org_access(allow_tenant_own=False))
+
+
+async def _payment_create_guard(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    policy: PolicyService = Depends(get_policy_service),
+) -> CurrentUser:
+    """Managers/owners always allowed; tenants need payment:create RBAC permission."""
+    if current_user.org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No organisation context")
+    if current_user.is_owner_or_manager():
+        return current_user
+    if not await policy.can(current_user.roles, "create", "payment", db):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Manager or owner role required",
+        )
+    return current_user
+
+
+_payment_create = Depends(_payment_create_guard)
 
 
 # ── Rent Schedules ─────────────────────────────────────────────────────────────
@@ -141,7 +163,7 @@ async def export_payments(
 async def create_payment(
     lease_id: uuid.UUID,
     body: PaymentCreate,
-    current_user=_write,
+    current_user: CurrentUser = _payment_create,
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.create_payment(lease_id, body, current_user.org_id, db)
