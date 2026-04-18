@@ -92,7 +92,11 @@ const PAY_METHODS: PayMethod[] = [
 
 // ─── Multi-step Pay Dialog ────────────────────────────────────────────────────
 
-type PayStep = "method" | "form" | "confirm" | "success";
+// Mobile money methods trigger an STK push — no reference needed from the tenant.
+const MOBILE_MONEY_IDS = new Set(["mtn_momo", "airtel_money"]);
+
+// "pending" step: shown after STK push is sent — tenant checks their phone
+type PayStep = "method" | "form" | "pending" | "confirm" | "success";
 
 interface PayDialogProps {
   lease: { id: string; terms: { monthlyRent: number; currency: string } };
@@ -106,6 +110,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
   const [phone, setPhone] = useState(userPhone ?? "");
   const [amount, setAmount] = useState(String(lease.terms.monthlyRent));
   const [reference, setReference] = useState("");
+  const [pendingMessage, setPendingMessage] = useState("");
   const { mutate, isPending } = useRecordPayment();
 
   function handleMethodSelect(m: PayMethod) {
@@ -113,11 +118,36 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
     setStep("form");
   }
 
-  function handleProceedToConfirm() {
-    setStep("confirm");
+  function isMobileMoney() {
+    return selectedMethod ? MOBILE_MONEY_IDS.has(selectedMethod.id) : false;
   }
 
-  function handleSubmit() {
+  // Mobile money: POST immediately, backend sends STK push → show "check phone" step
+  function handleMobileMoneySubmit() {
+    if (!selectedMethod) return;
+    mutate(
+      {
+        category: "rent",
+        method: METHOD_BACKEND_MAP[selectedMethod.id] as Payment["method"],
+        leaseId: lease.id,
+        amount: parseFloat(amount) || lease.terms.monthlyRent,
+        currency: lease.terms.currency,
+        phone: phone.trim() || undefined,
+      } as any,
+      {
+        onSuccess: (data: any) => {
+          setPendingMessage(
+            data?.message ??
+            "Payment request sent! Check your phone and enter your PIN to complete the payment.",
+          );
+          setStep("pending");
+        },
+      },
+    );
+  }
+
+  // Cash / bank transfer: collect reference first, then POST
+  function handleCashBankSubmit() {
     if (!selectedMethod || !reference.trim()) return;
     mutate(
       {
@@ -127,9 +157,29 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
         amount: parseFloat(amount) || lease.terms.monthlyRent,
         currency: lease.terms.currency,
         reference: reference.trim(),
-        notes: selectedMethod.requiresPhone && phone ? `Phone: ${phone}` : undefined,
       } as Omit<Payment, "id" | "createdAt" | "updatedAt">,
       { onSuccess: () => setStep("success") },
+    );
+  }
+
+  // ── Terminal steps ────────────────────────────────────────────────────────────
+
+  if (step === "pending") {
+    return (
+      <div className="flex flex-col items-center gap-4 py-6">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+          <Smartphone className="h-7 w-7 text-primary" />
+        </div>
+        <div className="text-center space-y-1">
+          <p className="font-semibold text-foreground">Check your phone!</p>
+          <p className="text-sm text-muted-foreground max-w-xs">{pendingMessage}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground text-center max-w-xs">
+          Once you enter your PIN, your payment will be confirmed automatically.
+          You can close this dialog.
+        </div>
+        <Button variant="outline" size="sm" onClick={onClose}>Done</Button>
+      </div>
     );
   }
 
@@ -148,13 +198,20 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
     );
   }
 
+  // ── Multi-step form ───────────────────────────────────────────────────────────
+
+  function backStep() {
+    if (step === "confirm") setStep("form");
+    else setStep("method");
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {step !== "method" && (
             <button
-              onClick={() => setStep(step === "confirm" ? "form" : "method")}
+              onClick={backStep}
               className="text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Back"
             >
@@ -164,7 +221,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
           <h3 className="font-semibold text-foreground">
             {step === "method" && "Pay Rent"}
             {step === "form" && selectedMethod?.label}
-            {step === "confirm" && "Confirm Payment"}
+            {step === "confirm" && "Enter Reference"}
           </h3>
         </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
@@ -195,7 +252,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
         </div>
       )}
 
-      {/* Step: fill form */}
+      {/* Step: fill details */}
       {step === "form" && selectedMethod && (
         <div className="space-y-3">
           {selectedMethod.bankDetails && (
@@ -229,17 +286,29 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
             />
           </div>
 
-          <Button
-            className="w-full"
-            onClick={handleProceedToConfirm}
-            disabled={selectedMethod.requiresPhone && !phone.trim()}
-          >
-            I&apos;ve Made Payment
-          </Button>
+          {isMobileMoney() ? (
+            /* Mobile money: submit immediately → STK push → check phone */
+            <Button
+              className="w-full"
+              onClick={handleMobileMoneySubmit}
+              disabled={!phone.trim() || isPending}
+            >
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
+              {isPending ? "Sending request…" : "Send Payment Request"}
+            </Button>
+          ) : (
+            /* Cash / bank: go to reference step */
+            <Button
+              className="w-full"
+              onClick={() => setStep("confirm")}
+            >
+              I&apos;ve Made Payment
+            </Button>
+          )}
         </div>
       )}
 
-      {/* Step: enter reference */}
+      {/* Step: reference entry (cash / bank only) */}
       {step === "confirm" && selectedMethod && (
         <div className="space-y-3">
           <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
@@ -262,7 +331,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
           <Button
             className="w-full"
             disabled={!reference.trim() || isPending}
-            onClick={handleSubmit}
+            onClick={handleCashBankSubmit}
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
             {isPending ? "Submitting…" : "Submit Payment"}

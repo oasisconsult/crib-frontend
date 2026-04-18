@@ -71,10 +71,13 @@ async def list_payments(
 @payments_router.post("", response_model=PaymentOut, status_code=status.HTTP_201_CREATED)
 async def create_payment(
     body: PaymentCreateFlat,
-    current_user=_write,
+    current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a payment. Supply leaseId and rentScheduleId in the request body."""
+    """Create a payment. Tenants may submit payments for their own lease."""
+    if current_user.org_id is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=403, detail="No organisation context")
     return await svc.create_payment_flat(body, current_user.org_id, db)
 
 

@@ -40,6 +40,7 @@ class PaymentCreate(CamelModel):
     currency: str = "UGX"
     category: str = "rent"
     method: str = "cash"
+    phone: str | None = None            # mobile money: triggers STK push
     reference: str | None = None
     idempotency_key: str | None = None
     paid_at: datetime | None = None     # defaults to now() in service
@@ -70,6 +71,7 @@ class PaymentCreateFlat(CamelModel):
     currency: str = "UGX"
     category: str = "rent"
     method: str = "cash"
+    phone: str | None = None            # mobile money: triggers STK push
     reference: str | None = None
     idempotency_key: str | None = None
     paid_at: datetime | None = None
@@ -117,6 +119,8 @@ class PaymentOut(CamelModel):
     tenant_name: str | None = None
     unit_name: str | None = None
     property_name: str | None = None
+    # Informational message returned to the client (e.g. "Check your phone for PIN")
+    message: str | None = None
 
 
 # ── Late Fee ───────────────────────────────────────────────────────────────────

@@ -88,6 +88,7 @@ def _payment_out(
     tenant_name: str | None = None,
     unit_name: str | None = None,
     property_name: str | None = None,
+    message: str | None = None,
 ) -> PaymentOut:
     return PaymentOut(
         id=str(p.id),
@@ -112,6 +113,7 @@ def _payment_out(
         tenant_name=tenant_name,
         unit_name=unit_name,
         property_name=property_name,
+        message=message,
     )
 
 
@@ -370,11 +372,15 @@ async def waive_schedule(
 
 # ── Payments ───────────────────────────────────────────────────────────────────
 
+_MOBILE_MONEY_METHODS = frozenset({"mobile_money_mtn", "mobile_money_airtel"})
+
+
 async def create_payment(
     lease_id: uuid.UUID,
     body: PaymentCreate,
     org_id: uuid.UUID,
     db: AsyncSession,
+    phone: str | None = None,
 ) -> PaymentOut:
     lease = await _get_lease_checked(lease_id, org_id, db)
 
@@ -398,6 +404,9 @@ async def create_payment(
                 detail="Cannot record payment against a waived schedule",
             )
 
+    # phone can come from either the PaymentCreate body or the explicit kwarg
+    _phone = getattr(body, "phone", None) or phone
+
     now = datetime.now(timezone.utc)
     payment = Payment(
         organisation_id=org_id,
@@ -416,7 +425,40 @@ async def create_payment(
     db.add(payment)
     await db.flush()
     await db.refresh(payment, attribute_names=["status", "category", "method", "updated_at", "created_at"])
-    return _payment_out(payment)
+
+    # For mobile money: trigger STK push so the tenant receives a PIN prompt
+    message: str | None = None
+    if _phone and body.method in _MOBILE_MONEY_METHODS:
+        try:
+            from app.integrations.payments.service import initiate_mobile_payment
+            await initiate_mobile_payment(
+                db,
+                organisation_id=org_id,
+                phone=_phone,
+                amount=float(body.amount),
+                currency=body.currency or lease.currency,
+                method=body.method,
+                external_reference=str(payment.id),
+                description=f"Rent payment for lease {lease_id}",
+            )
+            provider = "MTN" if body.method == "mobile_money_mtn" else "Airtel"
+            message = (
+                f"Payment request sent to {_phone} via {provider} Mobile Money. "
+                "Check your phone and enter your PIN to complete the payment."
+            )
+        except Exception as exc:
+            import structlog as _log
+            _log.get_logger(__name__).warning(
+                "payment.mobile_money_initiation_failed",
+                payment_id=str(payment.id),
+                error=str(exc),
+            )
+            message = (
+                "Payment recorded. Mobile money notification could not be sent — "
+                "your manager will confirm once funds are received."
+            )
+
+    return _payment_out(payment, message=message)
 
 
 async def list_payments(
@@ -1085,6 +1127,7 @@ async def create_payment_flat(
         currency=body.currency,
         category=body.category,
         method=body.method,
+        phone=body.phone,
         reference=body.reference,
         idempotency_key=body.idempotency_key,
         paid_at=body.paid_at,
