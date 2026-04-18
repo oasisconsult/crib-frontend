@@ -6,6 +6,7 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboardStats, useCashFlowData } from "@/hooks/usePayments";
 import { useProperties } from "@/hooks/useProperties";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
 import {
@@ -50,16 +51,17 @@ export default function AnalyticsPage() {
         {/* Filter controls */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Property filter */}
-          <select
-            value={propertyId}
-            onChange={(e) => setPropertyId(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="all">All Properties</option>
-            {properties.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+          <Select value={propertyId} onValueChange={setPropertyId}>
+            <SelectTrigger className="w-[180px]" aria-label="Filter by property">
+              <SelectValue placeholder="All Properties" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Properties</SelectItem>
+              {properties.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Date range */}
           <div className="flex rounded-md border border-input overflow-hidden shadow-sm">

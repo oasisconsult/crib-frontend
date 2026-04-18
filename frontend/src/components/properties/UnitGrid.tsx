@@ -15,6 +15,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BulkOperationsBar } from "./BulkOperationsBar";
 import { FilterBar } from "@/components/common/FilterBar";
 import { formatCurrency } from "@/utils/formatters";
@@ -290,20 +291,19 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
         />
 
         {/* Status filter */}
-        <select
-          value={statusFilter}
-          onChange={(e) =>
-            setStatusFilter(e.target.value as UnitStatus | "all")
-          }
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-        >
-          <option value="all">All statuses</option>
-          {ALL_STATUSES.map((s) => (
-            <option key={s} value={s} className="capitalize">
-              {s.charAt(0).toUpperCase() + s.slice(1)}
-            </option>
-          ))}
-        </select>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as UnitStatus | "all")}>
+          <SelectTrigger className="w-[130px]" aria-label="Filter by status">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            {ALL_STATUSES.map((s) => (
+              <SelectItem key={s} value={s} className="capitalize">
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* View toggle */}
         <div className="flex items-center gap-1 rounded-lg border p-1">

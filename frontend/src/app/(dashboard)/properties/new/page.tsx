@@ -162,7 +162,7 @@ function UnitRow({
   onRemove: () => void;
 }) {
   return (
-    <tr className="group border-b last:border-0 hover:bg-muted/30 transition-colors">
+    <tr className="group border-b last:border-0 hover:bg-primary/5 transition-colors">
       <td className="py-1.5 pl-3 pr-2 text-xs text-muted-foreground w-8">{index + 1}</td>
 
       {/* Name */}
@@ -176,15 +176,16 @@ function UnitRow({
 
       {/* Type */}
       <td className="py-1 px-1">
-        <select
-          value={unit.type}
-          onChange={(e) => onChange({ type: e.target.value as UnitType })}
-          className="w-full rounded border border-transparent bg-transparent px-1 py-1 text-sm focus:border-border focus:bg-background focus:outline-none capitalize"
-        >
-          {UNIT_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
-          ))}
-        </select>
+        <Select value={unit.type} onValueChange={(v) => onChange({ type: v as UnitType })}>
+          <SelectTrigger className="h-7 text-xs border-transparent bg-transparent shadow-none focus:border-border focus:bg-background w-full min-w-[90px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {UNIT_TYPES.map((t) => (
+              <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </td>
 
       {/* Rent */}
