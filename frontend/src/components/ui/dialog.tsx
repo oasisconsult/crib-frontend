@@ -95,7 +95,7 @@ const DialogFooter = ({
   <div
     className={cn(
       "flex flex-row items-center justify-end gap-2 px-6 py-4",
-      "border-t border-border bg-muted/40 rounded-b-[14px]",
+      "border-t border-border bg-card rounded-b-[14px]",
       className,
     )}
     {...props}
