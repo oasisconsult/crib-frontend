@@ -24,10 +24,10 @@ import type { MaintenanceIssue, FilterConfig } from "@/types";
 const PAGE_SIZE = 20;
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  urgent: { label: "Urgent", color: "text-red-600 bg-red-50 dark:bg-red-950/30 border-red-200" },
-  high:   { label: "High",   color: "text-orange-600 bg-orange-50 dark:bg-orange-950/30 border-orange-200" },
-  medium: { label: "Medium", color: "text-amber-600 bg-amber-50 dark:bg-amber-950/30 border-amber-200" },
-  low:    { label: "Low",    color: "text-sky-600 bg-sky-50 dark:bg-sky-950/30 border-sky-200" },
+  urgent: { label: "Urgent", color: "text-red-700 bg-red-50 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" },
+  high:   { label: "High",   color: "text-orange-700 bg-orange-50 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" },
+  medium: { label: "Medium", color: "text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
+  low:    { label: "Low",    color: "text-sky-700 bg-sky-50 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800" },
 };
 
 const CATEGORIES = ["plumbing", "electrical", "structural", "appliance", "pest", "security", "other"];

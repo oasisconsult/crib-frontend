@@ -1119,9 +1119,10 @@ export default function TenantPortalPage() {
                           {(m as any).priority && (
                             <span className={cn(
                               "text-[10px] rounded-full px-1.5 py-0.5 font-medium capitalize",
-                              (m as any).priority === "urgent" ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" :
-                              (m as any).priority === "high" ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400" :
-                              "bg-muted text-muted-foreground",
+                              (m as any).priority === "urgent" ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" :
+                              (m as any).priority === "high"   ? "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" :
+                              (m as any).priority === "medium" ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" :
+                              "bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800",
                             )}>
                               {(m as any).priority}
                             </span>
