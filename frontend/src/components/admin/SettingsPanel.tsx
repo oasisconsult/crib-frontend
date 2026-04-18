@@ -331,7 +331,7 @@ export function SettingsPanel() {
               />
             }
           />
-          <div className="rounded-lg border border-muted bg-muted/30 p-3 text-xs text-muted-foreground space-y-1">
+          <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground space-y-1">
             <p><strong>local</strong> — stores files on disk inside the container. Development only.</p>
             <p><strong>s3</strong> — AWS S3. Set bucket, region, access key ID, and secret access key.</p>
             <p><strong>r2</strong> — Cloudflare R2 (zero egress). Set endpoint URL to your R2 account endpoint.</p>

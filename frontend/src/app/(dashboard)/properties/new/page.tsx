@@ -701,7 +701,7 @@ export default function NewPropertyPage() {
                 </div>
 
                 {/* Footer summary */}
-                <div className="border-t px-4 py-2.5 flex items-center justify-between text-xs text-muted-foreground bg-muted/30">
+                <div className="border-t border-primary/15 px-4 py-2.5 flex items-center justify-between text-xs text-muted-foreground bg-primary/5">
                   <span>{units.length} units · avg rent UGX {Math.round(units.reduce((s, u) => s + u.monthlyRent, 0) / (units.length || 1)).toLocaleString()}/mo</span>
                   <span>Total monthly: UGX {units.reduce((s, u) => s + u.monthlyRent, 0).toLocaleString()}</span>
                 </div>

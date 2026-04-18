@@ -275,7 +275,7 @@ function TenantNotesSection({ tenant }: { tenant: Tenant }) {
               const ts   = match?.[1] ?? "";
               const text = match?.[2] ?? note;
               return (
-                <div key={i} className="group flex items-start gap-2 rounded-lg bg-muted/40 px-3 py-2">
+                <div key={i} className="group flex items-start gap-2 rounded-lg bg-primary/5 border border-primary/10 px-3 py-2">
                   <div className="flex-1 min-w-0">
                     {ts && <p className="text-[11px] text-muted-foreground mb-0.5">{ts}</p>}
                     <p className="text-sm leading-snug whitespace-pre-wrap">{text}</p>

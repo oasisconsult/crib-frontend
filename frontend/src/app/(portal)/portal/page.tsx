@@ -230,9 +230,9 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
       </div>
 
       {/* Amount pill */}
-      <div className="rounded-lg bg-muted/50 px-4 py-3 flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">Amount due</span>
-        <span className="text-lg font-bold">{formatCurrency(lease.terms.monthlyRent, lease.terms.currency)}</span>
+      <div className="rounded-lg bg-primary/5 border border-primary/15 px-4 py-3 flex items-center justify-between">
+        <span className="text-sm font-medium text-foreground/70">Amount due</span>
+        <span className="text-lg font-bold text-foreground">{formatCurrency(lease.terms.monthlyRent, lease.terms.currency)}</span>
       </div>
 
       {/* Step: select method */}

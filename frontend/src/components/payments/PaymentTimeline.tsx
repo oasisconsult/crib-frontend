@@ -89,7 +89,7 @@ function AllocationDetail({
   if (!allocations?.length) return null;
 
   return (
-    <div className="mt-2 rounded-md bg-muted/50 px-3 py-2 space-y-1">
+    <div className="mt-2 rounded-md bg-primary/5 border border-primary/15 px-3 py-2 space-y-1">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
         Applied to
       </p>

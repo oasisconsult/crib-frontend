@@ -72,7 +72,7 @@ function UnitPreview({
   propertyName: string;
 }) {
   return (
-    <div className="rounded-lg border bg-muted/30 px-4 py-3 flex flex-wrap items-center gap-4 text-sm">
+    <div className="rounded-lg border border-primary/15 bg-primary/5 px-4 py-3 flex flex-wrap items-center gap-4 text-sm">
       <div className="flex items-center gap-1.5 text-muted-foreground">
         <Home className="h-3.5 w-3.5 shrink-0" />
         <span className="font-medium text-foreground">{unit.name}</span>
@@ -629,7 +629,7 @@ export default function NewLeasePage() {
 
         {/* ── Summary preview ─────────────────────────────── */}
         {canSubmit && (
-          <div className="rounded-xl border bg-muted/20 px-5 py-4 space-y-2 text-sm">
+          <div className="rounded-xl border border-primary/15 bg-primary/5 px-5 py-4 space-y-2 text-sm">
             <p className="font-semibold text-sm mb-3">Lease Summary</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
               <div className="flex justify-between text-muted-foreground">
