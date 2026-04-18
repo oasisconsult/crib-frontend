@@ -86,7 +86,7 @@ export function LeaseMessagesPanel({ leaseId }: LeaseMessagesPanelProps) {
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="flex flex-col rounded-b-lg overflow-hidden">
+        <div className="flex flex-col rounded-b-[6px] overflow-hidden">
           {/* Chat body */}
           <div
             className="overflow-y-auto px-3 py-4 space-y-1"
@@ -140,8 +140,8 @@ export function LeaseMessagesPanel({ leaseId }: LeaseMessagesPanelProps) {
                               className={cn(
                                 "px-3.5 py-2 text-sm leading-relaxed shadow-sm",
                                 isMe
-                                  ? "bg-teal-700 text-white rounded-2xl rounded-br-sm"
-                                  : "bg-card text-foreground rounded-2xl rounded-bl-sm border border-border/50",
+                                  ? "bg-teal-700 text-white rounded-[8px] rounded-br-[4px]"
+                                  : "bg-card text-foreground rounded-[8px] rounded-bl-[4px] border border-border/50",
                               )}
                             >
                               {msg.content}
@@ -169,7 +169,7 @@ export function LeaseMessagesPanel({ leaseId }: LeaseMessagesPanelProps) {
               onKeyDown={handleKeyDown}
               placeholder="Type a message…"
               rows={1}
-              className="resize-none flex-1 text-sm rounded-2xl min-h-[40px] max-h-[120px] py-2.5 px-4 border-border/60 bg-background focus-visible:ring-1"
+              className="resize-none flex-1 text-sm rounded-[8px] min-h-[40px] max-h-[120px] py-2.5 px-4 border-border/60 bg-background focus-visible:ring-1"
             />
             <Button
               size="icon"

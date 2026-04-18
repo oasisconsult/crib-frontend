@@ -76,7 +76,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
 
   return (
     <div
-      className="group cursor-pointer rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden focus-within:ring-2 focus-within:ring-[hsl(var(--ring))] focus-within:ring-offset-2"
+      className="group cursor-pointer rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden focus-within:ring-2 focus-within:ring-[hsl(var(--ring))] focus-within:ring-offset-2"
       onClick={onClick}
       role="article"
     >
@@ -99,13 +99,13 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
 
           {/* Centred icon */}
           <div className="flex h-full items-center justify-center relative z-10">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 border border-white/30 backdrop-blur-sm">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[8px] bg-white/20 border border-white/30 backdrop-blur-sm">
               <TypeIcon className="h-7 w-7 text-white" />
             </div>
           </div>
 
           {/* Type pill — bottom left */}
-          <span className="absolute bottom-3 left-3 text-[10px] font-semibold rounded-md bg-black/25 text-white/90 px-2 py-0.5 backdrop-blur-sm">
+          <span className="absolute bottom-3 left-3 text-[10px] font-semibold rounded-[5px] bg-black/25 text-white/90 px-2 py-0.5 backdrop-blur-sm">
             {TYPE_LABELS[property.type] ?? property.type}
           </span>
 
@@ -140,7 +140,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
             { label: "Occupied", value: `${property.occupiedUnits}/${property.totalUnits}`, colored: true },
             { label: "Rate",     value: `${occupancyPct}%`, rate: true },
           ].map((s) => (
-            <div key={s.label} className="rounded-lg bg-[hsl(var(--muted))]/60 px-2 py-1.5">
+            <div key={s.label} className="rounded-[6px] bg-[hsl(var(--muted))]/60 px-2 py-1.5">
               <p className="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-0.5">{s.label}</p>
               <p className={cn(
                 "text-sm font-bold",
@@ -172,7 +172,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
               {formatCurrencyCompact(property.monthlyRevenue, property.currency || "UGX")}
             </p>
           </div>
-          <div className="flex items-center gap-1 rounded-lg bg-[hsl(var(--success))]/10 px-2.5 py-1.5">
+          <div className="flex items-center gap-1 rounded-[6px] bg-[hsl(var(--success))]/10 px-2.5 py-1.5">
             <TrendingUp className="h-3.5 w-3.5 text-[hsl(var(--success))]" aria-hidden="true" />
             <span className="text-xs font-semibold text-[hsl(var(--success))]">+12%</span>
           </div>
@@ -196,7 +196,7 @@ function PropertyRow({ property, onClick }: { property: Property; onClick: () =>
     >
       <td className="py-3 px-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground" aria-hidden="true">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] bg-accent text-accent-foreground" aria-hidden="true">
             <Building2 className="h-4 w-4" />
           </div>
           <div>

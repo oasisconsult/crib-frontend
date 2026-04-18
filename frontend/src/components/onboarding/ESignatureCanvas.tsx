@@ -65,7 +65,7 @@ export function ESignatureCanvas({ onSave, className }: ESignatureCanvasProps) {
 
   return (
     <div className={cn("space-y-3", className)}>
-      <div className="rounded-xl border-2 border-dashed border-border overflow-hidden bg-white dark:bg-gray-50">
+      <div className="rounded-[6px] border-2 border-dashed border-border overflow-hidden bg-white dark:bg-gray-50">
         <canvas
           ref={canvasRef}
           className="w-full touch-none"

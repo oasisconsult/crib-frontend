@@ -270,7 +270,7 @@ export function AccessibleStatCard({
           </div>
           <div
             className={cn(
-              "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px]",
               colors.bg,
             )}
             aria-hidden="true"
@@ -372,7 +372,7 @@ export function SkipToMain() {
   return (
     <a
       href="#main-content"
-      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-md z-50"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-primary text-primary-foreground px-4 py-2 rounded-[5px] z-50"
     >
       Skip to main content
     </a>

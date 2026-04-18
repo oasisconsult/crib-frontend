@@ -252,7 +252,7 @@ function UploadDialog({ tenantId, open, onClose }: UploadDialogProps) {
             </Label>
             <div
               className={cn(
-                "rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer",
+                "rounded-[6px] border-2 border-dashed p-6 text-center transition-colors cursor-pointer",
                 dragOver
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/50 hover:bg-primary/5",
@@ -339,11 +339,11 @@ function DocumentRow({ doc, tenantId, canVerify, canDelete }: DocRowProps) {
   const expired = isExpired(doc.expiresAt);
 
   return (
-    <div className="group flex items-start gap-3 rounded-lg border p-3 hover:bg-primary/5 transition-colors">
+    <div className="group flex items-start gap-3 rounded-[6px] border p-3 hover:bg-primary/5 transition-colors">
       {/* Icon */}
       <div
         className={cn(
-          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+          "flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px]",
           doc.verified ? "bg-emerald-100 dark:bg-emerald-100/40" : "bg-primary/10",
         )}
       >
@@ -598,13 +598,13 @@ export function TenantDocumentsSection({
               {[1, 2].map((i) => (
                 <div
                   key={i}
-                  className="h-16 rounded-lg skeleton-shimmer"
+                  className="h-16 rounded-[6px] skeleton-shimmer"
                 />
               ))}
             </div>
           ) : documents.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+              <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-primary/10">
                 <FileText className="h-5 w-5 text-primary" />
               </div>
               <p className="text-sm font-medium">No documents yet</p>

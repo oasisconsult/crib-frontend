@@ -72,7 +72,7 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
         <div className="p-6 border-b border-[hsl(var(--sidebar-border))]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[hsl(var(--primary))] rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-[hsl(var(--primary))] rounded-[6px] flex items-center justify-center">
                 <Building2 className="w-5 h-5 text-white" />
               </div>
               {!collapsed && (
@@ -95,7 +95,7 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
               key={item.label}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+                "flex items-center gap-3 px-4 py-3 rounded-[6px] transition-all duration-200",
                 item.active
                   ? "bg-[hsl(var(--sidebar-active-bg))] text-[hsl(var(--sidebar-active-fg))]"
                   : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[hsl(var(--foreground))]"
@@ -142,7 +142,7 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
       {/* Mobile menu toggle */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-[hsl(var(--sidebar))] border border-[hsl(var(--sidebar-border))] rounded-xl"
+        className="lg:hidden fixed top-4 left-4 z-40 p-2 bg-[hsl(var(--sidebar))] border border-[hsl(var(--sidebar-border))] rounded-[6px]"
       >
         <Menu className="w-5 h-5 text-[hsl(var(--foreground))]" />
       </button>

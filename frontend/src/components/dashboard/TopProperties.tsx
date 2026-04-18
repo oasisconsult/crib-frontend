@@ -40,7 +40,7 @@ export function TopProperties() {
         {isLoading
           ? Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="flex items-center gap-3 py-2.5">
-                <Skeleton className="h-9 w-9 rounded-lg shrink-0" />
+                <Skeleton className="h-9 w-9 rounded-[6px] shrink-0" />
                 <div className="flex-1 space-y-1.5">
                   <Skeleton className="h-3.5 w-32" />
                   <Skeleton className="h-3 w-20" />
@@ -55,12 +55,12 @@ export function TopProperties() {
                 <button
                   key={prop.id}
                   onClick={() => router.push(`/properties/${prop.id}`)}
-                  className="w-full flex items-center gap-3 rounded-lg py-2.5 px-2 hover:bg-primary/5 transition-colors text-left"
+                  className="w-full flex items-center gap-3 rounded-[6px] py-2.5 px-2 hover:bg-primary/5 transition-colors text-left"
                 >
                   {/* Icon */}
                   <div
                     className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px]",
                       BG_COLORS[i % BG_COLORS.length],
                     )}
                   >

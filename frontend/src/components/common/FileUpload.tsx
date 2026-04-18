@@ -118,7 +118,7 @@ export function FileUpload({
       <div
         {...getRootProps()}
         className={cn(
-          "flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors cursor-pointer",
+          "flex flex-col items-center justify-center rounded-[6px] border-2 border-dashed p-8 text-center transition-colors cursor-pointer",
           isDragActive
             ? "border-primary bg-primary/5"
             : "border-border hover:border-primary/50 hover:bg-primary/5",
@@ -142,9 +142,9 @@ export function FileUpload({
           {files.map(({ file, progress, status, error }) => (
             <li
               key={`${file.name}-${file.size}`}
-              className="flex items-center gap-3 rounded-lg border p-3"
+              className="flex items-center gap-3 rounded-[6px] border p-3"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-primary/10">
                 {status === "done" ? (
                   <CheckCircle className="h-4 w-4 text-emerald-600" />
                 ) : (

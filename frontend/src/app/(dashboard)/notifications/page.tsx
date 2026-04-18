@@ -178,7 +178,7 @@ function ComposeDialog({ onClose }: { onClose: () => void }) {
                 key={c.value}
                 onClick={() => setChannel(c.value)}
                 className={cn(
-                  "rounded-lg border py-2.5 text-xs font-medium transition-all cursor-pointer flex flex-col items-center gap-1",
+                  "rounded-[6px] border py-2.5 text-xs font-medium transition-all cursor-pointer flex flex-col items-center gap-1",
                   channel === c.value
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground",
@@ -305,7 +305,7 @@ export default function NotificationsPage() {
           ].map((s) => (
             <Card key={s.label}>
               <CardContent className="pt-4">
-                <div className={`inline-flex p-2 rounded-lg mb-2 ${s.bg}`}>
+                <div className={`inline-flex p-2 rounded-[6px] mb-2 ${s.bg}`}>
                   <s.icon className={`h-4 w-4 ${s.color}`} />
                 </div>
                 <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -368,7 +368,7 @@ export default function NotificationsPage() {
           onClick={(e) => { if (e.target === e.currentTarget) setComposing(false); }}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto bg-[hsl(var(--card))] rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+          <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto bg-[hsl(var(--card))] rounded-t-[8px] sm:rounded-[8px] border border-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
             <ComposeDialog onClose={() => setComposing(false)} />
           </div>
         </div>

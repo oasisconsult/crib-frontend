@@ -77,7 +77,7 @@ export function AgreementPreviewStep({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Warning banner */}
-        <div className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-200 dark:bg-amber-100/40 p-3 text-sm text-amber-800 dark:text-amber-200">
+        <div className="flex gap-2 rounded-[6px] border border-amber-200 bg-amber-50 dark:border-amber-200 dark:bg-amber-100/40 p-3 text-sm text-amber-800 dark:text-amber-200">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <span>
             This is a <strong>legally binding agreement</strong>. Read all
@@ -91,7 +91,7 @@ export function AgreementPreviewStep({
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="h-[70vh] min-h-[400px] overflow-y-auto rounded-lg border bg-white dark:bg-zinc-100/40 shadow-inner"
+            className="h-[70vh] min-h-[400px] overflow-y-auto rounded-[6px] border bg-white dark:bg-zinc-100/40 shadow-inner"
             style={{ scrollBehavior: "smooth" }}
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize(preview.renderedHtml, {
@@ -129,7 +129,7 @@ export function AgreementPreviewStep({
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="h-[600px] overflow-y-auto rounded-lg border bg-muted/20 p-6 text-sm space-y-4"
+            className="h-[600px] overflow-y-auto rounded-[6px] border bg-muted/20 p-6 text-sm space-y-4"
           >
             <h3 className="font-bold text-base text-center uppercase tracking-wide">
               Residential House Lease Agreement

@@ -49,7 +49,7 @@ export function RetrySuggestionBanner({
   return (
     <div
       className={cn(
-        "flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-3",
+        "flex items-start gap-3 rounded-[6px] border border-red-200 bg-red-50 p-3",
         "dark:border-red-200 dark:bg-red-100/40",
         className,
       )}

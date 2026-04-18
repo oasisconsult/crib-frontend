@@ -361,7 +361,7 @@ function PropertyPhotos({
           {canEdit && (
             <label className="cursor-pointer">
               <input type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} disabled={uploading} />
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors">
+              <span className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors">
                 {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
                 {uploading ? "Saving…" : "Add Photos"}
               </span>
@@ -384,7 +384,7 @@ function PropertyPhotos({
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
             {photos.map((url, i) => (
-              <div key={url} className="group relative aspect-square rounded-lg overflow-hidden border bg-muted">
+              <div key={url} className="group relative aspect-square rounded-[6px] overflow-hidden border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt={`Photo ${i + 1}`} className="h-full w-full object-cover cursor-pointer" onClick={() => setLightbox(url)} />
                 {canEdit && (
@@ -404,7 +404,7 @@ function PropertyPhotos({
       {lightbox && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setLightbox(null)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightbox} alt="Full size" className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+          <img src={lightbox} alt="Full size" className="max-h-[90vh] max-w-[90vw] rounded-[6px] shadow-2xl object-contain" onClick={(e) => e.stopPropagation()} />
           <button onClick={() => setLightbox(null)} className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20">
             <X className="h-4 w-4" />
           </button>

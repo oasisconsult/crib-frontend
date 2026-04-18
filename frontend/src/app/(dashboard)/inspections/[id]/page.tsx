@@ -511,7 +511,7 @@ function PhotosSection({
                 onChange={handleFiles}
                 disabled={uploading}
               />
-              <span className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors">
+              <span className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors">
                 {uploading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
@@ -538,7 +538,7 @@ function PhotosSection({
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {photos.map((url, i) => (
-              <div key={url} className="group relative aspect-square rounded-md overflow-hidden border bg-muted">
+              <div key={url} className="group relative aspect-square rounded-[5px] overflow-hidden border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={url}
@@ -570,7 +570,7 @@ function PhotosSection({
           <img
             src={lightbox}
             alt="Full size"
-            className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-2xl object-contain"
+            className="max-h-[90vh] max-w-[90vw] rounded-[6px] shadow-2xl object-contain"
             onClick={(e) => e.stopPropagation()}
           />
           <button
@@ -726,8 +726,8 @@ export default function InspectionDetailPage({ params }: Props) {
                 bg: "bg-sky-50 dark:bg-sky-950/30",
               },
             ].map((s) => (
-              <div key={s.label} className="rounded-xl border bg-[hsl(var(--card))] p-4">
-                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center mb-2", s.bg)}>
+              <div key={s.label} className="rounded-[6px] border bg-[hsl(var(--card))] p-4">
+                <div className={cn("h-8 w-8 rounded-[6px] flex items-center justify-center mb-2", s.bg)}>
                   <s.icon className={cn("h-4 w-4", s.color)} />
                 </div>
                 <p className="text-xs text-muted-foreground">{s.label}</p>

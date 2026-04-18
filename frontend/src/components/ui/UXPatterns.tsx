@@ -52,7 +52,7 @@ export function EmptyState({
       {action && (
         <button
           onClick={action.onClick}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-[6px] hover:bg-blue-700 transition-colors"
         >
           {action.icon}
           {action.label}
@@ -133,7 +133,7 @@ export function Skeleton({ className, lines = 3 }: SkeletonProps) {
 
 export function CardSkeleton({ className }: SkeletonProps) {
   return (
-    <div className={cn("bg-white border border-gray-200 rounded-lg p-6", className)}>
+    <div className={cn("bg-white border border-gray-200 rounded-[6px] p-6", className)}>
       <Skeleton lines={2} />
     </div>
   );
@@ -141,7 +141,7 @@ export function CardSkeleton({ className }: SkeletonProps) {
 
 export function TableSkeleton({ rows = 5, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cn("bg-white border border-gray-200 rounded-lg overflow-hidden", className)}>
+    <div className={cn("bg-white border border-gray-200 rounded-[6px] overflow-hidden", className)}>
       {/* Table Header */}
       <div className="border-b border-gray-200 p-4">
         <div className="h-4 bg-gray-200 rounded w-1/4 animate-pulse" />
@@ -164,7 +164,7 @@ export function TableSkeleton({ rows = 5, className }: { rows?: number; classNam
 
 export function DashboardCardSkeleton({ className }: SkeletonProps) {
   return (
-    <div className={cn("bg-white border border-gray-200 rounded-lg p-6", className)}>
+    <div className={cn("bg-white border border-gray-200 rounded-[6px] p-6", className)}>
       <div className="space-y-4">
         <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
         <div className="h-8 bg-gray-200 rounded w-3/4 animate-pulse" />
@@ -233,7 +233,7 @@ export function NotificationToast({ notification, onClose }: NotificationToastPr
   return (
     <div
       className={cn(
-        "max-w-sm w-full border rounded-lg shadow-lg p-4 transition-all duration-300 transform",
+        "max-w-sm w-full border rounded-[6px] shadow-lg p-4 transition-all duration-300 transform",
         getBackgroundColor()
       )}
     >
@@ -282,7 +282,7 @@ export function SearchBar({ value, onChange, placeholder = "Search...", classNam
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-[6px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
       />
       {value && (
         <button
@@ -307,7 +307,7 @@ export function FilterButton({ activeFilters, onClick, className }: FilterButton
     <button
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors",
+        "inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-[6px] hover:bg-gray-50 transition-colors",
         activeFilters > 0 && "bg-blue-50 border-blue-200 text-blue-600",
         className
       )}
@@ -336,7 +336,7 @@ export function ActionButtons({ onExport, onRefresh, isRefreshing = false, class
       {onExport && (
         <button
           onClick={onExport}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-[6px] hover:bg-gray-50 transition-colors"
         >
           <Download className="w-4 h-4" />
           Export
@@ -346,7 +346,7 @@ export function ActionButtons({ onExport, onRefresh, isRefreshing = false, class
         <button
           onClick={onRefresh}
           disabled={isRefreshing}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-[6px] hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
           Refresh

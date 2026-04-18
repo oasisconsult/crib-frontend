@@ -36,7 +36,7 @@ export function BulkOperationsBar({
   return (
     <>
       <div
-        className="flex flex-wrap items-center gap-3 rounded-xl border bg-primary/5 border-primary/20 px-4 py-3"
+        className="flex flex-wrap items-center gap-3 rounded-[6px] border bg-primary/5 border-primary/20 px-4 py-3"
         role="toolbar"
         aria-label="Bulk actions"
       >

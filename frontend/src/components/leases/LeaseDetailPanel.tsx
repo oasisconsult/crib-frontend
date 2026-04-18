@@ -191,7 +191,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
 
           {/* Onboarding link — shown after manager clicks "Send to Tenant" */}
           {onboardingToken && (
-            <div className="mt-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+            <div className="mt-4 rounded-[5px] border border-primary/30 bg-primary/5 p-3 text-sm">
               <p className="font-medium text-primary mb-1.5 flex items-center gap-1.5">
                 <Link className="h-3.5 w-3.5" />
                 Onboarding link ready — share with tenant

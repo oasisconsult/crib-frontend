@@ -42,7 +42,7 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/30 p-4">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-2.5 mb-8">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-primary text-primary-foreground">
             <Building2 className="h-5 w-5" />
           </div>
           <span className="text-2xl font-bold tracking-tight gradient-text">
@@ -79,7 +79,7 @@ export default function SignupPage() {
               ].map((f) => (
                 <div
                   key={f.title}
-                  className="flex items-center gap-3 rounded-lg border border-primary/15 p-3 bg-primary/5"
+                  className="flex items-center gap-3 rounded-[6px] border border-primary/15 p-3 bg-primary/5"
                 >
                   <span className="text-xl">{f.icon}</span>
                   <div>

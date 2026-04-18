@@ -76,7 +76,7 @@ const UnitCard = React.memo(function UnitCard({
   return (
     <div
       className={cn(
-        "relative rounded-xl border-2 p-4 cursor-pointer transition-all duration-150 hover:shadow-md",
+        "relative rounded-[6px] border-2 p-4 cursor-pointer transition-all duration-150 hover:shadow-md",
         styles.card,
         selected && "ring-2 ring-primary ring-offset-2",
       )}
@@ -306,7 +306,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
         </Select>
 
         {/* View toggle */}
-        <div className="flex items-center gap-1 rounded-lg border p-1">
+        <div className="flex items-center gap-1 rounded-[6px] border p-1">
           <Button
             variant={viewMode === "grid" ? "default" : "ghost"}
             size="icon-sm"
@@ -370,7 +370,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
           {Array.from({ length: 8 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-xl border-2 border-border p-4 space-y-2 animate-pulse"
+              className="rounded-[6px] border-2 border-border p-4 space-y-2 animate-pulse"
             >
               <div className="h-4 bg-muted rounded w-2/3" />
               <div className="h-3 bg-muted rounded w-1/2" />
@@ -417,7 +417,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
         </div>
       ) : (
         /* List view */
-        <div className="rounded-lg border overflow-hidden">
+        <div className="rounded-[6px] border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-primary/5">

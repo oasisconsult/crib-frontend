@@ -27,7 +27,7 @@ export default function OnboardingPage({ params }: Props) {
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-2.5 mb-8">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+          <div className="flex h-9 w-9 items-center justify-center rounded-[6px] bg-primary text-primary-foreground">
             <Building2 className="h-4 w-4" />
           </div>
           <span className="text-xl font-bold tracking-tight gradient-text">Crib</span>
@@ -37,11 +37,11 @@ export default function OnboardingPage({ params }: Props) {
           <div className="space-y-4">
             <div className="h-8 w-64 skeleton-shimmer rounded" />
             <div className="h-4 w-48 skeleton-shimmer rounded" />
-            <div className="h-96 skeleton-shimmer rounded-xl" />
+            <div className="h-96 skeleton-shimmer rounded-[6px]" />
           </div>
         ) : error ? (
           isExpiredError(error) ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-8 text-center space-y-4">
+            <div className="rounded-[6px] border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-8 text-center space-y-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mx-auto">
                 <Clock className="h-7 w-7 text-amber-600 dark:text-amber-400" />
               </div>
@@ -61,7 +61,7 @@ export default function OnboardingPage({ params }: Props) {
               </div>
             </div>
           ) : (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center space-y-2">
+            <div className="rounded-[6px] border border-destructive/30 bg-destructive/5 p-8 text-center space-y-2">
               <h2 className="text-lg font-semibold text-destructive">Invalid Link</h2>
               <p className="text-sm text-muted-foreground">
                 This onboarding link is not recognised. Please check the link in your

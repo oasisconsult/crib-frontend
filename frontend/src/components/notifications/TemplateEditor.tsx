@@ -221,7 +221,7 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
               key={v}
               type="button"
               onClick={() => insertVariable(v)}
-              className="text-xs px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-100/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-200 font-mono transition-colors"
+              className="text-xs px-2 py-0.5 rounded-[5px] bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-100/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-200 font-mono transition-colors"
             >
               {`{{${v}}}`}
             </button>

@@ -48,7 +48,7 @@ const COLUMNS: Column<MaintenanceIssue>[] = [
     render: (i) => (
       <div className="flex items-center gap-2 min-w-0">
         <div className={cn(
-          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px]",
           i.priority === "urgent" || i.priority === "high"
             ? "bg-red-100 dark:bg-red-950/30"
             : "bg-amber-100 dark:bg-amber-950/30",

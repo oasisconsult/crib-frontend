@@ -40,7 +40,7 @@ function UnitSelector({
       <button
         onClick={() => onSelect("property")}
         className={cn(
-          "w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors text-left",
+          "w-full flex items-center gap-2.5 rounded-[6px] px-3 py-2.5 text-sm transition-colors text-left",
           selected === "property"
             ? "bg-primary/10 text-primary font-medium"
             : "hover:bg-muted/50 text-muted-foreground",
@@ -63,7 +63,7 @@ function UnitSelector({
             key={unit.id}
             onClick={() => onSelect(unit.id)}
             className={cn(
-              "w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors text-left",
+              "w-full flex items-center gap-2.5 rounded-[6px] px-3 py-2.5 text-sm transition-colors text-left",
               selected === unit.id
                 ? "bg-primary/10 text-primary font-medium"
                 : "hover:bg-muted/50",
@@ -158,7 +158,7 @@ export default function PropertyRulesPage({ params }: Props) {
         /* ── Multi-unit layout: sidebar picker + builder ── */
         <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 items-start">
           {/* Sidebar */}
-          <div className="rounded-xl border p-2">
+          <div className="rounded-[6px] border p-2">
             <UnitSelector
               units={units}
               selected={selected}
@@ -170,7 +170,7 @@ export default function PropertyRulesPage({ params }: Props) {
           <div className="space-y-4">
             {/* Context banner */}
             {selected === "property" ? (
-              <div className="flex items-start gap-2 rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
+              <div className="flex items-start gap-2 rounded-[6px] border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
                 <Info className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>
                   These are the <strong>property-wide defaults</strong>. Any unit without its own
@@ -178,7 +178,7 @@ export default function PropertyRulesPage({ params }: Props) {
                 </span>
               </div>
             ) : usingDefaults ? (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-muted px-4 py-3">
+              <div className="flex items-center justify-between gap-3 rounded-[6px] border border-muted px-4 py-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Info className="h-4 w-4 shrink-0" />
                   <span>
@@ -189,7 +189,7 @@ export default function PropertyRulesPage({ params }: Props) {
                 <Badge variant="secondary" className="shrink-0 text-xs">Inherited</Badge>
               </div>
             ) : (
-              <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3">
+              <div className="flex items-center justify-between gap-3 rounded-[6px] border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 px-4 py-3">
                 <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
                   <Info className="h-4 w-4 shrink-0" />
                   <span>

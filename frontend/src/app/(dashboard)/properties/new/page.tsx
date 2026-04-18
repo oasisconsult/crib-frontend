@@ -711,7 +711,7 @@ export default function NewPropertyPage() {
           )}
 
           {generated && units.length === 0 && (
-            <div className="rounded-xl border-2 border-dashed py-10 text-center text-sm text-muted-foreground">
+            <div className="rounded-[6px] border-2 border-dashed py-10 text-center text-sm text-muted-foreground">
               All units removed. Add units manually or re-generate.
             </div>
           )}

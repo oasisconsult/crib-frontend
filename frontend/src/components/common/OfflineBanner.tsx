@@ -27,7 +27,7 @@ export function OfflineBanner() {
     <div
       role="alert"
       className={cn(
-        "fixed bottom-4 left-1/2 z-50 -translate-x-1/2 flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium shadow-lg",
+        "fixed bottom-4 left-1/2 z-50 -translate-x-1/2 flex items-center gap-2 rounded-[6px] px-4 py-2.5 text-sm font-medium shadow-lg",
         !isOnline
           ? "bg-destructive text-destructive-foreground"
           : "bg-amber-500 text-white",

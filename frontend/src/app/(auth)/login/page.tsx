@@ -169,7 +169,7 @@ function DevLoginPanel() {
           onClick={() => loginAs(user)}
           disabled={!!loading}
           className={cn(
-            "w-full flex items-center gap-3 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2.5 text-left",
+            "w-full flex items-center gap-3 rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2.5 text-left",
             "hover:border-[hsl(var(--primary))]/50 hover:bg-[hsl(var(--accent))] transition-all",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]",
             "disabled:opacity-50 disabled:cursor-not-allowed",
@@ -177,7 +177,7 @@ function DevLoginPanel() {
         >
           <div
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white text-xs font-bold bg-gradient-to-br",
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-[6px] text-white text-xs font-bold bg-gradient-to-br",
               user.gradient,
             )}
           >
@@ -239,7 +239,7 @@ function MarketingPanel() {
           const Icon = b.icon;
           return (
             <div key={b.title} className="flex items-start gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 border border-white/20">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-white/15 border border-white/20">
                 <Icon className="h-4 w-4 text-white" />
               </div>
               <div>
@@ -289,7 +289,7 @@ export default function LoginPage() {
 
           {/* Logo */}
           <div className="flex items-center gap-3 mb-10">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[0_2px_8px_hsl(168,82%,43%,0.35)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[0_2px_8px_hsl(168,82%,43%,0.35)]">
               <Building2 className="h-5 w-5" />
             </div>
             <span className="text-2xl font-bold text-[hsl(var(--foreground))]" style={{ fontFamily: "var(--font-poppins,'Poppins',sans-serif)" }}>
@@ -346,7 +346,7 @@ export default function LoginPage() {
                 {["End-to-end encrypted", "GDPR compliant", "SOC 2 ready"].map((label) => (
                   <div
                     key={label}
-                    className="flex items-center justify-center rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-2.5 text-center"
+                    className="flex items-center justify-center rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-2.5 text-center"
                   >
                     <span className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] leading-tight">
                       {label}

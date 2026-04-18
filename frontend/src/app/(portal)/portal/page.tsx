@@ -174,7 +174,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
           <p className="font-semibold text-foreground">Check your phone!</p>
           <p className="text-sm text-muted-foreground max-w-xs">{pendingMessage}</p>
         </div>
-        <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground text-center max-w-xs">
+        <div className="rounded-[6px] border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground text-center max-w-xs">
           Once you enter your PIN, your payment will be confirmed automatically.
           You can close this dialog.
         </div>
@@ -230,7 +230,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
       </div>
 
       {/* Amount pill */}
-      <div className="rounded-lg bg-primary/5 border border-primary/15 px-4 py-3 flex items-center justify-between">
+      <div className="rounded-[6px] bg-primary/5 border border-primary/15 px-4 py-3 flex items-center justify-between">
         <span className="text-sm font-medium text-foreground/70">Amount due</span>
         <span className="text-lg font-bold text-foreground">{formatCurrency(lease.terms.monthlyRent, lease.terms.currency)}</span>
       </div>
@@ -242,7 +242,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
             <button
               key={m.id}
               onClick={() => handleMethodSelect(m)}
-              className="flex items-center gap-3 rounded-lg border border-border px-3 py-3 text-left hover:border-primary/40 hover:bg-primary/5 transition-all"
+              className="flex items-center gap-3 rounded-[6px] border border-border px-3 py-3 text-left hover:border-primary/40 hover:bg-primary/5 transition-all"
             >
               <m.icon className={cn("h-5 w-5", m.color)} />
               <span className="text-sm font-medium">{m.label}</span>
@@ -256,7 +256,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
       {step === "form" && selectedMethod && (
         <div className="space-y-3">
           {selectedMethod.bankDetails && (
-            <div className="rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-xs text-blue-800 dark:text-blue-300">
+            <div className="rounded-[6px] bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-xs text-blue-800 dark:text-blue-300">
               <p className="font-medium mb-0.5">Bank Details</p>
               {selectedMethod.bankDetails}
             </div>
@@ -311,7 +311,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
       {/* Step: reference entry (cash / bank only) */}
       {step === "confirm" && selectedMethod && (
         <div className="space-y-3">
-          <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
+          <div className="rounded-[6px] bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
             {selectedMethod.instructions}
           </div>
 
@@ -457,7 +457,7 @@ function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onCl
               key={p}
               onClick={() => setPriority(p)}
               className={cn(
-                "rounded-md border py-1.5 text-xs font-medium capitalize transition-all",
+                "rounded-[5px] border py-1.5 text-xs font-medium capitalize transition-all",
                 priority === p
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border hover:border-primary/40",
@@ -497,7 +497,7 @@ function DialogOverlay({ children, onClose }: { children: React.ReactNode; onClo
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto bg-[hsl(var(--card))] rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto bg-[hsl(var(--card))] rounded-t-[8px] sm:rounded-[8px] border border-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
         {children}
       </div>
     </div>
@@ -570,7 +570,7 @@ function MessagesTab({ leaseId, userId, userSub }: { leaseId: string; userId: st
         </button>
       </div>
 
-      <div className="rounded-2xl overflow-hidden border border-border shadow-sm flex flex-col" style={{ minHeight: 420 }}>
+      <div className="rounded-[8px] overflow-hidden border border-border shadow-sm flex flex-col" style={{ minHeight: 420 }}>
         {/* Chat body */}
         <div
           className="flex-1 overflow-y-auto px-3 py-4 space-y-1"
@@ -624,8 +624,8 @@ function MessagesTab({ leaseId, userId, userSub }: { leaseId: string; userId: st
                             className={cn(
                               "px-3.5 py-2 text-sm leading-relaxed shadow-sm",
                               isMe
-                                ? "bg-teal-700 text-white rounded-2xl rounded-br-sm"
-                                : "bg-card text-foreground rounded-2xl rounded-bl-sm border border-border/50",
+                                ? "bg-teal-700 text-white rounded-[8px] rounded-br-[4px]"
+                                : "bg-card text-foreground rounded-[8px] rounded-bl-[4px] border border-border/50",
                             )}
                           >
                             {msg.content}
@@ -653,7 +653,7 @@ function MessagesTab({ leaseId, userId, userSub }: { leaseId: string; userId: st
             onKeyDown={handleKeyDown}
             placeholder="Type a message…"
             rows={1}
-            className="resize-none flex-1 text-sm rounded-2xl min-h-[40px] max-h-[120px] py-2.5 px-4 border-border/60 bg-background focus-visible:ring-1"
+            className="resize-none flex-1 text-sm rounded-[8px] min-h-[40px] max-h-[120px] py-2.5 px-4 border-border/60 bg-background focus-visible:ring-1"
           />
           <Button
             size="icon"
@@ -728,7 +728,7 @@ function InspectionsTab({ unitId, propertyId }: { unitId: string; propertyId: st
         </CardContent>
       </Card>
 
-      <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
+      <div className="rounded-[6px] border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
         <p className="font-medium text-foreground mb-1">Not available for an inspection?</p>
         Send a message to your property manager via the Messages tab to reschedule.
       </div>
@@ -908,7 +908,7 @@ export default function TenantPortalPage() {
                     key={a.label}
                     onClick={a.action}
                     disabled={a.disabled}
-                    className="flex flex-col items-center gap-2 p-3 rounded-lg border border-border hover:bg-primary/5 hover:border-primary/30 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex flex-col items-center gap-2 p-3 rounded-[6px] border border-border hover:bg-primary/5 hover:border-primary/30 transition-all text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <a.icon className={cn("h-5 w-5", a.color)} />
                     <span className="text-center leading-tight">{a.label}</span>

@@ -108,7 +108,7 @@ export default function AdminPage() {
         {/* ── Page header ──────────────────────────────────────── */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 text-red-600 dark:bg-red-950/30">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-red-100 text-red-600 dark:bg-red-950/30">
               <Shield className="h-5 w-5" />
             </div>
             <div>
@@ -124,7 +124,7 @@ export default function AdminPage() {
           {STATS.map((s) => (
             <Card key={s.label}>
               <CardContent className="pt-4 pb-3">
-                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center mb-2", s.bg)}>
+                <div className={cn("h-8 w-8 rounded-[6px] flex items-center justify-center mb-2", s.bg)}>
                   <s.icon className={cn("h-4 w-4", s.color)} />
                 </div>
                 <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -176,7 +176,7 @@ export default function AdminPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search users..."
-                        className="h-8 w-48 rounded-md border border-input bg-background pl-8 pr-3 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="h-8 w-48 rounded-[5px] border border-input bg-background pl-8 pr-3 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       />
                     </div>
                     <Button size="sm" variant="outline">
@@ -202,7 +202,7 @@ export default function AdminPage() {
                     return (
                       <div
                         key={u.id}
-                        className="grid sm:grid-cols-[1fr_auto_auto_auto_auto] gap-3 sm:gap-4 items-center py-3 px-3 hover:bg-primary/5 rounded-lg transition-colors"
+                        className="grid sm:grid-cols-[1fr_auto_auto_auto_auto] gap-3 sm:gap-4 items-center py-3 px-3 hover:bg-primary/5 rounded-[6px] transition-colors"
                       >
                         {/* User info */}
                         <div className="flex items-center gap-3">
@@ -356,7 +356,7 @@ export default function AdminPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4 text-sm text-amber-800 dark:text-amber-200">
+                <div className="rounded-[6px] border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4 text-sm text-amber-800 dark:text-amber-200">
                   Actions in this section are <strong>irreversible</strong>. Proceed only after verifying the request is legitimate.
                 </div>
 

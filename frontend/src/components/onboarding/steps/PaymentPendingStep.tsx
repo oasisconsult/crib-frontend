@@ -42,7 +42,7 @@ export function PaymentPendingStep({ token, onPaymentSecured }: Props) {
           </p>
         </div>
 
-        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-200 dark:bg-amber-100/40 p-3 text-sm text-amber-800 dark:text-amber-200 max-w-sm mx-auto">
+        <div className="rounded-[6px] border border-amber-200 bg-amber-50 dark:border-amber-200 dark:bg-amber-100/40 p-3 text-sm text-amber-800 dark:text-amber-200 max-w-sm mx-auto">
           This page will automatically advance once payment is confirmed. You
           can safely close and return — your progress is saved.
         </div>

@@ -27,7 +27,7 @@ const PERIODS = ["6M", "3M", "1M"] as const;
 function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-border bg-[hsl(var(--card))] shadow-lg dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)] p-3 text-xs space-y-1.5 min-w-[160px]">
+    <div className="rounded-[6px] border border-border bg-[hsl(var(--card))] shadow-lg dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)] p-3 text-xs space-y-1.5 min-w-[160px]">
       <p className="font-semibold text-foreground">{label}</p>
       {payload.map((p: any) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-4">
@@ -58,13 +58,13 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
             <CardTitle className="text-base sm:text-lg">Revenue Analytics</CardTitle>
             <CardDescription className="text-xs sm:text-sm">Collected vs expected rent per month</CardDescription>
           </div>
-          <div className="flex items-center gap-1 rounded-lg border p-0.5 shrink-0">
+          <div className="flex items-center gap-1 rounded-[6px] border p-0.5 shrink-0">
             {PERIODS.map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={cn(
-                  "rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                  "rounded-[5px] px-2 py-1 text-xs font-medium transition-colors",
                   period === p
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",

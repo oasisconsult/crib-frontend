@@ -86,7 +86,7 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving }: Rul
 
           if (field.type === "boolean") {
             return (
-              <div key={field.key} className="flex items-center justify-between rounded-lg border p-4">
+              <div key={field.key} className="flex items-center justify-between rounded-[6px] border p-4">
                 <div>
                   <Label htmlFor={field.key} className="text-sm font-medium">{field.label}</Label>
                   {field.description && (

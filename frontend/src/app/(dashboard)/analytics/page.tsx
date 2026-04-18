@@ -64,7 +64,7 @@ export default function AnalyticsPage() {
           </Select>
 
           {/* Date range */}
-          <div className="flex rounded-md border border-input overflow-hidden shadow-sm">
+          <div className="flex rounded-[5px] border border-input overflow-hidden shadow-sm">
             {MONTH_OPTIONS.map((m) => (
               <button
                 key={m}
@@ -84,7 +84,7 @@ export default function AnalyticsPage() {
       </div>
 
       {propertyId !== "all" && (
-        <div className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-muted-foreground">
+        <div className="rounded-[6px] border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-muted-foreground">
           Showing data for{" "}
           <span className="font-medium text-foreground">
             {properties.find((p) => p.id === propertyId)?.name ?? propertyId}

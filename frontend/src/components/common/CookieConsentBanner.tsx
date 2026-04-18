@@ -63,7 +63,7 @@ export function CookieConsentBanner() {
       aria-label="Cookie consent"
       className={cn(
         "fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-50",
-        "rounded-xl border bg-background shadow-lg p-4 space-y-3 animate-in slide-in-from-bottom-4 duration-300",
+        "rounded-[6px] border bg-background shadow-lg p-4 space-y-3 animate-in slide-in-from-bottom-4 duration-300",
       )}
     >
       <div className="flex items-start justify-between gap-3">
@@ -90,7 +90,7 @@ export function CookieConsentBanner() {
       </p>
 
       {expanded && (
-        <div className="space-y-2 text-xs text-muted-foreground border border-primary/15 rounded-lg p-3 bg-primary/5">
+        <div className="space-y-2 text-xs text-muted-foreground border border-primary/15 rounded-[6px] p-3 bg-primary/5">
           <div>
             <p className="font-medium text-foreground">Essential (always on)</p>
             <p>Session authentication, CSRF protection, theme preference.</p>

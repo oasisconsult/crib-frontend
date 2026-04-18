@@ -75,7 +75,7 @@ export function Sidebar({
       {/* Logo */}
       <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#0B3D91] rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-[#0B3D91] rounded-[6px] flex items-center justify-center">
             <span className="text-white font-bold text-lg">C</span>
           </div>
           <span className="text-xl font-semibold text-slate-900">Crib</span>
@@ -83,7 +83,7 @@ export function Sidebar({
         {isMobile && (
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-sky-50 transition-colors"
+            className="p-2 rounded-[6px] hover:bg-sky-50 transition-colors"
             aria-label="Close navigation"
           >
             <X className="w-5 h-5" />
@@ -104,7 +104,7 @@ export function Sidebar({
               href={item.href as any}
               onClick={isMobile ? onClose : undefined}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                "flex items-center gap-3 px-3 py-2 rounded-[6px] text-sm font-medium transition-colors",
                 isActive
                   ? "bg-sky-50 text-sky-700"
                   : "text-slate-700 hover:bg-sky-50",
@@ -217,7 +217,7 @@ export function Header({ className, onMobileMenuOpen }: HeaderProps) {
       {/* Mobile Menu Button */}
       <button
         onClick={onMobileMenuOpen}
-        className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+        className="md:hidden p-2 rounded-[6px] hover:bg-gray-100 transition-colors"
         aria-label="Open navigation"
       >
         <Menu className="w-5 h-5" />
@@ -230,7 +230,7 @@ export function Header({ className, onMobileMenuOpen }: HeaderProps) {
           <input
             type="text"
             placeholder="Search..."
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-[6px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -239,7 +239,7 @@ export function Header({ className, onMobileMenuOpen }: HeaderProps) {
       <div className="flex items-center gap-4">
         {/* Notifications */}
         <button
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
+          className="p-2 rounded-[6px] hover:bg-gray-100 transition-colors relative"
           aria-label="Notifications"
         >
           <Bell className="w-5 h-5" />

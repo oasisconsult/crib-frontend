@@ -360,7 +360,7 @@ export default function SettingsPage() {
                       key={value}
                       onClick={() => setTheme(value)}
                       aria-pressed={theme === value}
-                      className={`flex flex-col items-center gap-2 rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
+                      className={`flex flex-col items-center gap-2 rounded-[6px] border-2 p-3 text-sm font-medium transition-colors ${
                         theme === value
                           ? "border-primary bg-primary/5 text-primary"
                           : "border-border text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground"

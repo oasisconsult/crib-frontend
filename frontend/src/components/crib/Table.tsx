@@ -26,7 +26,7 @@ export function Table<T>({ data, columns, className = "", loading = false, empty
     return (
       <div className="animate-pulse space-y-2">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-12 bg-surface-dark rounded-xl" />
+          <div key={i} className="h-12 bg-surface-dark rounded-[6px]" />
         ))}
       </div>
     );

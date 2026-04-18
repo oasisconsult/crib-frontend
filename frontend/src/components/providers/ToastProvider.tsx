@@ -44,7 +44,7 @@ export function ToastProvider() {
         <div
           key={t.id}
           className={cn(
-            "flex items-start gap-3 rounded-lg border border-border border-l-4 bg-card p-3.5 shadow-lg",
+            "flex items-start gap-3 rounded-[6px] border border-border border-l-4 bg-card p-3.5 shadow-lg",
             "animate-in slide-in-from-right-5 fade-in duration-200",
             BORDER_COLORS[t.type],
           )}

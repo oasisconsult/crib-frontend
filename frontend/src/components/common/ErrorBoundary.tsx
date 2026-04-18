@@ -81,7 +81,7 @@ export class ErrorBoundary extends React.Component<
     return (
       <div className="flex min-h-[200px] items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+          <div className="rounded-[6px] border bg-card text-card-foreground shadow-sm">
             <div className="flex flex-col space-y-1.5 p-6 text-center">
               <div className="flex justify-center">
                 <svg
@@ -115,7 +115,7 @@ export class ErrorBoundary extends React.Component<
               <div className="flex gap-2 justify-center">
                 {showRetry && (
                   <button
-                    className="justify-center whitespace-nowrap font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground shadow hover:bg-primary/90 active:scale-[0.98] h-8 rounded-md px-3 text-xs flex items-center gap-2"
+                    className="justify-center whitespace-nowrap font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground shadow hover:bg-primary/90 active:scale-[0.98] h-8 rounded-[5px] px-3 text-xs flex items-center gap-2"
                     onClick={this.handleRetry}
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -124,7 +124,7 @@ export class ErrorBoundary extends React.Component<
                 )}
                 {showHome && (
                   <button
-                    className="justify-center whitespace-nowrap font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 rounded-md px-3 text-xs flex items-center gap-2"
+                    className="justify-center whitespace-nowrap font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 rounded-[5px] px-3 text-xs flex items-center gap-2"
                     onClick={() => (window.location.href = "/")}
                   >
                     <Home className="h-4 w-4" />

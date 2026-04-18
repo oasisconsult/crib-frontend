@@ -20,7 +20,7 @@ export default function DashboardError({ error, reset }: Props) {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-4">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 dark:bg-red-950/40">
+      <div className="flex h-16 w-16 items-center justify-center rounded-[8px] bg-red-100 dark:bg-red-950/40">
         <AlertTriangle className="h-8 w-8 text-red-600" />
       </div>
       <div className="space-y-2">

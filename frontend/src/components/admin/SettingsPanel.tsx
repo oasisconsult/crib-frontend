@@ -286,7 +286,7 @@ export function SettingsPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+        <div className="flex h-9 w-9 items-center justify-center rounded-[6px] bg-primary/10">
           <Settings className="h-4.5 w-4.5 text-primary" />
         </div>
         <div>
@@ -331,7 +331,7 @@ export function SettingsPanel() {
               />
             }
           />
-          <div className="rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground space-y-1">
+          <div className="rounded-[6px] border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground space-y-1">
             <p><strong>local</strong> — stores files on disk inside the container. Development only.</p>
             <p><strong>s3</strong> — AWS S3. Set bucket, region, access key ID, and secret access key.</p>
             <p><strong>r2</strong> — Cloudflare R2 (zero egress). Set endpoint URL to your R2 account endpoint.</p>

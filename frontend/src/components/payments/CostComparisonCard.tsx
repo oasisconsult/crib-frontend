@@ -96,7 +96,7 @@ function ChannelRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors",
+        "flex items-center justify-between rounded-[6px] border px-3 py-2.5 transition-colors",
         isRecommended
           ? "border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-100/40"
           : "border-border bg-background",

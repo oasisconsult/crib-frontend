@@ -60,7 +60,7 @@ export function FinalSignatureStep({
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Same-terms assurance banner */}
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 dark:border-emerald-200 dark:bg-emerald-100/40 p-3 text-sm text-emerald-800 dark:text-emerald-200">
+        <div className="rounded-[6px] border border-emerald-200 bg-emerald-50 dark:border-emerald-200 dark:bg-emerald-100/40 p-3 text-sm text-emerald-800 dark:text-emerald-200">
           <p className="font-medium mb-0.5">No surprises</p>
           <p>
             The terms below are identical to the agreement preview you accepted.
@@ -69,7 +69,7 @@ export function FinalSignatureStep({
         </div>
 
         {/* Locked terms summary */}
-        <div className="rounded-lg border bg-muted/10 p-4 text-sm space-y-2 select-none pointer-events-none">
+        <div className="rounded-[6px] border bg-muted/10 p-4 text-sm space-y-2 select-none pointer-events-none">
           <p className="font-semibold text-xs uppercase tracking-wide text-muted-foreground">
             Agreed terms
           </p>

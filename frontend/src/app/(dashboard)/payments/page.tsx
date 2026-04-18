@@ -190,7 +190,7 @@ export default function PaymentsPage() {
         ].map((s) => (
           <Card key={s.label}>
             <CardContent className="pt-4">
-              <div className={`inline-flex p-2 rounded-lg mb-2 ${s.bg}`}>
+              <div className={`inline-flex p-2 rounded-[6px] mb-2 ${s.bg}`}>
                 <s.icon className={`h-4 w-4 ${s.color}`} />
               </div>
               <p className="text-xs text-muted-foreground">{s.label}</p>

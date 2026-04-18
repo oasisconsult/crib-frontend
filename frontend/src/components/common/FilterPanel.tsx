@@ -45,7 +45,7 @@ function FilterDropdown({
       <button
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
+          "flex items-center gap-1.5 rounded-[6px] border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
           isActive
             ? "border-primary bg-primary/10 text-primary"
             : "border-border bg-[hsl(var(--card))] text-muted-foreground hover:border-primary/40 hover:text-foreground",
@@ -58,7 +58,7 @@ function FilterDropdown({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[160px] rounded-xl border border-border bg-[hsl(var(--card))] shadow-lg overflow-hidden">
+          <div className="absolute left-0 top-full mt-1.5 z-50 min-w-[160px] rounded-[6px] border border-border bg-[hsl(var(--card))] shadow-lg overflow-hidden">
             {isActive && (
               <button
                 onClick={() => { onSelect(field.key, ""); setOpen(false); }}

@@ -242,7 +242,7 @@ export default function PaymentDetailPage({ params }: Props) {
       </div>
 
       {/* ── Amount hero ──────────────────────────────────────── */}
-      <div className="rounded-xl border bg-gradient-to-br from-emerald-50 to-background dark:from-emerald-950/20 dark:to-background p-6 flex items-center justify-between gap-4">
+      <div className="rounded-[6px] border bg-gradient-to-br from-emerald-50 to-background dark:from-emerald-950/20 dark:to-background p-6 flex items-center justify-between gap-4">
         <div>
           <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
             Amount
@@ -256,7 +256,7 @@ export default function PaymentDetailPage({ params }: Props) {
         </div>
         <div
           className={cn(
-            "h-16 w-16 rounded-2xl flex items-center justify-center shrink-0",
+            "h-16 w-16 rounded-[8px] flex items-center justify-center shrink-0",
             stateCfg.bg,
           )}
         >

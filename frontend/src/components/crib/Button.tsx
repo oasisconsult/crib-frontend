@@ -25,7 +25,7 @@ export function Button({
   onClick,
   type = "button"
 }: ButtonProps) {
-  const baseClasses = "rounded-xl font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50";
+  const baseClasses = "rounded-[6px] font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-primary/50";
   
   const sizeClasses = {
     sm: "h-8 px-3 text-xs",

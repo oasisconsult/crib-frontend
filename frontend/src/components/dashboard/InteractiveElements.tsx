@@ -119,7 +119,7 @@ export function AnimatedStatCard({
             )}
           </div>
           <div className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-all duration-200",
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px] transition-all duration-200",
             iconBg,
             isHovered && "scale-110 shadow-md"
           )}>
@@ -264,7 +264,7 @@ export function ActionButtons({
         </Button>
         
         {isOpen && (
-          <div className="absolute right-0 top-full mt-1 w-48 bg-background border rounded-md shadow-lg z-50">
+          <div className="absolute right-0 top-full mt-1 w-48 bg-background border rounded-[5px] shadow-lg z-50">
             <div className="py-1">
               {onShare && (
                 <button
@@ -321,7 +321,7 @@ interface QuickStatsProps {
 
 export function QuickStats({ stats }: QuickStatsProps) {
   return (
-    <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-lg">
+    <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-[6px]">
       {stats.map((stat, index) => (
         <div 
           key={stat.label}
@@ -348,7 +348,7 @@ interface FilterToggleProps {
 
 export function FilterToggle({ filters, activeFilters, onToggle }: FilterToggleProps) {
   return (
-    <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg flex-wrap">
+    <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-[6px] flex-wrap">
       <Filter className="h-4 w-4 text-muted-foreground" />
       {filters.map((filter) => (
         <button

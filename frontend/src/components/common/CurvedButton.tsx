@@ -36,11 +36,11 @@ const CurvedButton = forwardRef<HTMLButtonElement, CurvedButtonProps>(
         case "pill":
           return variant === "primary" ? "rounded-full" : "rounded-full";
         case "medium":
-          return "rounded-2xl";
+          return "rounded-[8px]";
         case "subtle":
-          return "rounded-lg";
+          return "rounded-[6px]";
         case "custom":
-          return "rounded-3xl";
+          return "rounded-[12px]";
         default:
           return "rounded-full";
       }

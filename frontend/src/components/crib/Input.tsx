@@ -41,7 +41,7 @@ export function Input({
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
         className={cn(
-          `h-10 w-full rounded-xl bg-background-${theme} border border-border-${theme} px-3 text-sm text-text-${theme} placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300`,
+          `h-10 w-full rounded-[6px] bg-background-${theme} border border-border-${theme} px-3 text-sm text-text-${theme} placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-300`,
           error && "border-danger focus:ring-danger/50",
           disabled && "opacity-50 cursor-not-allowed",
           className

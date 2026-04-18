@@ -152,7 +152,7 @@ function DataTableInner<T extends object>({
   return (
     <div className={cn("space-y-3", className)}>
       {/* Table card */}
-      <div className="overflow-hidden rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)] transition-shadow duration-200 hover:shadow-[var(--shadow-md)]">
+      <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)] transition-shadow duration-200 hover:shadow-[var(--shadow-md)]">
         <div className="overflow-x-auto">
           <table className="w-full text-sm" role="table">
 

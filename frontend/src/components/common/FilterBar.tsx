@@ -101,7 +101,7 @@ export function FilterBar({
 
       {/* Filter panel */}
       {showFilters && children && (
-        <div className="flex flex-wrap gap-2 p-3 rounded-lg bg-primary/5 border border-primary/15">
+        <div className="flex flex-wrap gap-2 p-3 rounded-[6px] bg-primary/5 border border-primary/15">
           {children}
         </div>
       )}

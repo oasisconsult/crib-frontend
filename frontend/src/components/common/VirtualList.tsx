@@ -181,7 +181,7 @@ export function VirtualGrid<T>({
         {loadingSkeleton || (
           <div className="p-4 grid gap-4" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-48 skeleton-shimmer rounded-lg" />
+              <div key={i} className="h-48 skeleton-shimmer rounded-[6px]" />
             ))}
           </div>
         )}

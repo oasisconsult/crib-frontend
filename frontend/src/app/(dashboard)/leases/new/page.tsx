@@ -72,7 +72,7 @@ function UnitPreview({
   propertyName: string;
 }) {
   return (
-    <div className="rounded-lg border border-primary/15 bg-primary/5 px-4 py-3 flex flex-wrap items-center gap-4 text-sm">
+    <div className="rounded-[6px] border border-primary/15 bg-primary/5 px-4 py-3 flex flex-wrap items-center gap-4 text-sm">
       <div className="flex items-center gap-1.5 text-muted-foreground">
         <Home className="h-3.5 w-3.5 shrink-0" />
         <span className="font-medium text-foreground">{unit.name}</span>
@@ -101,7 +101,7 @@ function UnitPreview({
 function TenantPreview({ tenant }: { tenant: { firstName: string; lastName: string; email: string; phone?: string } }) {
   const initials = `${tenant.firstName[0]}${tenant.lastName[0]}`.toUpperCase();
   return (
-    <div className="rounded-lg border bg-muted/30 px-4 py-3 flex items-center gap-3 text-sm">
+    <div className="rounded-[6px] border bg-muted/30 px-4 py-3 flex items-center gap-3 text-sm">
       <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0">
         {initials}
       </div>
@@ -389,7 +389,7 @@ export default function NewLeasePage() {
                   type="button"
                   onClick={() => setLeaseType(lt.value)}
                   className={cn(
-                    "rounded-lg border p-3 text-left transition-colors",
+                    "rounded-[6px] border p-3 text-left transition-colors",
                     leaseType === lt.value
                       ? "border-primary bg-primary/5 ring-1 ring-primary"
                       : "border-border hover:border-primary/40 hover:bg-muted/30",
@@ -629,7 +629,7 @@ export default function NewLeasePage() {
 
         {/* ── Summary preview ─────────────────────────────── */}
         {canSubmit && (
-          <div className="rounded-xl border border-primary/15 bg-primary/5 px-5 py-4 space-y-2 text-sm">
+          <div className="rounded-[6px] border border-primary/15 bg-primary/5 px-5 py-4 space-y-2 text-sm">
             <p className="font-semibold text-sm mb-3">Lease Summary</p>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
               <div className="flex justify-between text-muted-foreground">

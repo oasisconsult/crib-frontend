@@ -55,7 +55,7 @@ function StatCard({ title, value, trend, icon: Icon, color, progress }: StatCard
             )}
           </div>
           <div className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-[6px]",
             iconBg,
           )}>
             <Icon className="h-5 w-5 text-white" aria-hidden="true" />

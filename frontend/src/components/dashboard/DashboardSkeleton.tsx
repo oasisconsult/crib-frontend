@@ -15,7 +15,7 @@ export function StatsGridSkeleton() {
                 <Skeleton className="h-7 w-24" />
                 <Skeleton className="h-3 w-16" />
               </div>
-              <Skeleton className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl" />
+              <Skeleton className="h-10 w-10 sm:h-11 sm:w-11 rounded-[6px]" />
             </div>
             <div className="space-y-1">
               <div className="flex justify-between">
@@ -40,9 +40,9 @@ export function RevenueChartSkeleton() {
             <Skeleton className="h-6 w-32" />
             <Skeleton className="h-4 w-48" />
           </div>
-          <div className="flex items-center gap-1 rounded-lg border p-0.5">
+          <div className="flex items-center gap-1 rounded-[6px] border p-0.5">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-6 w-8 rounded-md" />
+              <Skeleton key={i} className="h-6 w-8 rounded-[5px]" />
             ))}
           </div>
         </div>
@@ -134,7 +134,7 @@ export function TopPropertiesSkeleton() {
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Skeleton className="h-10 w-10 rounded-lg" />
+                <Skeleton className="h-10 w-10 rounded-[6px]" />
                 <div className="space-y-1">
                   <Skeleton className="h-4 w-32" />
                   <Skeleton className="h-3 w-24" />

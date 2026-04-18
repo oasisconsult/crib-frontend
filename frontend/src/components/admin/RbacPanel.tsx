@@ -143,7 +143,7 @@ function CreateRoleForm({ onCreated }: { onCreated: (role: RoleOut) => void }) {
   }
 
   return (
-    <div className="border border-primary/15 rounded-lg p-3 space-y-2 bg-primary/5">
+    <div className="border border-primary/15 rounded-[6px] p-3 space-y-2 bg-primary/5">
       <p className="text-xs font-medium">New Role</p>
       <Input
         placeholder="role_name"
@@ -305,7 +305,7 @@ export function RbacPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
+        <div className="flex h-9 w-9 items-center justify-center rounded-[6px] bg-primary/10">
           <Shield className="h-5 w-5 text-primary" />
         </div>
         <div>
@@ -327,7 +327,7 @@ export function RbacPanel() {
               <div
                 key={role.id}
                 className={cn(
-                  "group flex items-center justify-between gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
+                  "group flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] cursor-pointer text-sm transition-colors",
                   selectedRoleId === role.id
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-primary/5",

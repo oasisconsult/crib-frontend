@@ -480,7 +480,7 @@ export default function UnitDetailPage({ params }: Props) {
             ].map((s) => (
               <Card key={s.label}>
                 <CardContent className="pt-4 pb-3">
-                  <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center mb-2", s.bg)}>
+                  <div className={cn("h-8 w-8 rounded-[6px] flex items-center justify-center mb-2", s.bg)}>
                     <s.icon className={cn("h-4 w-4", s.color)} />
                   </div>
                   <p className="text-xs text-muted-foreground">{s.label}</p>

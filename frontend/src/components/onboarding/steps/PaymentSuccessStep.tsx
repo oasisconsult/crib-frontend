@@ -33,7 +33,7 @@ export function PaymentSuccessStep({ preview, onNext }: Props) {
         </div>
 
         {/* Payment summary */}
-        <div className="rounded-lg border bg-muted/20 p-4 space-y-2 text-sm">
+        <div className="rounded-[6px] border bg-muted/20 p-4 space-y-2 text-sm">
           <p className="font-medium">Payment confirmed</p>
           {preview.totalDeposit > 0 && (
             <div className="flex justify-between">
@@ -59,7 +59,7 @@ export function PaymentSuccessStep({ preview, onNext }: Props) {
           </div>
         </div>
 
-        <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-200 dark:bg-blue-100/40 p-3 text-sm text-blue-800 dark:text-blue-200">
+        <div className="rounded-[6px] border border-blue-200 bg-blue-50 dark:border-blue-200 dark:bg-blue-100/40 p-3 text-sm text-blue-800 dark:text-blue-200">
           <p className="font-medium mb-0.5">Next: Sign your agreement</p>
           <p>
             You will now sign the final tenancy agreement. The terms will be

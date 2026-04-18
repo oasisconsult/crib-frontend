@@ -144,7 +144,7 @@ export function PaymentStep({
         </div>
 
         {/* Payment breakdown */}
-        <div className="rounded-lg border bg-muted/20 p-4 space-y-2 text-sm">
+        <div className="rounded-[6px] border bg-muted/20 p-4 space-y-2 text-sm">
           <p className="font-medium mb-2">Payment breakdown</p>
           {preview.totalDeposit > 0 && (
             <div className="flex justify-between">
@@ -180,7 +180,7 @@ export function PaymentStep({
               {showEstimate ? "Hide" : "Compare channel costs"}
             </button>
             {showEstimate && (
-              <div className="rounded-lg border bg-muted/30 p-3">
+              <div className="rounded-[6px] border bg-muted/30 p-3">
                 <CostComparisonCard
                   decision={decision}
                   currency={preview.currency}
@@ -204,7 +204,7 @@ export function PaymentStep({
                 key={value}
                 type="button"
                 onClick={() => setMethod(value)}
-                className={`rounded-lg border px-3 py-2.5 text-sm text-left transition-colors ${
+                className={`rounded-[6px] border px-3 py-2.5 text-sm text-left transition-colors ${
                   method === value
                     ? "border-primary bg-primary/5 text-primary font-medium"
                     : "border-border hover:border-primary/50"
@@ -241,7 +241,7 @@ export function PaymentStep({
         )}
 
         {method === "cash" && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-200 dark:bg-blue-100/40 p-3 text-sm text-blue-800 dark:text-blue-200">
+          <div className="rounded-[6px] border border-blue-200 bg-blue-50 dark:border-blue-200 dark:bg-blue-100/40 p-3 text-sm text-blue-800 dark:text-blue-200">
             Pay cash directly to your landlord or property manager. Your payment
             will be confirmed once they receive and record it.
           </div>
