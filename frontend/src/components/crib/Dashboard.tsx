@@ -229,12 +229,14 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
       .join(" · ");
     if (!description) description = `${formatCurrencyCompact(p.amount, p.currency)} · ${p.state}`;
     const stateMap: Record<string, { label: string; cls: string }> = {
-      confirmed: { label: "Confirmed", cls: "bg-emerald-50 text-emerald-800 dark:bg-emerald-100/40 dark:text-emerald-300" },
-      pending:   { label: "Pending",   cls: "bg-amber-50 text-amber-800 dark:bg-amber-100/40 dark:text-amber-300" },
-      failed:    { label: "Failed",    cls: "bg-red-50 text-red-800 dark:bg-red-100/40 dark:text-red-300" },
-      refunded:  { label: "Refunded",  cls: "bg-slate-100 text-slate-700 dark:bg-slate-100/20 dark:text-slate-300" },
+      confirmed:  { label: "Confirmed",  cls: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
+      completed:  { label: "Completed",  cls: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
+      pending:    { label: "Pending",    cls: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
+      processing: { label: "Processing", cls: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
+      failed:     { label: "Failed",     cls: "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" },
+      refunded:   { label: "Refunded",   cls: "bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700" },
     };
-    const s = stateMap[p.state] ?? { label: p.state, cls: "bg-muted text-muted-foreground" };
+    const s = stateMap[p.state] ?? { label: p.state, cls: "bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700" };
     badgeClass = s.cls;
     badgeLabel = s.label;
   } else {
@@ -242,12 +244,12 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
     title = m.title;
     description = [m.propertyName, m.unitName].filter(Boolean).join(" · ");
     const priorityMap: Record<string, { label: string; cls: string }> = {
-      urgent: { label: "Urgent", cls: "bg-red-50 text-red-800 dark:bg-red-100/40 dark:text-red-300" },
-      high:   { label: "High",   cls: "bg-orange-50 text-orange-800 dark:bg-orange-100/40 dark:text-orange-300" },
-      medium: { label: "Medium", cls: "bg-amber-50 text-amber-800 dark:bg-amber-100/40 dark:text-amber-300" },
-      low:    { label: "Low",    cls: "bg-slate-100 text-slate-700 dark:bg-slate-100/20 dark:text-slate-300" },
+      urgent: { label: "Urgent", cls: "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" },
+      high:   { label: "High",   cls: "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" },
+      medium: { label: "Medium", cls: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
+      low:    { label: "Low",    cls: "bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800" },
     };
-    const p = priorityMap[m.priority] ?? { label: m.priority, cls: "bg-muted text-muted-foreground" };
+    const p = priorityMap[m.priority] ?? { label: m.priority, cls: "bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700" };
     badgeClass = p.cls;
     badgeLabel = p.label;
   }
