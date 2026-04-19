@@ -47,7 +47,7 @@ function FilterDropdown({
         className={cn(
           "flex items-center gap-1.5 rounded-[6px] border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
           isActive
-            ? "border-primary bg-primary/10 text-foreground font-semibold ring-1 ring-inset ring-primary/40"
+            ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold ring-1 ring-inset ring-emerald-600/50"
             : "border-border bg-[hsl(var(--card))] text-muted-foreground hover:border-primary/40 hover:text-foreground",
         )}
       >
@@ -75,7 +75,7 @@ function FilterDropdown({
                 className={cn(
                   "block w-full text-left px-3 py-2 text-xs cursor-pointer transition-colors",
                   selected === opt.value
-                    ? "bg-primary/10 text-foreground font-semibold"
+                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold"
                     : "text-foreground hover:bg-[hsl(var(--accent))]",
                 )}
               >
