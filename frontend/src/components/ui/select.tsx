@@ -146,9 +146,9 @@ const SelectItem = React.forwardRef<
       "relative flex w-full cursor-default select-none items-center",
       "rounded-[6px] py-2 pl-3 pr-8 text-sm text-foreground",
       "outline-none transition-colors",
-      "data-[highlighted]:bg-primary/10 data-[highlighted]:text-foreground",
-      "data-[state=checked]:text-primary data-[state=checked]:font-medium",
-      "data-[highlighted]:data-[state=checked]:bg-primary/10",
+      "data-[highlighted]:bg-emerald-50 data-[highlighted]:text-emerald-700 dark:data-[highlighted]:bg-emerald-950/30 dark:data-[highlighted]:text-emerald-400",
+      "data-[state=checked]:text-emerald-700 dark:data-[state=checked]:text-emerald-400 data-[state=checked]:font-medium",
+      "data-[highlighted]:data-[state=checked]:bg-emerald-50 dark:data-[highlighted]:data-[state=checked]:bg-emerald-950/30",
       "data-[disabled]:pointer-events-none data-[disabled]:opacity-40",
       className,
     )}
@@ -156,7 +156,7 @@ const SelectItem = React.forwardRef<
   >
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
     <span
-      className="absolute right-2.5 flex h-3.5 w-3.5 items-center justify-center text-primary"
+      className="absolute right-2.5 flex h-3.5 w-3.5 items-center justify-center text-emerald-600 dark:text-emerald-400"
       aria-hidden="true"
     >
       <SelectPrimitive.ItemIndicator>
