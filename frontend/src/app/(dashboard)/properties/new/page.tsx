@@ -98,9 +98,9 @@ function StepBar({ step }: { step: 1 | 2 }) {
             <div className={cn(
               "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold border-2 transition-colors",
               step === n
-                ? "border-primary bg-primary text-primary-foreground"
+                ? "border-primary bg-primary/20 text-foreground font-bold"
                 : step > n
-                  ? "border-primary bg-primary/10 text-primary"
+                  ? "border-primary bg-primary/10 text-foreground"
                   : "border-border bg-background text-muted-foreground",
             )}>
               {step > n ? <CheckCircle2 className="h-4 w-4" /> : n}

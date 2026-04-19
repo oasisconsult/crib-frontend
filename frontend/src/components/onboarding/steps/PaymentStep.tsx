@@ -206,7 +206,7 @@ export function PaymentStep({
                 onClick={() => setMethod(value)}
                 className={`rounded-[6px] border px-3 py-2.5 text-sm text-left transition-colors ${
                   method === value
-                    ? "border-primary bg-primary/5 text-primary font-medium"
+                    ? "border-primary bg-primary/10 text-foreground font-semibold ring-1 ring-inset ring-primary/40"
                     : "border-border hover:border-primary/50"
                 }`}
               >

@@ -66,7 +66,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
                 className={cn(
                   "rounded-[5px] px-2 py-1 text-xs font-medium transition-colors",
                   period === p
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "bg-primary/15 text-foreground font-semibold ring-1 ring-inset ring-primary/40"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >

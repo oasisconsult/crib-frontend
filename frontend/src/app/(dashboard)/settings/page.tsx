@@ -362,7 +362,7 @@ export default function SettingsPage() {
                       aria-pressed={theme === value}
                       className={`flex flex-col items-center gap-2 rounded-[6px] border-2 p-3 text-sm font-medium transition-colors ${
                         theme === value
-                          ? "border-primary bg-primary/5 text-primary"
+                          ? "border-primary bg-primary/10 text-foreground font-semibold"
                           : "border-border text-muted-foreground hover:border-muted-foreground/50 hover:text-foreground"
                       }`}
                     >

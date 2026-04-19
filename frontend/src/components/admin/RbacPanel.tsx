@@ -329,8 +329,8 @@ export function RbacPanel() {
                 className={cn(
                   "group flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] cursor-pointer text-sm transition-colors",
                   selectedRoleId === role.id
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-primary/5",
+                    ? "bg-primary/15 text-foreground font-semibold ring-1 ring-inset ring-primary/40"
+                    : "text-foreground hover:bg-primary/5",
                 )}
                 onClick={() => setSelectedRoleId(role.id)}
               >

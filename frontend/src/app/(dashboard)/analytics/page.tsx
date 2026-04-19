@@ -72,7 +72,7 @@ export default function AnalyticsPage() {
                 className={cn(
                   "px-3 py-1.5 text-sm font-medium transition-colors",
                   months === m
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary/15 text-foreground font-semibold ring-1 ring-inset ring-primary/40"
                     : "bg-background text-foreground/70 hover:bg-primary/5 hover:text-foreground",
                 )}
               >

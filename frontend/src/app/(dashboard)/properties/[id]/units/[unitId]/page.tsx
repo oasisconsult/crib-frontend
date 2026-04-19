@@ -127,7 +127,7 @@ function AmenityToggle({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
         checked
-          ? "border-primary bg-primary/10 text-primary"
+          ? "border-primary bg-primary/10 text-foreground font-semibold"
           : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50",
       )}
     >

@@ -47,7 +47,7 @@ function FilterDropdown({
         className={cn(
           "flex items-center gap-1.5 rounded-[6px] border px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer",
           isActive
-            ? "border-primary bg-primary/10 text-primary"
+            ? "border-primary bg-primary/10 text-foreground font-semibold ring-1 ring-inset ring-primary/40"
             : "border-border bg-[hsl(var(--card))] text-muted-foreground hover:border-primary/40 hover:text-foreground",
         )}
       >
@@ -75,7 +75,7 @@ function FilterDropdown({
                 className={cn(
                   "block w-full text-left px-3 py-2 text-xs cursor-pointer transition-colors",
                   selected === opt.value
-                    ? "bg-primary/10 text-primary font-medium"
+                    ? "bg-primary/10 text-foreground font-semibold"
                     : "text-foreground hover:bg-[hsl(var(--accent))]",
                 )}
               >

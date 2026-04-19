@@ -357,8 +357,8 @@ export function FilterToggle({ filters, activeFilters, onToggle }: FilterToggleP
           className={cn(
             "px-3 py-1 text-xs rounded-full transition-all duration-200",
             activeFilters.includes(filter)
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "bg-background text-muted-foreground hover:bg-primary/5"
+              ? "bg-primary/15 text-foreground font-semibold ring-1 ring-inset ring-primary/40"
+              : "bg-background text-muted-foreground hover:bg-primary/5 hover:text-foreground"
           )}
         >
           {filter}

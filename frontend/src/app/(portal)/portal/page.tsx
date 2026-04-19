@@ -460,8 +460,8 @@ function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onCl
               className={cn(
                 "rounded-[5px] border py-1.5 text-xs font-medium capitalize transition-all",
                 priority === p
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border hover:border-primary/40",
+                  ? "border-primary bg-primary/15 text-foreground font-semibold ring-1 ring-primary/40"
+                  : "border-border text-foreground hover:border-primary/60",
               )}
             >
               {p}
