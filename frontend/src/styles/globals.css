@@ -8,6 +8,38 @@
 /* Import CRIB design system */
 @import './design-system.css';
 
+/* ── Print: show only the payment receipt ────────────────────────────────── */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-receipt-dialog,
+  .print-receipt-dialog * {
+    visibility: visible !important;
+  }
+
+  .print-receipt-dialog {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 24px !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    transform: none !important;
+  }
+
+  /* Hide the close (×) button and the Print / Close footer buttons */
+  .print-receipt-dialog [data-radix-dialog-close],
+  .print-receipt-dialog button {
+    display: none !important;
+  }
+}
+
 /* WCAG 2.3.3 — respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
