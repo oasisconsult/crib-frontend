@@ -57,7 +57,7 @@ interface Props {
 
 const STATUS_CONFIG: Record<UnitStatus, { label: string; color: string; bg: string }> = {
   available:   { label: "Available",   color: "text-emerald-700", bg: "bg-emerald-100 dark:bg-emerald-950/40" },
-  occupied:    { label: "Occupied",    color: "text-indigo-700",  bg: "bg-indigo-100 dark:bg-indigo-950/40"  },
+  occupied:    { label: "Occupied",    color: "text-teal-700",  bg: "bg-teal-100 dark:bg-teal-950/40"  },
   reserved:    { label: "Reserved",    color: "text-amber-700",   bg: "bg-amber-100 dark:bg-amber-950/40"    },
   maintenance: { label: "Maintenance", color: "text-red-700",     bg: "bg-red-100 dark:bg-red-950/40"        },
 };
@@ -127,7 +127,7 @@ function AmenityToggle({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
         checked
-          ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold"
+          ? "border-teal-600 dark:border-teal-500 bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 font-semibold"
           : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50",
       )}
     >
@@ -467,8 +467,8 @@ export default function UnitDetailPage({ params }: Props) {
                 label: "Bathrooms",
                 value: unit.bathrooms,
                 icon: Bath,
-                color: "text-violet-600",
-                bg: "bg-violet-100 dark:bg-violet-950/30",
+                color: "text-teal-600",
+                bg: "bg-teal-100 dark:bg-teal-950/30",
               },
               {
                 label: "Area",

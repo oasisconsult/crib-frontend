@@ -63,9 +63,9 @@ const DEV_USERS = [
     email: "admin@crib.ug",
     initials: "CA",
     description: "Full platform access",
-    gradient: "from-violet-500 to-indigo-600",
+    gradient: "from-teal-500 to-teal-600",
     badge: "Superadmin",
-    badgeColor: "bg-violet-100 text-violet-700",
+    badgeColor: "bg-teal-100 text-teal-700",
   },
   {
     id: "user-landlord-1",
@@ -99,9 +99,9 @@ const DEV_USERS = [
     email: "super.manager@crib.ug",
     initials: "SM",
     description: "Platform admin + property manager",
-    gradient: "from-violet-500 to-emerald-600",
+    gradient: "from-teal-500 to-emerald-600",
     badge: "Superadmin · Manager",
-    badgeColor: "bg-violet-100 text-violet-700",
+    badgeColor: "bg-teal-100 text-teal-700",
   },
   {
     id: "owner-manager-1",

@@ -704,7 +704,7 @@ export function OnboardingWizard({
                 <Card className="text-center">
                   <CardContent className="pt-8 pb-8 space-y-4">
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-100/40 mx-auto">
-                      <CheckCircle className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle className="h-8 w-8 text-teal-600 dark:text-teal-400" />
                     </div>
                     <div>
                       <h2 className="text-xl font-bold">

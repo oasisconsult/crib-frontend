@@ -184,8 +184,8 @@ export default function PaymentsPage() {
             label: "Collection Rate",
             value: `${stats?.collectionRate?.toFixed(0) ?? 0}%`,
             icon: CreditCard,
-            color: "text-violet-600",
-            bg: "bg-violet-50 dark:bg-violet-950/30",
+            color: "text-teal-600",
+            bg: "bg-teal-50 dark:bg-teal-950/30",
           },
         ].map((s) => (
           <Card key={s.label}>

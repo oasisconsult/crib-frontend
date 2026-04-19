@@ -39,8 +39,8 @@ const ICONS: Record<
 > = {
   lease: {
     icon: FileText,
-    bg: "bg-indigo-100 dark:bg-indigo-100/40",
-    color: "text-indigo-600",
+    bg: "bg-teal-100 dark:bg-teal-100/40",
+    color: "text-teal-600",
   },
   payment: {
     icon: CreditCard,
@@ -54,8 +54,8 @@ const ICONS: Record<
   },
   inspection: {
     icon: ClipboardList,
-    bg: "bg-violet-100 dark:bg-violet-100/40",
-    color: "text-violet-600",
+    bg: "bg-teal-100 dark:bg-teal-100/40",
+    color: "text-teal-600",
   },
   maintenance: {
     icon: Wrench,

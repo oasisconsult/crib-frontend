@@ -66,7 +66,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
                 className={cn(
                   "rounded-[5px] px-2 py-1 text-xs font-medium transition-colors",
                   period === p
-                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold ring-1 ring-inset ring-emerald-600/50"
+                    ? "bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 font-semibold ring-1 ring-inset ring-teal-600/50"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -85,8 +85,8 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
               <AreaChart data={sliced} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="collectedGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#00DEB6" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#00DEB6" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="expectedGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.15} />
@@ -125,7 +125,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
                   type="monotone"
                   dataKey="collected"
                   name="Collected"
-                  stroke="#6366f1"
+                  stroke="#00DEB6"
                   strokeWidth={2.5}
                   fill="url(#collectedGrad)"
                   dot={false}
@@ -136,7 +136,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
             {/* Legend */}
             <div className="flex items-center justify-center sm:justify-start gap-4 sm:gap-5 mt-3 px-1 flex-wrap">
               {[
-                { color: "#6366f1", label: "Collected", solid: true },
+                { color: "#00DEB6", label: "Collected", solid: true },
                 { color: "#94a3b8", label: "Expected",  solid: false },
               ].map((l) => (
                 <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">

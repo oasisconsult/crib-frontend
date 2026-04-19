@@ -38,8 +38,8 @@ export function OccupancyChart({ data: dataProp, loading: loadingProp }: Occupan
             <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="occupiedGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#00DEB6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#00DEB6" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="availableGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#e2e8f0" stopOpacity={0.5} />
@@ -63,7 +63,7 @@ export function OccupancyChart({ data: dataProp, loading: loadingProp }: Occupan
                 type="monotone"
                 dataKey="occupied"
                 name="Occupied"
-                stroke="#6366f1"
+                stroke="#00DEB6"
                 strokeWidth={2}
                 fill="url(#occupiedGrad)"
               />

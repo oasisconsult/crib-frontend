@@ -38,11 +38,11 @@ const STATUS_CONFIG: Record<
 > = {
   // v4 happy path
   initiated:          { icon: Clock,        color: "text-slate-400",   label: "Initiated"      },
-  predicted:          { icon: Clock,        color: "text-indigo-500",  label: "Analysed"       },
+  predicted:          { icon: Clock,        color: "text-teal-500",  label: "Analysed"       },
   routed:             { icon: Clock,        color: "text-blue-500",    label: "Routed"         },
   pending:            { icon: Clock,        color: "text-amber-500",   label: "Processing"     },
   reconciled:         { icon: CheckCircle2, color: "text-teal-500",    label: "Reconciled"     },
-  allocated:          { icon: CheckCircle2, color: "text-violet-500",  label: "Allocated"      },
+  allocated:          { icon: CheckCircle2, color: "text-teal-500",  label: "Allocated"      },
   completed:          { icon: CheckCircle2, color: "text-emerald-500", label: "Completed"      },
   // v4 failure paths
   predicted_failure:  { icon: XCircle,     color: "text-orange-500",  label: "Blocked"        },

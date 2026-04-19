@@ -460,7 +460,7 @@ function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onCl
               className={cn(
                 "rounded-[5px] border py-1.5 text-xs font-medium capitalize transition-all",
                 priority === p
-                  ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold ring-1 ring-emerald-600/50"
+                  ? "border-teal-600 dark:border-teal-500 bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 font-semibold ring-1 ring-teal-600/50"
                   : "border-border text-foreground hover:border-primary/60",
               )}
             >
@@ -903,7 +903,7 @@ export default function TenantPortalPage() {
                 {[
                   { label: "Pay Rent", icon: CreditCard, action: () => setDialog("pay"), color: "text-primary", disabled: !myLease },
                   { label: "Maintenance", icon: Wrench, action: () => setDialog("maintenance"), color: "text-amber-600", disabled: !myLease },
-                  { label: "Inspections", icon: Calendar, action: () => setTab("inspections"), color: "text-violet-600", disabled: !myLease },
+                  { label: "Inspections", icon: Calendar, action: () => setTab("inspections"), color: "text-teal-600", disabled: !myLease },
                   { label: "Messages", icon: MessageCircle, action: () => setTab("messages"), color: "text-emerald-600", disabled: !myLease },
                 ].map((a) => (
                   <button

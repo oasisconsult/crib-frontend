@@ -63,18 +63,18 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Real estate brand colours — Rightmove-style teal palette
+        // Brand palette
         brand: {
-          teal: "#14C6A3",    // Primary brand teal
-          "teal-dark": "#0F8F7A", // Secondary teal
-          "teal-deep": "#0A6B5A", // Dark teal
-          cyan: "#0F8FA0",    // Cyan accent
-          yellow: "#F5B000",  // Warm yellow
-          orange: "#F28C18",  // Orange accent
-          navy: "#1E2235",    // Dark navy text / dark mode bg
+          teal: "#00DEB6",       // Primary brand teal
+          "teal-deep": "#028391", // Deep teal
+          navy: "#01204E",        // Deep navy (dark mode bg)
+          charcoal: "#262637",    // Dark charcoal text
+          cream: "#F6DCAC",       // Warm cream
+          peach: "#FAA968",       // Warm peach
+          orange: "#F85525",      // Vivid orange-red
           white: "#FFFFFF",
         },
-        // Domain colours
+        // Domain colours — no indigo/violet, use teal + brand palette
         lease: {
           draft: "#94a3b8",
           pending: "#f59e0b",
@@ -88,24 +88,24 @@ const config: Config = {
           due: "#f59e0b",
           overdue: "#ef4444",
           settled: "#10b981",
-          initiated: "#6366f1",
+          initiated: "#028391",   // deep teal (was indigo)
           pending: "#f59e0b",
           completed: "#10b981",
           failed: "#ef4444",
-          reconciled: "#8b5cf6",
+          reconciled: "#FAA968",  // peach (was violet)
         },
         inspection: {
-          scheduled: "#6366f1",
+          scheduled: "#028391",   // deep teal (was indigo)
           in_progress: "#f59e0b",
           completed: "#10b981",
-          approved: "#0ea5e9",
+          approved: "#00DEB6",    // brand teal (was sky blue)
         },
         onboarding: {
           invited: "#94a3b8",
-          started: "#6366f1",
+          started: "#028391",     // deep teal (was indigo)
           submitted: "#f59e0b",
           approved: "#10b981",
-          activated: "#0ea5e9",
+          activated: "#00DEB6",   // brand teal (was sky blue)
         },
       },
       borderRadius: {

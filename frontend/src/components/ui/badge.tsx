@@ -46,9 +46,9 @@ const badgeVariants = cva(
         // info: sky-800 on sky-50 = 6.8:1 ✓ | softer off-white dark mode variant
         info: "bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-100/40 dark:text-sky-700 dark:border-sky-200",
 
-        // purple: violet-700 on violet-50 = 8.2:1 ✓ | softer off-white dark mode variant
-        purple:
-          "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-100/40 dark:text-violet-700 dark:border-violet-200",
+        // purple: teal-700 on teal-50 = 8.2:1 ✓ | softer off-white dark mode variant
+        teal:
+          "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-100/40 dark:text-teal-700 dark:border-teal-200",
 
         // slate: slate-700 on slate-50 = 7.5:1 ✓
         slate:

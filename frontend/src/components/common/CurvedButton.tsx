@@ -270,8 +270,8 @@ export function FloatingActionButton({
         "fixed bottom-6 right-6 z-50",
         "w-14 h-14 p-0 rounded-full",
         "shadow-2xl hover:shadow-3xl",
-        "bg-gradient-to-r from-blue-600 to-purple-600",
-        "hover:from-blue-700 hover:to-purple-700",
+        "bg-gradient-to-r from-blue-600 to-[#028391]",
+        "hover:from-blue-700 hover:to-teal-700",
         className
       )}
       {...props}

@@ -34,11 +34,11 @@ import type { Payment, RentSchedule } from "@/types";
 
 const STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string; badgeVariant: "success" | "destructive" | "warning" | "secondary"; label: string }> = {
   initiated:          { icon: Clock,        color: "text-slate-500",   badgeVariant: "secondary",    label: "Initiated"       },
-  predicted:          { icon: Clock,        color: "text-indigo-500",  badgeVariant: "secondary",    label: "Analysed"        },
+  predicted:          { icon: Clock,        color: "text-teal-500",  badgeVariant: "secondary",    label: "Analysed"        },
   routed:             { icon: Clock,        color: "text-blue-500",    badgeVariant: "secondary",    label: "Routed"          },
   pending:            { icon: Clock,        color: "text-amber-500",   badgeVariant: "warning",      label: "Processing"      },
   reconciled:         { icon: CheckCircle2, color: "text-teal-600",    badgeVariant: "success",      label: "Reconciled"      },
-  allocated:          { icon: CheckCircle2, color: "text-violet-600",  badgeVariant: "success",      label: "Allocated"       },
+  allocated:          { icon: CheckCircle2, color: "text-teal-600",  badgeVariant: "success",      label: "Allocated"       },
   completed:          { icon: CheckCircle2, color: "text-emerald-600", badgeVariant: "success",      label: "Completed"       },
   confirmed:          { icon: CheckCircle2, color: "text-emerald-600", badgeVariant: "success",      label: "Confirmed"       },
   predicted_failure:  { icon: XCircle,     color: "text-orange-500",  badgeVariant: "warning",      label: "Blocked"         },

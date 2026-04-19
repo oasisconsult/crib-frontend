@@ -329,7 +329,7 @@ export function RbacPanel() {
                 className={cn(
                   "group flex items-center justify-between gap-2 px-3 py-2 rounded-[6px] cursor-pointer text-sm transition-colors",
                   selectedRoleId === role.id
-                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold ring-1 ring-inset ring-emerald-600/50"
+                    ? "bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 font-semibold ring-1 ring-inset ring-teal-600/50"
                     : "text-foreground hover:bg-primary/5",
                 )}
                 onClick={() => setSelectedRoleId(role.id)}

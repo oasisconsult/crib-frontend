@@ -11,8 +11,8 @@ import { cn } from "@/utils/cn";
 
 // Colour pool for property icon backgrounds
 const BG_COLORS = [
-  "bg-indigo-100 dark:bg-indigo-100/40 text-indigo-600",
-  "bg-violet-100 dark:bg-violet-100/40 text-violet-600",
+  "bg-teal-100 dark:bg-teal-100/40 text-teal-600",
+  "bg-teal-100 dark:bg-teal-100/40 text-teal-600",
   "bg-sky-100 dark:bg-sky-100/40 text-sky-600",
 ];
 

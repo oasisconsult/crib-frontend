@@ -52,8 +52,8 @@ const TabsTrigger = React.forwardRef<
       "px-3 py-2.5 -mb-px",
       "border-b-2 border-transparent",
       "hover:text-foreground",
-      "data-[state=active]:border-emerald-600 dark:data-[state=active]:border-emerald-500",
-      "data-[state=active]:text-emerald-700 dark:data-[state=active]:text-emerald-400",
+      "data-[state=active]:border-teal-600 dark:data-[state=active]:border-teal-500",
+      "data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-400",
       "data-[state=active]:font-semibold",
       className,
     )}

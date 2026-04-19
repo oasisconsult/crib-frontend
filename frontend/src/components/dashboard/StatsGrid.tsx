@@ -25,7 +25,7 @@ function StatCard({ title, value, trend, icon: Icon, color, progress }: StatCard
   const iconBg = {
     blue:   "bg-blue-500",
     green:  "bg-emerald-500",
-    purple: "bg-violet-500",
+    purple: "bg-teal-500",
     orange: "bg-orange-500",
     red:    "bg-red-500",
   }[color] ?? "bg-slate-500";
@@ -45,7 +45,7 @@ function StatCard({ title, value, trend, icon: Icon, color, progress }: StatCard
             {trend && (
               <div className={cn(
                 "mt-1.5 flex items-center gap-1 text-xs font-medium",
-                trend.positive ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400",
+                trend.positive ? "text-teal-600 dark:text-teal-400" : "text-red-600 dark:text-red-400",
               )}>
                 {trend.positive
                   ? <TrendingUp className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -122,9 +122,9 @@ export function StatsGrid({ stats: statsProp, loading: loadingProp }: { stats?: 
       value: `${stats.activeTenants} / ${stats.totalTenants}`,
       trend: { label: `${stats.totalTenants - stats.activeTenants} pending`, positive: stats.activeTenants >= stats.totalTenants * 0.9 },
       icon: Users,
-      iconBg: "bg-gradient-to-br from-purple-50 to-purple-100",
-      iconColor: "text-purple-600",
-      color: "purple",
+      iconBg: "bg-gradient-to-br from-[#d0f9f0] to-[#d0f9f0]",
+      iconColor: "text-[#028391]",
+      color: "teal",
     },
     {
       title: "Overdue Payments",
