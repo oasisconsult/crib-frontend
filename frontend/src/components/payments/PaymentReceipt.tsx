@@ -98,8 +98,8 @@ function AllocationRows({
           <div key={a.id} className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
               {sched
-                ? `Rent — ${formatDate(sched.periodStart, "MMMM yyyy")}`
-                : `Schedule ${sched?.reference ?? "unknown"}`}
+                ? `${sched.reference ?? "Rent"} — ${formatDate(sched.periodStart, "MMMM yyyy")}`
+                : "Rent period"}
             </span>
             <span className="font-semibold text-foreground">
               {formatCurrency(a.amountApplied)}
@@ -191,7 +191,7 @@ export function PaymentReceipt({
           {/* Details */}
           <dl>
             <ReceiptRow label="Reference">
-              <span className="font-mono">{payment.reference ?? payment.id.slice(0, 12) + "…"}</span>
+              <span className="font-mono">{payment.reference ?? "—"}</span>
             </ReceiptRow>
             <ReceiptRow label="Category">{categoryLabel}</ReceiptRow>
             <ReceiptRow label="Date & Time">
@@ -245,7 +245,7 @@ export function PaymentReceipt({
           {/* Receipt ID */}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
             <Hash className="h-3 w-3" />
-            <span className="font-mono">{formatRef(payment.reference, "RCP")}</span>
+            <span className="font-mono">RCP-{payment.id.replace(/-/g, "").slice(0, 8).toUpperCase()}</span>
           </div>
         </DialogBody>
 
