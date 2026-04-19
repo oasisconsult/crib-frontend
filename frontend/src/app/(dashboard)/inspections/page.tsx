@@ -46,7 +46,7 @@ const COLUMNS: Column<Inspection>[] = [
           <p className="text-sm font-medium truncate">{i.propertyName}</p>
         )}
         <p className="text-xs text-muted-foreground truncate">
-          {i.unitName ?? `Unit #${i.unitId.slice(-4)}`}
+          {i.unitName ?? "Unknown unit"}
         </p>
       </div>
     ),

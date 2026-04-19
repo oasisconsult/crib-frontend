@@ -124,6 +124,8 @@ class Inspection(TimestampedBase):
     )
     inspector_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    reference: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True, index=True)
+
     type: Mapped[str] = mapped_column(String(20), nullable=False)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="scheduled", index=True)
 
@@ -175,6 +177,8 @@ class MaintenanceIssue(TimestampedBase):
 
     reported_by: Mapped[str] = mapped_column(String(20), nullable=False)
     reported_by_id: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    reference: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True, index=True)
 
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text(), nullable=False)

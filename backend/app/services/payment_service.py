@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.lease import Lease
 from app.models.property import Property, Unit
 from app.models.tenant import Tenant as TenantModel
+from app.utils.references import build_ref, next_rs_seq
 from app.models.payment import (
     Deposit,
     DepositStatus,
@@ -66,6 +67,7 @@ def _schedule_out(s: RentSchedule) -> RentScheduleOut:
     fee = float(s.late_fee_applied)
     return RentScheduleOut(
         id=str(s.id),
+        reference=s.reference,
         organisation_id=str(s.organisation_id),
         lease_id=str(s.lease_id),
         period_start=str(s.period_start),
@@ -285,6 +287,9 @@ async def generate_rent_schedules(lease: Lease, db: AsyncSession) -> None:
     """Auto-generate rent schedules when a lease is activated."""
     schedules = _build_schedules(lease)
     for s in schedules:
+        period_tag = s.period_start.strftime("%Y%m")
+        seq = await next_rs_seq(db, period_tag)
+        s.reference = build_ref("RS", seq, period_tag)
         db.add(s)
     # flush happens in the caller (activate_lease) after all side-effects
 

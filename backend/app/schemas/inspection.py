@@ -59,6 +59,7 @@ class InspectionPhotos(CamelModel):
 
 class InspectionOut(CamelModel):
     id: str
+    reference: str | None = None
     organisation_id: str
     property_id: str
     unit_id: str | None
@@ -128,6 +129,7 @@ class MaintenanceTransition(CamelModel):
 
 class MaintenanceOut(CamelModel):
     id: str
+    reference: str | None = None
     organisation_id: str
     property_id: str
     unit_id: str | None

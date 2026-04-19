@@ -143,6 +143,7 @@ class BatchUnitCreate(CamelModel):
 
 class UnitOut(CamelModel):
     id: str
+    reference: str | None = None
     property_id: str
     name: str
     type: str

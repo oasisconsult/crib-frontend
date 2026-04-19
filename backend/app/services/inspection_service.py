@@ -29,6 +29,7 @@ from app.models.inspection import (
     MAINTENANCE_TRANSITIONS,
 )
 from app.models.property import Property, Unit
+from app.utils.references import build_ref, next_seq
 from app.schemas.inspection import (
     InspectionCreate,
     InspectionOut,
@@ -50,6 +51,7 @@ def _insp_out(i: Inspection, unit_name: str | None = None, property_name: str | 
 
     return InspectionOut(
         id=str(i.id),
+        reference=i.reference,
         organisation_id=str(i.organisation_id),
         property_id=str(i.property_id),
         unit_id=str(i.unit_id) if i.unit_id else None,
@@ -92,6 +94,7 @@ def _maint_out(
 
     return MaintenanceOut(
         id=str(m.id),
+        reference=m.reference,
         organisation_id=str(m.organisation_id),
         property_id=str(m.property_id),
         unit_id=str(m.unit_id) if m.unit_id else None,
@@ -248,6 +251,10 @@ async def get_inspection(
 async def create_inspection(
     body: InspectionCreate, org_id: uuid.UUID, db: AsyncSession
 ) -> InspectionOut:
+    year = datetime.now(timezone.utc).year
+    seq = await next_seq(db, Inspection, year=year)
+    ref = build_ref("INS", seq, str(year))
+
     inspection = Inspection(
         organisation_id=org_id,
         property_id=uuid.UUID(body.property_id),
@@ -264,6 +271,7 @@ async def create_inspection(
         photo_urls=[],
         video_urls=[],
         maintenance_issue_ids=[],
+        reference=ref,
     )
     db.add(inspection)
     await db.flush()
@@ -430,6 +438,10 @@ async def create_maintenance_issue(
     body: MaintenanceCreate, org_id: uuid.UUID, db: AsyncSession
 ) -> MaintenanceOut:
     now = datetime.now(timezone.utc)
+    year = now.year
+    seq = await next_seq(db, MaintenanceIssue, year=year)
+    ref = build_ref("MNT", seq, str(year))
+
     issue = MaintenanceIssue(
         organisation_id=org_id,
         property_id=uuid.UUID(body.property_id),
@@ -448,6 +460,7 @@ async def create_maintenance_issue(
         reported_at=now,
         photo_urls=body.photo_urls or [],
         notes=body.notes,
+        reference=ref,
     )
     db.add(issue)
     await db.flush()

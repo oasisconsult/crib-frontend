@@ -26,6 +26,7 @@ from sqlalchemy.orm import selectinload
 log = structlog.get_logger(__name__)
 
 from app.core.state_machine import onboarding_sm
+from app.utils.references import build_ref, next_seq
 from app.models.property import Property, Unit
 from app.models.tenant import (
     IdDocumentType,
@@ -92,6 +93,7 @@ def _invite_out(
 def _tenant_out(tenant: Tenant) -> TenantOut:
     return TenantOut(
         id=str(tenant.id),
+        reference=tenant.reference,
         user_id=tenant.logto_user_id,
         landlord_id=str(tenant.organisation_id),
         first_name=tenant.first_name,
@@ -234,6 +236,9 @@ async def invite_tenant(
     first_name = parts[0]
     last_name = parts[1] if len(parts) > 1 else ""
 
+    seq = await next_seq(db, Tenant)
+    ref = build_ref("TEN", seq)
+
     tenant = Tenant(
         organisation_id=org_id,
         first_name=first_name,
@@ -245,6 +250,7 @@ async def invite_tenant(
         current_property_id=prop_id,
         current_unit_id=unit_id,
         tags=[],
+        reference=ref,
     )
     db.add(tenant)
     await db.flush()

@@ -52,7 +52,7 @@ const COLUMNS: Column<Lease>[] = [
     key: "tenantId",
     header: "Tenant",
     render: (l) => (
-      <span className="text-sm">{l.tenantName ?? `Tenant #${l.tenantId.slice(-4)}`}</span>
+      <span className="text-sm">{l.tenantName ?? "Unknown tenant"}</span>
     ),
   },
   {
@@ -64,7 +64,7 @@ const COLUMNS: Column<Lease>[] = [
           ? l.propertyName
             ? `${l.propertyName} — ${l.unitName}`
             : l.unitName
-          : `Unit #${l.unitId.slice(-4)}`}
+          : "Unknown unit"}
       </span>
     ),
   },

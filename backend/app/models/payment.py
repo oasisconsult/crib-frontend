@@ -96,6 +96,8 @@ class RentSchedule(TimestampedBase):
         nullable=False, index=True,
     )
 
+    reference: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True, index=True)
+
     period_start: Mapped[date] = mapped_column(Date(), nullable=False)
     period_end: Mapped[date] = mapped_column(Date(), nullable=False)
     due_date: Mapped[date] = mapped_column(Date(), nullable=False, index=True)

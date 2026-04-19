@@ -25,7 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, formatDateTime, formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDateTime, formatDate, formatRef } from "@/utils/formatters";
 import { usePaymentAllocations } from "@/hooks/usePayments";
 import { cn } from "@/utils/cn";
 import type { Payment, RentSchedule } from "@/types";
@@ -99,7 +99,7 @@ function AllocationRows({
             <span className="text-muted-foreground">
               {sched
                 ? `Rent — ${formatDate(sched.periodStart, "MMMM yyyy")}`
-                : `Schedule ${a.rentScheduleId.slice(0, 8)}…`}
+                : `Schedule ${sched?.reference ?? "unknown"}`}
             </span>
             <span className="font-semibold text-foreground">
               {formatCurrency(a.amountApplied)}
@@ -245,7 +245,7 @@ export function PaymentReceipt({
           {/* Receipt ID */}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70">
             <Hash className="h-3 w-3" />
-            <span className="font-mono">{payment.id}</span>
+            <span className="font-mono">{formatRef(payment.reference, "RCP")}</span>
           </div>
         </DialogBody>
 

@@ -101,6 +101,8 @@ class Unit(TimestampedBase):
         index=True,
     )
 
+    reference: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True, index=True)
+
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     type: Mapped[UnitType] = mapped_column(
         Enum(UnitType, name="unit_type_enum"), nullable=False

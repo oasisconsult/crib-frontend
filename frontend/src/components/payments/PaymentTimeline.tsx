@@ -101,7 +101,7 @@ function AllocationDetail({
             <span className="text-foreground">
               {sched
                 ? `${formatDate(sched.periodStart, "MMM yyyy")}`
-                : a.rentScheduleId.slice(0, 8) + "…"}
+                : (sched?.reference ?? "Period unknown")}
             </span>
             <span className="font-semibold text-emerald-600">
               {formatCurrency(a.amountApplied)}

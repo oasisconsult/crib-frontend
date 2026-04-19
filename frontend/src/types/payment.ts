@@ -58,6 +58,7 @@ export interface PaymentEstimateRequest {
 
 export interface RentSchedule {
   id: string;
+  reference?: string | null;
   state: RentState;
   leaseId: string;
   tenantId: string;

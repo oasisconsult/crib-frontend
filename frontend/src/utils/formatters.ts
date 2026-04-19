@@ -104,6 +104,12 @@ export function formatDays(days: number): string {
   return `${(days / 365).toFixed(1)} years`;
 }
 
+// ─── Short reference display ──────────────────────────────────────────────────
+export function formatRef(ref: string | null | undefined, fallbackPrefix = "RCP"): string {
+  if (ref) return ref;
+  return `${fallbackPrefix}-UNKNOWN`;
+}
+
 // ─── Status label helpers ─────────────────────────────────────────────────────
 export function capitalise(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, " ");

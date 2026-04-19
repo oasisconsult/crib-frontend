@@ -63,6 +63,8 @@ class Tenant(TimestampedBase):
         index=True,
     )
 
+    reference: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True, index=True)
+
     # Logto user link (set once the tenant creates a Logto account)
     logto_user_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
 

@@ -14,6 +14,7 @@ from app.schemas.common import CamelModel, PaginatedResponse
 
 class RentScheduleOut(CamelModel):
     id: str
+    reference: str | None = None
     organisation_id: str
     lease_id: str
     period_start: str       # ISO date

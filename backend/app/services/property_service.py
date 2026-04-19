@@ -16,6 +16,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.property import Property, Unit, UnitStatus
+from app.utils.references import build_ref, next_seq
 from app.schemas.property import (
     BatchUnitCreate,
     BulkUnitUpdate,
@@ -75,6 +76,7 @@ async def _property_out(prop: Property, db: AsyncSession) -> PropertyOut:
 def _unit_out(unit: Unit) -> UnitOut:
     return UnitOut(
         id=str(unit.id),
+        reference=unit.reference,
         property_id=str(unit.property_id),
         name=unit.name,
         type=unit.type.value,
@@ -258,6 +260,9 @@ async def create_unit(
 ) -> UnitOut:
     await get_property(prop_id, org_id, db)  # ownership check
 
+    seq = await next_seq(db, Unit)
+    ref = build_ref("UNIT", seq)
+
     unit = Unit(
         property_id=prop_id,
         name=body.name,
@@ -273,6 +278,7 @@ async def create_unit(
         images=body.images,
         notes=body.notes,
         rules=body.rules.model_dump(by_alias=True) if body.rules else None,
+        reference=ref,
     )
     db.add(unit)
     await db.flush()
@@ -285,6 +291,7 @@ async def batch_create_units(
 ) -> list[UnitOut]:
     await get_property(prop_id, org_id, db)
 
+    base_seq = await next_seq(db, Unit)
     units = [
         Unit(
             property_id=prop_id,
@@ -301,8 +308,9 @@ async def batch_create_units(
             images=u.images,
             notes=u.notes,
             rules=u.rules.model_dump(by_alias=True) if u.rules else None,
+            reference=build_ref("UNIT", base_seq + i),
         )
-        for u in body.units
+        for i, u in enumerate(body.units)
     ]
     db.add_all(units)
     await db.flush()

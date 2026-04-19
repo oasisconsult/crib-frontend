@@ -91,6 +91,7 @@ class OnboardingDraftSave(CamelModel):
 
 class TenantOut(CamelModel):
     id: str
+    reference: str | None = None
     user_id: str | None           # logto_user_id — frontend calls it userId
     landlord_id: str              # organisation_id — frontend calls it landlordId
     first_name: str

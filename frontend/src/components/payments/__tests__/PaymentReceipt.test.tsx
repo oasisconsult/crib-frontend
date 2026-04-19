@@ -80,7 +80,7 @@ describe("PaymentReceipt", () => {
 
     it("displays the payment reference", () => {
       render(<PaymentReceipt {...DEFAULT_PROPS} payment={makePayment({ reference: "TXN-REF-001" })} />);
-      expect(screen.getByText("TXN-REF-001")).toBeInTheDocument();
+      expect(screen.getAllByText("TXN-REF-001").length).toBeGreaterThan(0);
     });
 
     it("displays lease reference when provided", () => {
@@ -128,9 +128,15 @@ describe("PaymentReceipt", () => {
       expect(screen.getByText("Cash paid at office")).toBeInTheDocument();
     });
 
-    it("shows the payment UUID in the receipt footer", () => {
-      render(<PaymentReceipt {...DEFAULT_PROPS} payment={makePayment({ id: "pay-abc-123" })} />);
-      expect(screen.getByText("pay-abc-123")).toBeInTheDocument();
+    it("shows the payment reference in the receipt footer", () => {
+      render(<PaymentReceipt {...DEFAULT_PROPS} payment={makePayment({ reference: "RCP-2025-0001" })} />);
+      const hits = screen.getAllByText("RCP-2025-0001");
+      expect(hits.length).toBeGreaterThan(0);
+    });
+
+    it("shows RCP-UNKNOWN when payment has no reference", () => {
+      render(<PaymentReceipt {...DEFAULT_PROPS} payment={makePayment({ reference: undefined })} />);
+      expect(screen.getByText("RCP-UNKNOWN")).toBeInTheDocument();
     });
   });
 
