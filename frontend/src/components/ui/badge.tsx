@@ -44,7 +44,7 @@ const badgeVariants = cva(
           "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-100/40 dark:text-amber-700 dark:border-amber-200",
 
         // info: sky-800 on sky-50 = 6.8:1 ✓ | softer off-white dark mode variant
-        info: "bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-100/40 dark:text-sky-700 dark:border-sky-200",
+        info: "bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-100/40 dark:text-teal-700 dark:border-teal-200",
 
         // purple: teal-700 on teal-50 = 8.2:1 ✓ | softer off-white dark mode variant
         teal:
@@ -56,7 +56,7 @@ const badgeVariants = cva(
 
         // primary: blue-800 on blue-50 = 10.9:1 ✓ | softer off-white dark mode variant
         primary:
-          "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-100/40 dark:text-blue-700 dark:border-blue-200",
+          "bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-100/40 dark:text-teal-700 dark:border-teal-200",
       },
     },
     defaultVariants: { variant: "default" },

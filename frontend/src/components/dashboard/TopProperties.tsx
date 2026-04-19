@@ -13,7 +13,7 @@ import { cn } from "@/utils/cn";
 const BG_COLORS = [
   "bg-teal-100 dark:bg-teal-100/40 text-teal-600",
   "bg-teal-100 dark:bg-teal-100/40 text-teal-600",
-  "bg-sky-100 dark:bg-sky-100/40 text-sky-600",
+  "bg-teal-100 dark:bg-teal-100/40 text-teal-600",
 ];
 
 export function TopProperties() {

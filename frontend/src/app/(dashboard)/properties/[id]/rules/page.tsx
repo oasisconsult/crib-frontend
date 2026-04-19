@@ -170,7 +170,7 @@ export default function PropertyRulesPage({ params }: Props) {
           <div className="space-y-4">
             {/* Context banner */}
             {selected === "property" ? (
-              <div className="flex items-start gap-2 rounded-[6px] border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30 px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
+              <div className="flex items-start gap-2 rounded-[6px] border border-teal-200 bg-teal-50 dark:border-teal-800 dark:bg-teal-950/30 px-4 py-3 text-sm text-teal-800 dark:text-teal-200">
                 <Info className="h-4 w-4 mt-0.5 shrink-0" />
                 <span>
                   These are the <strong>property-wide defaults</strong>. Any unit without its own

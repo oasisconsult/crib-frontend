@@ -51,11 +51,11 @@ const CurvedButton = forwardRef<HTMLButtonElement, CurvedButtonProps>(
         case "primary":
           return cn(
             "re-button-primary",
-            "bg-gradient-to-r from-blue-600 to-blue-700",
+            "bg-gradient-to-r from-[#028391] to-[#028391]",
             "text-white",
             "border-0",
             "shadow-lg hover:shadow-xl",
-            "hover:from-blue-700 hover:to-blue-800",
+            "hover:from-[#016f7a] hover:to-[#016f7a]",
             "active:scale-95",
             "transition-all duration-200 ease-out"
           );
@@ -65,7 +65,7 @@ const CurvedButton = forwardRef<HTMLButtonElement, CurvedButtonProps>(
             "bg-white",
             "text-gray-700",
             "border-2 border-gray-200",
-            "hover:border-blue-300",
+            "hover:border-teal-300",
             "hover:bg-gray-50",
             "active:scale-95",
             "transition-all duration-200 ease-out"
@@ -74,8 +74,8 @@ const CurvedButton = forwardRef<HTMLButtonElement, CurvedButtonProps>(
           return cn(
             "re-button-ghost",
             "text-gray-600",
-            "hover:text-blue-600",
-            "hover:bg-blue-50",
+            "hover:text-teal-600",
+            "hover:bg-teal-50",
             "active:scale-95",
             "transition-all duration-150 ease-out"
           );
@@ -94,9 +94,9 @@ const CurvedButton = forwardRef<HTMLButtonElement, CurvedButtonProps>(
           return cn(
             "re-button-secondary",
             "bg-transparent",
-            "text-blue-600",
-            "border-2 border-blue-600",
-            "hover:bg-blue-600",
+            "text-teal-600",
+            "border-2 border-teal-600",
+            "hover:bg-teal-600",
             "hover:text-white",
             "active:scale-95",
             "transition-all duration-200 ease-out"
@@ -104,11 +104,11 @@ const CurvedButton = forwardRef<HTMLButtonElement, CurvedButtonProps>(
         default:
           return cn(
             "re-button-primary",
-            "bg-gradient-to-r from-blue-600 to-blue-700",
+            "bg-gradient-to-r from-[#028391] to-[#028391]",
             "text-white",
             "border-0",
             "shadow-lg hover:shadow-xl",
-            "hover:from-blue-700 hover:to-blue-800",
+            "hover:from-[#016f7a] hover:to-[#016f7a]",
             "active:scale-95",
             "transition-all duration-200 ease-out"
           );
@@ -270,8 +270,8 @@ export function FloatingActionButton({
         "fixed bottom-6 right-6 z-50",
         "w-14 h-14 p-0 rounded-full",
         "shadow-2xl hover:shadow-3xl",
-        "bg-gradient-to-r from-blue-600 to-[#028391]",
-        "hover:from-blue-700 hover:to-teal-700",
+        "bg-gradient-to-r from-[#028391] to-[#028391]",
+        "hover:from-[#016f7a] hover:to-teal-700",
         className
       )}
       {...props}

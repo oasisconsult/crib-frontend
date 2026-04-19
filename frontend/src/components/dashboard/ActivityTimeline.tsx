@@ -49,8 +49,8 @@ const ICONS: Record<
   },
   onboarding: {
     icon: UserCheck,
-    bg: "bg-sky-100 dark:bg-sky-100/40",
-    color: "text-sky-600",
+    bg: "bg-teal-100 dark:bg-teal-100/40",
+    color: "text-teal-600",
   },
   inspection: {
     icon: ClipboardList,

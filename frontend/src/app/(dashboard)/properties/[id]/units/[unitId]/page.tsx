@@ -460,8 +460,8 @@ export default function UnitDetailPage({ params }: Props) {
                 label: "Bedrooms",
                 value: unit.bedrooms,
                 icon: BedDouble,
-                color: "text-blue-600",
-                bg: "bg-blue-100 dark:bg-blue-950/30",
+                color: "text-teal-600",
+                bg: "bg-teal-100 dark:bg-teal-950/30",
               },
               {
                 label: "Bathrooms",

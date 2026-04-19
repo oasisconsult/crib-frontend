@@ -201,8 +201,8 @@ type ActivityEntry =
 
 const ACTIVITY_ICON_CLASSES = {
   payment: {
-    bg: "bg-blue-50 dark:bg-blue-100/40",
-    text: "text-blue-700 dark:text-blue-300",
+    bg: "bg-teal-50 dark:bg-teal-100/40",
+    text: "text-teal-700 dark:text-teal-300",
     icon: CreditCard,
   },
   maintenance: {
@@ -247,7 +247,7 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
       urgent: { label: "Urgent", cls: "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" },
       high:   { label: "High",   cls: "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" },
       medium: { label: "Medium", cls: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
-      low:    { label: "Low",    cls: "bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800" },
+      low:    { label: "Low",    cls: "bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800" },
     };
     const p = priorityMap[m.priority] ?? { label: m.priority, cls: "bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700" };
     badgeClass = p.cls;
@@ -588,8 +588,8 @@ export function Dashboard() {
             href="/properties/new"
             icon={<Building2 className="h-4 w-4" />}
             label="Add Property"
-            iconClass="text-blue-700 dark:text-blue-300"
-            bgClass="bg-blue-50 dark:bg-blue-100/40"
+            iconClass="text-teal-700 dark:text-teal-300"
+            bgClass="bg-teal-50 dark:bg-teal-100/40"
           />
           <QuickAction
             href="/tenants"

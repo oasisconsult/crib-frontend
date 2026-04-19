@@ -52,7 +52,7 @@ export function EmptyState({
       {action && (
         <button
           onClick={action.onClick}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-[6px] hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-[6px] hover:bg-teal-700 transition-colors"
         >
           {action.icon}
           {action.label}
@@ -226,7 +226,7 @@ export function NotificationToast({ notification, onClose }: NotificationToastPr
       case 'warning':
         return 'bg-yellow-50 border-yellow-200';
       case 'info':
-        return 'bg-blue-50 border-blue-200';
+        return 'bg-teal-50 border-teal-200';
     }
   };
 
@@ -247,7 +247,7 @@ export function NotificationToast({ notification, onClose }: NotificationToastPr
           {notification.action && (
             <button
               onClick={notification.action.onClick}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700 mt-2"
+              className="text-sm font-medium text-teal-600 hover:text-teal-700 mt-2"
             >
               {notification.action.label}
             </button>
@@ -308,7 +308,7 @@ export function FilterButton({ activeFilters, onClick, className }: FilterButton
       onClick={onClick}
       className={cn(
         "inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-[6px] hover:bg-gray-50 transition-colors",
-        activeFilters > 0 && "bg-blue-50 border-blue-200 text-blue-600",
+        activeFilters > 0 && "bg-teal-50 border-teal-200 text-teal-600",
         className
       )}
     >

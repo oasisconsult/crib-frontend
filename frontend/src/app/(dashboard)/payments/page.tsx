@@ -163,8 +163,8 @@ export default function PaymentsPage() {
               "UGX",
             ),
             icon: TrendingUp,
-            color: "text-blue-600",
-            bg: "bg-blue-50 dark:bg-blue-950/30",
+            color: "text-teal-600",
+            bg: "bg-teal-50 dark:bg-teal-950/30",
           },
           {
             label: "Collected",

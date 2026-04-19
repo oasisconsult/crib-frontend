@@ -722,8 +722,8 @@ export default function InspectionDetailPage({ params }: Props) {
                 value: inspection.overallCondition ? inspection.overallCondition.charAt(0).toUpperCase() + inspection.overallCondition.slice(1) : "—",
                 sub: "Condition",
                 icon: CheckCircle,
-                color: "text-sky-600",
-                bg: "bg-sky-50 dark:bg-sky-950/30",
+                color: "text-teal-600",
+                bg: "bg-teal-50 dark:bg-teal-950/30",
               },
             ].map((s) => (
               <div key={s.label} className="rounded-[6px] border bg-[hsl(var(--card))] p-4">

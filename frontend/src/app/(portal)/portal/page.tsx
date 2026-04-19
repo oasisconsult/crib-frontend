@@ -76,7 +76,7 @@ const PAY_METHODS: PayMethod[] = [
     id: "bank_transfer",
     label: "Bank Transfer",
     icon: Building2,
-    color: "text-blue-600",
+    color: "text-teal-600",
     requiresPhone: false,
     instructions: "Transfer to the account below and enter the transaction/reference number.",
     bankDetails: "Stanbic Bank · Account: 9030012345678 · Account Name: Crib Properties Ltd",
@@ -257,7 +257,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
       {step === "form" && selectedMethod && (
         <div className="space-y-3">
           {selectedMethod.bankDetails && (
-            <div className="rounded-[6px] bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 p-3 text-xs text-blue-800 dark:text-blue-300">
+            <div className="rounded-[6px] bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 p-3 text-xs text-teal-800 dark:text-teal-300">
               <p className="font-medium mb-0.5">Bank Details</p>
               {selectedMethod.bankDetails}
             </div>
@@ -1157,7 +1157,7 @@ export default function TenantPortalPage() {
                               (m as any).priority === "urgent" ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" :
                               (m as any).priority === "high"   ? "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" :
                               (m as any).priority === "medium" ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" :
-                              "bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800",
+                              "bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800",
                             )}>
                               {(m as any).priority}
                             </span>

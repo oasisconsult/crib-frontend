@@ -66,7 +66,7 @@ const PRIORITIES = [
   { value: "urgent", label: "Urgent", color: "text-red-700 bg-red-50 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" },
   { value: "high",   label: "High",   color: "text-orange-700 bg-orange-50 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" },
   { value: "medium", label: "Medium", color: "text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
-  { value: "low",    label: "Low",    color: "text-sky-700 bg-sky-50 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800" },
+  { value: "low",    label: "Low",    color: "text-teal-700 bg-teal-50 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800" },
 ];
 
 // The valid transitions we expose as action buttons

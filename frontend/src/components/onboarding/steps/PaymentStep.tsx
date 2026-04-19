@@ -241,7 +241,7 @@ export function PaymentStep({
         )}
 
         {method === "cash" && (
-          <div className="rounded-[6px] border border-blue-200 bg-blue-50 dark:border-blue-200 dark:bg-blue-100/40 p-3 text-sm text-blue-800 dark:text-blue-200">
+          <div className="rounded-[6px] border border-teal-200 bg-teal-50 dark:border-teal-200 dark:bg-teal-100/40 p-3 text-sm text-teal-800 dark:text-teal-200">
             Pay cash directly to your landlord or property manager. Your payment
             will be confirmed once they receive and record it.
           </div>

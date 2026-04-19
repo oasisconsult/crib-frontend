@@ -23,7 +23,7 @@ interface StatCardProps {
 
 function StatCard({ title, value, trend, icon: Icon, color, progress }: StatCardProps) {
   const iconBg = {
-    blue:   "bg-blue-500",
+    blue:   "bg-teal-500",
     green:  "bg-emerald-500",
     purple: "bg-teal-500",
     orange: "bg-orange-500",

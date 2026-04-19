@@ -298,7 +298,7 @@ export default function NotificationsPage() {
       {stats && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: "Total Sent",  value: stats.sent,      icon: Bell,         color: "text-blue-600",    bg: "bg-blue-50 dark:bg-blue-950/30" },
+            { label: "Total Sent",  value: stats.sent,      icon: Bell,         color: "text-teal-600",    bg: "bg-teal-50 dark:bg-teal-950/30" },
             { label: "Delivered",   value: stats.delivered, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
             { label: "Failed",      value: stats.failed,    icon: XCircle,      color: "text-red-600",     bg: "bg-red-50 dark:bg-red-950/30" },
             { label: "Read",        value: stats.read,      icon: Clock,        color: "text-amber-600",   bg: "bg-amber-50 dark:bg-amber-950/30" },

@@ -51,8 +51,8 @@ const STATE_CONFIG: Record<
   },
   routed: {
     label: "Routed",
-    color: "text-blue-700",
-    bg: "bg-blue-100 dark:bg-blue-950/40",
+    color: "text-teal-700",
+    bg: "bg-teal-100 dark:bg-teal-950/40",
     icon: Clock,
   },
   pending: {
