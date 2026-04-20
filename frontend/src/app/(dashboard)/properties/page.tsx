@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus, Building2, Home, MapPin, LayoutGrid, List, ChevronRight, TrendingUp,
-  Warehouse, Hotel, Briefcase, Castle,
+  Warehouse, Hotel, Briefcase, Castle, Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CardSkeleton } from "@/components/common/LoadingSkeleton";
@@ -18,6 +18,7 @@ import { cn } from "@/utils/cn";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ReadOnlyBanner } from "@/components/common/ReadOnlyBanner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ImportModal } from "./components/ImportModal";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
 
 // WCAG 1.4.1 — status is always shown as text label; colour is supplementary
@@ -271,6 +272,7 @@ export default function PropertiesPage() {
   const [typeFilter, setTypeFilter] = useState<PropertyType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<PropertyStatus | "all">("all");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [showImport, setShowImport] = useState(false);
   const { data, isLoading } = useProperties();
   const setActiveProperty = useAppStore((s) => s.setActiveProperty);
 
@@ -313,10 +315,16 @@ export default function PropertiesPage() {
         description={`${data?.total ?? 0} properties in your portfolio`}
         actions={
           canWrite ? (
-            <Button onClick={() => router.push("/properties/new")}>
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              Add Property
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setShowImport(true)}>
+                <Upload className="h-4 w-4" aria-hidden="true" />
+                Import CSV
+              </Button>
+              <Button onClick={() => router.push("/properties/new")}>
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                Add Property
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -441,6 +449,8 @@ export default function PropertiesPage() {
           </div>
         </div>
       )}
+
+      {showImport && <ImportModal onClose={() => setShowImport(false)} />}
     </div>
   );
 }

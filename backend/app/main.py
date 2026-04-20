@@ -118,7 +118,7 @@ def create_app() -> FastAPI:
     from app.api.v1 import (
         agency_invites, analytics, health, inspections, landlords, leases, me, messages,
         mobile_money, notifications, onboarding, organisations, payments, properties,
-        rbac, system_settings, tenants, uploads, wallet, webhooks,
+        property_import, rbac, system_settings, tenants, uploads, wallet, webhooks,
     )
     from app.api.v1.flat_payments import (
         late_fees_router, payments_router, schedules_router,
@@ -151,6 +151,7 @@ def create_app() -> FastAPI:
     application.include_router(wallet.router, prefix=settings.api_prefix)
     application.include_router(mobile_money.router, prefix=settings.api_prefix)
     # Webhooks use the api_prefix but no auth — called by external providers
+    application.include_router(property_import.router, prefix=settings.api_prefix)
     application.include_router(landlords.router, prefix=settings.api_prefix)
     application.include_router(agency_invites.router, prefix=settings.api_prefix)
     application.include_router(webhooks.router, prefix=settings.api_prefix)
