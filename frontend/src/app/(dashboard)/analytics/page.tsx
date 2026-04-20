@@ -125,8 +125,8 @@ export default function AnalyticsPage() {
               <AreaChart data={cashFlow} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="cashIn" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="cashOut" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
                   contentStyle={{ fontSize: 12 }}
                 />
                 <Legend />
-                <Area type="monotone" dataKey="inflow"  name="Cash In"  stroke="#22c55e" fill="url(#cashIn)"  strokeWidth={2} />
+                <Area type="monotone" dataKey="inflow"  name="Cash In"  stroke="#10b981" fill="url(#cashIn)"  strokeWidth={2} />
                 <Area type="monotone" dataKey="outflow" name="Cash Out" stroke="#ef4444" fill="url(#cashOut)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>

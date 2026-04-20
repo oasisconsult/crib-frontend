@@ -30,7 +30,7 @@ export function ESignatureCanvas({ onSave, className }: ESignatureCanvasProps) {
 
     padRef.current = new SignaturePad(canvas, {
       backgroundColor: "rgb(255, 255, 255)",
-      penColor: "#1e1b4b",
+      penColor: "#134E4A",
     });
 
     padRef.current.addEventListener("endStroke", () => {

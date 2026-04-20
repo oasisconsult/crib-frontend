@@ -42,8 +42,8 @@ export function OccupancyChart({ data: dataProp, loading: loadingProp }: Occupan
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="availableGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#e2e8f0" stopOpacity={0.5} />
-                  <stop offset="95%" stopColor="#e2e8f0" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#C4E0DA" stopOpacity={0.5} />
+                  <stop offset="95%" stopColor="#C4E0DA" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -71,7 +71,7 @@ export function OccupancyChart({ data: dataProp, loading: loadingProp }: Occupan
                 type="monotone"
                 dataKey="available"
                 name="Available"
-                stroke="#94a3b8"
+                stroke="#C4E0DA"
                 strokeWidth={2}
                 fill="url(#availableGrad)"
               />

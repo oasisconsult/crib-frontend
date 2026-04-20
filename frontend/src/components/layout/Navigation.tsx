@@ -75,7 +75,7 @@ export function Sidebar({
       {/* Logo */}
       <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#0B3D91] rounded-[6px] flex items-center justify-center">
+          <div className="w-8 h-8 bg-primary rounded-[6px] flex items-center justify-center">
             <span className="text-white font-bold text-lg">C</span>
           </div>
           <span className="text-xl font-semibold text-slate-900">Crib</span>

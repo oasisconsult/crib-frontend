@@ -38,14 +38,13 @@ interface KpiCardProps {
   sub: string;
   positive: boolean;
   icon: React.ReactNode;
-  iconColor: string;
-  iconBg: string;
+  iconClass: string;
   href?: string;
   loading?: boolean;
 }
 
 function KpiCard({
-  label, value, sub, positive, icon, iconColor, iconBg, href, loading,
+  label, value, sub, positive, icon, iconClass, href, loading,
 }: KpiCardProps) {
   const inner = (
     <div
@@ -60,11 +59,10 @@ function KpiCard({
     >
       <div className="flex items-center justify-between">
         <div
-          className="h-10 w-10 rounded-[8px] flex items-center justify-center shrink-0"
-          style={{ background: iconBg }}
+          className={cn("h-10 w-10 rounded-[8px] flex items-center justify-center shrink-0", iconClass)}
           aria-hidden="true"
         >
-          <span style={{ color: iconColor }}>{icon}</span>
+          {icon}
         </div>
         {loading ? (
           <Skeleton className="h-5 w-16 rounded-[4px]" />
@@ -370,8 +368,7 @@ function buildKpis(stats: DashboardStats): KpiCardProps[] {
       value: String(stats.totalProperties),
       sub: `${stats.totalUnits} total units`,
       positive: true,
-      iconBg: "#EEF4FF",
-      iconColor: "#0062FF",
+      iconClass: "bg-primary/15 text-primary",
       icon: <Building2 className="h-5 w-5" />,
       href: "/properties",
     },
@@ -380,8 +377,7 @@ function buildKpis(stats: DashboardStats): KpiCardProps[] {
       value: `${stats.occupancyRate.toFixed(1)}%`,
       sub: `${stats.occupiedUnits} / ${stats.totalUnits} occupied`,
       positive: occupancyGood,
-      iconBg: "#ECFDF5",
-      iconColor: "#059669",
+      iconClass: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400",
       icon: <Users className="h-5 w-5" />,
       href: "/tenants",
     },
@@ -390,8 +386,7 @@ function buildKpis(stats: DashboardStats): KpiCardProps[] {
       value: formatCurrencyCompact(stats.monthlyRevenue),
       sub: `${stats.collectionRate.toFixed(0)}% collection rate`,
       positive: collectionGood,
-      iconBg: "#EEF4FF",
-      iconColor: "#0062FF",
+      iconClass: "bg-primary/15 text-primary",
       icon: <DollarSign className="h-5 w-5" />,
       href: "/payments",
     },
@@ -400,8 +395,7 @@ function buildKpis(stats: DashboardStats): KpiCardProps[] {
       value: formatCurrencyCompact(stats.overdueAmount),
       sub: `${stats.overduePayments} overdue ${stats.overduePayments === 1 ? "payment" : "payments"}`,
       positive: !hasOverdue,
-      iconBg: "#FFFBEB",
-      iconColor: "#D97706",
+      iconClass: "bg-warning/15 text-warning",
       icon: <FileText className="h-5 w-5" />,
       href: "/payments",
     },
@@ -495,8 +489,7 @@ export function Dashboard() {
                 value=""
                 sub=""
                 positive={true}
-                iconBg="#EEF4FF"
-                iconColor="#0062FF"
+                iconClass="bg-primary/15 text-primary"
                 icon={<Building2 className="h-5 w-5" />}
                 loading
               />

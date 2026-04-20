@@ -85,12 +85,12 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
               <AreaChart data={sliced} margin={{ top: 4, right: 4, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="collectedGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#14C6A3" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#14C6A3" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="expectedGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.15} />
-                    <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#C4E0DA" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#C4E0DA" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
@@ -115,7 +115,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
                   type="monotone"
                   dataKey="expected"
                   name="Expected"
-                  stroke="#94a3b8"
+                  stroke="#C4E0DA"
                   strokeWidth={2}
                   strokeDasharray="5 3"
                   fill="url(#expectedGrad)"
@@ -125,7 +125,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
                   type="monotone"
                   dataKey="collected"
                   name="Collected"
-                  stroke="#6366f1"
+                  stroke="#14C6A3"
                   strokeWidth={2.5}
                   fill="url(#collectedGrad)"
                   dot={false}
@@ -136,8 +136,8 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
             {/* Legend */}
             <div className="flex items-center justify-center sm:justify-start gap-4 sm:gap-5 mt-3 px-1 flex-wrap">
               {[
-                { color: "#6366f1", label: "Collected", solid: true },
-                { color: "#94a3b8", label: "Expected",  solid: false },
+                { color: "#14C6A3", label: "Collected", solid: true },
+                { color: "#C4E0DA", label: "Expected",  solid: false },
               ].map((l) => (
                 <div key={l.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <svg width="20" height="8">

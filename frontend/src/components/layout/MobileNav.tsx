@@ -19,7 +19,6 @@ import {
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
 import { usePermissions } from "@/hooks/usePermissions";
-import { Button } from "@/components/ui/button";
 import type { UserRole } from "@/types";
 
 interface NavItem {
@@ -122,7 +121,7 @@ export function MobileNav() {
       >
         <div className="flex items-center justify-between px-4 h-[60px] border-b border-[hsl(var(--sidebar-border))]">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#0062FF] text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-primary text-primary-foreground">
               <Building2 className="h-4 w-4" />
             </div>
             <span
