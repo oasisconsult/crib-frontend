@@ -17,6 +17,7 @@ import {
   Wrench,
   Shield,
   LogOut,
+  KeyRound,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -55,6 +56,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/tenants",
     label: "Tenants",
     icon: Users,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/landlords",
+    label: "Landlords",
+    icon: KeyRound,
     roles: ["owner", "manager", "superadmin"],
   },
   {
