@@ -114,6 +114,15 @@ DEV_USERS: dict[str, TokenClaims] = {
         sub="dev_manager1", org_id="org_dev", org_roles=["manager"], email="manager@dev.local"
     ),
     "superadmin-1": TokenClaims(sub="dev_superadmin1", org_roles=["superadmin"], email="superadmin@dev.local"),
+    # Landlord fixture — no org, uses app-level landlord role
+    "landlord-1": TokenClaims(
+        sub="dev_landlord1",
+        org_id=None,
+        org_roles=["landlord"],
+        app_roles=["landlord"],
+        email="landlord@dev.local",
+        name="Dev Landlord",
+    ),
 }
 
 

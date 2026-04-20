@@ -44,6 +44,7 @@ class ProfileOut(CamelModel):
     phone: str | None = None
     avatar: str | None = None
     organisation_id: str | None = None
+    is_read_only: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -80,6 +81,7 @@ def _profile_out(current_user: CurrentUser) -> ProfileOut:
         phone=p.phone,
         avatar=p.avatar_url,
         organisation_id=str(p.organisation_id) if p.organisation_id else None,
+        is_read_only=bool(p.is_read_only),
         created_at=created_at,
         updated_at=updated_at,
     )

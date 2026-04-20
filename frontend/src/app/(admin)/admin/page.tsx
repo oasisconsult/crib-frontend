@@ -20,6 +20,8 @@ import {
   MoreHorizontal,
   Search,
   Plus,
+  MailCheck,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,8 @@ import { Separator } from "@/components/ui/separator";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { RbacPanel } from "@/components/admin/RbacPanel";
+import { useAgencyInvites, useCreateAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
+import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 
 const MOCK_USERS = [
@@ -78,9 +82,57 @@ function Avatar({ name }: { name: string }) {
   );
 }
 
+const EMPTY_INVITE_FORM = {
+  agencyName: "",
+  managerEmail: "",
+  managerFirstName: "",
+  managerLastName: "",
+  agencyPhone: "",
+  agencyContactEmail: "",
+  agencyCountry: "",
+  agencyCurrency: "UGX",
+  agencyAddress: "",
+};
+
 export default function AdminPage() {
   const [tab, setTab] = useState("users");
   const [search, setSearch] = useState("");
+
+  // ── Agency invites ──────────────────────────────────────────────────────
+  const { data: agencyInvites = [], isLoading: loadingInvites } = useAgencyInvites();
+  const { mutate: createInvite, isPending: creatingInvite } = useCreateAgencyInvite();
+  const { mutate: revokeInvite } = useRevokeAgencyInvite();
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteForm, setInviteForm] = useState(EMPTY_INVITE_FORM);
+
+  function handleCreateAgencyInvite() {
+    if (!inviteForm.agencyName || !inviteForm.managerEmail || !inviteForm.managerFirstName || !inviteForm.managerLastName) {
+      toast.error("Missing fields", "Agency name, manager name, and email are required");
+      return;
+    }
+    createInvite(
+      {
+        agencyName: inviteForm.agencyName,
+        managerEmail: inviteForm.managerEmail,
+        managerFirstName: inviteForm.managerFirstName,
+        managerLastName: inviteForm.managerLastName,
+        agencyPhone: inviteForm.agencyPhone || undefined,
+        agencyContactEmail: inviteForm.agencyContactEmail || undefined,
+        agencyCountry: inviteForm.agencyCountry || undefined,
+        agencyCurrency: inviteForm.agencyCurrency || undefined,
+        agencyAddress: inviteForm.agencyAddress || undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success("Invite sent", `${inviteForm.managerEmail} will receive an onboarding link`);
+          setShowInviteModal(false);
+          setInviteForm(EMPTY_INVITE_FORM);
+        },
+        onError: (err: any) =>
+          toast.error("Failed to send invite", err?.response?.data?.detail ?? "Please try again"),
+      },
+    );
+  }
 
   const filteredUsers = MOCK_USERS.filter(
     (u) =>
@@ -140,6 +192,10 @@ export default function AdminPage() {
             <TabsTrigger value="users">
               <Users className="h-3.5 w-3.5 mr-1.5" />
               Users
+            </TabsTrigger>
+            <TabsTrigger value="agencies">
+              <Building2 className="h-3.5 w-3.5 mr-1.5" />
+              Agencies
             </TabsTrigger>
             <TabsTrigger value="system">
               <Server className="h-3.5 w-3.5 mr-1.5" />
@@ -277,6 +333,286 @@ export default function AdminPage() {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+
+          {/* ─── Agencies tab ────────────────────────────────── */}
+          <TabsContent value="agencies" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="text-base">Agency Invites</CardTitle>
+                    <CardDescription>
+                      Invite a new property agency to onboard onto Crib. An email with a
+                      setup link will be sent to the agency manager.
+                    </CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => setShowInviteModal(true)}>
+                    <Plus className="h-3.5 w-3.5" />
+                    Invite agency
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {loadingInvites ? (
+                  <div className="flex items-center gap-2 py-6 text-muted-foreground text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading…
+                  </div>
+                ) : agencyInvites.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">No agency invites yet</p>
+                    <p className="text-xs mt-1">Use the button above to invite a new agency</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="hidden sm:grid grid-cols-[1fr_1fr_auto_auto_auto] gap-4 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                      <span>Agency</span>
+                      <span>Manager</span>
+                      <span>Sent</span>
+                      <span>Status</span>
+                      <span />
+                    </div>
+                    <div className="divide-y">
+                      {agencyInvites.map((inv) => (
+                        <div
+                          key={inv.id}
+                          className="grid sm:grid-cols-[1fr_1fr_auto_auto_auto] gap-3 sm:gap-4 items-center py-3 px-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{inv.agencyName}</p>
+                            {inv.agencyContactEmail && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {inv.agencyContactEmail}
+                              </p>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm truncate">
+                              {inv.managerFirstName} {inv.managerLastName}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {inv.managerEmail}
+                            </p>
+                          </div>
+                          <span className="text-xs text-muted-foreground whitespace-nowrap hidden sm:block">
+                            {new Date(inv.createdAt).toLocaleDateString("en-GB", {
+                              day: "numeric",
+                              month: "short",
+                            })}
+                          </span>
+                          <Badge
+                            variant={
+                              inv.status === "accepted"
+                                ? "success"
+                                : inv.status === "pending"
+                                  ? "warning"
+                                  : "outline"
+                            }
+                            className="text-xs capitalize w-fit"
+                          >
+                            {inv.status}
+                          </Badge>
+                          {inv.status === "pending" ? (
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
+                              onClick={() =>
+                                revokeInvite(inv.id, {
+                                  onSuccess: () => toast.success("Invite revoked"),
+                                  onError: () => toast.error("Failed to revoke invite"),
+                                })
+                              }
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : (
+                            <div className="w-7" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── Invite modal ── */}
+            {showInviteModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+                <Card className="w-full max-w-lg my-4">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <MailCheck className="h-5 w-5" />
+                      Invite New Agency
+                    </CardTitle>
+                    <CardDescription>
+                      The agency manager will receive an onboarding link to set up their
+                      account and agency profile.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Agency Details
+                      </p>
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="ia-agencyName">Agency name *</Label>
+                          <Input
+                            id="ia-agencyName"
+                            value={inviteForm.agencyName}
+                            onChange={(e) =>
+                              setInviteForm((f) => ({ ...f, agencyName: e.target.value }))
+                            }
+                            placeholder="e.g. GeoBox Properties Ltd"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            This becomes the locked agency name after onboarding
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="ia-agencyPhone">Phone</Label>
+                            <Input
+                              id="ia-agencyPhone"
+                              type="tel"
+                              value={inviteForm.agencyPhone}
+                              onChange={(e) =>
+                                setInviteForm((f) => ({ ...f, agencyPhone: e.target.value }))
+                              }
+                              placeholder="+256 700 000000"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="ia-agencyEmail">Contact email</Label>
+                            <Input
+                              id="ia-agencyEmail"
+                              type="email"
+                              value={inviteForm.agencyContactEmail}
+                              onChange={(e) =>
+                                setInviteForm((f) => ({
+                                  ...f,
+                                  agencyContactEmail: e.target.value,
+                                }))
+                              }
+                              placeholder="info@agency.com"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="ia-country">Country</Label>
+                            <Input
+                              id="ia-country"
+                              value={inviteForm.agencyCountry}
+                              onChange={(e) =>
+                                setInviteForm((f) => ({ ...f, agencyCountry: e.target.value }))
+                              }
+                              placeholder="Uganda"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="ia-currency">Currency</Label>
+                            <Input
+                              id="ia-currency"
+                              value={inviteForm.agencyCurrency}
+                              onChange={(e) =>
+                                setInviteForm((f) => ({
+                                  ...f,
+                                  agencyCurrency: e.target.value,
+                                }))
+                              }
+                              placeholder="UGX"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="ia-address">Address</Label>
+                          <Input
+                            id="ia-address"
+                            value={inviteForm.agencyAddress}
+                            onChange={(e) =>
+                              setInviteForm((f) => ({ ...f, agencyAddress: e.target.value }))
+                            }
+                            placeholder="Plot 12, Kampala Road"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Initial Manager
+                      </p>
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="ia-mgrFirst">First name *</Label>
+                            <Input
+                              id="ia-mgrFirst"
+                              value={inviteForm.managerFirstName}
+                              onChange={(e) =>
+                                setInviteForm((f) => ({
+                                  ...f,
+                                  managerFirstName: e.target.value,
+                                }))
+                              }
+                              placeholder="Tom"
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="ia-mgrLast">Last name *</Label>
+                            <Input
+                              id="ia-mgrLast"
+                              value={inviteForm.managerLastName}
+                              onChange={(e) =>
+                                setInviteForm((f) => ({
+                                  ...f,
+                                  managerLastName: e.target.value,
+                                }))
+                              }
+                              placeholder="Mukasa"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="ia-mgrEmail">Manager email *</Label>
+                          <Input
+                            id="ia-mgrEmail"
+                            type="email"
+                            value={inviteForm.managerEmail}
+                            onChange={(e) =>
+                              setInviteForm((f) => ({ ...f, managerEmail: e.target.value }))
+                            }
+                            placeholder="manager@agency.com"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowInviteModal(false);
+                          setInviteForm(EMPTY_INVITE_FORM);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button onClick={handleCreateAgencyInvite} loading={creatingInvite}>
+                        Send invite
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </TabsContent>
 
           {/* ─── System tab ──────────────────────────────────── */}

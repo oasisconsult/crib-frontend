@@ -450,6 +450,311 @@ async def _assign_tenant_role(
         return False
 
 
+# ── Create landlord user (no org — app-level role only) ───────────────────────
+
+
+async def create_landlord_user(
+    *,
+    email: str,
+    first_name: str,
+    last_name: str,
+    temp_password: str,
+) -> str | None:
+    """
+    Create a Logto user for an invited landlord.
+    Assigns the app-level `landlord` role (not an org role).
+    Returns the Logto user ID on success, None on failure.
+    """
+    if not _is_configured():
+        log.debug("logto.m2m_not_configured — skipping landlord user creation", email=email)
+        return None
+
+    try:
+        token = await _get_m2m_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        base = "http://logto:3001/api"
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            # Create user
+            create_resp = await client.post(
+                f"{base}/users",
+                json={
+                    "primaryEmail": email,
+                    "name": f"{first_name} {last_name}",
+                    "username": email.split("@")[0].lower(),
+                    "password": temp_password,
+                },
+                headers=headers,
+            )
+
+            if create_resp.status_code == 422:
+                # User already exists — look them up
+                search = await client.get(f"{base}/users", params={"search": email}, headers=headers)
+                search.raise_for_status()
+                users = search.json()
+                if not users:
+                    return None
+                logto_user_id = users[0]["id"]
+            else:
+                create_resp.raise_for_status()
+                logto_user_id = create_resp.json()["id"]
+
+            # Find or create 'landlord' app role and assign it
+            await _assign_app_role(client, base, logto_user_id, "landlord", headers)
+
+        log.info("logto.landlord_user_provisioned", email=email, logto_user_id=logto_user_id)
+        return logto_user_id
+
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.create_landlord_user_failed", email=email, error=str(exc))
+        return None
+
+
+async def _assign_app_role(
+    client: httpx.AsyncClient,
+    base: str,
+    user_id: str,
+    role_name: str,
+    headers: dict,
+) -> bool:
+    """Find or create an app-level role by name and assign it to the user."""
+    try:
+        roles_resp = await client.get(f"{base}/roles", headers=headers)
+        roles_resp.raise_for_status()
+        role_id = None
+        for r in roles_resp.json():
+            if r.get("name", "").lower() == role_name.lower():
+                role_id = r["id"]
+                break
+
+        if not role_id:
+            create_resp = await client.post(
+                f"{base}/roles",
+                json={"name": role_name, "description": f"{role_name.capitalize()} role"},
+                headers=headers,
+            )
+            create_resp.raise_for_status()
+            role_id = create_resp.json()["id"]
+
+        assign_resp = await client.post(
+            f"{base}/users/{user_id}/roles",
+            json={"roleIds": [role_id]},
+            headers=headers,
+        )
+        return assign_resp.status_code in (200, 201, 204)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.assign_app_role_failed", user_id=user_id, role=role_name, error=str(exc))
+        return False
+
+
+# ── Create agency organisation + manager user ──────────────────────────────────
+
+
+async def create_agency_with_manager(
+    *,
+    agency_name: str,
+    agency_slug: str,
+    manager_email: str,
+    manager_first_name: str,
+    manager_last_name: str,
+    temp_password: str,
+) -> tuple[str, str] | None:
+    """
+    Create a Logto organisation for the agency and a manager user.
+    Returns (logto_org_id, logto_user_id) on success, None on failure.
+
+    Flow:
+      1. Create Logto org
+      2. Create manager user
+      3. Add user to org
+      4. Assign 'manager' org role
+    """
+    if not _is_configured():
+        log.debug("logto.m2m_not_configured — using dev stubs")
+        import secrets as _sec
+        return f"org_dev_{agency_slug}", f"user_dev_{_sec.token_hex(8)}"
+
+    try:
+        token = await _get_m2m_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        base = "http://logto:3001/api"
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            # 1. Create org
+            org_resp = await client.post(
+                f"{base}/organizations",
+                json={"name": agency_name, "description": f"Agency: {agency_slug}"},
+                headers=headers,
+            )
+            org_resp.raise_for_status()
+            logto_org_id = org_resp.json()["id"]
+            log.info("logto.agency_org_created", org_id=logto_org_id, name=agency_name)
+
+            # 2. Create manager user
+            create_resp = await client.post(
+                f"{base}/users",
+                json={
+                    "primaryEmail": manager_email,
+                    "name": f"{manager_first_name} {manager_last_name}",
+                    "username": manager_email.split("@")[0].lower(),
+                    "password": temp_password,
+                },
+                headers=headers,
+            )
+            if create_resp.status_code == 422:
+                search = await client.get(
+                    f"{base}/users", params={"search": manager_email}, headers=headers
+                )
+                search.raise_for_status()
+                users = search.json()
+                logto_user_id = users[0]["id"] if users else None
+            else:
+                create_resp.raise_for_status()
+                logto_user_id = create_resp.json()["id"]
+
+            if not logto_user_id:
+                log.warning("logto.agency_manager_not_created", email=manager_email)
+                return None
+
+            # 3. Add user to org
+            add_resp = await client.post(
+                f"{base}/organizations/{logto_org_id}/users",
+                json={"userIds": [logto_user_id]},
+                headers=headers,
+            )
+            if add_resp.status_code not in (200, 201, 204):
+                log.warning("logto.agency_add_to_org_failed", status=add_resp.status_code)
+
+            # 4. Assign manager org role
+            await _assign_org_role(client, base, logto_org_id, logto_user_id, "manager", headers)
+
+        log.info(
+            "logto.agency_provisioned",
+            org_id=logto_org_id, user_id=logto_user_id, agency=agency_name
+        )
+        return logto_org_id, logto_user_id
+
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.create_agency_failed", agency=agency_name, error=str(exc))
+        return None
+
+
+async def _assign_org_role(
+    client: httpx.AsyncClient,
+    base: str,
+    org_id: str,
+    user_id: str,
+    role_name: str,
+    headers: dict,
+) -> bool:
+    """Find and assign an org-level role to a user within an organisation."""
+    try:
+        roles_resp = await client.get(f"{base}/organizations/{org_id}/roles", headers=headers)
+        role_id = None
+        if roles_resp.status_code == 200:
+            for r in roles_resp.json():
+                if r.get("name", "").lower() == role_name.lower():
+                    role_id = r["id"]
+                    break
+
+        if not role_id:
+            # Fall back: look up global org-role list
+            gr = await client.get(f"{base}/organization-roles", headers=headers)
+            if gr.status_code == 200:
+                for r in gr.json():
+                    if r.get("name", "").lower() == role_name.lower():
+                        role_id = r["id"]
+                        break
+
+        if not role_id:
+            log.warning("logto.org_role_not_found", org_id=org_id, role=role_name)
+            return False
+
+        assign = await client.post(
+            f"{base}/organizations/{org_id}/users/{user_id}/roles",
+            json={"organizationRoleIds": [role_id]},
+            headers=headers,
+        )
+        return assign.status_code in (200, 201, 204)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.assign_org_role_failed", error=str(exc))
+        return False
+
+
+# ── Send landlord welcome email ────────────────────────────────────────────────
+
+
+async def send_landlord_welcome_email(
+    *,
+    email: str,
+    first_name: str,
+    temp_password: str,
+    frontend_url: str,
+) -> None:
+    """Send invited landlord their login credentials."""
+    from app.integrations.notifications.email import get_email_provider
+
+    subject = "Welcome to Crib — your landlord dashboard is ready"
+    body = (
+        f"Hi {first_name},\n\n"
+        "Your landlord account has been created. You can now sign in to view "
+        "your properties, leases, and payment history.\n\n"
+        f"Login:     {frontend_url}/login\n"
+        f"Email:     {email}\n"
+        f"Password:  {temp_password}\n\n"
+        "Please change your password after your first sign-in.\n\n"
+        "— The Crib Team"
+    )
+    provider = get_email_provider()
+    result = await provider.send(
+        recipient_name=first_name,
+        recipient_email=email,
+        recipient_phone=None,
+        subject=subject,
+        body=body,
+    )
+    if result.success:
+        log.info("logto.landlord_welcome_email_sent", email=email)
+    else:
+        log.warning("logto.landlord_welcome_email_failed", email=email, reason=result.failure_reason)
+
+
+async def send_agency_manager_welcome_email(
+    *,
+    email: str,
+    first_name: str,
+    agency_name: str,
+    temp_password: str,
+    frontend_url: str,
+) -> None:
+    """Send newly-created agency manager their login credentials."""
+    from app.integrations.notifications.email import get_email_provider
+
+    subject = f"Welcome to Crib — {agency_name} is now live"
+    body = (
+        f"Hi {first_name},\n\n"
+        f"Your agency '{agency_name}' has been set up on Crib. You can now sign in "
+        "to manage your properties, tenants, leases, and more.\n\n"
+        f"Login:     {frontend_url}/login\n"
+        f"Email:     {email}\n"
+        f"Password:  {temp_password}\n\n"
+        "Please change your password after your first sign-in.\n\n"
+        "— The Crib Team"
+    )
+    provider = get_email_provider()
+    result = await provider.send(
+        recipient_name=first_name,
+        recipient_email=email,
+        recipient_phone=None,
+        subject=subject,
+        body=body,
+    )
+    if result.success:
+        log.info("logto.agency_welcome_email_sent", email=email, agency=agency_name)
+    else:
+        log.warning("logto.agency_welcome_email_failed", email=email, reason=result.failure_reason)
+
+
 # ── Resend login credentials ───────────────────────────────────────────────────
 
 async def resend_login_credentials(

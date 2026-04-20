@@ -27,10 +27,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     // This catches cases where the middleware cookie check runs before cookies are written.
     if (user) {
       const userRoles: string[] = (user.roles as string[] | undefined) ?? (user.role ? [user.role as string] : []);
-      const isStaff = ["superadmin", "owner", "manager", "maintenance"].some((r) =>
-        userRoles.includes(r),
+      const isDashboardUser = ["superadmin", "owner", "manager", "maintenance", "landlord"].some(
+        (r) => userRoles.includes(r),
       );
-      if (!isStaff && userRoles.includes("tenant")) {
+      if (!isDashboardUser && userRoles.includes("tenant")) {
         window.location.replace("/portal");
       }
     }

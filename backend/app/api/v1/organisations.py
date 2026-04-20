@@ -1,18 +1,14 @@
 """
-Organisation provisioning endpoint.
+Organisation endpoints.
 
-POST /organisations/provision — called once during landlord onboarding.
-Creates:
-  1. A Logto Organization (via Management API)
-  2. Our Organisation row
-  3. Updates the caller's Profile with org linkage + role=owner
-
-This endpoint is intentionally minimal — Logto handles member invitations
-and role assignments via its own UI/API flows.
+POST /organisations/provision — called once during agency onboarding.
+GET  /organisations/me        — returns the caller's organisation details.
+PATCH /organisations/me       — updates org contact info (name: superadmin only).
 """
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
@@ -39,6 +35,19 @@ class OrganisationOut(CamelModel):
     slug: str
     plan: str
     currency: str
+    country: str | None = None
+    contact_phone: str | None = None
+    contact_email: str | None = None
+
+
+class OrganisationUpdateRequest(CamelModel):
+    """
+    Fields editable by manager/owner: contact_phone, contact_email.
+    Field editable by superadmin only: name.
+    """
+    name: str | None = None
+    contact_phone: str | None = None
+    contact_email: str | None = None
 
 
 async def _create_logto_org(name: str, slug: str) -> str:
@@ -127,4 +136,90 @@ async def provision_organisation(
         slug=org.slug,
         plan=org.plan.value,
         currency=org.currency,
+        country=org.country,
+        contact_phone=org.settings.get("contact_phone"),
+        contact_email=org.settings.get("contact_email"),
+    )
+
+
+@router.get("/me", response_model=OrganisationOut)
+async def get_my_organisation(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OrganisationOut:
+    """Return the caller's organisation."""
+    if not current_user.profile.organisation_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No organisation found")
+    result = await db.execute(
+        select(Organisation).where(Organisation.id == current_user.profile.organisation_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found")
+    return OrganisationOut(
+        id=str(org.id),
+        logto_org_id=org.logto_org_id,
+        name=org.name,
+        slug=org.slug,
+        plan=org.plan.value,
+        currency=org.currency,
+        country=org.country,
+        contact_phone=org.settings.get("contact_phone"),
+        contact_email=org.settings.get("contact_email"),
+    )
+
+
+@router.patch("/me", response_model=OrganisationOut)
+async def update_my_organisation(
+    body: OrganisationUpdateRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OrganisationOut:
+    """
+    Update organisation contact details.
+    - contact_phone / contact_email: editable by owner, manager, superadmin.
+    - name: superadmin only.
+    """
+    if not current_user.has_role("owner", "manager", "superadmin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+
+    if not current_user.profile.organisation_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No organisation found")
+
+    result = await db.execute(
+        select(Organisation).where(Organisation.id == current_user.profile.organisation_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found")
+
+    # Name change: superadmin only
+    if body.name is not None:
+        if not current_user.has_role("superadmin"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only a superadmin can change the agency name",
+            )
+        org.name = body.name
+
+    # Contact fields go into JSONB settings
+    settings_blob: dict = dict(org.settings or {})
+    if body.contact_phone is not None:
+        settings_blob["contact_phone"] = body.contact_phone
+    if body.contact_email is not None:
+        settings_blob["contact_email"] = body.contact_email
+    org.settings = settings_blob
+
+    await db.flush()
+
+    return OrganisationOut(
+        id=str(org.id),
+        logto_org_id=org.logto_org_id,
+        name=org.name,
+        slug=org.slug,
+        plan=org.plan.value,
+        currency=org.currency,
+        country=org.country,
+        contact_phone=org.settings.get("contact_phone"),
+        contact_email=org.settings.get("contact_email"),
     )

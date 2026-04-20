@@ -115,3 +115,101 @@ async def test_provision_dev_skips_logto_call(client: AsyncClient):
     assert resp.status_code == 201
     mock_logto.assert_not_called()
     assert resp.json()["logtoOrgId"].startswith("org_dev_")
+
+
+# ── GET /organisations/me ─────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_get_my_organisation(client: AsyncClient):
+    """Manager in an org gets their org details back."""
+    with patch.object(get_settings(), "logto_m2m_app_id", "test_m2m"), \
+         patch("app.api.v1.organisations._create_logto_org", return_value="org_getme_test"):
+        await client.post(
+            "/api/v1/organisations/provision",
+            headers=auth_headers("owner-1"),
+            json={**PROVISION_PAYLOAD, "slug": "getme-org"},
+        )
+
+    resp = await client.get("/api/v1/organisations/me", headers=auth_headers("owner-1"))
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["name"] == PROVISION_PAYLOAD["name"]
+    assert "slug" in body
+    assert "currency" in body
+
+
+@pytest.mark.asyncio
+async def test_get_my_organisation_no_org_404(client: AsyncClient):
+    """User without an org receives 404."""
+    # Use a fresh tenant who has no org
+    await client.get("/api/v1/me", headers=auth_headers("tenant-1"))
+    resp = await client.get("/api/v1/organisations/me", headers=auth_headers("tenant-1"))
+    assert resp.status_code == 404
+
+
+# ── PATCH /organisations/me ───────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_manager_can_update_contact_details(client: AsyncClient):
+    """Manager can update phone and email but NOT name."""
+    with patch.object(get_settings(), "logto_m2m_app_id", "test_m2m"), \
+         patch("app.api.v1.organisations._create_logto_org", return_value="org_patch_contact"):
+        await client.post(
+            "/api/v1/organisations/provision",
+            headers=auth_headers("manager-1"),
+            json={**PROVISION_PAYLOAD, "slug": "patch-contact-org"},
+        )
+
+    resp = await client.patch(
+        "/api/v1/organisations/me",
+        headers=auth_headers("manager-1"),
+        json={"contactPhone": "+256700999888", "contactEmail": "info@sunrise.ug"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["contactPhone"] == "+256700999888"
+    assert body["contactEmail"] == "info@sunrise.ug"
+
+
+@pytest.mark.asyncio
+async def test_manager_cannot_change_org_name(client: AsyncClient):
+    """Manager attempting to change name should receive 403."""
+    with patch.object(get_settings(), "logto_m2m_app_id", "test_m2m"), \
+         patch("app.api.v1.organisations._create_logto_org", return_value="org_name_block"):
+        await client.post(
+            "/api/v1/organisations/provision",
+            headers=auth_headers("manager-1"),
+            json={**PROVISION_PAYLOAD, "slug": "name-block-org"},
+        )
+
+    resp = await client.patch(
+        "/api/v1/organisations/me",
+        headers=auth_headers("manager-1"),
+        json={"name": "Hacked Name Ltd"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_superadmin_can_change_org_name(client: AsyncClient, db_session: AsyncSession):
+    """Superadmin linked to an org can change its name."""
+    from app.models.organisation import Organisation
+    from app.models.profile import Profile
+    from sqlalchemy import select
+
+    # Provision the org as superadmin (superadmin has no org normally — link manually)
+    with patch.object(get_settings(), "logto_m2m_app_id", "test_m2m"), \
+         patch("app.api.v1.organisations._create_logto_org", return_value="org_superadmin_name"):
+        await client.post(
+            "/api/v1/organisations/provision",
+            headers=auth_headers("superadmin-1"),
+            json={**PROVISION_PAYLOAD, "slug": "superadmin-name-org"},
+        )
+
+    resp = await client.patch(
+        "/api/v1/organisations/me",
+        headers=auth_headers("superadmin-1"),
+        json={"name": "New Superadmin Name Ltd"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["name"] == "New Superadmin Name Ltd"

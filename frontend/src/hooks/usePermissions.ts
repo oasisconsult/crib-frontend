@@ -20,6 +20,9 @@ export function usePermissions() {
 
   const role = roles[0]; // primary role (highest priority)
 
+  const isLandlord = roles.includes("landlord");
+  const isReadOnly = isLandlord && (user?.isReadOnly ?? false);
+
   return {
     role,
     roles,
@@ -30,7 +33,13 @@ export function usePermissions() {
     isOwnerOrAbove: roles.some((r) => r === "owner" || r === "superadmin"),
     isManager: roles.includes("manager"),
     isSuperAdmin: roles.includes("superadmin"),
+    isLandlord,
     isTenant: roles.includes("tenant"),
     isMaintenance: roles.includes("maintenance"),
+    canManageOrg: roles.some((r) => ["owner", "manager", "superadmin"].includes(r)),
+    /** True when the landlord's properties are agency-managed (view-only). */
+    isReadOnly,
+    /** True when the user can perform write operations. */
+    canWrite: !isReadOnly,
   };
 }

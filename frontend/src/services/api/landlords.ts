@@ -1,0 +1,63 @@
+import { apiGet, apiPost, apiDelete } from "./client";
+
+export interface LandlordInvite {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  propertyIds: string[];
+  message?: string;
+  status: "pending" | "accepted" | "expired" | "revoked";
+  createdAt: string;
+  expiresAt: string;
+  acceptedAt?: string;
+}
+
+export interface CreateLandlordInviteRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  propertyIds: string[];
+  message?: string;
+}
+
+// ── Public onboarding (no auth required) ────────────────────────────────────
+
+export interface LandlordOnboardingDetails {
+  token: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  message?: string;
+  expiresAt: string;
+  agencyName: string;
+  agencyEmail?: string;
+  agencyPhone?: string;
+  properties: Array<{ id: string; name: string; address: string }>;
+}
+
+export interface CompleteLandlordOnboardingRequest {
+  firstName: string;
+  lastName: string;
+  phone?: string;
+}
+
+export interface CompleteLandlordOnboardingResponse {
+  message: string;
+}
+
+export const landlordsApi = {
+  listInvites: () => apiGet<LandlordInvite[]>("/landlords/invites"),
+  createInvite: (body: CreateLandlordInviteRequest) =>
+    apiPost<LandlordInvite>("/landlords/invites", body),
+  revokeInvite: (id: string) => apiDelete(`/landlords/invites/${id}`),
+
+  // Public — no session needed
+  getOnboarding: (token: string) =>
+    apiGet<LandlordOnboardingDetails>(`/landlords/onboarding/${token}`),
+  completeOnboarding: (token: string, body: CompleteLandlordOnboardingRequest) =>
+    apiPost<CompleteLandlordOnboardingResponse>(`/landlords/onboarding/${token}/complete`, body),
+};

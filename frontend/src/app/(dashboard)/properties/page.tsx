@@ -13,8 +13,10 @@ import { FilterBar } from "@/components/common/FilterBar";
 import { formatCurrencyCompact } from "@/utils/formatters";
 import { useProperties } from "@/hooks/useProperties";
 import { useAppStore } from "@/store/useAppStore";
+import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
 import { PageHeader } from "@/components/common/PageHeader";
+import { ReadOnlyBanner } from "@/components/common/ReadOnlyBanner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
 
@@ -272,6 +274,7 @@ export default function PropertiesPage() {
   const { data, isLoading } = useProperties();
   const setActiveProperty = useAppStore((s) => s.setActiveProperty);
 
+  const { canWrite } = usePermissions();
   const allProperties = data?.data ?? [];
 
   const properties = allProperties.filter((p) => {
@@ -304,14 +307,17 @@ export default function PropertiesPage() {
 
   return (
     <div className="space-y-6">
+      <ReadOnlyBanner />
       <PageHeader
         title="Properties"
         description={`${data?.total ?? 0} properties in your portfolio`}
         actions={
-          <Button onClick={() => router.push("/properties/new")}>
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Add Property
-          </Button>
+          canWrite ? (
+            <Button onClick={() => router.push("/properties/new")}>
+              <Plus className="h-4 w-4" aria-hidden="true" />
+              Add Property
+            </Button>
+          ) : undefined
         }
       />
 

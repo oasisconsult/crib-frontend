@@ -69,6 +69,11 @@ class Profile(TimestampedBase):
         index=True,
     )
 
+    # ── Landlord flag ────────────────────────────────────────────────────────
+    # True for agency-managed landlords (view-only access to their properties).
+    # False for self-managing landlords (full CRUD via their own org).
+    is_read_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
     # ── GDPR ─────────────────────────────────────────────────────────────────
     gdpr_consent_given: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     gdpr_consent_at: Mapped[DateTime | None] = mapped_column(

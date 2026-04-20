@@ -24,10 +24,11 @@ async def test_get_me_shape(client: AsyncClient):
     body = resp.json()
 
     # All expected fields present
-    for field in ("id", "logtoSub", "role", "displayName", "email", "gdprConsentGiven"):
+    for field in ("id", "logtoSub", "role", "displayName", "email", "gdprConsentGiven", "isReadOnly"):
         assert field in body, f"Missing field: {field}"
 
     assert body["gdprConsentGiven"] is False  # default
+    assert body["isReadOnly"] is False  # default — non-landlord profiles are never read-only
 
 
 @pytest.mark.asyncio

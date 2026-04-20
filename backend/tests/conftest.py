@@ -128,6 +128,7 @@ async def test_engine():
             ("superadmin", "Platform operator",  0),
             ("owner",      "Organisation owner", 10),
             ("manager",    "Property manager",   20),
+            ("landlord",   "Landlord",           25),
             ("maintenance","Maintenance staff",  30),
             ("tenant",     "Tenant",             40),
         ]

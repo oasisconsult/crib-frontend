@@ -1,4 +1,4 @@
-export type UserRole = "superadmin" | "owner" | "manager" | "tenant" | "maintenance";
+export type UserRole = "superadmin" | "owner" | "manager" | "landlord" | "tenant" | "maintenance";
 
 export type UserStatus = "active" | "inactive" | "suspended";
 
@@ -20,6 +20,8 @@ export interface User {
   lastLoginAt?: string;
   /** Logto subject identifier — used as fallback for legacy message sender_id matching. */
   logtoSub?: string;
+  /** True for agency-managed landlords — view-only access, no mutations. */
+  isReadOnly?: boolean;
   // Landlord-specific
   propertyIds?: string[];
   // Tenant-specific

@@ -33,8 +33,12 @@ const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:8001";
 // These are token-authenticated endpoints where the invite token in the URL
 // IS the credential — no Logto session exists for a tenant opening their invite link.
 const PUBLIC_PATH_PREFIXES = [
-  // Onboarding flow (flow status, preview, accept-terms, payment, sign)
+  // Tenant onboarding flow (flow status, preview, accept-terms, payment, sign)
   "tenants/onboarding/",
+  // Landlord onboarding (token-authenticated invite acceptance)
+  "landlords/onboarding/",
+  // Agency onboarding (token-authenticated invite acceptance)
+  "agency-invites/onboarding/",
   // Document upload presign for unauthenticated onboarding tenants
   "upload/presign/onboarding/",
   // Dev-only local storage PUT target (the URL returned by local presign)
