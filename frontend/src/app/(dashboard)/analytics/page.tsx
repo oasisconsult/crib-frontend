@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboardStats, useCashFlowData } from "@/hooks/usePayments";
 import { useProperties } from "@/hooks/useProperties";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatCurrency } from "@/utils/formatters";
+import { formatCurrencyCompact } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -30,10 +30,10 @@ export default function AnalyticsPage() {
   const cashFlow = cashFlowRaw?.slice(-months) ?? [];
 
   const kpis = [
-    { label: "Total Revenue (MTD)", value: formatCurrency(stats?.monthlyRevenue ?? 0, "UGX"), change: "+12%", positive: true },
-    { label: "Collection Rate",     value: `${stats?.collectionRate ?? 0}%`,                  change: "+3%",  positive: true },
-    { label: "Occupancy Rate",      value: `${stats?.occupancyRate ?? 0}%`,                   change: "+1.5%",positive: true },
-    { label: "Overdue Amount",      value: formatCurrency(stats?.overdueAmount ?? 0, "UGX"),  change: "-8%",  positive: false },
+    { label: "Total Revenue (MTD)", value: formatCurrencyCompact(stats?.monthlyRevenue ?? 0, "UGX"), change: "+12%", positive: true },
+    { label: "Collection Rate",     value: `${stats?.collectionRate ?? 0}%`,                        change: "+3%",  positive: true },
+    { label: "Occupancy Rate",      value: `${stats?.occupancyRate ?? 0}%`,                         change: "+1.5%",positive: true },
+    { label: "Overdue Amount",      value: formatCurrencyCompact(stats?.overdueAmount ?? 0, "UGX"), change: "-8%",  positive: false },
     { label: "Active Tenants",      value: stats?.activeTenants ?? 0,                          change: "+2",   positive: true },
     { label: "Open Maintenance",    value: stats?.openMaintenanceIssues ?? 0,                  change: "-1",   positive: true },
   ];
