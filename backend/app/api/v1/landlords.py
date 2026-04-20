@@ -1,11 +1,12 @@
 """
 Landlord invite endpoints.
 
-POST   /landlords/invites                     — create invite (manager/owner/superadmin)
-GET    /landlords/invites                     — list org's invites
-DELETE /landlords/invites/{invite_id}         — revoke invite
-GET    /landlords/onboarding/{token}          — public: fetch onboarding details
-POST   /landlords/onboarding/{token}/complete — public: submit onboarding form
+POST   /landlords/invites                        — create invite (manager/owner/superadmin)
+GET    /landlords/invites                        — list org's invites
+DELETE /landlords/invites/{invite_id}            — revoke invite
+POST   /landlords/invites/{invite_id}/resend     — resend invite email
+GET    /landlords/onboarding/{token}             — public: fetch onboarding details
+POST   /landlords/onboarding/{token}/complete    — public: submit onboarding form
 """
 import uuid
 
@@ -25,6 +26,7 @@ from app.services.landlord_service import (
     create_invite,
     get_invite_by_token,
     list_invites,
+    resend_invite_email,
     revoke_invite,
 )
 
@@ -88,6 +90,27 @@ async def revoke_landlord_invite(
         organisation_id=current_user.profile.organisation_id,
     )
     return MessageResponse(message="Invite revoked")
+
+
+@router.post(
+    "/invites/{invite_id}/resend",
+    response_model=LandlordInviteOut,
+    dependencies=[Depends(require_role("owner", "manager", "superadmin"))],
+)
+async def resend_landlord_invite(
+    invite_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> LandlordInviteOut:
+    """Resend the invite email and extend expiry by 7 days."""
+    from fastapi import HTTPException
+    if not current_user.profile.organisation_id:
+        raise HTTPException(status_code=400, detail="You must belong to an organisation")
+    return await resend_invite_email(
+        db=db,
+        invite_id=invite_id,
+        organisation_id=current_user.profile.organisation_id,
+    )
 
 
 # ── Public onboarding endpoints (no auth) ────────────────────────────────────

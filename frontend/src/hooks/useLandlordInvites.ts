@@ -28,3 +28,11 @@ export function useRevokeLandlordInvite() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+export function useResendLandlordInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => landlordsApi.resendInvite(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}

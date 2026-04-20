@@ -1,16 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Loader2, Users, MailCheck } from "lucide-react";
+import { Plus, Trash2, Loader2, Users, MailCheck, Copy, Check, RefreshCw, Link2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/common/PageHeader";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useLandlordInvites, useCreateLandlordInvite, useRevokeLandlordInvite } from "@/hooks/useLandlordInvites";
+import {
+  useLandlordInvites,
+  useCreateLandlordInvite,
+  useRevokeLandlordInvite,
+  useResendLandlordInvite,
+} from "@/hooks/useLandlordInvites";
 import { useProperties } from "@/hooks/useProperties";
 import { toast } from "@/store/useUIStore";
+import type { LandlordInvite } from "@/services/api/landlords";
 
 const EMPTY_FORM = {
   firstName: "",
@@ -21,12 +27,153 @@ const EMPTY_FORM = {
   message: "",
 };
 
+function inviteUrl(token: string) {
+  return `${window.location.origin}/onboarding/landlord/${token}`;
+}
+
+function CopyUrlButton({ token }: { token: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(inviteUrl(token));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Could not copy to clipboard");
+    }
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      title="Copy invite link"
+      className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3 text-emerald-500" />
+          <span className="text-emerald-600 dark:text-emerald-400">Copied!</span>
+        </>
+      ) : (
+        <>
+          <Copy className="h-3 w-3" />
+          Copy link
+        </>
+      )}
+    </button>
+  );
+}
+
+function InviteUrlRow({ token }: { token: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const url = inviteUrl(token);
+
+  return (
+    <div className="mt-1">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+      >
+        <Link2 className="h-3 w-3" />
+        {expanded ? "Hide link" : "Show link"}
+      </button>
+      {expanded && (
+        <div className="mt-1.5 flex items-center gap-2">
+          <code className="flex-1 text-[11px] bg-muted/60 rounded px-2 py-1 truncate select-all">
+            {url}
+          </code>
+          <CopyUrlButton token={token} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InviteRow({
+  invite,
+  canManage,
+  onRevoke,
+  onResend,
+  resending,
+}: {
+  invite: LandlordInvite;
+  canManage: boolean;
+  onRevoke: () => void;
+  onResend: () => void;
+  resending: boolean;
+}) {
+  const isPending = invite.status === "pending";
+
+  const statusStyle =
+    invite.status === "accepted"
+      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+      : isPending
+        ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+        : "bg-muted text-muted-foreground";
+
+  return (
+    <div className="py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold truncate">
+            {invite.firstName} {invite.lastName}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">{invite.email}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {invite.propertyIds.length}{" "}
+            {invite.propertyIds.length === 1 ? "property" : "properties"}
+          </p>
+          {isPending && <InviteUrlRow token={invite.token} />}
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle}`}>
+            {invite.status}
+          </span>
+
+          {canManage && isPending && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-xs gap-1"
+                onClick={onResend}
+                disabled={resending}
+                title="Resend invite email"
+              >
+                {resending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
+                Resend
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                onClick={onRevoke}
+                title="Revoke invite"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function LandlordsPage() {
   const { canManageOrg } = usePermissions();
 
   const { data: invites = [], isLoading } = useLandlordInvites();
   const { mutate: createInvite, isPending: creating } = useCreateLandlordInvite();
   const { mutate: revokeInvite } = useRevokeLandlordInvite();
+  const { mutate: resendInvite, variables: resendingId } = useResendLandlordInvite();
+
   const { data: propertiesData } = useProperties();
   const allProperties = propertiesData?.data ?? [];
 
@@ -63,14 +210,6 @@ export default function LandlordsPage() {
     );
   }
 
-  const statusStyle = (status: string) => {
-    if (status === "accepted")
-      return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400";
-    if (status === "pending")
-      return "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400";
-    return "bg-muted text-muted-foreground";
-  };
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -90,7 +229,8 @@ export default function LandlordsPage() {
         <CardHeader>
           <CardTitle>Landlord Invites</CardTitle>
           <CardDescription>
-            Landlords receive a private link to set up their account and get read-only access to their properties.
+            Landlords receive a private link to set up their account and get read-only access to
+            their properties.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -116,37 +256,24 @@ export default function LandlordsPage() {
           ) : (
             <div className="divide-y">
               {invites.map((invite) => (
-                <div key={invite.id} className="flex items-center justify-between py-3.5">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">
-                      {invite.firstName} {invite.lastName}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">{invite.email}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {invite.propertyIds.length}{" "}
-                      {invite.propertyIds.length === 1 ? "property" : "properties"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 ml-4 shrink-0">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle(invite.status)}`}>
-                      {invite.status}
-                    </span>
-                    {canManageOrg && invite.status === "pending" && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                        onClick={() =>
-                          revokeInvite(invite.id, {
-                            onSuccess: () => toast.success("Invite revoked"),
-                          })
-                        }
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+                <InviteRow
+                  key={invite.id}
+                  invite={invite}
+                  canManage={canManageOrg}
+                  onRevoke={() =>
+                    revokeInvite(invite.id, {
+                      onSuccess: () => toast.success("Invite revoked"),
+                    })
+                  }
+                  onResend={() =>
+                    resendInvite(invite.id, {
+                      onSuccess: () => toast.success("Invite resent — expiry extended by 7 days"),
+                      onError: (err: any) =>
+                        toast.error("Failed to resend", err?.response?.data?.detail ?? ""),
+                    })
+                  }
+                  resending={resendingId === invite.id}
+                />
               ))}
             </div>
           )}

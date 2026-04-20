@@ -9,6 +9,7 @@ export interface LandlordInvite {
   propertyIds: string[];
   message?: string;
   status: "pending" | "accepted" | "expired" | "revoked";
+  token: string;
   createdAt: string;
   expiresAt: string;
   acceptedAt?: string;
@@ -54,6 +55,7 @@ export const landlordsApi = {
   createInvite: (body: CreateLandlordInviteRequest) =>
     apiPost<LandlordInvite>("/landlords/invites", body),
   revokeInvite: (id: string) => apiDelete(`/landlords/invites/${id}`),
+  resendInvite: (id: string) => apiPost<LandlordInvite>(`/landlords/invites/${id}/resend`, {}),
 
   // Public — no session needed
   getOnboarding: (token: string) =>

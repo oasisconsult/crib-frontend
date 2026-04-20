@@ -46,6 +46,7 @@ class LandlordInviteOut(CamelModel):
     last_name:    str
     property_ids: list[str]
     status:       str
+    token:        str
     expires_at:   str
     created_at:   str
 
@@ -123,6 +124,13 @@ async def create_invite(
     db.add(invite)
     await db.flush()
 
+    s = get_settings()
+    onboarding_url = f"{s.frontend_url}/onboarding/landlord/{invite.token}"
+    await _send_invite_email(
+        email=invite.email,
+        first_name=invite.first_name,
+        onboarding_url=onboarding_url,
+    )
     log.info("landlord_invite.created", invite_id=str(invite.id), email=body.email)
     return _to_out(invite)
 
@@ -308,6 +316,70 @@ async def revoke_invite(*, db: AsyncSession, invite_id: uuid.UUID, organisation_
     await db.flush()
 
 
+async def resend_invite_email(
+    *,
+    db: AsyncSession,
+    invite_id: uuid.UUID,
+    organisation_id: uuid.UUID,
+) -> LandlordInviteOut:
+    from fastapi import HTTPException, status as http_status
+
+    result = await db.execute(
+        select(LandlordInvite).where(
+            LandlordInvite.id == invite_id,
+            LandlordInvite.organisation_id == organisation_id,
+        )
+    )
+    invite = result.scalar_one_or_none()
+    if not invite:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invite not found")
+    if invite.status != InviteStatus.PENDING:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail=f"Cannot resend a {invite.status} invite",
+        )
+
+    # Extend expiry by 7 days from now
+    invite.expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    await db.flush()
+
+    s = get_settings()
+    onboarding_url = f"{s.frontend_url}/onboarding/landlord/{invite.token}"
+    await _send_invite_email(
+        email=invite.email,
+        first_name=invite.first_name,
+        onboarding_url=onboarding_url,
+    )
+    log.info("landlord_invite.resent", invite_id=str(invite.id), email=invite.email)
+    return _to_out(invite)
+
+
+async def _send_invite_email(*, email: str, first_name: str, onboarding_url: str) -> None:
+    from app.integrations.notifications.email import get_email_provider
+
+    subject = "You've been invited to view your properties on Crib"
+    body = (
+        f"Hi {first_name},\n\n"
+        "Your property manager has invited you to access your properties on Crib.\n\n"
+        "Click the link below to set up your account:\n"
+        f"{onboarding_url}\n\n"
+        "This link expires in 7 days.\n\n"
+        "— The Crib Team"
+    )
+    provider = get_email_provider()
+    result = await provider.send(
+        recipient_name=first_name,
+        recipient_email=email,
+        recipient_phone=None,
+        subject=subject,
+        body=body,
+    )
+    if result.success:
+        log.info("landlord_invite.email_sent", email=email)
+    else:
+        log.warning("landlord_invite.email_failed", email=email, reason=result.failure_reason)
+
+
 def _to_out(invite: LandlordInvite) -> LandlordInviteOut:
     return LandlordInviteOut(
         id=str(invite.id),
@@ -316,6 +388,7 @@ def _to_out(invite: LandlordInvite) -> LandlordInviteOut:
         last_name=invite.last_name,
         property_ids=invite.property_ids or [],
         status=invite.status,
+        token=invite.token,
         expires_at=invite.expires_at.isoformat(),
         created_at=invite.created_at.isoformat(),
     )
