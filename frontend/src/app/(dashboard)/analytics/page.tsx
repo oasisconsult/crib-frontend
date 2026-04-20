@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboardStats, useCashFlowData } from "@/hooks/usePayments";
 import { useProperties } from "@/hooks/useProperties";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatCurrencyCompact } from "@/utils/formatters";
+import { formatCurrency, formatCurrencyCompact } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,

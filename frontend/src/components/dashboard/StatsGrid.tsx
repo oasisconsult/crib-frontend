@@ -82,13 +82,7 @@ function StatCard({ title, value, trend, icon: Icon, color, progress }: StatCard
 }
 
 export function StatsGrid({ stats: statsProp, loading: loadingProp }: { stats?: any; loading?: boolean }) {
-  const stats = statsProp ?? {
-    monthlyRevenue: 12450,
-    occupancyRate: 0.75,
-    activeTenants: 18,
-    totalTenants: 20,
-    collectionRate: 0.95
-  };
+  const stats = statsProp;
   const loading = loadingProp ?? false;
 
   if (loading) {
