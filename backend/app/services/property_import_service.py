@@ -45,16 +45,24 @@ REQUIRED_COLS = {
 TEMPLATE_HEADERS = [
     "property_name", "property_type",
     "address_line1", "address_city", "address_state", "address_country", "address_postcode",
+    # Lease policy (stored in property.rules JSONB — all optional)
+    "grace_period_days", "late_fee_type", "late_fee_amount",
+    "deposit_months", "notice_period_days", "rent_due_day",
+    "allow_subletting", "allow_smoking", "allow_pets",
+    # Unit fields
     "unit_name", "unit_type", "unit_bedrooms", "unit_bathrooms",
     "unit_monthly_rent", "unit_currency", "unit_status",
 ]
 
 TEMPLATE_EXAMPLE_ROWS = [
     ["Block A", "flat", "12 Kampala Road", "Kampala", "Central", "UG", "00256",
+     "5", "fixed", "50000", "2", "30", "1", "no", "no", "yes",
      "Unit 1A", "single", "1", "1", "500000", "UGX", "available"],
     ["Block A", "flat", "12 Kampala Road", "Kampala", "Central", "UG", "00256",
+     "5", "fixed", "50000", "2", "30", "1", "no", "no", "yes",
      "Unit 1B", "double", "2", "1", "700000", "UGX", "available"],
     ["Block B", "flat", "14 Kampala Road", "Kampala", "Central", "UG", "00256",
+     "7", "percentage", "5", "1", "60", "5", "no", "no", "no",
      "Unit 2A", "single", "1", "1", "500000", "UGX", "available"],
 ]
 
@@ -63,6 +71,8 @@ VALID_UNIT_TYPES     = {e.value for e in UnitType}
 VALID_UNIT_STATUSES  = {e.value for e in UnitStatus}
 
 # ── Internal row dataclass ─────────────────────────────────────────────────────
+
+VALID_LATE_FEE_TYPES = {"fixed", "percentage"}
 
 @dataclass
 class ImportRow:
@@ -74,6 +84,17 @@ class ImportRow:
     address_state: str
     address_country: str
     address_postcode: str
+    # Lease policy
+    grace_period_days: int
+    late_fee_type: str        # "fixed" | "percentage" | ""
+    late_fee_amount: float
+    deposit_months: int
+    notice_period_days: int
+    rent_due_day: int
+    allow_subletting: bool
+    allow_smoking: bool
+    allow_pets: bool
+    # Unit
     unit_name: str
     unit_type: str
     unit_bedrooms: int
@@ -260,6 +281,43 @@ def parse_csv(content: bytes) -> tuple[list[ImportRow], list[ImportError]]:
         except ValueError:
             bathrooms = 1
 
+        # ── Lease policy fields (all optional) ────────────────────────────────
+        def _int_opt(col: str, default: int) -> int:
+            try:
+                return max(0, int(optional(col, str(default)) or str(default)))
+            except ValueError:
+                return default
+
+        def _float_opt(col: str, default: float) -> float:
+            try:
+                return max(0.0, float(re.sub(r"[,\s]", "", optional(col, str(default)) or str(default))))
+            except ValueError:
+                return default
+
+        def _bool_opt(col: str, default: bool = False) -> bool:
+            val = optional(col, "").lower()
+            if val in ("yes", "true", "1"):
+                return True
+            if val in ("no", "false", "0"):
+                return False
+            return default
+
+        late_fee_type_raw = optional("late_fee_type", "").lower()
+        if late_fee_type_raw and late_fee_type_raw not in VALID_LATE_FEE_TYPES:
+            errors.append(ImportError(
+                row=raw_row_num, column="late_fee_type",
+                message=f"Must be one of: {', '.join(sorted(VALID_LATE_FEE_TYPES))} (or leave blank)",
+            ))
+            continue
+
+        rent_due_day = _int_opt("rent_due_day", 1)
+        if rent_due_day and not (1 <= rent_due_day <= 28):
+            errors.append(ImportError(
+                row=raw_row_num, column="rent_due_day",
+                message="Must be between 1 and 28",
+            ))
+            continue
+
         rows.append(ImportRow(
             row_num=raw_row_num,
             property_name=property_name,
@@ -269,6 +327,15 @@ def parse_csv(content: bytes) -> tuple[list[ImportRow], list[ImportError]]:
             address_state=optional("address_state"),
             address_country=optional("address_country", "UG"),
             address_postcode=optional("address_postcode"),
+            grace_period_days=_int_opt("grace_period_days", 0),
+            late_fee_type=late_fee_type_raw,
+            late_fee_amount=_float_opt("late_fee_amount", 0.0),
+            deposit_months=_int_opt("deposit_months", 1),
+            notice_period_days=_int_opt("notice_period_days", 30),
+            rent_due_day=rent_due_day,
+            allow_subletting=_bool_opt("allow_subletting"),
+            allow_smoking=_bool_opt("allow_smoking"),
+            allow_pets=_bool_opt("allow_pets"),
             unit_name=unit_name,
             unit_type=unit_type,
             unit_bedrooms=max(0, bedrooms),
@@ -436,6 +503,19 @@ async def commit_import(
             skipped += 1
             continue
 
+        rules: dict = {
+            "grace_period_days":  rep.grace_period_days,
+            "deposit_months":     rep.deposit_months,
+            "notice_period_days": rep.notice_period_days,
+            "rent_due_day":       rep.rent_due_day,
+            "allow_subletting":   rep.allow_subletting,
+            "allow_smoking":      rep.allow_smoking,
+            "allow_pets":         rep.allow_pets,
+        }
+        if rep.late_fee_type:
+            rules["late_fee_type"]   = rep.late_fee_type
+            rules["late_fee_amount"] = rep.late_fee_amount
+
         prop = Property(
             organisation_id=organisation_id,
             name=rep.property_name,
@@ -448,7 +528,7 @@ async def commit_import(
                 "postcode": rep.address_postcode,
                 "country":  rep.address_country,
             },
-            rules={},
+            rules=rules,
             images=[],
             tags=[],
             amenities=[],
