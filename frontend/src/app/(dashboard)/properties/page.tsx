@@ -314,18 +314,18 @@ export default function PropertiesPage() {
         title="Properties"
         description={`${data?.total ?? 0} properties in your portfolio`}
         actions={
-          canWrite ? (
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setShowImport(true)}>
-                <Upload className="h-4 w-4" aria-hidden="true" />
-                Import CSV
-              </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowImport(true)}>
+              <Upload className="h-4 w-4" aria-hidden="true" />
+              Import CSV
+            </Button>
+            {canWrite && (
               <Button onClick={() => router.push("/properties/new")}>
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 Add Property
               </Button>
-            </div>
-          ) : undefined
+            )}
+          </div>
         }
       />
 
