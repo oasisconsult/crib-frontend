@@ -72,7 +72,7 @@ VALID_UNIT_STATUSES  = {e.value for e in UnitStatus}
 
 # ── Internal row dataclass ─────────────────────────────────────────────────────
 
-VALID_LATE_FEE_TYPES = {"fixed", "percentage"}
+VALID_LATE_FEE_TYPES = {"flat", "fixed", "percentage"}  # "fixed" accepted as alias for "flat"
 
 @dataclass
 class ImportRow:
@@ -303,10 +303,12 @@ def parse_csv(content: bytes) -> tuple[list[ImportRow], list[ImportError]]:
             return default
 
         late_fee_type_raw = optional("late_fee_type", "").lower()
-        if late_fee_type_raw and late_fee_type_raw not in VALID_LATE_FEE_TYPES:
+        if late_fee_type_raw == "fixed":
+            late_fee_type_raw = "flat"  # normalise alias
+        if late_fee_type_raw and late_fee_type_raw not in ("flat", "percentage"):
             errors.append(ImportError(
                 row=raw_row_num, column="late_fee_type",
-                message=f"Must be one of: {', '.join(sorted(VALID_LATE_FEE_TYPES))} (or leave blank)",
+                message="Must be one of: flat, percentage (or leave blank)",
             ))
             continue
 
@@ -504,17 +506,16 @@ async def commit_import(
             continue
 
         rules: dict = {
-            "grace_period_days":  rep.grace_period_days,
-            "deposit_months":     rep.deposit_months,
-            "notice_period_days": rep.notice_period_days,
-            "rent_due_day":       rep.rent_due_day,
-            "allow_subletting":   rep.allow_subletting,
-            "allow_smoking":      rep.allow_smoking,
-            "allow_pets":         rep.allow_pets,
+            "gracePeriodDays":  rep.grace_period_days,
+            "depositMonths":    rep.deposit_months,
+            "noticePeriodDays": rep.notice_period_days,
+            "rentDayOfMonth":   rep.rent_due_day,
+            "allowSubletting":  rep.allow_subletting,
+            "allowSmoking":     rep.allow_smoking,
+            "allowPets":        rep.allow_pets,
+            "lateFeeType":      rep.late_fee_type or "flat",
+            "lateFeeValue":     rep.late_fee_amount,
         }
-        if rep.late_fee_type:
-            rules["late_fee_type"]   = rep.late_fee_type
-            rules["late_fee_amount"] = rep.late_fee_amount
 
         prop = Property(
             organisation_id=organisation_id,
