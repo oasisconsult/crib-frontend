@@ -48,7 +48,7 @@ export function TermsAcceptanceStep({ token, onNext, onBack }: Props) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="rounded-[6px] border border-teal-200 bg-teal-50 dark:border-teal-200 dark:bg-teal-100/40 p-4 text-sm text-teal-800 dark:text-teal-200 space-y-1">
+        <div className="rounded-[6px] border border-indigo-200 bg-indigo-50 dark:border-indigo-200 dark:bg-indigo-100/40 p-4 text-sm text-indigo-800 dark:text-indigo-200 space-y-1">
           <p className="font-medium">Why this matters</p>
           <p>
             Your explicit acceptance creates a legally binding record of your

@@ -105,7 +105,7 @@ export function AnimatedStatCard({
             {change !== undefined && (
               <div className={cn(
                 "flex items-center gap-1 mt-2 text-xs font-medium transition-colors",
-                change > 0 ? "text-teal-600 dark:text-teal-400" : 
+                change > 0 ? "text-emerald-600 dark:text-emerald-400" : 
                 change < 0 ? "text-red-500 dark:text-red-400" : "text-muted-foreground"
               )}>
                 <span className={cn(
@@ -357,7 +357,7 @@ export function FilterToggle({ filters, activeFilters, onToggle }: FilterToggleP
           className={cn(
             "px-3 py-1 text-xs rounded-full transition-all duration-200",
             activeFilters.includes(filter)
-              ? "bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 font-semibold ring-1 ring-inset ring-teal-600/50"
+              ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold ring-1 ring-inset ring-emerald-600/50"
               : "bg-background text-muted-foreground hover:bg-primary/5 hover:text-foreground"
           )}
         >

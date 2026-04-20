@@ -52,8 +52,8 @@ const SYSTEM_SERVICES = [
 ];
 
 const STATS = [
-  { label: "Landlords",   value: "3",   icon: Building2, color: "text-teal-600",    bg: "bg-teal-100 dark:bg-teal-950/30"    },
-  { label: "Tenants",     value: "4",   icon: Users,     color: "text-teal-600",  bg: "bg-teal-100 dark:bg-teal-950/30"},
+  { label: "Landlords",   value: "3",   icon: Building2, color: "text-blue-600",    bg: "bg-blue-100 dark:bg-blue-950/30"    },
+  { label: "Tenants",     value: "4",   icon: Users,     color: "text-violet-600",  bg: "bg-violet-100 dark:bg-violet-950/30"},
   { label: "Properties",  value: "6",   icon: Database,  color: "text-emerald-600", bg: "bg-emerald-100 dark:bg-emerald-950/30"},
   { label: "System Health", value: "98%", icon: Activity, color: "text-green-600",  bg: "bg-green-100 dark:bg-green-950/30"  },
 ];
@@ -283,8 +283,8 @@ export default function AdminPage() {
           <TabsContent value="system" className="mt-4 space-y-4">
             <div className="grid sm:grid-cols-3 gap-3">
               {[
-                { label: "CPU Usage",    value: "18%",  icon: Cpu,       color: "text-teal-600"     },
-                { label: "Memory",       value: "2.1GB",icon: Server,    color: "text-teal-600"  },
+                { label: "CPU Usage",    value: "18%",  icon: Cpu,       color: "text-sky-600"     },
+                { label: "Memory",       value: "2.1GB",icon: Server,    color: "text-violet-600"  },
                 { label: "Disk Used",    value: "34%",  icon: HardDrive, color: "text-amber-600"   },
               ].map((s) => (
                 <Card key={s.label}>

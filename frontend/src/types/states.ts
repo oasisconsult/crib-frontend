@@ -82,9 +82,9 @@ export const LEASE_TRANSITIONS: Record<
 
 export const LEASE_STATE_DISPLAY: Record<LeaseState, StateDisplayConfig> = {
   draft:               { label: "Draft",              color: "text-slate-600",   bgColor: "bg-slate-100"   },
-  onboarding_started:  { label: "Onboarding",         color: "text-teal-700",  bgColor: "bg-teal-100"  },
-  agreement_previewed: { label: "Preview Sent",       color: "text-teal-700",    bgColor: "bg-teal-100"    },
-  terms_accepted:      { label: "Terms Accepted",     color: "text-teal-700",  bgColor: "bg-teal-100"  },
+  onboarding_started:  { label: "Onboarding",         color: "text-indigo-700",  bgColor: "bg-indigo-100"  },
+  agreement_previewed: { label: "Preview Sent",       color: "text-blue-700",    bgColor: "bg-blue-100"    },
+  terms_accepted:      { label: "Terms Accepted",     color: "text-violet-700",  bgColor: "bg-violet-100"  },
   payment_pending:     { label: "Payment Pending",    color: "text-amber-700",   bgColor: "bg-amber-100"   },
   payment_secured:     { label: "Payment Secured",    color: "text-emerald-700", bgColor: "bg-emerald-100" },
   agreement_signed:    { label: "Agreement Signed",   color: "text-teal-700",    bgColor: "bg-teal-100"    },
@@ -365,21 +365,21 @@ export type StateDisplayConfig = {
 
 export const ONBOARDING_STATE_DISPLAY: Record<OnboardingState, StateDisplayConfig> = {
   invited: { label: "Invited", color: "text-slate-600", bgColor: "bg-slate-100" },
-  started: { label: "In Progress", color: "text-teal-700", bgColor: "bg-teal-100" },
+  started: { label: "In Progress", color: "text-indigo-700", bgColor: "bg-indigo-100" },
   submitted: { label: "Submitted", color: "text-amber-700", bgColor: "bg-amber-100" },
   approved: { label: "Approved", color: "text-emerald-700", bgColor: "bg-emerald-100" },
-  activated: { label: "Active Tenant", color: "text-teal-700", bgColor: "bg-teal-100" },
+  activated: { label: "Active Tenant", color: "text-sky-700", bgColor: "bg-sky-100" },
   rejected: { label: "Rejected", color: "text-red-700", bgColor: "bg-red-100" },
 };
 
 export const PAYMENT_STATE_DISPLAY: Record<PaymentState, StateDisplayConfig> = {
   // v4 happy path
   initiated:          { label: "Initiated",         color: "text-slate-600",   bgColor: "bg-slate-100"   },
-  predicted:          { label: "Analysed",           color: "text-teal-700",  bgColor: "bg-teal-100"  },
-  routed:             { label: "Routed",             color: "text-teal-700",    bgColor: "bg-teal-100"    },
+  predicted:          { label: "Analysed",           color: "text-indigo-700",  bgColor: "bg-indigo-100"  },
+  routed:             { label: "Routed",             color: "text-blue-700",    bgColor: "bg-blue-100"    },
   pending:            { label: "Processing",         color: "text-amber-700",   bgColor: "bg-amber-100"   },
   reconciled:         { label: "Reconciled",         color: "text-teal-700",    bgColor: "bg-teal-100"    },
-  allocated:          { label: "Allocated",          color: "text-teal-700",  bgColor: "bg-teal-100"  },
+  allocated:          { label: "Allocated",          color: "text-violet-700",  bgColor: "bg-violet-100"  },
   completed:          { label: "Completed",          color: "text-emerald-700", bgColor: "bg-emerald-100" },
   // v4 failure paths
   predicted_failure:  { label: "Blocked",            color: "text-orange-700",  bgColor: "bg-orange-100"  },
@@ -400,17 +400,17 @@ export const RENT_STATE_DISPLAY: Record<RentState, StateDisplayConfig> = {
 };
 
 export const INSPECTION_STATE_DISPLAY: Record<InspectionState, StateDisplayConfig> = {
-  scheduled: { label: "Scheduled", color: "text-teal-700", bgColor: "bg-teal-100" },
+  scheduled: { label: "Scheduled", color: "text-indigo-700", bgColor: "bg-indigo-100" },
   in_progress: { label: "In Progress", color: "text-amber-700", bgColor: "bg-amber-100" },
   completed: { label: "Completed", color: "text-emerald-700", bgColor: "bg-emerald-100" },
-  approved: { label: "Approved", color: "text-teal-700", bgColor: "bg-teal-100" },
+  approved: { label: "Approved", color: "text-sky-700", bgColor: "bg-sky-100" },
   failed: { label: "Failed", color: "text-red-700", bgColor: "bg-red-100" },
   cancelled: { label: "Cancelled", color: "text-gray-600", bgColor: "bg-gray-100" },
 };
 
 export const MAINTENANCE_STATE_DISPLAY: Record<MaintenanceState, StateDisplayConfig> = {
   reported: { label: "Reported", color: "text-slate-600", bgColor: "bg-slate-100" },
-  assigned: { label: "Assigned", color: "text-teal-700", bgColor: "bg-teal-100" },
+  assigned: { label: "Assigned", color: "text-indigo-700", bgColor: "bg-indigo-100" },
   in_progress: { label: "In Progress", color: "text-amber-700", bgColor: "bg-amber-100" },
   resolved: { label: "Resolved", color: "text-emerald-700", bgColor: "bg-emerald-100" },
   closed: { label: "Closed", color: "text-gray-600", bgColor: "bg-gray-100" },
@@ -419,8 +419,8 @@ export const MAINTENANCE_STATE_DISPLAY: Record<MaintenanceState, StateDisplayCon
 
 export const NOTIFICATION_STATE_DISPLAY: Record<NotificationState, StateDisplayConfig> = {
   queued: { label: "Queued", color: "text-slate-600", bgColor: "bg-slate-100" },
-  sent: { label: "Sent", color: "text-teal-700", bgColor: "bg-teal-100" },
+  sent: { label: "Sent", color: "text-indigo-700", bgColor: "bg-indigo-100" },
   delivered: { label: "Delivered", color: "text-emerald-700", bgColor: "bg-emerald-100" },
-  read: { label: "Read", color: "text-teal-700", bgColor: "bg-teal-100" },
+  read: { label: "Read", color: "text-sky-700", bgColor: "bg-sky-100" },
   failed: { label: "Failed", color: "text-red-700", bgColor: "bg-red-100" },
 };

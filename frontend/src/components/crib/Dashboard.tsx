@@ -602,8 +602,8 @@ export function Dashboard() {
             href="/leases/new"
             icon={<FileText className="h-4 w-4" />}
             label="Create Lease"
-            iconClass="text-teal-700 dark:text-teal-300"
-            bgClass="bg-teal-50 dark:bg-teal-100/40"
+            iconClass="text-violet-700 dark:text-violet-300"
+            bgClass="bg-violet-50 dark:bg-violet-100/40"
           />
           <QuickAction
             href="/maintenance"

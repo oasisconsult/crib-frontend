@@ -121,7 +121,7 @@ export const realEstateColors = {
     300: "#d8b4fe",
     400: "#c084fc",
     500: "#a855f7",
-    600: "#028391",
+    600: "#9333ea",
     700: "#7c3aed",
     800: "#6b21a8",
     900: "#581c87",
@@ -257,7 +257,7 @@ export function AccessibleStatCard({
                 className={cn(
                   "flex items-center gap-1 mt-2 text-xs font-medium",
                   trend.positive
-                    ? "text-teal-600 dark:text-teal-400"
+                    ? "text-emerald-600 dark:text-emerald-400"
                     : "text-red-500 dark:text-red-400",
                 )}
               >
@@ -497,7 +497,7 @@ export const colorBlindFriendlyColors = {
   blue: "#2563eb",
   orange: "#ea580c",
   green: "#16a34a",
-  purple: "#028391",
+  purple: "#9333ea",
   pink: "#db2777",
   teal: "#0d9488",
 };

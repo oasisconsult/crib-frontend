@@ -35,9 +35,9 @@ const STATUS_STYLES: Record<
   },
   occupied: {
     badge:
-      "bg-teal-100 text-teal-800 dark:bg-teal-100/40 dark:text-teal-300",
-    card: "border-border hover:border-teal-300",
-    dot: "bg-teal-500",
+      "bg-indigo-100 text-indigo-800 dark:bg-indigo-100/40 dark:text-indigo-300",
+    card: "border-border hover:border-indigo-300",
+    dot: "bg-indigo-500",
   },
   reserved: {
     badge:

@@ -68,7 +68,7 @@ export function WorkflowStepper({
                     "border-primary bg-white dark:bg-card text-primary shadow-sm",
                   // Active: solid teal fill — clearly the current step
                   status === "active" &&
-                    "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold shadow-md ring-4 ring-teal-500/20",
+                    "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold shadow-md ring-4 ring-emerald-500/20",
                   // Upcoming: subtle grey — not done yet, not in the way
                   status === "upcoming" &&
                     "border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500",

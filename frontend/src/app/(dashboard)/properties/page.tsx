@@ -242,7 +242,7 @@ function PropertyRow({ property, onClick }: { property: Property; onClick: () =>
       </td>
       <td className="py-3 px-4 text-sm font-semibold hidden md:table-cell text-foreground">
         <div className="flex items-center gap-1">
-          <TrendingUp className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400" aria-hidden="true" />
+          <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
           {formatCurrencyCompact(property.monthlyRevenue, property.currency || "UGX")}
         </div>
       </td>

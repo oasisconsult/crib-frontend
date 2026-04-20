@@ -180,7 +180,7 @@ function ComposeDialog({ onClose }: { onClose: () => void }) {
                 className={cn(
                   "rounded-[6px] border py-2.5 text-xs font-medium transition-all cursor-pointer flex flex-col items-center gap-1",
                   channel === c.value
-                    ? "border-teal-600 dark:border-teal-500 bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 font-semibold ring-1 ring-inset ring-teal-600/50"
+                    ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold ring-1 ring-inset ring-emerald-600/50"
                     : "border-border hover:border-primary/40 text-muted-foreground hover:text-foreground",
                 )}
               >

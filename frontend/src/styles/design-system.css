@@ -1,102 +1,105 @@
 /*
- * CRIB Design System — v5.0
- * Brand palette: #00DEB6 teal · #028391 deep-teal · #262637 charcoal
- *               #01204E navy · #F6DCAC cream · #FAA968 peach · #F85525 orange
+ * CRIB Design System — v4.1
+ * Direction: Rightmove-style property platform — bright, warm, approachable
+ * Brand palette: #14C6A3 teal · #0F766E trust-teal · #134E4A text · #F0FDFA bg
+ * ui-ux-pro-max: Real Estate palette — trust teal + professional
  * ─────────────────────────────────────────────────────────────────────────
  */
 
 /* ─── SHADCN / TAILWIND CSS VARIABLES ──────────────────────────────────────
    HSL triplets (no commas) — consumed as hsl(var(--*))
+   Calibrated: background #F0FDFA · card #FFFFFF · primary #14C6A3
+   Text #134E4A · Trust teal #0F766E (per ui-ux-pro-max real-estate palette)
    ─────────────────────────────────────────────────────────────────────── */
 
 /* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
 :root {
-  --background: 40 35% 97%;            /* #FDFAF4 — warm cream canvas */
-  --foreground: 240 18% 18%;           /* #262637 — charcoal text */
+  --background: 168 77% 97%;           /* #F0FDFA — teal-mint canvas (ui-ux-pro-max) */
+  --foreground: 176 61% 19%;           /* #134E4A — deep teal text (ui-ux-pro-max) */
   --card: 0 0% 100%;                   /* #FFFFFF — white card surface */
-  --card-foreground: 240 18% 18%;
+  --card-foreground: 176 61% 19%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 18% 18%;
-  --primary: 169 100% 44%;             /* #00DEB6 — brand teal */
-  --primary-foreground: 240 18% 12%;   /* dark charcoal on teal — 7:1 contrast */
-  --secondary: 169 55% 92%;            /* light teal wash */
-  --secondary-foreground: 186 97% 24%; /* #028391 deep teal text */
-  --muted: 40 20% 94%;                 /* warm muted surface */
-  --muted-foreground: 240 8% 48%;      /* medium grey */
-  --skeleton-base: 40 18% 88%;
-  --skeleton-highlight: 40 25% 95%;
-  --accent: 27 60% 94%;                /* very light peach accent */
-  --accent-foreground: 240 18% 18%;
-  --destructive: 0 72% 51%;
+  --popover-foreground: 176 61% 19%;
+  --primary: 168 82% 43%;              /* #14C6A3 — brand teal CTA */
+  --primary-foreground: 0 0% 100%;     /* white on teal */
+  --secondary: 168 42% 90%;            /* #CBF0E8 — light teal wash */
+  --secondary-foreground: 173 78% 25%; /* #0F766E — trust teal text */
+  --muted: 168 30% 94%;                /* #E6F5F1 — teal-tinted muted */
+  --muted-foreground: 176 30% 44%;     /* #4D7A74 — muted teal text */
+  --skeleton-base: 168 28% 88%;        /* #D3EAE5 — teal-tinted skeleton base */
+  --skeleton-highlight: 168 45% 96%;   /* #EAF7F3 — lighter shimmer flash */
+  --accent: 168 55% 92%;               /* #D8F5EE — very light teal accent */
+  --accent-foreground: 173 78% 25%;    /* #0F766E — trust teal */
+  --destructive: 0 72% 51%;            /* #DC2626 */
   --destructive-foreground: 0 0% 100%;
-  --success: 158 64% 32%;
+  --success: 158 64% 32%;              /* #18855A */
   --success-foreground: 0 0% 100%;
-  --warning: 27 93% 50%;               /* #FAA968 peach-orange */
-  --warning-foreground: 240 18% 12%;
-  --danger: 14 94% 40%;                /* #F85525 orange-red darkened */
+  --warning: 43 100% 48%;              /* #F5B000 */
+  --warning-foreground: 176 61% 15%;
+  --danger: 0 72% 51%;
   --danger-foreground: 0 0% 100%;
-  --info: 186 97% 29%;                 /* #028391 deep teal */
+  --info: 187 83% 34%;                 /* #0F8FA0 — cyan */
   --info-foreground: 0 0% 100%;
-  --border: 40 15% 88%;                /* warm light border */
-  --input: 0 0% 100%;
-  --ring: 169 100% 44%;                /* teal focus ring */
+  --border: 168 30% 86%;               /* #C4E0DA — teal-tinted border */
+  --input: 0 0% 100%;                  /* white inputs */
+  --ring: 168 82% 43%;                 /* teal focus ring */
   --radius: 6px;
 
   /* Header */
-  --header: 0 0% 100%;
+  --header: 0 0% 100%;                 /* white header */
 
-  /* Sidebar */
+  /* Sidebar — white in light mode */
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 240 8% 48%;
-  --sidebar-border: 40 15% 90%;
-  --sidebar-active-bg: 169 55% 92%;    /* light teal */
-  --sidebar-active-fg: 186 97% 24%;    /* #028391 */
-  --sidebar-hover-bg: 40 30% 96%;      /* warm hover */
-  --sidebar-section-fg: 240 8% 55%;
+  --sidebar-foreground: 176 30% 44%;   /* teal-muted */
+  --sidebar-border: 168 30% 88%;
+  --sidebar-active-bg: 168 58% 92%;    /* #CCEEE7 — light teal */
+  --sidebar-active-fg: 173 78% 25%;    /* #0F766E — trust teal */
+  --sidebar-hover-bg: 168 45% 96%;     /* #EDF9F6 — very light teal */
+  --sidebar-section-fg: 176 25% 55%;   /* subdued section labels */
 }
 
 /* ── DARK MODE ──────────────────────────────────────────────────────────── */
 .dark {
-  --background: 216 70% 10%;           /* #01204E-based deep navy canvas */
-  --foreground: 39 40% 88%;            /* warm off-white text */
-  --card: 216 55% 14%;                 /* slightly lighter navy */
-  --card-foreground: 39 40% 88%;
-  --popover: 216 55% 14%;
-  --popover-foreground: 39 40% 88%;
-  --primary: 169 90% 50%;              /* bright teal on dark */
-  --primary-foreground: 216 97% 10%;   /* deep navy on teal */
-  --secondary: 216 40% 20%;
-  --secondary-foreground: 39 30% 75%;
-  --muted: 216 35% 18%;
-  --muted-foreground: 215 18% 55%;
-  --skeleton-base: 216 35% 22%;
-  --skeleton-highlight: 216 30% 28%;
-  --accent: 216 30% 20%;
-  --accent-foreground: 169 70% 70%;
+  --background: 230 28% 11%;           /* #161929 — deep navy canvas */
+  --foreground: 210 20% 88%;           /* #D8DDE8 — off-white text */
+  --card: 230 25% 15%;                 /* #1C2033 — navy card surface */
+  --card-foreground: 210 20% 88%;
+  --popover: 230 25% 15%;
+  --popover-foreground: 210 20% 88%;
+  --primary: 168 70% 48%;              /* slightly brighter teal on dark */
+  --primary-foreground: 230 28% 10%;
+  --secondary: 230 20% 21%;            /* #282D40 */
+  --secondary-foreground: 210 15% 75%;
+  --muted: 230 22% 19%;                /* #212636 */
+  --muted-foreground: 215 15% 55%;
+  --skeleton-base: 230 20% 24%;        /* #2C3248 — slightly lighter dark navy */
+  --skeleton-highlight: 230 18% 31%;   /* #3A4160 — lighter shimmer flash */
+  --accent: 230 22% 21%;
+  --accent-foreground: 168 60% 70%;
   --destructive: 0 63% 50%;
   --destructive-foreground: 0 0% 100%;
   --success: 158 58% 40%;
   --success-foreground: 0 0% 100%;
-  --warning: 27 85% 60%;
-  --warning-foreground: 216 70% 10%;
-  --danger: 14 90% 50%;
+  --warning: 43 100% 55%;
+  --warning-foreground: 230 28% 12%;
+  --danger: 0 63% 50%;
   --danger-foreground: 0 0% 100%;
-  --info: 186 80% 45%;
-  --info-foreground: 216 70% 10%;
-  --border: 216 35% 22%;               /* subtle dark border */
-  --input: 216 40% 16%;
-  --ring: 169 90% 50%;
+  --info: 187 70% 45%;
+  --info-foreground: 230 28% 10%;
+  --border: 230 22% 24%;               /* #2A3048 — subtle dark border */
+  --input: 230 22% 20%;                /* #232839 — dark input surface */
+  --ring: 168 70% 50%;
 
   /* Header */
-  --header: 216 60% 12%;
+  --header: 230 28% 14%;              /* #1A1F30 — dark navy header */
 
-  /* Sidebar */
-  --sidebar: 216 75% 11%;
-  --sidebar-foreground: 215 18% 58%;
-  --sidebar-border: 216 35% 18%;
-  --sidebar-active-bg: 169 60% 14%;    /* dark teal glow */
-  --sidebar-active-fg: 169 70% 68%;    /* bright teal text */
-  --sidebar-hover-bg: 216 40% 16%;
+  /* Sidebar — navy-based */
+  --sidebar: 230 30% 13%;             /* #181D2E */
+  --sidebar-foreground: 210 15% 58%;
+  --sidebar-border: 230 22% 21%;
+  --sidebar-active-bg: 168 82% 14%;   /* #0D3028 — dark teal glow */
+  --sidebar-active-fg: 168 60% 72%;   /* #80DFD0 — bright teal text */
+  --sidebar-hover-bg: 230 20% 18%;    /* #212637 */
   --sidebar-section-fg: 215 12% 48%;
 }
 
@@ -104,59 +107,56 @@
    Hex tokens for direct CSS usage — update here, changes everywhere
    ────────────────────────────────────────────────────────────────────────── */
 :root {
-  /* Brand palette */
-  --color-primary: #00deb6;
-  --color-primary-hover: #028391;
-  --color-primary-dark: #01204e;
-  --color-primary-subtle: #d0f9f0;
-  --color-primary-border: #5edecb;
+  /* Brand Teal */
+  --color-primary: #14c6a3;
+  --color-primary-hover: #0f8f7a;
+  --color-primary-dark: #0a6b5a;
+  --color-primary-subtle: #d8f5ee;
+  --color-primary-border: #7ddec8;
 
   /* Sidebar */
   --color-sidebar-bg: #ffffff;
-  --color-sidebar-hover: #faf7f2;
-  --color-sidebar-active: #028391;
-  --color-sidebar-text: #6b6b88;
-  --color-sidebar-text-active: #262637;
+  --color-sidebar-hover: #edf9f6;
+  --color-sidebar-active: #0f766e;
+  --color-sidebar-text: #4d7a74;
+  --color-sidebar-text-active: #134e4a;
 
-  /* Text scale */
-  --color-text-primary: #262637;
-  --color-text-secondary: #3c3c55;
-  --color-text-tertiary: #6b6b88;
-  --color-text-disabled: #a0a0b8;
+  /* Text scale — deep teal (ui-ux-pro-max real-estate palette) */
+  --color-text-primary: #134e4a;
+  --color-text-secondary: #336b65;
+  --color-text-tertiary: #4d7a74;
+  --color-text-disabled: #8ab5b0;
 
   /* Surfaces */
-  --color-canvas: #fdfaf4;
+  --color-canvas: #f0fdfa;
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
-  --color-surface-sunken: #f7f4ee;
+  --color-surface-sunken: #e6f5f1;
 
   /* Borders */
-  --color-border: #e2ddd6;
-  --color-border-strong: #b5b3c4;
-  --color-border-focus: #00deb6;
+  --color-border: #c4e0da;
+  --color-border-strong: #8cbdb6;
+  --color-border-focus: #14c6a3;
 
   /* Semantic status */
   --color-success: #18855a;
   --color-success-subtle: #ecfdf5;
   --color-success-border: #6ee7b7;
   --color-warning: #d97706;
-  --color-warning-subtle: #fff7ed;
-  --color-warning-border: #fed7aa;
+  --color-warning-subtle: #fffaeb;
+  --color-warning-border: #fce7a2;
   --color-danger: #dc2626;
   --color-danger-subtle: #fee2e2;
   --color-danger-border: #fecaca;
-  --color-info: #028391;
-  --color-info-subtle: #d0f9f0;
-  --color-info-border: #5edecb;
+  --color-info: #0f8fa0;
+  --color-info-subtle: #e0f5f7;
+  --color-info-border: #7ad2dd;
 
-  /* Extended brand palette */
-  --color-teal: #00deb6;
-  --color-teal-deep: #028391;
-  --color-charcoal: #262637;
-  --color-navy: #01204e;
-  --color-cream: #f6dcac;
-  --color-peach: #faa968;
-  --color-orange: #f85525;
+  /* Accent palette */
+  --color-yellow: #f5b000;
+  --color-orange: #f28c18;
+  --color-navy: #1e2235;
+  --color-cyan: #0f8fa0;
 
   /* Shadows */
   --shadow-xs: 0 1px 2px rgba(30, 34, 53, 0.04);

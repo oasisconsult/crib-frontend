@@ -82,7 +82,7 @@ function AmenityToggle({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
         checked
-          ? "border-teal-600 dark:border-teal-500 bg-teal-50 dark:bg-teal-950/30 text-teal-700 dark:text-teal-400 font-semibold"
+          ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold"
           : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50",
       )}
     >
@@ -469,9 +469,9 @@ export default function PropertyDetailPage({ params }: Props) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { label: "Total Units",  value: property.totalUnits,                             color: "text-foreground"                                          },
-              { label: "Occupied",     value: property.occupiedUnits,                          color: "text-teal-600 dark:text-teal-400"                   },
+              { label: "Occupied",     value: property.occupiedUnits,                          color: "text-emerald-600 dark:text-emerald-400"                   },
               { label: "Vacant",       value: property.totalUnits - property.occupiedUnits,    color: "text-amber-600 dark:text-amber-400"                       },
-              { label: "Occupancy",    value: `${occupancyRate}%`,                             color: occupancyRate >= 80 ? "text-teal-600 dark:text-teal-400" : "text-amber-600" },
+              { label: "Occupancy",    value: `${occupancyRate}%`,                             color: occupancyRate >= 80 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600" },
             ].map((stat) => (
               <Card key={stat.label}>
                 <CardContent className="pt-4">
@@ -554,7 +554,7 @@ export default function PropertyDetailPage({ params }: Props) {
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Occupancy Rate</span>
-                  <span className={cn("font-semibold", occupancyRate >= 80 ? "text-teal-600 dark:text-teal-400" : "text-amber-600")}>
+                  <span className={cn("font-semibold", occupancyRate >= 80 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600")}>
                     {occupancyRate}%
                   </span>
                 </div>

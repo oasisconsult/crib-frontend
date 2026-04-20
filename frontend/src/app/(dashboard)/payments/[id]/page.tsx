@@ -45,8 +45,8 @@ const STATE_CONFIG: Record<
   },
   predicted: {
     label: "Analysed",
-    color: "text-teal-700",
-    bg: "bg-teal-100 dark:bg-teal-950/40",
+    color: "text-indigo-700",
+    bg: "bg-indigo-100 dark:bg-indigo-950/40",
     icon: Clock,
   },
   routed: {
@@ -69,8 +69,8 @@ const STATE_CONFIG: Record<
   },
   allocated: {
     label: "Allocated",
-    color: "text-teal-700",
-    bg: "bg-teal-100 dark:bg-teal-950/40",
+    color: "text-violet-700",
+    bg: "bg-violet-100 dark:bg-violet-950/40",
     icon: CheckCircle2,
   },
   completed: {
