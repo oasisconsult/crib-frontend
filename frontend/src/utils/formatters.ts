@@ -16,11 +16,15 @@ export function formatCurrency(
 }
 
 export function formatCurrencyCompact(amount: number, currency = "UGX"): string {
+  const sym = currency;
+  if (amount >= 1_000_000_000) {
+    return `${sym} ${(amount / 1_000_000_000).toFixed(1)}B`;
+  }
   if (amount >= 1_000_000) {
-    return `${formatCurrency(amount / 1_000_000, currency)}M`;
+    return `${sym} ${(amount / 1_000_000).toFixed(1)}M`;
   }
   if (amount >= 1_000) {
-    return `${formatCurrency(amount / 1_000, currency)}k`;
+    return `${sym} ${(amount / 1_000).toFixed(1)}K`;
   }
   return formatCurrency(amount, currency);
 }
