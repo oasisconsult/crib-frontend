@@ -12,7 +12,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstr
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import TimestampedBase
+from app.models.base import Base, TimestampedBase
 
 
 class InviteStatus:
@@ -57,12 +57,15 @@ class LandlordInvite(TimestampedBase):
         return f"<LandlordInvite {self.email!r} status={self.status}>"
 
 
-class LandlordPropertyAccess(TimestampedBase):
+class LandlordPropertyAccess(Base):
     __tablename__ = "landlord_property_access"
     __table_args__ = (
         UniqueConstraint("landlord_profile_id", "property_id", name="uq_landlord_property_access"),
     )
 
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     landlord_profile_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("profiles.id", ondelete="CASCADE"),
@@ -80,6 +83,11 @@ class LandlordPropertyAccess(TimestampedBase):
         UUID(as_uuid=True),
         ForeignKey("profiles.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    granted_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True),
+        server_default="now()",
+        nullable=False,
     )
 
     def __repr__(self) -> str:
