@@ -41,7 +41,7 @@ def upgrade() -> None:
         sa.Column("last_name",  sa.String(100), nullable=False),
         sa.Column("phone",      sa.String(50),  nullable=True),
         # UUIDs of properties this landlord should see
-        sa.Column("property_ids", JSONB, nullable=False, server_default="'[]'"),
+        sa.Column("property_ids", JSONB, nullable=False, server_default=sa.text("'[]'::jsonb")),
         sa.Column("message",    sa.Text,        nullable=True),
         sa.Column("token",      sa.String(64),  nullable=False, unique=True, index=True),
         sa.Column("status",     sa.String(20),  nullable=False, server_default="pending"),
