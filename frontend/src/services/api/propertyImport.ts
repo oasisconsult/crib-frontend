@@ -1,4 +1,13 @@
-import { apiPost } from "./client";
+import { apiClient } from "./client";
+
+async function apiPostForm<T>(url: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<T>(url, form, {
+    headers: { "Content-Type": undefined },
+  });
+  return data;
+}
 
 export interface ImportError {
   row: number;
@@ -50,15 +59,6 @@ const BASE = "/properties/import";
 export const propertyImportApi = {
   templateUrl: () => `${BASE}/template`,
 
-  preview: (file: File): Promise<ImportPreviewResponse> => {
-    const form = new FormData();
-    form.append("file", file);
-    return apiPost<ImportPreviewResponse>(`${BASE}/preview`, form);
-  },
-
-  commit: (file: File): Promise<ImportResultResponse> => {
-    const form = new FormData();
-    form.append("file", file);
-    return apiPost<ImportResultResponse>(`${BASE}/commit`, form);
-  },
+  preview: (file: File) => apiPostForm<ImportPreviewResponse>(`${BASE}/preview`, file),
+  commit: (file: File) => apiPostForm<ImportResultResponse>(`${BASE}/commit`, file),
 };
