@@ -16,6 +16,7 @@ import { FilterBar } from "@/components/common/FilterBar";
 import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { formatDate } from "@/utils/formatters";
 import { useMaintenanceIssues, useCreateMaintenanceIssue } from "@/hooks/useInspections";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useProperties } from "@/hooks/useProperties";
 import { useRouter } from "next/navigation";
 import { cn } from "@/utils/cn";
@@ -222,6 +223,7 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
 
 export default function MaintenancePage() {
   const router = useRouter();
+  const { canWrite } = usePermissions();
   const [tab, setTab] = useState<typeof TABS[number]>("open");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -258,17 +260,19 @@ export default function MaintenancePage() {
           <h1 className="text-2xl font-bold tracking-tight">Maintenance</h1>
           <p className="text-sm text-muted-foreground mt-1">Track and manage property maintenance issues</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4" />Report Issue</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Report Maintenance Issue</DialogTitle>
-            </DialogHeader>
-            <NewIssueDialog onClose={() => setDialogOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        {canWrite && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button><Plus className="h-4 w-4" />Report Issue</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Report Maintenance Issue</DialogTitle>
+              </DialogHeader>
+              <NewIssueDialog onClose={() => setDialogOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Toolbar */}

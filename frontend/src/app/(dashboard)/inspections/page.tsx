@@ -11,6 +11,7 @@ import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/utils/formatters";
 import { useInspections } from "@/hooks/useInspections";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { Inspection, FilterConfig } from "@/types";
 
 const PAGE_SIZE = 20;
@@ -101,6 +102,7 @@ function panelFiltersToConfig(active: ActiveFilters): FilterConfig[] {
 
 export default function InspectionsPage() {
   const router = useRouter();
+  const { canWrite } = usePermissions();
   const [tab, setTab] = useState<typeof TABS[number]>("all");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -138,10 +140,12 @@ export default function InspectionsPage() {
             Property and unit inspections
           </p>
         </div>
-        <Button onClick={() => router.push("/inspections/new")}>
-          <Plus className="h-4 w-4" />
-          Schedule Inspection
-        </Button>
+        {canWrite && (
+          <Button onClick={() => router.push("/inspections/new")}>
+            <Plus className="h-4 w-4" />
+            Schedule Inspection
+          </Button>
+        )}
       </div>
 
       {/* Toolbar */}
