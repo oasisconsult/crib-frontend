@@ -137,7 +137,7 @@ export function TenantImportModal({ onClose }: Props) {
                     </p>
                   </div>
                 </div>
-                <a href={tenantImportApi.templateUrl()} download="tenant_import_template.csv">
+                <a href="/api/v1/tenants/import/template" download="tenant_import_template.csv">
                   <Button variant="outline" size="sm">
                     <Download className="h-3.5 w-3.5" />
                     Template

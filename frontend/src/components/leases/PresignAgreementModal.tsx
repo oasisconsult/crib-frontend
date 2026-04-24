@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Edit } from "lucide-react";
 import {
   Dialog,
@@ -27,6 +27,16 @@ export function PresignAgreementModal({
 }: PresignAgreementModalProps) {
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
   const { mutate: presign, isPending } = usePresignAgreement();
+
+  // Delay canvas mount by one rAF so the Dialog portal is fully painted before
+  // ESignatureCanvas measures offsetWidth. Without this, the canvas initialises
+  // with 0×0 dimensions inside the portal and the ResizeObserver fires too late.
+  const [canvasReady, setCanvasReady] = useState(false);
+  useEffect(() => {
+    if (!open) { setCanvasReady(false); return; }
+    const id = requestAnimationFrame(() => setCanvasReady(true));
+    return () => cancelAnimationFrame(id);
+  }, [open]);
 
   const handleConfirm = () => {
     if (!signatureDataUrl) return;
@@ -61,10 +71,12 @@ export function PresignAgreementModal({
           </DialogDescription>
         </DialogHeader>
 
-        <ESignatureCanvas
-          onSave={setSignatureDataUrl}
-          className="mt-2"
-        />
+        {canvasReady && (
+          <ESignatureCanvas
+            onSave={setSignatureDataUrl}
+            className="mt-2"
+          />
+        )}
 
         <DialogFooter className="mt-4">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>

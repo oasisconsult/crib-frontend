@@ -35,30 +35,37 @@ export function ESignatureCanvas({ onSave, className }: ESignatureCanvasProps) {
       setSaved(false);
     });
 
-    // ResizeObserver fires AFTER the DOM is fully laid out — including after Dialog
-    // open animations. Without this, canvas.offsetWidth is 0 at mount time so the
-    // bitmap is 0×0 and CSS stretches it → pixelated strokes.
+    // DPR handling: signature_pad 4.x computes event positions in CSS-pixel space.
+    // Setting canvas.width resets the canvas transform to identity, so ctx.scale
+    // must be re-applied every time we resize.
     //
-    // DPR handling: signature_pad 4.x computes event positions in CSS-pixel space
-    // (no canvas.width/rect.width scaling). Setting canvas.width resets the canvas
-    // transform to identity, so ctx.scale(ratio, ratio) must be re-applied every
-    // time we resize to map CSS-pixel draw calls onto the hi-DPI bitmap correctly.
+    // We track the last bitmap dimensions to avoid calling padRef.current.clear()
+    // on repeated ResizeObserver notifications with identical sizes — without this
+    // guard, a Dialog's layout settling mid-draw would wipe the in-progress stroke.
+    let lastW = 0;
+    let lastH = 0;
+
     const resizeCanvas = () => {
       if (!padRef.current) return;
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
       if (!w || !h) return;
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
-      canvas.width  = w * ratio;   // resets transform to identity
-      canvas.height = h * ratio;
+      const bitmapW = Math.round(w * ratio);
+      const bitmapH = Math.round(h * ratio);
+      if (bitmapW === lastW && bitmapH === lastH) return; // nothing changed
+      lastW = bitmapW;
+      lastH = bitmapH;
+      canvas.width  = bitmapW;  // resets transform to identity
+      canvas.height = bitmapH;
       const ctx = canvas.getContext("2d");
-      if (ctx) ctx.scale(ratio, ratio); // re-apply after reset
-      padRef.current.clear();          // sync internal state
+      if (ctx) ctx.scale(ratio, ratio);
+      padRef.current.clear();   // sync internal state to new dimensions
     };
 
     const ro = new ResizeObserver(resizeCanvas);
     ro.observe(canvas);
-    resizeCanvas(); // attempt immediate sizing if already visible
+    resizeCanvas(); // immediate attempt (works when canvas already visible)
 
     return () => {
       ro.disconnect();
