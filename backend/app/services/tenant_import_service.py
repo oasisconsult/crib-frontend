@@ -64,18 +64,18 @@ TEMPLATE_HEADERS = [
 ]
 
 TEMPLATE_EXAMPLE_ROWS = [
-    # Tenant with active lease in Unit 1A
+    # Tenant with active rolling lease in Unit 1A (UK date format)
     ["John", "Doe", "john.doe@example.com",
-     "+256 700 000001", "CM1234567", "1990-05-15", "Ugandan",
+     "+256 700 000001", "CM1234567", "15/05/1990", "Ugandan",
      "+256 700 000001", "Jane Doe", "+256 700 000002",
      "Block A", "Unit 1A",
-     "2024-01-01", "", "500000", "UGX", "500000"],
+     "01/01/2024", "", "500000", "UGX", "500000"],
     # Tenant with fixed-term lease in Unit 1B
     ["Mary", "Smith", "mary.smith@example.com",
-     "+256 700 000003", "", "1985-09-22", "Kenyan",
+     "+256 700 000003", "", "22/09/1985", "Kenyan",
      "", "", "",
      "Block A", "Unit 1B",
-     "2024-03-01", "2025-02-28", "700000", "UGX", "700000"],
+     "01/03/2024", "28/02/2025", "700000", "UGX", "700000"],
     # Profile-only tenant (no unit yet)
     ["Peter", "Okello", "peter.okello@example.com",
      "+256 700 000005", "", "", "",
@@ -181,14 +181,36 @@ def _sanitise(value: str) -> str:
     return value.strip()
 
 
-def _is_valid_date(s: str) -> bool:
+def _parse_date(s: str) -> str | None:
+    """
+    Parse a date string in any of the accepted formats and return ISO (YYYY-MM-DD).
+    Returns None for empty input (field is optional).
+    Raises ValueError with a human-readable message if the value is present but invalid.
+
+    Accepted formats:
+      DD/MM/YYYY  — UK  (e.g. 24/06/2026)
+      DD-MM-YYYY  — UK  (e.g. 24-06-2026)
+      DD.MM.YYYY  — EU  (e.g. 24.06.2026)
+      YYYY-MM-DD  — ISO (e.g. 2026-06-24)
+    """
     if not s:
-        return True  # empty is fine (optional)
-    try:
-        date.fromisoformat(s)
-        return True
-    except ValueError:
-        return False
+        return None
+
+    # Try each format in order; first match wins
+    _FORMATS = [
+        ("%d/%m/%Y", "DD/MM/YYYY"),
+        ("%d-%m-%Y", "DD-MM-YYYY"),
+        ("%d.%m.%Y", "DD.MM.YYYY"),
+        ("%Y-%m-%d", "YYYY-MM-DD"),
+    ]
+    for fmt, _ in _FORMATS:
+        try:
+            return datetime.strptime(s, fmt).date().isoformat()
+        except ValueError:
+            continue
+
+    accepted = ", ".join(lbl for _, lbl in _FORMATS)
+    raise ValueError(f"use one of: {accepted} (got: {s!r})")
 
 
 def parse_csv(content: bytes) -> tuple[list[TenantImportRow], list[TenantImportError]]:
@@ -285,21 +307,32 @@ def parse_csv(content: bytes) -> tuple[list[TenantImportRow], list[TenantImportE
             ))
             continue
 
-        # Validate dates
+        # Parse and normalise dates (UK DD/MM/YYYY, DD-MM-YYYY, ISO YYYY-MM-DD)
         lease_start = optional("lease_start_date")
         lease_end   = optional("lease_end_date")
         dob         = optional("date_of_birth")
 
+        date_parse_ok = True
         for col, val in [("lease_start_date", lease_start), ("lease_end_date", lease_end),
                          ("date_of_birth", dob)]:
-            if val and not _is_valid_date(val):
+            if not val:
+                continue
+            try:
+                normalized = _parse_date(val)
+                if col == "lease_start_date":
+                    lease_start = normalized or ""
+                elif col == "lease_end_date":
+                    lease_end = normalized or ""
+                elif col == "date_of_birth":
+                    dob = normalized or ""
+            except ValueError as exc:
                 errors.append(TenantImportError(
                     row=raw_row_num, column=col,
-                    message=f"Invalid date format — use YYYY-MM-DD (got: {val!r})",
+                    message=f"Invalid date — {exc}",
                 ))
-                row_errors.append(TenantImportError(row=raw_row_num, column=col, message=""))
+                date_parse_ok = False
 
-        if row_errors:
+        if not date_parse_ok or row_errors:
             continue
 
         # Monthly rent (optional float)

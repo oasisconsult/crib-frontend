@@ -125,7 +125,7 @@ class TestParseCSV:
         ))
         rows, errors = parse_csv(content)
         assert rows == []
-        assert any("YYYY-MM-DD" in e.message for e in errors)
+        assert any("Invalid date" in e.message for e in errors)
 
     def test_invalid_monthly_rent(self):
         from app.services.tenant_import_service import parse_csv
