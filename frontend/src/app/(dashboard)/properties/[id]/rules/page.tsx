@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RulesBuilder } from "@/components/properties/RulesBuilder";
 import { useProperty, useUnits, useUpdatePropertyRules, useUpdateUnitRules } from "@/hooks/useProperties";
+import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
 import type { PropertyRules, Unit } from "@/types";
 
@@ -94,6 +95,7 @@ function UnitSelector({
 export default function PropertyRulesPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
+  const { canWrite } = usePermissions();
 
   const { data: property, isLoading: loadingProp } = useProperty(id);
   const { data: unitsData, isLoading: loadingUnits } = useUnits(id);
@@ -196,16 +198,18 @@ export default function PropertyRulesPage({ params }: Props) {
                     <strong>{selectedUnit?.name}</strong> has custom rules that override the property defaults.
                   </span>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 text-xs gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-100"
-                  onClick={handleResetUnit}
-                  loading={savingUnit}
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  Reset to defaults
-                </Button>
+                {canWrite && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 text-xs gap-1.5 border-amber-300 text-amber-700 hover:bg-amber-100"
+                    onClick={handleResetUnit}
+                    loading={savingUnit}
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Reset to defaults
+                  </Button>
+                )}
               </div>
             )}
 
@@ -213,8 +217,9 @@ export default function PropertyRulesPage({ params }: Props) {
               key={selected} // remount when switching so form resets
               propertyId={id}
               initialRules={activeRules!}
-              onSave={handleSave}
+              onSave={canWrite ? handleSave : undefined}
               isSaving={selected === "property" ? savingProp : savingUnit}
+              readOnly={!canWrite}
             />
           </div>
         </div>
@@ -223,6 +228,7 @@ export default function PropertyRulesPage({ params }: Props) {
         <RulesBuilder
           propertyId={id}
           initialRules={propertyRules}
+          readOnly={!canWrite}
         />
       )}
     </div>

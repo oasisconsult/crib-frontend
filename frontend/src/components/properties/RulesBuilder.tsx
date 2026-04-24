@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertTriangle, Save } from "lucide-react";
+import { AlertTriangle, Lock, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,9 +42,11 @@ interface RulesBuilderProps {
   /** Override the default save action (e.g. for per-unit rules). */
   onSave?: (rules: PropertyRules) => void;
   isSaving?: boolean;
+  /** When true all inputs are disabled and the Save button is hidden. */
+  readOnly?: boolean;
 }
 
-export function RulesBuilder({ propertyId, initialRules, onSave, isSaving }: RulesBuilderProps) {
+export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readOnly = false }: RulesBuilderProps) {
   const { mutate: saveRules, isPending: savingProperty } = useUpdatePropertyRules();
   const isPending = isSaving ?? savingProperty;
 
@@ -80,6 +82,7 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving }: Rul
         </Alert>
       )}
 
+      <fieldset disabled={readOnly} className="contents">
       <div className="grid gap-5 md:grid-cols-2">
         {visibleFields.map((field) => {
           const hasError = !!errors[field.key as keyof PropertyRules];
@@ -173,20 +176,29 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving }: Rul
         })}
       </div>
 
+      </fieldset>
+
       <Separator />
 
-      <div className="flex items-center justify-between">
-        {isDirty && (
-          <p className="text-xs text-amber-600 flex items-center gap-1">
-            <AlertTriangle className="h-3.5 w-3.5" />
-            Unsaved changes
-          </p>
-        )}
-        <Button type="submit" loading={isPending} className="ml-auto" disabled={!isDirty || conflicts.length > 0}>
-          <Save className="h-4 w-4" />
-          Save Rules
-        </Button>
-      </div>
+      {readOnly ? (
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <Lock className="h-3.5 w-3.5" />
+          View only — contact your agency to change these rules.
+        </p>
+      ) : (
+        <div className="flex items-center justify-between">
+          {isDirty && (
+            <p className="text-xs text-amber-600 flex items-center gap-1">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Unsaved changes
+            </p>
+          )}
+          <Button type="submit" loading={isPending} className="ml-auto" disabled={!isDirty || conflicts.length > 0}>
+            <Save className="h-4 w-4" />
+            Save Rules
+          </Button>
+        </div>
+      )}
     </form>
   );
 }
