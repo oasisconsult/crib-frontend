@@ -15,7 +15,7 @@ Leases REST API — 9 endpoints.
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_tenant_record, require_org_access
@@ -257,5 +257,46 @@ async def countersign_agreement(
         signature_data_url=body.signature_data_url,
         signer_id=current_user.sub,
         signer_name=current_user.profile.display_name or current_user.sub,
+        db=db,
+    )
+
+
+# ── Offline agreement acknowledgement ─────────────────────────────────────────
+
+
+@router.patch("/{lease_id}/acknowledge", response_model=LeaseOut)
+async def acknowledge_lease(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Manager records that a signed paper agreement is on file for this lease.
+    Sets paper_agreement_acknowledged=True. Clears the 'pending confirmation'
+    banner for this lease in the dashboard and detail panel.
+    """
+    assert current_user.org_id is not None
+    return await svc.acknowledge_lease(lease_id, current_user.org_id, db)
+
+
+@router.patch("/{lease_id}/confirm-terms", response_model=LeaseOut)
+async def tenant_confirm_terms(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _read,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Tenant confirms they have received and agree to the terms of their imported
+    lease. Sets terms_accepted_at=now(). Only callable by the tenant who owns
+    the lease; blocks calls from managers/owners via the staff dashboard.
+    """
+    if not current_user.has_role("tenant"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the tenant can confirm lease terms",
+        )
+    return await svc.tenant_confirm_terms(
+        lease_id=lease_id,
+        tenant_logto_sub=current_user.sub,
         db=db,
     )

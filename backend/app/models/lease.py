@@ -124,6 +124,14 @@ class Lease(TimestampedBase):
     # List of Payment UUIDs created during onboarding (deposit + advance rent)
     onboarding_payment_ids: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
 
+    # ── Import / offline agreement ─────────────────────────────────────────────
+    # True when a manager has confirmed that a signed paper agreement exists for
+    # this lease (e.g. after a CSV migration). Used alongside terms_accepted_at
+    # to determine whether tenant confirmation is still required in the portal.
+    paper_agreement_acknowledged: Mapped[bool] = mapped_column(
+        Boolean(), nullable=False, default=False
+    )
+
     # ── Relationships ──────────────────────────────────────────────────────────
     renewal_of: Mapped["Lease | None"] = relationship(
         "Lease",

@@ -104,6 +104,9 @@ def _lease_out(
         termination_reason=lease.termination_reason,
         renewal_of_lease_id=str(lease.renewal_of_lease_id) if lease.renewal_of_lease_id else None,
         notes=lease.notes,
+        terms_accepted_at=_d(lease.terms_accepted_at),
+        onboarding_completed_at=_d(lease.onboarding_completed_at),
+        paper_agreement_acknowledged=bool(lease.paper_agreement_acknowledged),
         created_at=lease.created_at.isoformat(),
         updated_at=lease.updated_at.isoformat(),
         signatures=signatures,
@@ -344,6 +347,65 @@ async def delete_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession)
         )
     await db.delete(lease)
     await db.flush()
+
+
+# ── Offline agreement acknowledgement ─────────────────────────────────────────
+
+
+async def acknowledge_lease(
+    lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> LeaseOut:
+    """
+    Manager confirms that a signed paper agreement is on file for this lease.
+    Sets paper_agreement_acknowledged=True. No e-signature is generated.
+    """
+    lease = await _get_lease(lease_id, org_id, db)
+    lease.paper_agreement_acknowledged = True
+    await db.flush()
+    await db.refresh(lease, attribute_names=["paper_agreement_acknowledged", "updated_at"])
+    return _lease_out(lease)
+
+
+async def tenant_confirm_terms(
+    lease_id: uuid.UUID,
+    tenant_logto_sub: str,
+    db: AsyncSession,
+) -> LeaseOut:
+    """
+    Tenant digitally confirms they have received and agree to the terms of their
+    imported lease. Sets terms_accepted_at=now(). Only valid for active leases
+    where terms_accepted_at is still NULL.
+
+    Access control: the requesting user's Logto sub must match the tenant on
+    the lease (enforced by the caller via get_current_user).
+    """
+    from app.models.tenant import Tenant as TenantModel
+
+    result = await db.execute(
+        select(Lease).join(
+            TenantModel, TenantModel.id == Lease.tenant_id
+        ).where(
+            Lease.id == lease_id,
+            TenantModel.logto_user_id == tenant_logto_sub,
+            Lease.status == LeaseStatus.active,
+        )
+    )
+    lease = result.scalar_one_or_none()
+    if not lease:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Lease not found or not accessible",
+        )
+    if lease.terms_accepted_at:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Lease terms have already been confirmed",
+        )
+
+    lease.terms_accepted_at = datetime.now(timezone.utc)
+    await db.flush()
+    await db.refresh(lease, attribute_names=["terms_accepted_at", "updated_at"])
+    return _lease_out(lease)
 
 
 # ── Lifecycle transitions ──────────────────────────────────────────────────────

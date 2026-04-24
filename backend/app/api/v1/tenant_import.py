@@ -71,7 +71,8 @@ async def preview_import(
     if errors:
         # Return parse errors immediately — no org context needed
         return TenantImportPreviewResponse(
-            tenants=[], total_tenants=0, with_lease=0, profile_only=0,
+            tenants=[], total_tenants=0,
+            active_leases=0, rolling_leases=0, expired_leases=0, upcoming_leases=0, profile_only=0,
             errors=errors, warnings=[], is_valid=False,
         )
     organisation_id = _resolve_org_id(current_user)

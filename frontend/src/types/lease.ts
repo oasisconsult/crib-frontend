@@ -61,12 +61,13 @@ export interface Lease {
   terminationReason?: string;
   // Documents
   documentUrl?: string;
-  // Onboarding flow
+  // Onboarding / import
   termsAcceptedAt?: string;
   agreementPreviewSnapshot?: Record<string, unknown>;
   finalAgreementSnapshot?: Record<string, unknown>;
   onboardingCompletedAt?: string;
   onboardingPaymentIds?: string[];
+  paperAgreementAcknowledged?: boolean;
   // Advance payment
   advanceMonths?: number;
   // Related

@@ -17,7 +17,7 @@ import { TerminateModal } from "./TerminateModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
-import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments } from "@/hooks/useLeases";
+import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease } from "@/hooks/useLeases";
 import { leasesApi } from "@/services/api/leases";
 import { toast } from "@/store/useUIStore";
 import { canTransition, LEASE_TRANSITIONS } from "@/types/states";
@@ -38,6 +38,13 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const { mutate: transition, isPending } = useTransitionLease();
   const { mutate: sendOnboarding, isPending: sendingOnboarding } = useSendOnboarding();
   const { mutate: confirmPayments, isPending: confirmingPayments } = useConfirmOnboardingPayments();
+  const { mutate: acknowledge, isPending: acknowledging } = useAcknowledgeLease();
+
+  // Imported leases have no terms_accepted_at and no paper acknowledgement
+  const needsConfirmation =
+    lease.status === "active" &&
+    !lease.termsAcceptedAt &&
+    !lease.paperAgreementAcknowledged;
 
   async function handleGeneratePdf() {
     setGeneratingPdf(true);
@@ -76,6 +83,33 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
 
   return (
     <div className="space-y-6">
+      {/* ── Imported lease — agreement confirmation banner ── */}
+      {needsConfirmation && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-0.5">
+              <p className="font-medium text-sm">Offline agreement not yet recorded</p>
+              <p className="text-xs text-muted-foreground">
+                This lease was migrated from an existing tenancy. Upload a scan of the signed paper
+                agreement or click <strong>Mark as acknowledged</strong> to confirm a paper copy is on file.
+                The tenant will also be prompted to confirm their terms on first portal login.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0"
+              loading={acknowledging}
+              onClick={() => acknowledge(lease.id)}
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              Mark as acknowledged
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Workflow */}
       <Card>
         <CardHeader className="pb-4">

@@ -176,7 +176,7 @@ class TestBuildPreview:
         assert result.is_valid
         assert result.total_tenants == 1
         assert result.profile_only == 1
-        assert result.with_lease == 0
+        assert result.active_leases + result.rolling_leases == 0
         assert not result.errors
 
     async def test_unit_resolved_correctly(self, db_session: AsyncSession):
@@ -191,8 +191,8 @@ class TestBuildPreview:
         rows, _ = parse_csv(content)
         result = await build_preview(rows, [], db_session, org.id)
         assert result.is_valid
-        assert result.with_lease == 1
-        assert result.tenants[0].mode == "with_lease"
+        assert result.active_leases + result.rolling_leases == 1
+        assert result.tenants[0].mode in ("active", "rolling")
         assert result.tenants[0].monthly_rent == 500000.0
 
     async def test_property_not_found_downgrades_to_profile_only(self, db_session: AsyncSession):
@@ -277,7 +277,7 @@ class TestCommitImport:
 
         assert result.imported_tenants == 1
         assert result.profile_only == 1
-        assert result.with_lease == 0
+        assert result.active_leases + result.rolling_leases == 0
 
         tenant = await db_session.scalar(
             select(Tenant).where(Tenant.email == "new@example.com")
@@ -318,7 +318,7 @@ class TestCommitImport:
             result = await commit_import(rows=rows, db=db_session, profile=profile)
 
         assert result.imported_tenants == 1
-        assert result.with_lease == 1
+        assert result.active_leases + result.rolling_leases == 1
 
         tenant = await db_session.scalar(
             select(Tenant).where(Tenant.email == "active@example.com")
@@ -383,7 +383,7 @@ class TestCommitImport:
 
         # Both tenants imported, but second gets profile-only (unit claimed)
         assert result.imported_tenants == 2
-        assert result.with_lease == 1
+        assert result.active_leases + result.rolling_leases == 1
         assert result.profile_only == 1
         # Unit is marked occupied after the first assignment, so the second tenant
         # hits either the "occupied" or "already assigned" guard — both are correct.
@@ -415,7 +415,7 @@ class TestCommitImport:
             m.return_value = None
             result = await commit_import(rows=rows, db=db_session, profile=profile)
 
-        assert result.with_lease == 1
+        assert result.active_leases + result.rolling_leases == 1
         from app.models.tenant import Tenant
         tenant = await db_session.scalar(
             select(Tenant).where(Tenant.email == "rent@example.com")
@@ -526,3 +526,136 @@ class TestTenantImportAPI:
                 files={"file": ("tenants.csv", io.BytesIO(content), "text/csv")},
             )
         assert resp.status_code == 201
+
+
+# ── Lease mode classification tests ───────────────────────────────────────────
+
+class TestClassifyLeaseMode:
+    def test_active_mode(self):
+        from app.services.tenant_import_service import _classify_lease_mode
+        from datetime import date, timedelta
+        today = date.today().isoformat()
+        future = (date.today() + timedelta(days=90)).isoformat()
+        assert _classify_lease_mode(today, future) == "active"
+
+    def test_rolling_mode(self):
+        from app.services.tenant_import_service import _classify_lease_mode
+        assert _classify_lease_mode("2024-01-01", "") == "rolling"
+
+    def test_expired_mode(self):
+        from app.services.tenant_import_service import _classify_lease_mode
+        assert _classify_lease_mode("2023-01-01", "2023-12-31") == "expired"
+
+    def test_upcoming_mode(self):
+        from app.services.tenant_import_service import _classify_lease_mode
+        from datetime import date, timedelta
+        future_start = (date.today() + timedelta(days=30)).isoformat()
+        future_end   = (date.today() + timedelta(days=365)).isoformat()
+        assert _classify_lease_mode(future_start, future_end) == "upcoming"
+
+
+@pytest.mark.asyncio
+class TestExpiredAndUpcomingImport:
+    async def _make_profile(self, db_session, org_id):
+        from app.models.profile import Profile
+        p = Profile(
+            logto_sub="dev_manager_expired",
+            organisation_id=org_id,
+            role="manager",
+            display_name="Manager",
+            email="mgr_exp@test.local",
+        )
+        db_session.add(p)
+        await db_session.flush()
+        return p
+
+    async def test_expired_lease_creates_expired_status_no_logto(
+        self, db_session: AsyncSession
+    ):
+        from sqlalchemy import select
+        from app.models.lease import Lease, LeaseStatus
+        from app.models.tenant import Tenant, TenantStatus
+        from app.models.property import UnitStatus
+        from app.services.tenant_import_service import parse_csv, commit_import
+
+        org     = await make_organisation(db_session, logto_org_id="org_dev")
+        prop    = await make_property(db_session, org, name="Old Block")
+        unit    = await make_unit(db_session, prop, name="Unit X", monthly_rent=300000)
+        profile = await self._make_profile(db_session, org.id)
+
+        content = _csv(_minimal_row(
+            email="expired@example.com",
+            property_name="Old Block", unit_name="Unit X",
+            lease_start_date="2022-01-01", lease_end_date="2022-12-31",
+        ))
+        rows, _ = parse_csv(content)
+
+        with patch("app.services.logto_service.create_tenant_user", new_callable=AsyncMock) as m:
+            m.return_value = "should_not_be_called"
+            result = await commit_import(rows=rows, db=db_session, profile=profile)
+            m.assert_not_called()  # expired tenants get no Logto account
+
+        assert result.expired_leases == 1
+        assert result.logto_accounts_created == 0
+
+        tenant = await db_session.scalar(
+            select(Tenant).where(Tenant.email == "expired@example.com")
+        )
+        assert tenant.status == TenantStatus.inactive
+
+        lease = await db_session.scalar(
+            select(Lease).where(Lease.tenant_id == tenant.id)
+        )
+        assert lease.status == LeaseStatus.expired
+
+        # Unit must stay available (tenant has already left)
+        await db_session.refresh(unit)
+        assert unit.status == UnitStatus.available
+
+    async def test_upcoming_lease_creates_draft_no_logto(
+        self, db_session: AsyncSession
+    ):
+        from datetime import date, timedelta
+        from sqlalchemy import select
+        from app.models.lease import Lease, LeaseStatus
+        from app.models.tenant import Tenant, TenantStatus, OnboardingState
+        from app.models.property import UnitStatus
+        from app.services.tenant_import_service import parse_csv, commit_import
+
+        org     = await make_organisation(db_session, logto_org_id="org_dev")
+        prop    = await make_property(db_session, org, name="New Block")
+        unit    = await make_unit(db_session, prop, name="Unit Y", monthly_rent=500000)
+        profile = await self._make_profile(db_session, org.id)
+
+        future_start = (date.today() + timedelta(days=30)).isoformat()
+        future_end   = (date.today() + timedelta(days=395)).isoformat()
+
+        content = _csv(_minimal_row(
+            email="upcoming@example.com",
+            property_name="New Block", unit_name="Unit Y",
+            lease_start_date=future_start, lease_end_date=future_end,
+        ))
+        rows, _ = parse_csv(content)
+
+        with patch("app.services.logto_service.create_tenant_user", new_callable=AsyncMock) as m:
+            m.return_value = "should_not_be_called"
+            result = await commit_import(rows=rows, db=db_session, profile=profile)
+            m.assert_not_called()
+
+        assert result.upcoming_leases == 1
+        assert result.logto_accounts_created == 0
+
+        tenant = await db_session.scalar(
+            select(Tenant).where(Tenant.email == "upcoming@example.com")
+        )
+        assert tenant.status == TenantStatus.inactive
+        assert tenant.onboarding_state == OnboardingState.approved
+
+        lease = await db_session.scalar(
+            select(Lease).where(Lease.tenant_id == tenant.id)
+        )
+        assert lease.status == LeaseStatus.draft
+
+        # Unit must stay available until manager activates
+        await db_session.refresh(unit)
+        assert unit.status == UnitStatus.available

@@ -3,14 +3,22 @@
 import { useCallback, useRef, useState } from "react";
 import {
   Upload, FileSpreadsheet, CheckCircle2, AlertTriangle,
-  X, Download, Users, UserCheck, UserX,
+  X, Download, Clock, Archive,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 import { usePreviewTenantImport, useCommitTenantImport } from "@/hooks/useTenantImport";
 import { tenantImportApi } from "@/services/api/tenantImport";
-import type { TenantImportPreviewResponse, TenantImportResultResponse } from "@/services/api/tenantImport";
+import type { LeaseImportMode, TenantImportPreviewResponse, TenantImportResultResponse } from "@/services/api/tenantImport";
+
+const MODE_BADGE: Record<LeaseImportMode, { label: string; className: string }> = {
+  active:       { label: "Active lease",    className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" },
+  rolling:      { label: "Rolling lease",   className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" },
+  expired:      { label: "Expired (historical)", className: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" },
+  upcoming:     { label: "Upcoming (draft)", className: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" },
+  profile_only: { label: "Profile only",    className: "bg-muted text-muted-foreground" },
+};
 
 interface Props {
   onClose: () => void;
@@ -201,43 +209,45 @@ export function TenantImportModal({ onClose }: Props) {
                 </div>
               )}
 
-              {/* Summary chips */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Summary chips — one per mode with non-zero count */}
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "Total tenants",  value: preview.totalTenants, icon: Users,     color: "text-foreground" },
-                  { label: "With lease",     value: preview.withLease,    icon: UserCheck,  color: "text-emerald-600" },
-                  { label: "Profile only",   value: preview.profileOnly,  icon: UserX,      color: "text-amber-600" },
-                ].map(({ label, value, icon: Icon, color }) => (
-                  <div key={label} className="rounded-[6px] border px-3 py-2.5 text-center">
-                    <Icon className={cn("h-5 w-5 mx-auto mb-1", color)} />
-                    <p className="text-lg font-semibold">{value}</p>
+                  { label: "Total",      value: preview.totalTenants,   cls: "text-foreground" },
+                  { label: "Active",     value: preview.activeLeases,   cls: "text-emerald-600" },
+                  { label: "Rolling",    value: preview.rollingLeases,  cls: "text-emerald-600" },
+                  { label: "Expired",    value: preview.expiredLeases,  cls: "text-amber-600" },
+                  { label: "Upcoming",   value: preview.upcomingLeases, cls: "text-blue-600" },
+                  { label: "Profile",    value: preview.profileOnly,    cls: "text-muted-foreground" },
+                ].filter(c => c.value > 0).map(({ label, value, cls }) => (
+                  <div key={label} className="rounded-[6px] border px-2 py-2 text-center">
+                    <p className={cn("text-lg font-semibold", cls)}>{value}</p>
                     <p className="text-xs text-muted-foreground">{label}</p>
                   </div>
                 ))}
               </div>
 
-              {/* Tenant list preview */}
+              {/* Tenant list preview with mode badge */}
               {preview.tenants.length > 0 && (
                 <div className="border rounded-[6px] divide-y max-h-52 overflow-y-auto text-sm">
-                  {preview.tenants.map((t) => (
-                    <div key={t.rowNum} className="flex items-center justify-between px-3 py-2 gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{t.firstName} {t.lastName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{t.email}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        {t.mode === "with_lease" ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 font-medium">
-                            {t.propertyName} · {t.unitName}
+                  {preview.tenants.map((t) => {
+                    const badge = MODE_BADGE[t.mode];
+                    return (
+                      <div key={t.rowNum} className="flex items-center justify-between px-3 py-2 gap-3">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{t.firstName} {t.lastName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{t.email}</p>
+                        </div>
+                        <div className="text-right shrink-0 space-y-0.5">
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", badge.className)}>
+                            {badge.label}
                           </span>
-                        ) : (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
-                            Profile only
-                          </span>
-                        )}
+                          {t.propertyName && (
+                            <p className="text-xs text-muted-foreground">{t.propertyName} · {t.unitName}</p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
@@ -268,25 +278,28 @@ export function TenantImportModal({ onClose }: Props) {
                 </p>
               </div>
 
-              {/* Counts grid */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-[6px] border px-3 py-2.5 text-center">
-                  <p className="text-xl font-bold text-emerald-600">{result.withLease}</p>
-                  <p className="text-xs text-muted-foreground">Active lease</p>
-                </div>
-                <div className="rounded-[6px] border px-3 py-2.5 text-center">
-                  <p className="text-xl font-bold text-amber-600">{result.profileOnly}</p>
-                  <p className="text-xs text-muted-foreground">Profile only</p>
-                </div>
+              {/* Counts grid — only non-zero modes shown */}
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "Active lease",    value: result.activeLeases,   cls: "text-emerald-600" },
+                  { label: "Rolling lease",   value: result.rollingLeases,  cls: "text-emerald-600" },
+                  { label: "Expired (hist.)", value: result.expiredLeases,  cls: "text-amber-600" },
+                  { label: "Upcoming draft",  value: result.upcomingLeases, cls: "text-blue-600" },
+                  { label: "Profile only",    value: result.profileOnly,    cls: "text-muted-foreground" },
+                ].filter(c => c.value > 0).map(({ label, value, cls }) => (
+                  <div key={label} className="rounded-[6px] border px-2 py-2 text-center">
+                    <p className={`text-xl font-bold ${cls}`}>{value}</p>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                  </div>
+                ))}
               </div>
 
-              {/* Portal access status */}
+              {/* Portal accounts */}
               <div className="rounded-[6px] border divide-y text-sm">
                 <div className="flex items-center justify-between px-3 py-2.5 gap-2">
                   <span className="text-muted-foreground">Portal accounts created</span>
                   <span className={result.logtoAccountsCreated > 0 ? "font-medium text-emerald-600" : "text-muted-foreground"}>
-                    {result.logtoAccountsCreated}
-                    {result.logtoAccountsCreated > 0 && " ✓"}
+                    {result.logtoAccountsCreated}{result.logtoAccountsCreated > 0 && " ✓"}
                   </span>
                 </div>
                 {result.logtoAccountsFailed > 0 && (
@@ -297,37 +310,29 @@ export function TenantImportModal({ onClose }: Props) {
                 )}
               </div>
 
-              {/* What's next */}
+              {/* What happens next */}
               <div className="rounded-[6px] bg-muted/50 px-4 py-3 space-y-1.5 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground text-sm">What happens next</p>
                 {result.logtoAccountsCreated > 0 && (
-                  <p>
-                    <span className="font-medium text-foreground">Welcome emails sent</span> — tenants
-                    will receive their portal login credentials and can sign in immediately.
-                  </p>
+                  <p><span className="font-medium text-foreground">Welcome emails sent</span> — tenants will receive portal login credentials and can sign in immediately.</p>
                 )}
-                {result.withLease > 0 && (
-                  <p>
-                    <span className="font-medium text-foreground">Active lease tenants</span> can view
-                    their lease, payments, and maintenance from the tenant portal.
-                  </p>
+                {(result.activeLeases + result.rollingLeases) > 0 && (
+                  <p><span className="font-medium text-foreground">Active / rolling tenants</span> — they will be prompted to confirm their lease terms on first portal login.</p>
+                )}
+                {result.expiredLeases > 0 && (
+                  <p><span className="font-medium text-foreground">Expired leases</span> — imported as historical records. No portal access. Open the lease and click <em>Mark as acknowledged</em> to record the offline agreement.</p>
+                )}
+                {result.upcomingLeases > 0 && (
+                  <p className="flex items-start gap-1.5"><Clock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-blue-500" /><span><span className="font-medium text-foreground">Upcoming leases</span> — saved as drafts. Activate each lease from the lease detail page when the tenant moves in.</span></p>
                 )}
                 {result.profileOnly > 0 && (
-                  <p>
-                    <span className="font-medium text-foreground">Profile-only tenants</span> can log
-                    in and complete their profile. Assign them a unit by creating a lease when ready.
-                  </p>
+                  <p><span className="font-medium text-foreground">Profile-only tenants</span> — can log in and complete onboarding. Create a lease to assign them to a unit.</p>
                 )}
                 {result.logtoAccountsFailed > 0 && (
-                  <p className="text-destructive/80">
-                    <span className="font-medium text-destructive">
-                      {result.logtoAccountsFailed} account{result.logtoAccountsFailed !== 1 ? "s" : ""} could not be provisioned.
-                    </span>{" "}
-                    Open each affected tenant's profile and click <em>Resend login credentials</em> to retry.
-                  </p>
+                  <p className="text-destructive/80"><span className="font-medium text-destructive">{result.logtoAccountsFailed} account{result.logtoAccountsFailed !== 1 ? "s" : ""} failed provisioning.</span>{" "}Open the tenant's profile and click <em>Resend login credentials</em> to retry.</p>
                 )}
                 {result.skippedTenants > 0 && (
-                  <p>{result.skippedTenants} row{result.skippedTenants !== 1 ? "s" : ""} were skipped — those emails already exist in your organisation.</p>
+                  <p>{result.skippedTenants} row{result.skippedTenants !== 1 ? "s" : ""} skipped — those emails already exist in this organisation.</p>
                 )}
               </div>
 

@@ -190,6 +190,21 @@ export default function NewLeasePage() {
   const [lateFeeType,     setLateFeeType]     = useState<"flat" | "percentage">("flat");
   const [lateFeeValue,    setLateFeeValue]    = useState(50000);
 
+  // ── Date validation ────────────────────────────────────────────────────────
+  const today = new Date().toISOString().split("T")[0];
+
+  const endDateError: string | null = (() => {
+    if (isRolling || !startDate || !endDate) return null;
+    if (endDate <= startDate) return "End date must be after start date";
+    return null;
+  })();
+
+  const startDateWarning: string | null = (() => {
+    if (!startDate) return null;
+    if (startDate < today) return "Start date is in the past — the lease will be marked active from this date";
+    return null;
+  })();
+
   // ── Validation ─────────────────────────────────────────────────────────────
   const canSubmit =
     !!propertyId &&
@@ -197,6 +212,7 @@ export default function NewLeasePage() {
     !!tenantId &&
     !!startDate &&
     (isRolling || !!endDate) &&
+    !endDateError &&
     monthlyRent > 0;
 
   // ── Submit ─────────────────────────────────────────────────────────────────
@@ -416,6 +432,12 @@ export default function NewLeasePage() {
                   onChange={(e) => setStartDate(e.target.value)}
                   required
                 />
+                {startDateWarning && (
+                  <p className="text-xs text-amber-600 flex items-center gap-1 mt-0.5">
+                    <Info className="h-3 w-3 shrink-0" />
+                    {startDateWarning}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -434,10 +456,16 @@ export default function NewLeasePage() {
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   disabled={isRolling && !endDate}
-                  min={startDate}
+                  min={startDate || today}
                   required={!isRolling}
+                  error={!!endDateError}
                 />
-                {isRolling && (
+                {endDateError ? (
+                  <p className="text-xs text-destructive flex items-center gap-1 mt-0.5">
+                    <Info className="h-3 w-3 shrink-0" />
+                    {endDateError}
+                  </p>
+                ) : isRolling && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
                     <Info className="h-3 w-3 shrink-0" />
                     Rolling lease — no end date needed unless you want to set one

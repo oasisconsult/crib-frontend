@@ -116,6 +116,10 @@ class LeaseOut(CamelModel):
     termination_reason: str | None
     renewal_of_lease_id: str | None
     notes: str | None
+    # onboarding / import
+    terms_accepted_at: str | None = None
+    onboarding_completed_at: str | None = None
+    paper_agreement_acknowledged: bool = False
     created_at: str
     updated_at: str
     # Signature status — populated from TenancyAgreement when available

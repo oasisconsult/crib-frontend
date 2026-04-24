@@ -116,6 +116,13 @@ class TenantImportRow:
     def has_unit(self) -> bool:
         return bool(self.property_name and self.unit_name)
 
+    @property
+    def lease_mode(self) -> str:
+        """Classify the lease type based on the parsed ISO dates and today's date."""
+        if not self.has_unit:
+            return "profile_only"
+        return _classify_lease_mode(self.lease_start_date, self.lease_end_date)
+
 
 # ── Response schemas ───────────────────────────────────────────────────────────
 
@@ -140,13 +147,19 @@ class TenantPreview(CamelModel):
     unit_name: str | None
     monthly_rent: float | None
     lease_start_date: str | None
-    mode: str   # "with_lease" | "profile_only"
+    lease_end_date: str | None
+    # profile_only | active | rolling | expired | upcoming
+    mode: str
 
 
 class TenantImportPreviewResponse(CamelModel):
     tenants: list[TenantPreview]
     total_tenants: int
-    with_lease: int
+    # Counts by mode
+    active_leases: int
+    rolling_leases: int
+    expired_leases: int
+    upcoming_leases: int
     profile_only: int
     errors: list[TenantImportError]
     warnings: list[TenantImportWarning]
@@ -155,7 +168,10 @@ class TenantImportPreviewResponse(CamelModel):
 
 class TenantImportResultResponse(CamelModel):
     imported_tenants: int
-    with_lease: int
+    active_leases: int
+    rolling_leases: int
+    expired_leases: int
+    upcoming_leases: int
     profile_only: int
     skipped_tenants: int
     logto_accounts_created: int
@@ -213,6 +229,28 @@ def _parse_date(s: str) -> str | None:
 
     accepted = ", ".join(lbl for _, lbl in _FORMATS)
     raise ValueError(f"use one of: {accepted} (got: {s!r})")
+
+
+def _classify_lease_mode(start_iso: str, end_iso: str) -> str:
+    """
+    Classify a lease row into one of four modes based on ISO date strings and today.
+
+    active   — start ≤ today, end ≥ today (or no end)
+    rolling  — start ≤ today, no end date
+    expired  — end < today
+    upcoming — start > today
+    """
+    today = date.today()
+    start = date.fromisoformat(start_iso) if start_iso else today
+    end   = date.fromisoformat(end_iso)   if end_iso   else None
+
+    if end is not None and end < today:
+        return "expired"
+    if start > today:
+        return "upcoming"
+    if end is None:
+        return "rolling"
+    return "active"
 
 
 def parse_csv(content: bytes) -> tuple[list[TenantImportRow], list[TenantImportError]]:
@@ -399,7 +437,8 @@ async def build_preview(
 ) -> TenantImportPreviewResponse:
     if parse_errors:
         return TenantImportPreviewResponse(
-            tenants=[], total_tenants=0, with_lease=0, profile_only=0,
+            tenants=[], total_tenants=0,
+            active_leases=0, rolling_leases=0, expired_leases=0, upcoming_leases=0, profile_only=0,
             errors=parse_errors, warnings=[], is_valid=False,
         )
 
@@ -452,46 +491,62 @@ async def build_preview(
     previews: list[TenantPreview] = []
 
     for r in rows:
-        # Skip rows with existing emails
         if r.email.lower() in existing_emails:
             warnings.append(TenantImportWarning(
-                row=r.row_num,
-                email=r.email,
+                row=r.row_num, email=r.email,
                 message=f"Tenant with email {r.email} already exists in this organisation — will be skipped",
             ))
 
-        mode = "with_lease" if r.has_unit else "profile_only"
+        mode = r.lease_mode  # profile_only | active | rolling | expired | upcoming
         resolved_monthly_rent = r.monthly_rent
 
         if r.has_unit:
             prop = prop_by_name.get(r.property_name.strip().lower())
             if not prop:
                 warnings.append(TenantImportWarning(
-                    row=r.row_num,
-                    email=r.email,
-                    message=f"Property '{r.property_name}' not found in this organisation — unit assignment will be skipped",
+                    row=r.row_num, email=r.email,
+                    message=f"Property '{r.property_name}' not found — unit assignment skipped, importing as profile only",
                 ))
                 mode = "profile_only"
             else:
                 unit = unit_by_prop_unit.get((prop.id, r.unit_name.strip().lower()))
                 if not unit:
                     warnings.append(TenantImportWarning(
-                        row=r.row_num,
-                        email=r.email,
-                        message=f"Unit '{r.unit_name}' not found in property '{r.property_name}' — unit assignment will be skipped",
+                        row=r.row_num, email=r.email,
+                        message=f"Unit '{r.unit_name}' not found in '{r.property_name}' — unit assignment skipped",
                     ))
                     mode = "profile_only"
-                elif unit.status == UnitStatus.occupied:
+                elif unit.status == UnitStatus.occupied and mode not in ("expired",):
+                    # Occupied is only a conflict for active/rolling/upcoming leases;
+                    # expired leases don't need to claim the unit.
                     warnings.append(TenantImportWarning(
-                        row=r.row_num,
-                        email=r.email,
-                        message=f"Unit '{r.unit_name}' in '{r.property_name}' is already occupied — unit assignment will be skipped",
+                        row=r.row_num, email=r.email,
+                        message=f"Unit '{r.unit_name}' is already occupied — unit assignment skipped",
                     ))
                     mode = "profile_only"
                 else:
-                    # Use unit's monthly_rent as default if not provided
                     if resolved_monthly_rent is None:
                         resolved_monthly_rent = float(unit.monthly_rent or 0)
+
+            # Mode-specific guidance warnings
+            if mode == "expired":
+                warnings.append(TenantImportWarning(
+                    row=r.row_num, email=r.email,
+                    message=(
+                        f"Lease end date {r.lease_end_date!r} is in the past — imported as a historical "
+                        "record (expired). Tenant will not have active portal access. "
+                        "If this tenant is still occupying, update the end date in your CSV."
+                    ),
+                ))
+            elif mode == "upcoming":
+                warnings.append(TenantImportWarning(
+                    row=r.row_num, email=r.email,
+                    message=(
+                        f"Lease start date {r.lease_start_date!r} is in the future — imported as a draft "
+                        "lease. The unit will not be marked occupied until you activate the lease "
+                        "from the lease detail page when the tenant moves in."
+                    ),
+                ))
 
         previews.append(TenantPreview(
             row_num=r.row_num,
@@ -502,18 +557,21 @@ async def build_preview(
             unit_name=r.unit_name or None,
             monthly_rent=resolved_monthly_rent,
             lease_start_date=r.lease_start_date or None,
+            lease_end_date=r.lease_end_date or None,
             mode=mode,
         ))
 
-    with_lease   = sum(1 for p in previews if p.mode == "with_lease")
-    profile_only = sum(1 for p in previews if p.mode == "profile_only")
+    def _cnt(m: str) -> int:
+        return sum(1 for p in previews if p.mode == m)
 
-    # is_valid: no hard errors (warnings are ok)
     return TenantImportPreviewResponse(
         tenants=previews,
         total_tenants=len(previews),
-        with_lease=with_lease,
-        profile_only=profile_only,
+        active_leases=_cnt("active"),
+        rolling_leases=_cnt("rolling"),
+        expired_leases=_cnt("expired"),
+        upcoming_leases=_cnt("upcoming"),
+        profile_only=_cnt("profile_only"),
         errors=[],
         warnings=warnings,
         is_valid=True,
@@ -594,8 +652,9 @@ async def commit_import(
     claimed_unit_ids: set[uuid.UUID] = set()
 
     imported_tenants = 0
-    with_lease_count = 0
-    profile_only_count = 0
+    cnt: dict[str, int] = {
+        "active": 0, "rolling": 0, "expired": 0, "upcoming": 0, "profile_only": 0
+    }
     skipped = 0
 
     for r in rows:
@@ -611,6 +670,7 @@ async def commit_import(
         # ── Resolve unit ──────────────────────────────────────────────────────
         resolved_unit: Unit | None = None
         resolved_prop: Property | None = None
+        lease_mode = r.lease_mode   # profile_only | active | rolling | expired | upcoming
 
         if r.has_unit:
             resolved_prop = prop_by_name.get(r.property_name.strip().lower())
@@ -624,30 +684,38 @@ async def commit_import(
                     row=r.row_num, email=r.email,
                     message=f"Property/unit '{r.property_name} / {r.unit_name}' not found — imported as profile only",
                 ))
-            elif resolved_unit.status == UnitStatus.occupied:
+                lease_mode = "profile_only"
+            elif resolved_unit.status == UnitStatus.occupied and lease_mode != "expired":
                 warnings.append(TenantImportWarning(
                     row=r.row_num, email=r.email,
                     message=f"Unit '{r.unit_name}' is already occupied — imported as profile only",
                 ))
                 resolved_unit = None
-            elif resolved_unit.id in claimed_unit_ids:
+                lease_mode = "profile_only"
+            elif resolved_unit.id in claimed_unit_ids and lease_mode != "expired":
                 warnings.append(TenantImportWarning(
                     row=r.row_num, email=r.email,
                     message=f"Unit '{r.unit_name}' is already assigned to another tenant in this import — imported as profile only",
                 ))
                 resolved_unit = None
+                lease_mode = "profile_only"
 
-        do_lease = r.has_unit and resolved_unit is not None
-
-        # ── Determine tenant state ────────────────────────────────────────────
-        if do_lease:
+        # ── Tenant initial state depends on lease mode ────────────────────────
+        # active/rolling → active + activated (currently in the unit)
+        # upcoming       → inactive + approved (ready to activate on move-in)
+        # expired        → inactive + invited  (historical, no portal access)
+        # profile_only   → inactive + invited  (onboarding invite sent)
+        if lease_mode in ("active", "rolling"):
             initial_status = TenantStatus.active
             initial_state  = OnboardingState.activated
-        else:
+        elif lease_mode == "upcoming":
+            initial_status = TenantStatus.inactive
+            initial_state  = OnboardingState.approved
+        else:  # expired | profile_only
             initial_status = TenantStatus.inactive
             initial_state  = OnboardingState.invited
 
-        # ── Build emergency contact JSONB if provided ─────────────────────────
+        # ── Emergency contact ─────────────────────────────────────────────────
         emergency_contact = None
         if r.emergency_contact_name or r.emergency_contact_phone:
             emergency_contact = {
@@ -679,26 +747,33 @@ async def commit_import(
         await db.flush()
         await db.refresh(tenant)
 
-        # ── Create active Lease + update Unit ─────────────────────────────────
-        if do_lease:
+        # ── Create Lease (mode-specific) ──────────────────────────────────────
+        if lease_mode in ("active", "rolling", "expired", "upcoming") and resolved_unit is not None:
             monthly_rent = r.monthly_rent or float(resolved_unit.monthly_rent or 0)  # type: ignore[union-attr]
             lease_start  = date.fromisoformat(r.lease_start_date) if r.lease_start_date else date.today()
             lease_end    = date.fromisoformat(r.lease_end_date) if r.lease_end_date else None
+
+            # Map mode to LeaseStatus
+            lease_status_map = {
+                "active":   LeaseStatus.active,
+                "rolling":  LeaseStatus.active,
+                "expired":  LeaseStatus.expired,
+                "upcoming": LeaseStatus.draft,
+            }
 
             lease = Lease(
                 organisation_id=organisation_id,
                 property_id=resolved_unit.property_id,  # type: ignore[union-attr]
                 unit_id=resolved_unit.id,               # type: ignore[union-attr]
                 tenant_id=tenant.id,
-                status=LeaseStatus.active,
+                status=lease_status_map[lease_mode],
                 start_date=lease_start,
                 end_date=lease_end,
                 monthly_rent=monthly_rent,
                 currency=r.currency,
                 deposit_amount=r.deposit_amount,
                 deposit_paid=False,
-                signed_at=now,
-                # Copy billing rules from unit/property (use simple defaults for import)
+                signed_at=now if lease_mode in ("active", "rolling") else None,
                 rent_day_of_month=1,
                 grace_period_days=5,
                 late_fee_type="flat",
@@ -709,24 +784,21 @@ async def commit_import(
             await db.flush()
             await db.refresh(lease)
 
-            # Update Unit cached FKs
-            resolved_unit.status = UnitStatus.occupied          # type: ignore[union-attr]
-            resolved_unit.current_tenant_id = tenant.id         # type: ignore[union-attr]
-            resolved_unit.current_lease_id = lease.id           # type: ignore[union-attr]
+            # Only active/rolling leases occupy the unit immediately
+            if lease_mode in ("active", "rolling"):
+                resolved_unit.status = UnitStatus.occupied          # type: ignore[union-attr]
+                resolved_unit.current_tenant_id = tenant.id         # type: ignore[union-attr]
+                resolved_unit.current_lease_id = lease.id           # type: ignore[union-attr]
+                tenant.current_property_id = resolved_unit.property_id  # type: ignore[union-attr]
+                tenant.current_unit_id = resolved_unit.id               # type: ignore[union-attr]
+                tenant.current_lease_id = lease.id
+                claimed_unit_ids.add(resolved_unit.id)               # type: ignore[union-attr]
 
-            # Update Tenant cached FKs
-            tenant.current_property_id = resolved_unit.property_id  # type: ignore[union-attr]
-            tenant.current_unit_id = resolved_unit.id               # type: ignore[union-attr]
-            tenant.current_lease_id = lease.id
-
-            claimed_unit_ids.add(resolved_unit.id)               # type: ignore[union-attr]
-            with_lease_count += 1
-
-        # ── Create TenantInvite for profile-only tenants ───────────────────────
-        else:
+        # ── Create TenantInvite for profile-only tenants ──────────────────────
+        if lease_mode == "profile_only":
             token = secrets.token_urlsafe(48)
             tenant.onboarding_token = token
-            invite = TenantInvite(
+            db.add(TenantInvite(
                 tenant_id=tenant.id,
                 organisation_id=organisation_id,
                 email=r.email,
@@ -735,16 +807,15 @@ async def commit_import(
                 status=InviteStatus.pending,
                 sent_at=now,
                 expires_at=now + timedelta(hours=INVITE_EXPIRY_HOURS),
-            )
-            db.add(invite)
-            profile_only_count += 1
+            ))
 
-        # ── Provision Logto account for ALL imported tenants ───────────────────
-        # Creates the user in Logto, adds to the agency org, assigns the tenant
-        # org role, and sends a welcome email with temporary login credentials.
-        # This applies to both activated (with_lease) and invited (profile_only)
-        # tenants so they can all access the tenant portal immediately.
-        if logto_org_id:
+        cnt[lease_mode] = cnt.get(lease_mode, 0) + 1
+
+        # ── Provision Logto account ───────────────────────────────────────────
+        # Only active, rolling, and profile_only tenants get portal access now.
+        # expired = historical record only; upcoming = activate at move-in time.
+        provision_logto = lease_mode in ("active", "rolling", "profile_only")
+        if provision_logto and logto_org_id:
             try:
                 logto_user_id = await logto_service.create_tenant_user(
                     email=r.email,
@@ -766,11 +837,7 @@ async def commit_import(
                     ))
             except Exception:
                 logto_failed += 1
-                log.warning(
-                    "tenant_import.logto_provisioning_failed",
-                    email=r.email,
-                    exc_info=True,
-                )
+                log.warning("tenant_import.logto_provisioning_failed", email=r.email, exc_info=True)
                 warnings.append(TenantImportWarning(
                     row=r.row_num, email=r.email,
                     message=(
@@ -778,10 +845,10 @@ async def commit_import(
                         "Use 'Resend login credentials' on the tenant detail page to retry."
                     ),
                 ))
-        else:
+        elif provision_logto:
             log.debug("tenant_import.logto_org_id_missing — skipping provisioning", email=r.email)
 
-        existing_emails.add(r.email.lower())  # prevent duplicates within this batch
+        existing_emails.add(r.email.lower())
         imported_tenants += 1
 
     await db.flush()
@@ -789,15 +856,17 @@ async def commit_import(
         "tenant_import.committed",
         org_id=str(organisation_id),
         imported=imported_tenants,
-        with_lease=with_lease_count,
-        profile_only=profile_only_count,
+        **{f"mode_{k}": v for k, v in cnt.items()},
         skipped=skipped,
     )
 
     return TenantImportResultResponse(
         imported_tenants=imported_tenants,
-        with_lease=with_lease_count,
-        profile_only=profile_only_count,
+        active_leases=cnt["active"],
+        rolling_leases=cnt["rolling"],
+        expired_leases=cnt["expired"],
+        upcoming_leases=cnt["upcoming"],
+        profile_only=cnt["profile_only"],
         skipped_tenants=skipped,
         logto_accounts_created=logto_created,
         logto_accounts_failed=logto_failed,

@@ -21,6 +21,8 @@ export interface TenantImportWarning {
   message: string;
 }
 
+export type LeaseImportMode = "active" | "rolling" | "expired" | "upcoming" | "profile_only";
+
 export interface TenantPreview {
   rowNum: number;
   firstName: string;
@@ -30,13 +32,17 @@ export interface TenantPreview {
   unitName: string | null;
   monthlyRent: number | null;
   leaseStartDate: string | null;
-  mode: "with_lease" | "profile_only";
+  leaseEndDate: string | null;
+  mode: LeaseImportMode;
 }
 
 export interface TenantImportPreviewResponse {
   tenants: TenantPreview[];
   totalTenants: number;
-  withLease: number;
+  activeLeases: number;
+  rollingLeases: number;
+  expiredLeases: number;
+  upcomingLeases: number;
   profileOnly: number;
   errors: TenantImportError[];
   warnings: TenantImportWarning[];
@@ -45,7 +51,10 @@ export interface TenantImportPreviewResponse {
 
 export interface TenantImportResultResponse {
   importedTenants: number;
-  withLease: number;
+  activeLeases: number;
+  rollingLeases: number;
+  expiredLeases: number;
+  upcomingLeases: number;
   profileOnly: number;
   skippedTenants: number;
   logtoAccountsCreated: number;

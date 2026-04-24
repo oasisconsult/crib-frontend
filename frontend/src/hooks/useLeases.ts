@@ -128,3 +128,29 @@ export function useSignLease() {
     onError: () => toast.error("Failed to sign lease"),
   });
 }
+
+
+export function useAcknowledgeLease() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => leasesApi.acknowledge(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.leases.list() });
+      toast.success("Agreement acknowledged", "Paper agreement recorded for this lease");
+    },
+    onError: () => toast.error("Failed to acknowledge agreement"),
+  });
+}
+
+export function useConfirmLeaseTerms() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => leasesApi.confirmTerms(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.leases.list() });
+    },
+    onError: () => toast.error("Failed to confirm terms"),
+  });
+}

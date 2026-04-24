@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayments, useRecordPayment, useRentSchedule } from "@/hooks/usePayments";
-import { useLeases, useLease, useGenerateLeaseDocument } from "@/hooks/useLeases";
+import { useLeases, useLease, useGenerateLeaseDocument, useConfirmLeaseTerms } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { useAppStore } from "@/store/useAppStore";
@@ -764,6 +764,14 @@ export default function TenantPortalPage() {
 
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
   const { mutate: generateDoc, isPending: generatingDoc } = useGenerateLeaseDocument();
+  const { mutate: confirmTerms, isPending: confirmingTerms } = useConfirmLeaseTerms();
+  const [termsChecked, setTermsChecked] = useState(false);
+
+  // Imported leases: tenant must confirm terms once on first portal login
+  const needsTermsConfirmation =
+    myLease?.status === "active" &&
+    !myLease?.termsAcceptedAt &&
+    !myLease?.paperAgreementAcknowledged;
 
   const myPayments = allPayments.filter((p) => !myLease || p.leaseId === myLease.id);
   const hasOverdueRent = (schedulesData?.data ?? []).some((s) => s.state === "overdue");
@@ -794,6 +802,67 @@ export default function TenantPortalPage() {
   function closeDialog() {
     setDialog(null);
     setSelectedPayment(null);
+  }
+
+  // ── Imported lease: confirmation interstitial ─────────────────────────────
+  if (myLease && needsTermsConfirmation) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-background">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle className="text-xl">Confirm Your Tenancy Details</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              We've set up your tenancy in our system. Please review the key terms below
+              and confirm you have received and agreed to these terms.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {/* Key lease details */}
+            <div className="rounded-[8px] border divide-y text-sm">
+              {[
+                { label: "Property", value: myLease.propertyName ?? "—" },
+                { label: "Unit",     value: myLease.unitName ?? "—" },
+                { label: "Monthly rent", value: formatCurrency(myLease.terms.monthlyRent, myLease.terms.currency) },
+                { label: "Start date",   value: formatDate(myLease.terms.startDate) },
+                { label: "End date",     value: myLease.terms.endDate ? formatDate(myLease.terms.endDate) : "Rolling (no fixed end)" },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex items-center justify-between px-4 py-2.5 gap-3">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium text-right">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Confirmation checkbox */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={termsChecked}
+                onChange={(e) => setTermsChecked(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-primary"
+              />
+              <span className="text-sm">
+                I confirm that I have received and agree to the terms of my tenancy agreement
+                as summarised above.
+              </span>
+            </label>
+
+            <Button
+              className="w-full"
+              disabled={!termsChecked}
+              loading={confirmingTerms}
+              onClick={() => confirmTerms(myLease.id)}
+            >
+              Confirm and continue to my portal
+            </Button>
+
+            <p className="text-xs text-center text-muted-foreground">
+              If any details above are incorrect, please contact your property manager.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
