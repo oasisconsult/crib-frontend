@@ -652,8 +652,21 @@ async def create_agency_with_manager(
             if add_resp.status_code not in (200, 201, 204):
                 log.warning("logto.agency_add_to_org_failed", status=add_resp.status_code)
 
-            # 4. Assign manager org role
-            await _assign_org_role(client, base, logto_org_id, logto_user_id, "manager", headers)
+            # 4. Assign manager org-level role (scoped to this org)
+            org_role_ok = await _assign_org_role(
+                client, base, logto_org_id, logto_user_id, "manager", headers
+            )
+
+            # 5. Also assign app-level 'manager' role as a fallback so the JWT
+            #    always carries the role claim even if org-role step fails.
+            await _assign_app_role(client, base, logto_user_id, "manager", headers)
+
+            if not org_role_ok:
+                log.warning(
+                    "logto.agency_manager_org_role_failed",
+                    user_id=logto_user_id,
+                    org_id=logto_org_id,
+                )
 
         log.info(
             "logto.agency_provisioned",
@@ -674,18 +687,28 @@ async def _assign_org_role(
     role_name: str,
     headers: dict,
 ) -> bool:
-    """Find and assign an org-level role to a user within an organisation."""
+    """
+    Find (or create) a global org-role template by name, then assign it to
+    the user within the given organisation.
+
+    Logto org roles are defined globally at /api/organization-roles and then
+    assigned per-org per-user. Unlike app-level roles, the previous code did
+    not create the template when missing — this caused silent failures every
+    time the 'manager' (or 'landlord') org-role hadn't been seeded in Logto.
+    """
     try:
+        role_id: str | None = None
+
+        # 1. Check org-specific available roles first (fast path)
         roles_resp = await client.get(f"{base}/organizations/{org_id}/roles", headers=headers)
-        role_id = None
         if roles_resp.status_code == 200:
             for r in roles_resp.json():
                 if r.get("name", "").lower() == role_name.lower():
                     role_id = r["id"]
                     break
 
+        # 2. Fall back to global org-role templates
         if not role_id:
-            # Fall back: look up global org-role list
             gr = await client.get(f"{base}/organization-roles", headers=headers)
             if gr.status_code == 200:
                 for r in gr.json():
@@ -693,16 +716,44 @@ async def _assign_org_role(
                         role_id = r["id"]
                         break
 
+        # 3. Create the org-role template if it still doesn't exist
         if not role_id:
-            log.warning("logto.org_role_not_found", org_id=org_id, role=role_name)
-            return False
+            log.info("logto.org_role_not_found_creating", role=role_name)
+            create_resp = await client.post(
+                f"{base}/organization-roles",
+                json={
+                    "name": role_name,
+                    "description": f"{role_name.capitalize()} organisation role",
+                },
+                headers=headers,
+            )
+            if create_resp.status_code in (200, 201):
+                role_id = create_resp.json()["id"]
+                log.info("logto.org_role_created", role=role_name, role_id=role_id)
+            else:
+                log.warning(
+                    "logto.org_role_create_failed",
+                    role=role_name,
+                    status=create_resp.status_code,
+                    body=create_resp.text[:200],
+                )
+                return False
 
         assign = await client.post(
             f"{base}/organizations/{org_id}/users/{user_id}/roles",
             json={"organizationRoleIds": [role_id]},
             headers=headers,
         )
-        return assign.status_code in (200, 201, 204)
+        success = assign.status_code in (200, 201, 204)
+        if success:
+            log.info("logto.org_role_assigned", user_id=user_id, org_id=org_id, role=role_name)
+        else:
+            log.warning(
+                "logto.org_role_assign_failed",
+                user_id=user_id, org_id=org_id, role=role_name,
+                status=assign.status_code, body=assign.text[:200],
+            )
+        return success
     except Exception as exc:  # noqa: BLE001
         log.warning("logto.assign_org_role_failed", error=str(exc))
         return False

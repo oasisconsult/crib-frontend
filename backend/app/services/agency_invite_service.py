@@ -93,6 +93,37 @@ async def create_agency_invite(
     invited_by_profile_id: uuid.UUID,
     body: CreateAgencyInviteRequest,
 ) -> AgencyInviteOut:
+    from fastapi import HTTPException, status as http_status
+
+    # Reject if the manager has already completed onboarding
+    accepted = await db.execute(
+        select(AgencyInvite).where(
+            AgencyInvite.manager_email == body.manager_email,
+            AgencyInvite.status == AgencyInviteStatus.ACCEPTED,
+        )
+    )
+    if accepted.scalar_one_or_none():
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail=f"{body.manager_email} has already completed agency onboarding.",
+        )
+
+    # Reject if a pending invite already exists — resend or revoke it instead
+    pending = await db.execute(
+        select(AgencyInvite).where(
+            AgencyInvite.manager_email == body.manager_email,
+            AgencyInvite.status == AgencyInviteStatus.PENDING,
+        )
+    )
+    if pending.scalar_one_or_none():
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail=(
+                f"A pending invite already exists for {body.manager_email}. "
+                "Resend the existing invite or revoke it before creating a new one."
+            ),
+        )
+
     invite = AgencyInvite(
         invited_by_profile_id=invited_by_profile_id,
         agency_name=body.agency_name,
@@ -163,6 +194,31 @@ async def complete_agency_onboarding(
         await db.flush()
         raise HTTPException(status_code=http_status.HTTP_410_GONE, detail="Invite has expired")
 
+    # ── Idempotency guard ────────────────────────────────────────────────────
+    # If a profile already exists with an org (i.e. a previous onboarding
+    # completed — possibly via a different invite token) we must NOT create
+    # a second Logto org or a second Organisation row.  Instead we accept
+    # this invite, link it to the existing org, and re-send credentials.
+    existing_profile_result = await db.execute(
+        select(Profile).where(Profile.email == invite.manager_email)
+    )
+    existing_profile = existing_profile_result.scalar_one_or_none()
+
+    if existing_profile is not None and existing_profile.organisation_id is not None:
+        log.info(
+            "agency.onboarding_already_complete",
+            email=invite.manager_email,
+            org_id=str(existing_profile.organisation_id),
+        )
+        invite.status = AgencyInviteStatus.ACCEPTED
+        invite.accepted_at = datetime.now(timezone.utc)
+        invite.organisation_id = existing_profile.organisation_id
+        await db.flush()
+        return CompleteAgencyOnboardingResponse(
+            message="Agency already set up. Check your email for login details."
+        )
+    # ── End idempotency guard ─────────────────────────────────────────────────
+
     agency_name = body.agency_name  # agency can confirm/edit the name here
     slug = _slugify(agency_name)
 
@@ -178,7 +234,7 @@ async def complete_agency_onboarding(
 
     temp_password = _generate_temp_password()
 
-    # 1. Create Logto org + manager user
+    # 1. Create Logto org + manager user (assigns org-level + app-level manager role)
     logto_result = await logto_service.create_agency_with_manager(
         agency_name=agency_name,
         agency_slug=slug,
@@ -213,11 +269,8 @@ async def complete_agency_onboarding(
     db.add(org)
     await db.flush()
 
-    # 3. Create manager Profile
-    existing_profile = await db.execute(
-        select(Profile).where(Profile.email == invite.manager_email)
-    )
-    profile = existing_profile.scalar_one_or_none()
+    # 3. Create manager Profile (re-use existing_profile row if one exists)
+    profile = existing_profile
 
     if profile is None:
         profile = Profile(
