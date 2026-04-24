@@ -263,7 +263,7 @@ async def create_tenant(
     )
     db.add(tenant)
     await db.flush()
-    await db.refresh(tenant)
+    await db.refresh(tenant, attribute_names=["status", "onboarding_state", "updated_at", "documents"])
 
     log.info("tenant.created_direct", tenant_id=str(tenant.id), org_id=str(org_id))
     return _tenant_out(tenant)
