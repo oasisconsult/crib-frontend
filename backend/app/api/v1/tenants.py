@@ -34,6 +34,7 @@ from app.core.database import get_db
 from app.schemas.tenant import (
     OnboardingDraftSave,
     OnboardingResponse,
+    TenantCreate,
     TenantDocumentCreate,
     TenantDocumentOut,
     TenantInviteCreate,
@@ -48,6 +49,19 @@ router = APIRouter(prefix="/tenants", tags=["tenants"])
 
 _read  = Depends(require_org_access(allow_tenant_own=True))
 _write = Depends(require_org_access(allow_tenant_own=False))
+
+
+# ── Direct create (no invite email) ──────────────────────────────────────────
+
+@router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
+async def create_tenant(
+    body: TenantCreate,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a tenant profile directly. No invite email is sent."""
+    assert current_user.org_id is not None  # guaranteed by _write / require_org_access
+    return await svc.create_tenant(body, current_user.org_id, db)
 
 
 # ── Invite ────────────────────────────────────────────────────────────────────

@@ -39,6 +39,7 @@ from app.models.tenant import (
 )
 from app.schemas.tenant import (
     OnboardingDraftSave,
+    TenantCreate,
     TenantDocumentCreate,
     TenantDocumentOut,
     TenantInviteCreate,
@@ -217,6 +218,55 @@ async def delete_tenant(
     tenant = await _get_tenant(tenant_id, org_id, db)
     await db.delete(tenant)
     await db.flush()
+
+
+# ── Direct create ─────────────────────────────────────────────────────────────
+
+async def create_tenant(
+    body: TenantCreate, org_id: uuid.UUID, db: AsyncSession
+) -> TenantOut:
+    """
+    Create a tenant profile directly without sending an invite email.
+    The tenant is placed in `invited` state so the manager can later send
+    an onboarding link or assign them to a unit via the lease flow.
+    """
+    # Guard against duplicate email within the org
+    existing = await db.scalar(
+        select(Tenant).where(
+            Tenant.organisation_id == org_id,
+            Tenant.email == body.email,
+        )
+    )
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A tenant with email {body.email} already exists in this organisation",
+        )
+
+    seq = await next_seq(db, Tenant)
+    ref = build_ref("TEN", seq)
+
+    tenant = Tenant(
+        organisation_id=org_id,
+        reference=ref,
+        first_name=body.first_name,
+        last_name=body.last_name,
+        email=body.email,
+        phone=body.phone,
+        nin=body.national_id,
+        date_of_birth=body.date_of_birth,
+        nationality=body.nationality,
+        notes=body.notes,
+        status=TenantStatus.inactive,
+        onboarding_state=OnboardingState.invited,
+        tags=body.tags or [],
+    )
+    db.add(tenant)
+    await db.flush()
+    await db.refresh(tenant)
+
+    log.info("tenant.created_direct", tenant_id=str(tenant.id), org_id=str(org_id))
+    return _tenant_out(tenant)
 
 
 # ── Invite flow ───────────────────────────────────────────────────────────────

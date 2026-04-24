@@ -20,6 +20,19 @@ class EmergencyContactSchema(CamelModel):
 
 # ── Tenant ────────────────────────────────────────────────────────────────────
 
+class TenantCreate(CamelModel):
+    """Direct tenant creation by a manager (no invite email required)."""
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str  = Field(min_length=1, max_length=100)
+    email: EmailStr
+    phone:       str | None = None
+    national_id: str | None = None
+    date_of_birth: str | None = None
+    nationality:   str | None = None
+    notes: str | None = None
+    tags:  list[str] = Field(default_factory=list)
+
+
 class TenantInviteCreate(CamelModel):
     email: EmailStr
     name: str = Field(min_length=1, max_length=255)
@@ -65,7 +78,7 @@ class TenantOnboardingSubmit(CamelModel):
     date_of_birth: str | None = None
     nationality: str | None = None
     nin: str | None = None                           # National Identification Number
-    whatsapp_number: str | None = None               # WhatsApp / contact number
+    whatsapp_number: str | None = None               # WhatsApp number
     mobile_money_provider: str | None = None         # mtn | airtel
     mobile_money_number: str | None = None           # Mobile money account number
     emergency_contact: EmergencyContactSchema | None = None
