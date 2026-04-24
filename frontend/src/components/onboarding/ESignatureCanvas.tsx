@@ -21,15 +21,12 @@ export function ESignatureCanvas({ onSave, className }: ESignatureCanvasProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Create the pad first with smooth stroke settings.
-    // NOTE: do NOT call ctx.scale() — signature_pad 4.x computes positions
-    // in bitmap-pixel space via (clientX - rect.left) * (canvas.width / rect.width),
-    // so adding ctx.scale would double-scale coordinates and shift strokes off-canvas.
+    // Create the pad with smooth stroke settings.
     padRef.current = new SignaturePad(canvas, {
       backgroundColor: "rgb(255, 255, 255)",
       penColor: "#134E4A",
-      minWidth: 0.5,
-      maxWidth: 2.5,
+      minWidth: 1,
+      maxWidth: 3,
       velocityFilterWeight: 0.7,
     });
 
@@ -39,19 +36,24 @@ export function ESignatureCanvas({ onSave, className }: ESignatureCanvasProps) {
     });
 
     // ResizeObserver fires AFTER the DOM is fully laid out — including after Dialog
-    // open animations. Without this, canvas.offsetWidth is 0 at mount time (the
-    // dialog hasn't rendered yet), so the canvas bitmap is 0×0 and CSS stretches
-    // it to fill the container → pixelated strokes.
+    // open animations. Without this, canvas.offsetWidth is 0 at mount time so the
+    // bitmap is 0×0 and CSS stretches it → pixelated strokes.
+    //
+    // DPR handling: signature_pad 4.x computes event positions in CSS-pixel space
+    // (no canvas.width/rect.width scaling). Setting canvas.width resets the canvas
+    // transform to identity, so ctx.scale(ratio, ratio) must be re-applied every
+    // time we resize to map CSS-pixel draw calls onto the hi-DPI bitmap correctly.
     const resizeCanvas = () => {
       if (!padRef.current) return;
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
       if (!w || !h) return;
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
-      canvas.width  = w * ratio;
+      canvas.width  = w * ratio;   // resets transform to identity
       canvas.height = h * ratio;
-      // clear() resets signature_pad's internal state to match the new canvas size
-      padRef.current.clear();
+      const ctx = canvas.getContext("2d");
+      if (ctx) ctx.scale(ratio, ratio); // re-apply after reset
+      padRef.current.clear();          // sync internal state
     };
 
     const ro = new ResizeObserver(resizeCanvas);
@@ -93,7 +95,7 @@ export function ESignatureCanvas({ onSave, className }: ESignatureCanvasProps) {
         <canvas
           ref={canvasRef}
           className="w-full touch-none"
-          style={{ height: 160 }}
+          style={{ height: 190 }}
           aria-label="Signature canvas — draw your signature"
         />
       </div>
