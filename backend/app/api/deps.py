@@ -55,6 +55,7 @@ _FALLBACK_PRIORITY: dict[str, int] = {
     "superadmin":  0,
     "owner":      10,
     "manager":    20,
+    "landlord":   25,
     "maintenance": 30,
     "tenant":     40,
 }

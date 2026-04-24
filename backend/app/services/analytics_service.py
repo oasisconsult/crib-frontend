@@ -18,9 +18,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.inspection import Inspection, InspectionState, MaintenanceIssue, MaintenanceState
+from app.models.landlord_invite import LandlordPropertyAccess
 from app.models.lease import Lease, LeaseStatus
 from app.models.payment import Payment, PaymentStatus, RentSchedule, RentScheduleStatus
-from app.models.property import Unit, UnitStatus
+from app.models.property import Property, Unit, UnitStatus
 from app.models.tenant import OnboardingState, Tenant, TenantStatus  # OnboardingState used for pending count
 
 
@@ -46,9 +47,30 @@ def _months_back(n: int) -> list[tuple[int, int]]:
 
 # ── Dashboard stats ────────────────────────────────────────────────────────────
 
-async def get_dashboard_stats(org_id: uuid.UUID, db: AsyncSession) -> dict:
+async def _landlord_property_ids(
+    landlord_profile_id: uuid.UUID, db: AsyncSession
+) -> list[uuid.UUID]:
+    """Return the list of property IDs a landlord has been granted access to."""
+    rows = await db.execute(
+        select(LandlordPropertyAccess.property_id).where(
+            LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
+        )
+    )
+    return [r[0] for r in rows]
+
+
+async def get_dashboard_stats(
+    org_id: uuid.UUID,
+    db: AsyncSession,
+    landlord_profile_id: uuid.UUID | None = None,
+) -> dict:
+    # For landlords, scope all queries to their allowed properties
+    prop_ids: list[uuid.UUID] | None = None
+    if landlord_profile_id is not None:
+        prop_ids = await _landlord_property_ids(landlord_profile_id, db)
+
     # Properties / Units
-    units_result = await db.execute(
+    unit_q = (
         select(
             func.count(Unit.id).label("total"),
             func.count(Unit.id).filter(Unit.status == UnitStatus.occupied).label("occupied"),
@@ -57,61 +79,76 @@ async def get_dashboard_stats(org_id: uuid.UUID, db: AsyncSession) -> dict:
             Unit.property.has(organisation_id=org_id),
         )
     )
-    units_row = units_result.one()
+    if prop_ids is not None:
+        unit_q = unit_q.where(Unit.property_id.in_(prop_ids))
+    units_row = (await db.execute(unit_q)).one()
     total_units = int(units_row.total or 0)
     occupied_units = int(units_row.occupied or 0)
     occupancy_rate = round(occupied_units / total_units * 100, 1) if total_units > 0 else 0.0
 
     # Count distinct properties
+    prop_q = select(Unit.property_id).where(Unit.property.has(organisation_id=org_id)).distinct()
+    if prop_ids is not None:
+        prop_q = prop_q.where(Unit.property_id.in_(prop_ids))
     prop_count = await db.scalar(
-        select(func.count()).select_from(
-            select(Unit.property_id).where(
-                Unit.property.has(organisation_id=org_id),
-            ).distinct().subquery()
-        )
+        select(func.count()).select_from(prop_q.subquery())
     ) or 0
 
-    # Tenants
-    tenants_result = await db.execute(
-        select(
-            func.count(Tenant.id).label("total"),
-            func.count(Tenant.id).filter(Tenant.status == TenantStatus.active).label("active"),
-            func.count(Tenant.id).filter(
-                Tenant.onboarding_state.in_([
-                    OnboardingState.invited,
-                    OnboardingState.started,
-                    OnboardingState.submitted,
-                ])
-            ).label("pending"),
-        ).where(Tenant.organisation_id == org_id)
-    )
-    tenants_row = tenants_result.one()
+    # Tenants — scoped to landlord's properties via their current lease's property
+    tenant_q = select(
+        func.count(Tenant.id).label("total"),
+        func.count(Tenant.id).filter(Tenant.status == TenantStatus.active).label("active"),
+        func.count(Tenant.id).filter(
+            Tenant.onboarding_state.in_([
+                OnboardingState.invited,
+                OnboardingState.started,
+                OnboardingState.submitted,
+            ])
+        ).label("pending"),
+    ).where(Tenant.organisation_id == org_id)
+    if prop_ids is not None:
+        tenant_q = tenant_q.where(
+            Tenant.id.in_(
+                select(Lease.tenant_id).where(
+                    Lease.property_id.in_(prop_ids),
+                    Lease.tenant_id.isnot(None),
+                )
+            )
+        )
+    tenants_row = (await db.execute(tenant_q)).one()
 
     # Monthly revenue (confirmed/completed payments this calendar month)
     _success_statuses = [PaymentStatus.confirmed, PaymentStatus.completed]
-    monthly_rev = await db.scalar(
-        select(func.sum(Payment.amount)).where(
-            Payment.organisation_id == org_id,
-            Payment.status.in_(_success_statuses),
-            func.date_trunc("month", Payment.paid_at) == func.date_trunc(
-                "month", func.now()
-            ),
+    rev_q = select(func.sum(Payment.amount)).where(
+        Payment.organisation_id == org_id,
+        Payment.status.in_(_success_statuses),
+        func.date_trunc("month", Payment.paid_at) == func.date_trunc("month", func.now()),
+    )
+    if prop_ids is not None:
+        rev_q = rev_q.where(
+            Payment.lease_id.in_(
+                select(Lease.id).where(Lease.property_id.in_(prop_ids))
+            )
         )
-    ) or 0
+    monthly_rev = await db.scalar(rev_q) or 0
 
     # Overdue schedules
-    overdue_result = await db.execute(
-        select(
-            func.count(RentSchedule.id).label("count"),
-            func.coalesce(func.sum(
-                RentSchedule.amount_due + RentSchedule.late_fee_applied - RentSchedule.amount_paid
-            ), 0).label("overdue_amount"),
-        ).where(
-            RentSchedule.organisation_id == org_id,
-            RentSchedule.status == RentScheduleStatus.overdue,
-        )
+    overdue_q = select(
+        func.count(RentSchedule.id).label("count"),
+        func.coalesce(func.sum(
+            RentSchedule.amount_due + RentSchedule.late_fee_applied - RentSchedule.amount_paid
+        ), 0).label("overdue_amount"),
+    ).where(
+        RentSchedule.organisation_id == org_id,
+        RentSchedule.status == RentScheduleStatus.overdue,
     )
-    overdue_row = overdue_result.one()
+    if prop_ids is not None:
+        overdue_q = overdue_q.where(
+            RentSchedule.lease_id.in_(
+                select(Lease.id).where(Lease.property_id.in_(prop_ids))
+            )
+        )
+    overdue_row = (await db.execute(overdue_q)).one()
 
     # Collection rate: confirmed / (confirmed + overdue amounts) this month
     confirmed_mtd = float(monthly_rev)
@@ -131,32 +168,39 @@ async def get_dashboard_stats(org_id: uuid.UUID, db: AsyncSession) -> dict:
         PaymentStatus.allocated,
         PaymentStatus.retry_scheduled,
     ]
-    pending_payments = await db.scalar(
-        select(func.count(Payment.id)).where(
-            Payment.organisation_id == org_id,
-            Payment.status.in_(_in_progress_statuses),
+    pending_q = select(func.count(Payment.id)).where(
+        Payment.organisation_id == org_id,
+        Payment.status.in_(_in_progress_statuses),
+    )
+    if prop_ids is not None:
+        pending_q = pending_q.where(
+            Payment.lease_id.in_(
+                select(Lease.id).where(Lease.property_id.in_(prop_ids))
+            )
         )
-    ) or 0
+    pending_payments = await db.scalar(pending_q) or 0
 
     # Open maintenance
-    open_maintenance = await db.scalar(
-        select(func.count(MaintenanceIssue.id)).where(
-            MaintenanceIssue.organisation_id == org_id,
-            MaintenanceIssue.state.in_([
-                MaintenanceState.reported,
-                MaintenanceState.assigned,
-                MaintenanceState.in_progress,
-            ]),
-        )
-    ) or 0
+    maint_q = select(func.count(MaintenanceIssue.id)).where(
+        MaintenanceIssue.organisation_id == org_id,
+        MaintenanceIssue.state.in_([
+            MaintenanceState.reported,
+            MaintenanceState.assigned,
+            MaintenanceState.in_progress,
+        ]),
+    )
+    if prop_ids is not None:
+        maint_q = maint_q.where(MaintenanceIssue.property_id.in_(prop_ids))
+    open_maintenance = await db.scalar(maint_q) or 0
 
     # Scheduled inspections
-    scheduled_inspections = await db.scalar(
-        select(func.count(Inspection.id)).where(
-            Inspection.organisation_id == org_id,
-            Inspection.state == InspectionState.scheduled,
-        )
-    ) or 0
+    insp_q = select(func.count(Inspection.id)).where(
+        Inspection.organisation_id == org_id,
+        Inspection.state == InspectionState.scheduled,
+    )
+    if prop_ids is not None:
+        insp_q = insp_q.where(Inspection.property_id.in_(prop_ids))
+    scheduled_inspections = await db.scalar(insp_q) or 0
 
     return {
         "totalProperties": int(prop_count),

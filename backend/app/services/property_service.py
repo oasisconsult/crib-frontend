@@ -15,6 +15,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.landlord_invite import LandlordPropertyAccess
 from app.models.property import Property, Unit, UnitStatus
 from app.utils.references import build_ref, next_seq
 from app.schemas.property import (
@@ -109,8 +110,15 @@ async def list_properties(
     status_filter: str | None = None,
     type_filter: str | None = None,
     search: str | None = None,
+    landlord_profile_id: uuid.UUID | None = None,
 ) -> dict:
     q = select(Property).where(Property.organisation_id == org_id)
+    if landlord_profile_id is not None:
+        # Restrict to only properties this landlord has been granted access to
+        allowed = select(LandlordPropertyAccess.property_id).where(
+            LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
+        )
+        q = q.where(Property.id.in_(allowed))
     if status_filter:
         q = q.where(Property.status == status_filter)
     if type_filter:
@@ -133,13 +141,27 @@ async def list_properties(
     }
 
 
-async def get_property(prop_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> Property:
+async def get_property(
+    prop_id: uuid.UUID,
+    org_id: uuid.UUID,
+    db: AsyncSession,
+    landlord_profile_id: uuid.UUID | None = None,
+) -> Property:
     result = await db.execute(
         select(Property).where(Property.id == prop_id, Property.organisation_id == org_id)
     )
     prop = result.scalar_one_or_none()
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    if landlord_profile_id is not None:
+        access = await db.scalar(
+            select(LandlordPropertyAccess.property_id).where(
+                LandlordPropertyAccess.landlord_profile_id == landlord_profile_id,
+                LandlordPropertyAccess.property_id == prop_id,
+            )
+        )
+        if not access:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
     return prop
 
 

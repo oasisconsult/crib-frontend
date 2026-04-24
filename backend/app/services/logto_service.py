@@ -459,10 +459,13 @@ async def create_landlord_user(
     first_name: str,
     last_name: str,
     temp_password: str,
+    logto_org_id: str | None = None,
 ) -> str | None:
     """
     Create a Logto user for an invited landlord.
-    Assigns the app-level `landlord` role (not an org role).
+    Assigns the app-level `landlord` role.
+    If logto_org_id is provided, also adds the user to the agency's Logto org
+    and assigns the org-level `landlord` role so the JWT carries org context.
     Returns the Logto user ID on success, None on failure.
     """
     if not _is_configured():
@@ -499,8 +502,32 @@ async def create_landlord_user(
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
 
-            # Find or create 'landlord' app role and assign it
+            # Assign app-level 'landlord' role
             await _assign_app_role(client, base, logto_user_id, "landlord", headers)
+
+            # Add to agency org + assign org-level landlord role so JWT carries org_id
+            if logto_org_id:
+                add_resp = await client.post(
+                    f"{base}/organizations/{logto_org_id}/users",
+                    json={"userIds": [logto_user_id]},
+                    headers=headers,
+                )
+                if add_resp.status_code not in (200, 201, 204):
+                    log.warning(
+                        "logto.landlord_add_to_org_failed",
+                        user_id=logto_user_id,
+                        org_id=logto_org_id,
+                        status=add_resp.status_code,
+                    )
+                else:
+                    log.info(
+                        "logto.landlord_added_to_org",
+                        user_id=logto_user_id,
+                        org_id=logto_org_id,
+                    )
+                    await _assign_org_role(
+                        client, base, logto_org_id, logto_user_id, "landlord", headers
+                    )
 
         log.info("logto.landlord_user_provisioned", email=email, logto_user_id=logto_user_id)
         return logto_user_id

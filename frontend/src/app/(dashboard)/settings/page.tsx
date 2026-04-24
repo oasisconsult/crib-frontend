@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   // ── Permissions ─────────────────────────────────────────────────────────────
-  const { isSuperAdmin, canManageOrg } = usePermissions();
+  const { isSuperAdmin, canManageOrg, isLandlord } = usePermissions();
 
   // ── Agency / Organisation settings ────────────────────────────────────────
   const { data: org, isLoading: loadingOrg } = useOrganisation();
@@ -157,7 +157,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className={`grid w-full ${isLandlord ? "grid-cols-4" : "grid-cols-6"}`}>
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
@@ -166,14 +166,18 @@ export default function SettingsPage() {
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Agency</span>
           </TabsTrigger>
-          <TabsTrigger value="landlords" className="gap-2">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Landlords</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
-            <Bell className="h-4 w-4" />
-            <span className="hidden sm:inline">Notifications</span>
-          </TabsTrigger>
+          {!isLandlord && (
+            <TabsTrigger value="landlords" className="gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Landlords</span>
+            </TabsTrigger>
+          )}
+          {!isLandlord && (
+            <TabsTrigger value="notifications" className="gap-2">
+              <Bell className="h-4 w-4" />
+              <span className="hidden sm:inline">Notifications</span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="appearance" className="gap-2">
             <Paintbrush className="h-4 w-4" />
             <span className="hidden sm:inline">Appearance</span>
@@ -265,7 +269,9 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle>Agency Details</CardTitle>
               <CardDescription>
-                These details appear on tenancy agreements and tenant-facing communications.
+                {isLandlord
+                  ? "Your agency's contact information. Contact your agency to make changes."
+                  : "These details appear on tenancy agreements and tenant-facing communications."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -279,17 +285,17 @@ export default function SettingsPage() {
                   <div className="space-y-1.5">
                     <Label htmlFor="agencyName" className="flex items-center gap-1.5">
                       Agency Name
-                      {!isSuperAdmin && <Lock className="h-3 w-3 text-muted-foreground" />}
+                      {(!isSuperAdmin || isLandlord) && <Lock className="h-3 w-3 text-muted-foreground" />}
                     </Label>
                     <Input
                       id="agencyName"
                       value={agencyName}
                       onChange={(e) => setAgencyName(e.target.value)}
                       placeholder="e.g. GeoBox Properties Ltd"
-                      disabled={!isSuperAdmin}
+                      disabled={!isSuperAdmin || isLandlord}
                     />
                     <p className="text-xs text-muted-foreground">
-                      {isSuperAdmin
+                      {isSuperAdmin && !isLandlord
                         ? "Only superadmins can change the agency name"
                         : "Agency name can only be changed by a superadmin"}
                     </p>
@@ -302,10 +308,13 @@ export default function SettingsPage() {
                       value={agencyPhone}
                       onChange={(e) => setAgencyPhone(e.target.value)}
                       placeholder="+256 700 000000"
+                      disabled={isLandlord}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Printed in the signature block of tenancy agreements
-                    </p>
+                    {!isLandlord && (
+                      <p className="text-xs text-muted-foreground">
+                        Printed in the signature block of tenancy agreements
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="agencyEmail">Contact Email</Label>
@@ -315,14 +324,17 @@ export default function SettingsPage() {
                       value={agencyEmail}
                       onChange={(e) => setAgencyEmail(e.target.value)}
                       placeholder="contact@yourcompany.com"
+                      disabled={isLandlord}
                     />
                   </div>
-                  <div className="flex justify-end">
-                    <Button onClick={handleSaveAgency} loading={savingAgency}>
-                      <Save className="h-4 w-4" />
-                      Save details
-                    </Button>
-                  </div>
+                  {!isLandlord && (
+                    <div className="flex justify-end">
+                      <Button onClick={handleSaveAgency} loading={savingAgency}>
+                        <Save className="h-4 w-4" />
+                        Save details
+                      </Button>
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>

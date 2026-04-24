@@ -28,6 +28,7 @@ from app.models.inspection import (
     INSPECTION_TRANSITIONS,
     MAINTENANCE_TRANSITIONS,
 )
+from app.models.landlord_invite import LandlordPropertyAccess
 from app.models.property import Property, Unit
 from app.utils.references import build_ref, next_seq
 from app.schemas.inspection import (
@@ -190,10 +191,16 @@ async def list_inspections(
     search: str | None = None,
     page: int = 1,
     page_size: int = 20,
+    landlord_profile_id: uuid.UUID | None = None,
 ) -> dict:
     q = select(Inspection).where(
         Inspection.organisation_id == org_id,
     )
+    if landlord_profile_id is not None:
+        allowed = select(LandlordPropertyAccess.property_id).where(
+            LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
+        )
+        q = q.where(Inspection.property_id.in_(allowed))
     if property_id:
         q = q.where(Inspection.property_id == uuid.UUID(property_id))
     if unit_id:
@@ -359,10 +366,16 @@ async def list_maintenance(
     reported_by: str | None = None,
     page: int = 1,
     page_size: int = 20,
+    landlord_profile_id: uuid.UUID | None = None,
 ) -> dict:
     q = select(MaintenanceIssue).where(
         MaintenanceIssue.organisation_id == org_id,
     )
+    if landlord_profile_id is not None:
+        allowed = select(LandlordPropertyAccess.property_id).where(
+            LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
+        )
+        q = q.where(MaintenanceIssue.property_id.in_(allowed))
     if property_id:
         q = q.where(MaintenanceIssue.property_id == uuid.UUID(property_id))
     if states:

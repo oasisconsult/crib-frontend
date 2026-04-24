@@ -26,6 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 log = structlog.get_logger(__name__)
 
+from app.models.landlord_invite import LandlordPropertyAccess
 from app.models.lease import Lease, LeaseStatus
 from app.models.property import Property, Unit, UnitStatus
 from app.models.tenant import OnboardingState, Tenant, TenantStatus
@@ -253,10 +254,16 @@ async def list_leases(
     property_id: str | None = None,
     page: int = 1,
     page_size: int = 20,
+    landlord_profile_id: uuid.UUID | None = None,
 ) -> dict:
     from sqlalchemy import func
 
     q = select(Lease).where(Lease.organisation_id == org_id)
+    if landlord_profile_id is not None:
+        allowed = select(LandlordPropertyAccess.property_id).where(
+            LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
+        )
+        q = q.where(Lease.property_id.in_(allowed))
     if status_filters:
         q = q.where(Lease.status.in_(status_filters))
     if search:

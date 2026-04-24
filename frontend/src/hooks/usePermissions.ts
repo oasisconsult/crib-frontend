@@ -21,7 +21,9 @@ export function usePermissions() {
   const role = roles[0]; // primary role (highest priority)
 
   const isLandlord = roles.includes("landlord");
-  const isReadOnly = isLandlord && (user?.isReadOnly ?? false);
+  // Landlords invited by an agency are always read-only — they cannot mutate
+  // properties, leases, maintenance or inspections managed by the agency.
+  const isReadOnly = isLandlord;
 
   return {
     role,
@@ -37,7 +39,7 @@ export function usePermissions() {
     isTenant: roles.includes("tenant"),
     isMaintenance: roles.includes("maintenance"),
     canManageOrg: roles.some((r) => ["owner", "manager", "superadmin"].includes(r)),
-    /** True when the landlord's properties are agency-managed (view-only). */
+    /** True for landlords — they have view-only access to agency-managed properties. */
     isReadOnly,
     /** True when the user can perform write operations. */
     canWrite: !isReadOnly,

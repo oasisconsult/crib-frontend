@@ -215,24 +215,32 @@ async def complete_onboarding(
         await db.flush()
         raise HTTPException(status_code=http_status.HTTP_410_GONE, detail="Invite has expired")
 
+    # Fetch the inviting agency org to get its Logto org ID
+    org_result = await db.execute(
+        select(Organisation).where(Organisation.id == invite.organisation_id)
+    )
+    org = org_result.scalar_one_or_none()
+    logto_org_id = org.logto_org_id if org else None
+
     temp_password = _generate_temp_password()
 
-    # 1. Create Logto user
+    # 1. Create Logto user, add to agency org, assign landlord org role
     logto_user_id = await logto_service.create_landlord_user(
         email=invite.email,
         first_name=body.first_name,
         last_name=body.last_name,
         temp_password=temp_password,
+        logto_org_id=logto_org_id,
     )
 
-    # 2. Create Profile
+    # 2. Create Profile linked to the inviting agency's org
     existing = await db.execute(select(Profile).where(Profile.email == invite.email))
     profile = existing.scalar_one_or_none()
 
     if profile is None:
         profile = Profile(
             logto_sub=logto_user_id or f"pending_{invite.id}",
-            organisation_id=None,  # landlords have no org
+            organisation_id=invite.organisation_id,  # scoped to inviting agency
             role="landlord",
             display_name=f"{body.first_name} {body.last_name}",
             email=invite.email,
@@ -245,6 +253,7 @@ async def complete_onboarding(
     else:
         profile.role = "landlord"
         profile.is_read_only = True
+        profile.organisation_id = invite.organisation_id
         if logto_user_id:
             profile.logto_sub = logto_user_id
         if body.phone:

@@ -71,6 +71,7 @@ async def list_leases(
         tenant_id = str(tenant_record.id)
 
     state_list = [s.strip() for s in states.split(",")] if states else ([status_filter] if status_filter else None)
+    landlord_id = current_user.id if current_user.has_role("landlord") else None
     return await svc.list_leases(
         current_user.org_id,
         db,
@@ -81,6 +82,7 @@ async def list_leases(
         property_id=property_id,
         page=page,
         page_size=page_size,
+        landlord_profile_id=landlord_id,
     )
 
 

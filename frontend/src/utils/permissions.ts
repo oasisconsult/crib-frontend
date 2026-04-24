@@ -101,6 +101,15 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "notifications:send",
     "analytics:read",
   ],
+  landlord: [
+    "properties:read",
+    "units:read",
+    "leases:read",
+    "payments:read",
+    "inspections:read",
+    "maintenance:read",
+    "analytics:read",
+  ],
   tenant: [
     "properties:read",
     "leases:read",
