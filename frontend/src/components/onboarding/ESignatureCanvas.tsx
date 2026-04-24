@@ -21,16 +21,16 @@ export function ESignatureCanvas({ onSave, className }: ESignatureCanvasProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // High-DPI fix
-    const ratio = window.devicePixelRatio ?? 1;
-    canvas.width = canvas.offsetWidth * ratio;
-    canvas.height = canvas.offsetHeight * ratio;
-    const ctx = canvas.getContext("2d");
-    if (ctx) ctx.scale(ratio, ratio);
-
+    // Create the pad first with smooth stroke settings.
+    // NOTE: do NOT call ctx.scale() — signature_pad 4.x computes positions
+    // in bitmap-pixel space via (clientX - rect.left) * (canvas.width / rect.width),
+    // so adding ctx.scale would double-scale coordinates and shift strokes off-canvas.
     padRef.current = new SignaturePad(canvas, {
       backgroundColor: "rgb(255, 255, 255)",
       penColor: "#134E4A",
+      minWidth: 0.5,
+      maxWidth: 2.5,
+      velocityFilterWeight: 0.7,
     });
 
     padRef.current.addEventListener("endStroke", () => {
@@ -38,7 +38,31 @@ export function ESignatureCanvas({ onSave, className }: ESignatureCanvasProps) {
       setSaved(false);
     });
 
-    return () => padRef.current?.off();
+    // ResizeObserver fires AFTER the DOM is fully laid out — including after Dialog
+    // open animations. Without this, canvas.offsetWidth is 0 at mount time (the
+    // dialog hasn't rendered yet), so the canvas bitmap is 0×0 and CSS stretches
+    // it to fill the container → pixelated strokes.
+    const resizeCanvas = () => {
+      if (!padRef.current) return;
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      if (!w || !h) return;
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      canvas.width  = w * ratio;
+      canvas.height = h * ratio;
+      // clear() resets signature_pad's internal state to match the new canvas size
+      padRef.current.clear();
+    };
+
+    const ro = new ResizeObserver(resizeCanvas);
+    ro.observe(canvas);
+    resizeCanvas(); // attempt immediate sizing if already visible
+
+    return () => {
+      ro.disconnect();
+      padRef.current?.off();
+      padRef.current = null;
+    };
   }, []);
 
   const clear = () => {
