@@ -46,6 +46,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) return null;
 
+  // Synchronous role check — returns null (not the dashboard) while the useEffect
+  // redirect is pending. Without this the dashboard renders for one full cycle
+  // before the effect fires, causing a visible flash of the staff UI for tenants.
+  if (user) {
+    const userRoles: string[] = (user.roles as string[] | undefined) ?? (user.role ? [user.role as string] : []);
+    const isDashboardUser = ["superadmin", "owner", "manager", "maintenance", "landlord"].some(
+      (r) => userRoles.includes(r),
+    );
+    if (!isDashboardUser && userRoles.includes("tenant")) {
+      return null;
+    }
+  }
+
   return <>{children}</>;
 }
 
