@@ -32,9 +32,11 @@ const rulesSchema = z.object({
   allowPets: z.boolean(),
   allowSmoking: z.boolean(),
   rentDayOfMonth: z.number().min(1).max(28),
-  billingCurrency: z.string(),
-  maintenanceWindowHours: z.number().min(0),
-});
+  // Not shown as form fields but present in stored rules — optional so Zod
+  // doesn't reject the form when these are absent from defaultValues.
+  billingCurrency: z.string().optional(),
+  maintenanceWindowHours: z.number().min(0).optional(),
+}).passthrough(); // preserve any extra keys we don't know about
 
 interface RulesBuilderProps {
   propertyId: string;
@@ -50,7 +52,13 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readO
   const { mutate: saveRules, isPending: savingProperty } = useUpdatePropertyRules();
   const isPending = isSaving ?? savingProperty;
 
-  const defaultValues = schemaToDefaultValues(DEFAULT_RULE_SCHEMA, initialRules) as unknown as PropertyRules;
+  // Spread ALL of initialRules first so hidden fields (billingCurrency,
+  // maintenanceWindowHours, etc.) are preserved in the form state.
+  // schemaToDefaultValues then overlays the visible-field values.
+  const defaultValues = {
+    ...(initialRules as Record<string, unknown>),
+    ...(schemaToDefaultValues(DEFAULT_RULE_SCHEMA, initialRules) as Record<string, unknown>),
+  } as unknown as PropertyRules;
 
   const { register, handleSubmit, watch, control, formState: { errors, isDirty } } = useForm<PropertyRules>({
     resolver: zodResolver(rulesSchema),
@@ -63,10 +71,13 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readO
 
   const onSubmit = (data: PropertyRules) => {
     if (readOnly) return;
+    // Merge form data back onto initialRules so hidden fields (billingCurrency,
+    // maintenanceWindowHours, etc.) are not silently dropped on save.
+    const merged = { ...initialRules, ...data } as PropertyRules;
     if (onSave) {
-      onSave(data);
+      onSave(merged);
     } else {
-      saveRules({ id: propertyId, rules: data });
+      saveRules({ id: propertyId, rules: merged });
     }
   };
 

@@ -2,9 +2,10 @@
 
 import { use, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Home, RotateCcw, Info } from "lucide-react";
+import { ArrowLeft, Building2, Home, RotateCcw, Info, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RulesBuilder } from "@/components/properties/RulesBuilder";
@@ -35,9 +36,17 @@ function UnitSelector({
   selected: string | "property";
   onSelect: (id: string | "property") => void;
 }) {
+  const [query, setQuery] = useState("");
+
+  const filtered = query.trim()
+    ? units.filter((u) => u.name.toLowerCase().includes(query.toLowerCase()))
+    : units;
+
+  const customCount = units.filter((u) => !!u.rules).length;
+
   return (
-    <div className="space-y-1">
-      {/* Property defaults entry */}
+    <div className="flex flex-col h-full">
+      {/* Property defaults — always pinned at top */}
       <button
         onClick={() => onSelect("property")}
         className={cn(
@@ -48,44 +57,77 @@ function UnitSelector({
         )}
       >
         <Building2 className="h-4 w-4 shrink-0" />
-        <span>Property Defaults</span>
+        <span className="flex-1">Property Defaults</span>
       </button>
 
       <Separator className="my-2" />
 
-      <p className="text-xs font-medium text-muted-foreground px-3 pb-1 uppercase tracking-wide">
-        Units
-      </p>
+      {/* Units header with count */}
+      <div className="flex items-center justify-between px-3 pb-1">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Units
+        </p>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {units.length}
+          {customCount > 0 && (
+            <span className="ml-1 text-amber-600">· {customCount} custom</span>
+          )}
+        </span>
+      </div>
 
-      {units.map((unit) => {
-        const hasOverride = !!unit.rules;
-        return (
-          <button
-            key={unit.id}
-            onClick={() => onSelect(unit.id)}
-            className={cn(
-              "w-full flex items-center gap-2.5 rounded-[6px] px-3 py-2.5 text-sm transition-colors text-left",
-              selected === unit.id
-                ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold"
-                : "hover:bg-muted/50",
-            )}
-          >
-            <Home className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="truncate">{unit.name}</span>
-                {hasOverride && (
-                  <span className="text-xs text-amber-600 font-normal shrink-0">custom</span>
+      {/* Search — only shown when there are enough units to warrant it */}
+      {units.length > 8 && (
+        <div className="px-1 pb-2 relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search units…"
+            className="h-7 pl-8 text-xs"
+          />
+        </div>
+      )}
+
+      {/* Scrollable unit list */}
+      <div className="flex-1 overflow-y-auto space-y-0.5 min-h-0 max-h-[calc(100vh-280px)]">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-center text-muted-foreground py-4 px-3">
+            No units match &ldquo;{query}&rdquo;
+          </p>
+        ) : (
+          filtered.map((unit) => {
+            const hasOverride = !!unit.rules;
+            return (
+              <button
+                key={unit.id}
+                onClick={() => onSelect(unit.id)}
+                className={cn(
+                  "w-full flex items-center gap-2.5 rounded-[6px] px-3 py-2 text-sm transition-colors text-left",
+                  selected === unit.id
+                    ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold"
+                    : "hover:bg-muted/50",
                 )}
-              </div>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", STATUS_DOT[unit.status] ?? "bg-muted")} />
-                <span className="text-xs text-muted-foreground capitalize">{unit.status}</span>
-              </div>
-            </div>
-          </button>
-        );
-      })}
+              >
+                <Home className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="truncate">{unit.name}</span>
+                    {hasOverride && (
+                      <span className="text-[10px] text-amber-600 font-medium shrink-0 border border-amber-300 rounded px-1">
+                        custom
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", STATUS_DOT[unit.status] ?? "bg-muted")} />
+                    <span className="text-[11px] text-muted-foreground capitalize">{unit.status}</span>
+                  </div>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
@@ -159,8 +201,8 @@ export default function PropertyRulesPage({ params }: Props) {
       ) : !propertyRules ? null : isMultiUnit ? (
         /* ── Multi-unit layout: sidebar picker + builder ── */
         <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 items-start">
-          {/* Sidebar */}
-          <div className="rounded-[6px] border p-2">
+          {/* Sidebar — sticky with internal scroll for large unit lists */}
+          <div className="rounded-[6px] border p-2 sticky top-4 max-h-[calc(100vh-100px)] flex flex-col">
             <UnitSelector
               units={units}
               selected={selected}
