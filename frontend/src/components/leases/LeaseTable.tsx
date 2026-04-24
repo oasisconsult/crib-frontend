@@ -11,6 +11,7 @@ import { FilterBar } from "@/components/common/FilterBar";
 import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { formatCurrency, formatDate, formatDateRange } from "@/utils/formatters";
 import { useLeases } from "@/hooks/useLeases";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { Lease, FilterConfig } from "@/types";
 import type { LeaseState } from "@/types/states";
 
@@ -104,6 +105,7 @@ function panelFiltersToConfig(active: ActiveFilters): FilterConfig[] {
 
 export function LeaseTable() {
   const router = useRouter();
+  const { canWrite } = usePermissions();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("all");
@@ -141,10 +143,12 @@ export function LeaseTable() {
           placeholder="Search by reference or tenant..."
           className="flex-1 max-w-sm"
         />
-        <Button onClick={() => router.push("/leases/new")} className="shrink-0">
-          <Plus className="h-4 w-4" />
-          New Lease
-        </Button>
+        {canWrite && (
+          <Button onClick={() => router.push("/leases/new")} className="shrink-0">
+            <Plus className="h-4 w-4" />
+            New Lease
+          </Button>
+        )}
       </div>
 
       <FilterPanel

@@ -62,6 +62,7 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readO
   const conflicts = detectRuleConflicts(values as unknown as Record<string, unknown>);
 
   const onSubmit = (data: PropertyRules) => {
+    if (readOnly) return;
     if (onSave) {
       onSave(data);
     } else {
@@ -82,7 +83,6 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readO
         </Alert>
       )}
 
-      <fieldset disabled={readOnly} className="contents">
       <div className="grid gap-5 md:grid-cols-2">
         {visibleFields.map((field) => {
           const hasError = !!errors[field.key as keyof PropertyRules];
@@ -104,6 +104,7 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readO
                       id={field.key}
                       checked={!!f.value}
                       onCheckedChange={f.onChange}
+                      disabled={readOnly}
                     />
                   )}
                 />
@@ -125,7 +126,7 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readO
                   name={field.key as keyof PropertyRules}
                   control={control}
                   render={({ field: f }) => (
-                    <Select value={String(f.value)} onValueChange={f.onChange}>
+                    <Select value={String(f.value)} onValueChange={f.onChange} disabled={readOnly}>
                       <SelectTrigger id={field.key}>
                         <SelectValue />
                       </SelectTrigger>
@@ -164,6 +165,7 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readO
                 max={field.max}
                 step="0.01"
                 error={hasError}
+                disabled={readOnly}
                 {...register(field.key as keyof PropertyRules, { valueAsNumber: true })}
               />
               {hasError && (
@@ -175,8 +177,6 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readO
           );
         })}
       </div>
-
-      </fieldset>
 
       <Separator />
 
