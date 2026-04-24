@@ -158,6 +158,8 @@ class TenantImportResultResponse(CamelModel):
     with_lease: int
     profile_only: int
     skipped_tenants: int
+    logto_accounts_created: int
+    logto_accounts_failed: int
     warnings: list[TenantImportWarning]
 
 
@@ -558,6 +560,8 @@ async def commit_import(
     warnings: list[TenantImportWarning] = []
     now = datetime.now(timezone.utc)
     today_str = date.today().isoformat()
+    logto_created = 0
+    logto_failed  = 0
 
     # ── Re-check existing emails (idempotent at commit time) ──────────────────
     emails = [r.email.lower() for r in rows]
@@ -718,26 +722,6 @@ async def commit_import(
             claimed_unit_ids.add(resolved_unit.id)               # type: ignore[union-attr]
             with_lease_count += 1
 
-            # Provision Logto account + send welcome email
-            if logto_org_id:
-                try:
-                    logto_user_id = await logto_service.create_tenant_user(
-                        email=r.email,
-                        first_name=r.first_name,
-                        last_name=r.last_name,
-                        logto_org_id=logto_org_id,
-                    )
-                    if logto_user_id:
-                        tenant.logto_user_id = logto_user_id
-                except Exception:
-                    log.warning(
-                        "tenant_import.logto_provisioning_failed",
-                        email=r.email,
-                        exc_info=True,
-                    )
-            else:
-                log.debug("tenant_import.logto_org_id_missing", email=r.email)
-
         # ── Create TenantInvite for profile-only tenants ───────────────────────
         else:
             token = secrets.token_urlsafe(48)
@@ -754,6 +738,48 @@ async def commit_import(
             )
             db.add(invite)
             profile_only_count += 1
+
+        # ── Provision Logto account for ALL imported tenants ───────────────────
+        # Creates the user in Logto, adds to the agency org, assigns the tenant
+        # org role, and sends a welcome email with temporary login credentials.
+        # This applies to both activated (with_lease) and invited (profile_only)
+        # tenants so they can all access the tenant portal immediately.
+        if logto_org_id:
+            try:
+                logto_user_id = await logto_service.create_tenant_user(
+                    email=r.email,
+                    first_name=r.first_name,
+                    last_name=r.last_name,
+                    logto_org_id=logto_org_id,
+                )
+                if logto_user_id:
+                    tenant.logto_user_id = logto_user_id
+                    logto_created += 1
+                else:
+                    logto_failed += 1
+                    warnings.append(TenantImportWarning(
+                        row=r.row_num, email=r.email,
+                        message=(
+                            f"Logto account could not be created for {r.email}. "
+                            "Use 'Resend login credentials' on the tenant detail page to retry."
+                        ),
+                    ))
+            except Exception:
+                logto_failed += 1
+                log.warning(
+                    "tenant_import.logto_provisioning_failed",
+                    email=r.email,
+                    exc_info=True,
+                )
+                warnings.append(TenantImportWarning(
+                    row=r.row_num, email=r.email,
+                    message=(
+                        f"Logto provisioning failed for {r.email}. "
+                        "Use 'Resend login credentials' on the tenant detail page to retry."
+                    ),
+                ))
+        else:
+            log.debug("tenant_import.logto_org_id_missing — skipping provisioning", email=r.email)
 
         existing_emails.add(r.email.lower())  # prevent duplicates within this batch
         imported_tenants += 1
@@ -773,5 +799,7 @@ async def commit_import(
         with_lease=with_lease_count,
         profile_only=profile_only_count,
         skipped_tenants=skipped,
+        logto_accounts_created=logto_created,
+        logto_accounts_failed=logto_failed,
         warnings=warnings,
     )

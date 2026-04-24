@@ -259,30 +259,81 @@ export function TenantImportModal({ onClose }: Props) {
 
           {/* ── Step 3: Success ── */}
           {step === "success" && result && (
-            <div className="py-6 text-center space-y-4">
-              <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-500" />
-              <div>
-                <p className="text-lg font-semibold">Import successful!</p>
-                <p className="text-sm text-muted-foreground mt-1">
+            <div className="space-y-4 py-2">
+              {/* Header */}
+              <div className="text-center">
+                <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500 mb-2" />
+                <p className="text-lg font-semibold">
                   {result.importedTenants} tenant{result.importedTenants !== 1 ? "s" : ""} imported
                 </p>
               </div>
-              <div className="grid grid-cols-2 gap-3 max-w-xs mx-auto">
-                <div className="rounded-[6px] border px-3 py-2 text-center">
+
+              {/* Counts grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-[6px] border px-3 py-2.5 text-center">
                   <p className="text-xl font-bold text-emerald-600">{result.withLease}</p>
-                  <p className="text-xs text-muted-foreground">With active lease</p>
+                  <p className="text-xs text-muted-foreground">Active lease</p>
                 </div>
-                <div className="rounded-[6px] border px-3 py-2 text-center">
+                <div className="rounded-[6px] border px-3 py-2.5 text-center">
                   <p className="text-xl font-bold text-amber-600">{result.profileOnly}</p>
                   <p className="text-xs text-muted-foreground">Profile only</p>
                 </div>
               </div>
-              {result.skippedTenants > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  {result.skippedTenants} row{result.skippedTenants !== 1 ? "s" : ""} skipped (duplicates)
-                </p>
-              )}
-              <Button onClick={onClose}>Done</Button>
+
+              {/* Portal access status */}
+              <div className="rounded-[6px] border divide-y text-sm">
+                <div className="flex items-center justify-between px-3 py-2.5 gap-2">
+                  <span className="text-muted-foreground">Portal accounts created</span>
+                  <span className={result.logtoAccountsCreated > 0 ? "font-medium text-emerald-600" : "text-muted-foreground"}>
+                    {result.logtoAccountsCreated}
+                    {result.logtoAccountsCreated > 0 && " ✓"}
+                  </span>
+                </div>
+                {result.logtoAccountsFailed > 0 && (
+                  <div className="flex items-center justify-between px-3 py-2.5 gap-2">
+                    <span className="text-destructive">Provisioning failed</span>
+                    <span className="font-medium text-destructive">{result.logtoAccountsFailed}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* What's next */}
+              <div className="rounded-[6px] bg-muted/50 px-4 py-3 space-y-1.5 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground text-sm">What happens next</p>
+                {result.logtoAccountsCreated > 0 && (
+                  <p>
+                    <span className="font-medium text-foreground">Welcome emails sent</span> — tenants
+                    will receive their portal login credentials and can sign in immediately.
+                  </p>
+                )}
+                {result.withLease > 0 && (
+                  <p>
+                    <span className="font-medium text-foreground">Active lease tenants</span> can view
+                    their lease, payments, and maintenance from the tenant portal.
+                  </p>
+                )}
+                {result.profileOnly > 0 && (
+                  <p>
+                    <span className="font-medium text-foreground">Profile-only tenants</span> can log
+                    in and complete their profile. Assign them a unit by creating a lease when ready.
+                  </p>
+                )}
+                {result.logtoAccountsFailed > 0 && (
+                  <p className="text-destructive/80">
+                    <span className="font-medium text-destructive">
+                      {result.logtoAccountsFailed} account{result.logtoAccountsFailed !== 1 ? "s" : ""} could not be provisioned.
+                    </span>{" "}
+                    Open each affected tenant's profile and click <em>Resend login credentials</em> to retry.
+                  </p>
+                )}
+                {result.skippedTenants > 0 && (
+                  <p>{result.skippedTenants} row{result.skippedTenants !== 1 ? "s" : ""} were skipped — those emails already exist in your organisation.</p>
+                )}
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={onClose}>Done</Button>
+              </div>
             </div>
           )}
         </CardContent>

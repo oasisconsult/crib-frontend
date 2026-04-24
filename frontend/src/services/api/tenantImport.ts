@@ -48,6 +48,8 @@ export interface TenantImportResultResponse {
   withLease: number;
   profileOnly: number;
   skippedTenants: number;
+  logtoAccountsCreated: number;
+  logtoAccountsFailed: number;
   warnings: TenantImportWarning[];
 }
 
