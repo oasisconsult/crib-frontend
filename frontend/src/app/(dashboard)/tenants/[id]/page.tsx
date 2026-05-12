@@ -41,7 +41,13 @@ import { OnboardingProgress } from "@/components/tenants/OnboardingProgress";
 import { TenantDocumentsSection } from "@/components/tenants/TenantDocumentsSection";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatDate, getInitials } from "@/utils/formatters";
-import { useTenant, useUpdateTenant, useApproveOnboarding, useRejectOnboarding, useResendInvite } from "@/hooks/useTenants";
+import {
+  useTenant,
+  useUpdateTenant,
+  useApproveOnboarding,
+  useRejectOnboarding,
+  useResendInvite,
+} from "@/hooks/useTenants";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Tenant, TenantStatus } from "@/types";
 
@@ -50,8 +56,8 @@ interface Props {
 }
 
 const STATUS_OPTIONS: { value: TenantStatus; label: string }[] = [
-  { value: "active",      label: "Active"      },
-  { value: "inactive",    label: "Inactive"    },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
   { value: "blacklisted", label: "Blacklisted" },
 ];
 
@@ -64,21 +70,29 @@ function EditForm({
 }) {
   const { mutate: update, isPending } = useUpdateTenant();
 
-  const [firstName,   setFirstName]   = useState(tenant.firstName);
-  const [lastName,    setLastName]    = useState(tenant.lastName);
-  const [phone,       setPhone]       = useState(tenant.phone ?? "");
+  const [firstName, setFirstName] = useState(tenant.firstName);
+  const [lastName, setLastName] = useState(tenant.lastName);
+  const [phone, setPhone] = useState(tenant.phone ?? "");
   const [nationality, setNationality] = useState(tenant.nationality ?? "");
-  const [status,      setStatus]      = useState<TenantStatus>(tenant.status);
-  const [notes,       setNotes]       = useState(tenant.notes ?? "");
+  const [status, setStatus] = useState<TenantStatus>(tenant.status);
+  const [notes, setNotes] = useState(tenant.notes ?? "");
   // Identity & payment
-  const [nin,                  setNin]                  = useState(tenant.nin ?? "");
-  const [whatsappNumber,       setWhatsappNumber]       = useState(tenant.whatsappNumber ?? "");
-  const [mobileMoneyProvider,  setMobileMoneyProvider]  = useState<"mtn" | "airtel" | "">(tenant.mobileMoneyProvider ?? "");
-  const [mobileMoneyNumber,    setMobileMoneyNumber]    = useState(tenant.mobileMoneyNumber ?? "");
+  const [nin, setNin] = useState(tenant.nin ?? "");
+  const [whatsappNumber, setWhatsappNumber] = useState(
+    tenant.whatsappNumber ?? "",
+  );
+  const [mobileMoneyProvider, setMobileMoneyProvider] = useState<
+    "mtn" | "airtel" | ""
+  >(tenant.mobileMoneyProvider ?? "");
+  const [mobileMoneyNumber, setMobileMoneyNumber] = useState(
+    tenant.mobileMoneyNumber ?? "",
+  );
   // Emergency contact
-  const [ecName,         setEcName]         = useState(tenant.emergencyContact?.name ?? "");
-  const [ecRelationship, setEcRelationship] = useState(tenant.emergencyContact?.relationship ?? "");
-  const [ecPhone,        setEcPhone]        = useState(tenant.emergencyContact?.phone ?? "");
+  const [ecName, setEcName] = useState(tenant.emergencyContact?.name ?? "");
+  const [ecRelationship, setEcRelationship] = useState(
+    tenant.emergencyContact?.relationship ?? "",
+  );
+  const [ecPhone, setEcPhone] = useState(tenant.emergencyContact?.phone ?? "");
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -91,7 +105,8 @@ function EditForm({
       notes: notes || undefined,
       nin: nin || undefined,
       whatsappNumber: whatsappNumber || undefined,
-      mobileMoneyProvider: (mobileMoneyProvider as "mtn" | "airtel") || undefined,
+      mobileMoneyProvider:
+        (mobileMoneyProvider as "mtn" | "airtel") || undefined,
       mobileMoneyNumber: mobileMoneyNumber || undefined,
       emergencyContact: ecName
         ? { name: ecName, relationship: ecRelationship, phone: ecPhone }
@@ -114,40 +129,82 @@ function EditForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="firstName">First Name *</Label>
-              <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+              <Input
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="lastName">Last Name *</Label>
-              <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+              <Input
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+256 700 000000" />
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+256 700 000000"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="nationality">Nationality</Label>
-              <Input id="nationality" value={nationality} onChange={(e) => setNationality(e.target.value)} placeholder="e.g. Ugandan" />
+              <Input
+                id="nationality"
+                value={nationality}
+                onChange={(e) => setNationality(e.target.value)}
+                placeholder="e.g. Ugandan"
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="nin">NIN</Label>
-              <Input id="nin" value={nin} onChange={(e) => setNin(e.target.value)} placeholder="e.g. CM90100000ABCD" />
-              <p className="text-xs text-muted-foreground">National Identification Number — appears on tenancy agreement</p>
+              <Input
+                id="nin"
+                value={nin}
+                onChange={(e) => setNin(e.target.value)}
+                placeholder="e.g. CM90100000ABCD"
+              />
+              <p className="text-xs text-muted-foreground">
+                National Identification Number — appears on tenancy agreement
+              </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="whatsappNumber">WhatsApp / Contact Number</Label>
-              <Input id="whatsappNumber" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} placeholder="+256 700 000000" type="tel" />
-              <p className="text-xs text-muted-foreground">Used as contact phone on the tenancy agreement</p>
+              <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
+              <Input
+                id="whatsappNumber"
+                value={whatsappNumber}
+                onChange={(e) => setWhatsappNumber(e.target.value)}
+                placeholder="+256 700 000000"
+                type="tel"
+              />
+              <p className="text-xs text-muted-foreground">
+                Used as contact phone on the tenancy agreement
+              </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="mmProvider">Mobile Money Provider</Label>
-              <Select value={mobileMoneyProvider} onValueChange={(v) => setMobileMoneyProvider(v as "mtn" | "airtel" | "")}>
-                <SelectTrigger id="mmProvider"><SelectValue placeholder="Select provider" /></SelectTrigger>
+              <Select
+                value={mobileMoneyProvider}
+                onValueChange={(v) =>
+                  setMobileMoneyProvider(v as "mtn" | "airtel" | "")
+                }
+              >
+                <SelectTrigger id="mmProvider">
+                  <SelectValue placeholder="Select provider" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="mtn">MTN Mobile Money</SelectItem>
                   <SelectItem value="airtel">Airtel Money</SelectItem>
@@ -156,16 +213,29 @@ function EditForm({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="mmNumber">Mobile Money Number</Label>
-              <Input id="mmNumber" value={mobileMoneyNumber} onChange={(e) => setMobileMoneyNumber(e.target.value)} placeholder="+256 770 000000" type="tel" />
+              <Input
+                id="mmNumber"
+                value={mobileMoneyNumber}
+                onChange={(e) => setMobileMoneyNumber(e.target.value)}
+                placeholder="+256 770 000000"
+                type="tel"
+              />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="status">Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as TenantStatus)}>
-              <SelectTrigger id="status"><SelectValue /></SelectTrigger>
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v as TenantStatus)}
+            >
+              <SelectTrigger id="status">
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 {STATUS_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -185,16 +255,31 @@ function EditForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="ecName">Name</Label>
-              <Input id="ecName" value={ecName} onChange={(e) => setEcName(e.target.value)} placeholder="e.g. Sarah Namukasa" />
+              <Input
+                id="ecName"
+                value={ecName}
+                onChange={(e) => setEcName(e.target.value)}
+                placeholder="e.g. Sarah Namukasa"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="ecRelationship">Relationship</Label>
-              <Input id="ecRelationship" value={ecRelationship} onChange={(e) => setEcRelationship(e.target.value)} placeholder="e.g. Spouse" />
+              <Input
+                id="ecRelationship"
+                value={ecRelationship}
+                onChange={(e) => setEcRelationship(e.target.value)}
+                placeholder="e.g. Spouse"
+              />
             </div>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="ecPhone">Phone</Label>
-            <Input id="ecPhone" value={ecPhone} onChange={(e) => setEcPhone(e.target.value)} placeholder="+256 700 000000" />
+            <Input
+              id="ecPhone"
+              value={ecPhone}
+              onChange={(e) => setEcPhone(e.target.value)}
+              placeholder="+256 700 000000"
+            />
           </div>
         </CardContent>
       </Card>
@@ -244,7 +329,10 @@ function TenantNotesSection({ tenant }: { tenant: Tenant }) {
   function addNote() {
     const text = draft.trim();
     if (!text) return;
-    const ts = new Date().toLocaleString("en-UG", { dateStyle: "medium", timeStyle: "short" });
+    const ts = new Date().toLocaleString("en-UG", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
     const entry = `[${ts}] ${text}`;
     const next = [...notes, entry];
     setNotes(next);
@@ -264,7 +352,9 @@ function TenantNotesSection({ tenant }: { tenant: Tenant }) {
         <CardTitle className="text-base flex items-center gap-2">
           <StickyNote className="h-4 w-4" />
           Internal Notes
-          <span className="text-xs font-normal text-muted-foreground">— visible to staff only</span>
+          <span className="text-xs font-normal text-muted-foreground">
+            — visible to staff only
+          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -272,13 +362,22 @@ function TenantNotesSection({ tenant }: { tenant: Tenant }) {
           <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
             {notes.map((note, i) => {
               const match = note.match(/^\[(.+?)\] (.+)$/s);
-              const ts   = match?.[1] ?? "";
+              const ts = match?.[1] ?? "";
               const text = match?.[2] ?? note;
               return (
-                <div key={i} className="group flex items-start gap-2 rounded-[6px] bg-primary/5 border border-primary/10 px-3 py-2">
+                <div
+                  key={i}
+                  className="group flex items-start gap-2 rounded-[6px] bg-primary/5 border border-primary/10 px-3 py-2"
+                >
                   <div className="flex-1 min-w-0">
-                    {ts && <p className="text-[11px] text-muted-foreground mb-0.5">{ts}</p>}
-                    <p className="text-sm leading-snug whitespace-pre-wrap">{text}</p>
+                    {ts && (
+                      <p className="text-[11px] text-muted-foreground mb-0.5">
+                        {ts}
+                      </p>
+                    )}
+                    <p className="text-sm leading-snug whitespace-pre-wrap">
+                      {text}
+                    </p>
                   </div>
                   <button
                     onClick={() => removeNote(i)}
@@ -309,7 +408,11 @@ function TenantNotesSection({ tenant }: { tenant: Tenant }) {
             disabled={!draft.trim() || isPending}
             onClick={addNote}
           >
-            {isPending ? <Save className="h-3.5 w-3.5 animate-pulse" /> : <Save className="h-3.5 w-3.5" />}
+            {isPending ? (
+              <Save className="h-3.5 w-3.5 animate-pulse" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
           </Button>
         </div>
       </CardContent>
@@ -338,22 +441,26 @@ function ResendInviteSection({ tenant }: { tenant: Tenant }) {
   }
 
   return (
-    <Card className={
-      tenant.onboardingState === "rejected"
-        ? "border-destructive/30 bg-destructive/5 dark:bg-destructive/10"
-        : "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
-    }>
+    <Card
+      className={
+        tenant.onboardingState === "rejected"
+          ? "border-destructive/30 bg-destructive/5 dark:bg-destructive/10"
+          : "border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
+      }
+    >
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <RefreshCw className="h-4 w-4" />
-          {tenant.onboardingState === "rejected" ? "Re-invite Tenant" : "Resend Invite"}
+          {tenant.onboardingState === "rejected"
+            ? "Re-invite Tenant"
+            : "Resend Invite"}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           {tenant.onboardingState === "rejected"
             ? "Generate a new link so the tenant can resubmit their application."
             : tenant.onboardingState === "started"
-            ? "The tenant started but hasn't finished. Send a fresh link — their progress is saved."
-            : "The invite link may have expired. Generate a new 72-hour link."}
+              ? "The tenant started but hasn't finished. Send a fresh link — their progress is saved."
+              : "The invite link may have expired. Generate a new 72-hour link."}
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -364,7 +471,12 @@ function ResendInviteSection({ tenant }: { tenant: Tenant }) {
               <code className="flex-1 text-xs bg-muted rounded px-2 py-1.5 truncate block">
                 {inviteUrl}
               </code>
-              <Button size="icon-sm" variant="outline" onClick={handleCopy} title="Copy link">
+              <Button
+                size="icon-sm"
+                variant="outline"
+                onClick={handleCopy}
+                title="Copy link"
+              >
                 <Copy className="h-3.5 w-3.5" />
               </Button>
               <Button
@@ -376,7 +488,9 @@ function ResendInviteSection({ tenant }: { tenant: Tenant }) {
                 <ExternalLink className="h-3.5 w-3.5" />
               </Button>
             </div>
-            {copied && <p className="text-xs text-emerald-600">Copied to clipboard!</p>}
+            {copied && (
+              <p className="text-xs text-emerald-600">Copied to clipboard!</p>
+            )}
           </div>
         ) : (
           <Button
@@ -409,7 +523,8 @@ function ApproveRejectSection({ tenant }: { tenant: Tenant }) {
           Review Application
         </CardTitle>
         <p className="text-sm text-amber-700 dark:text-amber-300">
-          {tenant.firstName} {tenant.lastName} has submitted their onboarding application.
+          {tenant.firstName} {tenant.lastName} has submitted their onboarding
+          application.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -449,7 +564,10 @@ function ApproveRejectSection({ tenant }: { tenant: Tenant }) {
                 size="sm"
                 variant="outline"
                 className="flex-1"
-                onClick={() => { setShowRejectForm(false); setRejectReason(""); }}
+                onClick={() => {
+                  setShowRejectForm(false);
+                  setRejectReason("");
+                }}
               >
                 Cancel
               </Button>
@@ -459,7 +577,9 @@ function ApproveRejectSection({ tenant }: { tenant: Tenant }) {
                 className="flex-1"
                 loading={rejecting}
                 disabled={!rejectReason.trim()}
-                onClick={() => reject({ tenantId: tenant.id, reason: rejectReason })}
+                onClick={() =>
+                  reject({ tenantId: tenant.id, reason: rejectReason })
+                }
               >
                 Confirm Rejection
               </Button>
@@ -506,7 +626,8 @@ export default function TenantDetailPage({ params }: Props) {
         <div className="flex items-center gap-2">
           <Badge
             variant={
-              tenant.onboardingState === "approved" || tenant.onboardingState === "activated"
+              tenant.onboardingState === "approved" ||
+              tenant.onboardingState === "activated"
                 ? "success"
                 : tenant.onboardingState === "rejected"
                   ? "destructive"
@@ -517,7 +638,11 @@ export default function TenantDetailPage({ params }: Props) {
             {tenant.onboardingState.replace(/_/g, " ")}
           </Badge>
           {canEdit && !editing && (
-            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditing(true)}
+            >
               <Edit className="h-3.5 w-3.5" />
               Edit
             </Button>
@@ -539,7 +664,10 @@ export default function TenantDetailPage({ params }: Props) {
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2 text-sm">
                   <Mail className="h-4 w-4 text-muted-foreground" />
-                  <a href={`mailto:${tenant.email}`} className="hover:underline">
+                  <a
+                    href={`mailto:${tenant.email}`}
+                    className="hover:underline"
+                  >
                     {tenant.email}
                   </a>
                 </div>
@@ -556,7 +684,9 @@ export default function TenantDetailPage({ params }: Props) {
                     <Separator />
                     <div className="flex items-center gap-2 text-sm">
                       <Shield className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Nationality:</span>
+                      <span className="text-muted-foreground">
+                        Nationality:
+                      </span>
                       <span>{tenant.nationality}</span>
                     </div>
                   </>
@@ -577,7 +707,12 @@ export default function TenantDetailPage({ params }: Props) {
                     <div className="flex items-center gap-2 text-sm">
                       <MessageCircle className="h-4 w-4 text-muted-foreground" />
                       <span className="text-muted-foreground">WhatsApp:</span>
-                      <a href={`tel:${tenant.whatsappNumber}`} className="hover:underline">{tenant.whatsappNumber}</a>
+                      <a
+                        href={`tel:${tenant.whatsappNumber}`}
+                        className="hover:underline"
+                      >
+                        {tenant.whatsappNumber}
+                      </a>
                     </div>
                   </>
                 )}
@@ -586,9 +721,15 @@ export default function TenantDetailPage({ params }: Props) {
                     <Separator />
                     <div className="flex items-center gap-2 text-sm">
                       <Banknote className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-muted-foreground">Mobile Money:</span>
+                      <span className="text-muted-foreground">
+                        Mobile Money:
+                      </span>
                       <span>
-                        {tenant.mobileMoneyProvider === "mtn" ? "MTN" : tenant.mobileMoneyProvider === "airtel" ? "Airtel" : ""}
+                        {tenant.mobileMoneyProvider === "mtn"
+                          ? "MTN"
+                          : tenant.mobileMoneyProvider === "airtel"
+                            ? "Airtel"
+                            : ""}
                         {tenant.mobileMoneyProvider && " — "}
                         {tenant.mobileMoneyNumber}
                       </span>
@@ -632,7 +773,9 @@ export default function TenantDetailPage({ params }: Props) {
                   <Separator />
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Relationship</span>
-                    <span className="capitalize">{tenant.emergencyContact.relationship}</span>
+                    <span className="capitalize">
+                      {tenant.emergencyContact.relationship}
+                    </span>
                   </div>
                   <Separator />
                   <div className="flex justify-between">
@@ -676,14 +819,20 @@ export default function TenantDetailPage({ params }: Props) {
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Ref</span>
-                  <span className="font-mono text-xs text-muted-foreground">#{tenant.id.slice(-6).toUpperCase()}</span>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    #{tenant.id.slice(-6).toUpperCase()}
+                  </span>
                 </div>
                 {tenant.tags.length > 0 && (
                   <>
                     <Separator />
                     <div className="flex flex-wrap gap-1 pt-1">
                       {tenant.tags.map((t) => (
-                        <Badge key={t} variant="secondary" className="text-xs gap-1">
+                        <Badge
+                          key={t}
+                          variant="secondary"
+                          className="text-xs gap-1"
+                        >
                           <Tag className="h-2.5 w-2.5" />
                           {t}
                         </Badge>

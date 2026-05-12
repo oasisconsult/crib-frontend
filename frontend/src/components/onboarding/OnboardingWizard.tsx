@@ -404,9 +404,7 @@ export function OnboardingWizard({
                     )}
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="whatsappNumber">
-                      WhatsApp / Contact Number
-                    </Label>
+                    <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
                     <Input
                       id="whatsappNumber"
                       type="tel"

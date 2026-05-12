@@ -12,7 +12,13 @@ import {
   Mail,
   User,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,7 +66,9 @@ function StepIndicator({ current }: { current: Step }) {
           </div>
           <span
             className={`text-xs hidden sm:block ${
-              current === s ? "text-foreground font-medium" : "text-muted-foreground"
+              current === s
+                ? "text-foreground font-medium"
+                : "text-muted-foreground"
             }`}
           >
             {labels[s]}
@@ -115,7 +123,11 @@ export default function AgencyOnboardingPage({ params }: Props) {
     }
   }, [data]);
 
-  const { mutate: complete, isPending: completing, error: completeError } = useMutation({
+  const {
+    mutate: complete,
+    isPending: completing,
+    error: completeError,
+  } = useMutation({
     mutationFn: () =>
       agencyInvitesApi.completeOnboarding(token, {
         agencyName: agencyForm.agencyName,
@@ -131,7 +143,8 @@ export default function AgencyOnboardingPage({ params }: Props) {
   });
 
   const agencyValid = !!agencyForm.agencyName;
-  const managerValid = !!managerForm.managerFirstName && !!managerForm.managerLastName;
+  const managerValid =
+    !!managerForm.managerFirstName && !!managerForm.managerLastName;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-8 sm:px-6">
@@ -154,8 +167,9 @@ export default function AgencyOnboardingPage({ params }: Props) {
         )}
 
         {/* Error states */}
-        {!isLoading && error && (
-          isExpiredError(error) ? (
+        {!isLoading &&
+          error &&
+          (isExpiredError(error) ? (
             <div className="rounded-[6px] border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-8 text-center space-y-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mx-auto">
                 <Clock className="h-7 w-7 text-amber-600 dark:text-amber-400" />
@@ -165,21 +179,22 @@ export default function AgencyOnboardingPage({ params }: Props) {
                   This invite has expired
                 </h2>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-2 max-w-sm mx-auto">
-                  Agency invite links are valid for 14 days. Please contact Crib support
-                  to request a new invite.
+                  Agency invite links are valid for 14 days. Please contact Crib
+                  support to request a new invite.
                 </p>
               </div>
             </div>
           ) : (
             <div className="rounded-[6px] border border-destructive/30 bg-destructive/5 p-8 text-center space-y-2">
-              <h2 className="text-lg font-semibold text-destructive">Invalid Link</h2>
+              <h2 className="text-lg font-semibold text-destructive">
+                Invalid Link
+              </h2>
               <p className="text-sm text-muted-foreground">
                 This invite link is not recognised or has already been used.
                 Contact Crib support for assistance.
               </p>
             </div>
-          )
-        )}
+          ))}
 
         {/* Steps */}
         {!isLoading && !error && data && (
@@ -221,7 +236,9 @@ export default function AgencyOnboardingPage({ params }: Props) {
                   </div>
 
                   <div className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">Invited by:</span>{" "}
+                    <span className="font-medium text-foreground">
+                      Invited by:
+                    </span>{" "}
                     Crib Platform
                   </div>
 
@@ -242,8 +259,9 @@ export default function AgencyOnboardingPage({ params }: Props) {
                     Agency Details
                   </CardTitle>
                   <CardDescription>
-                    These details will appear on tenancy agreements and communications.
-                    The agency name becomes locked after you submit.
+                    These details will appear on tenancy agreements and
+                    communications. The agency name becomes locked after you
+                    submit.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -253,9 +271,12 @@ export default function AgencyOnboardingPage({ params }: Props) {
                       id="a-name"
                       value={agencyForm.agencyName}
                       onChange={(e) =>
-                        setAgencyForm((f) => ({ ...f, agencyName: e.target.value }))
+                        setAgencyForm((f) => ({
+                          ...f,
+                          agencyName: e.target.value,
+                        }))
                       }
-                      placeholder="e.g. GeoBox Properties Ltd"
+                      placeholder="e.g. Crib Properties Ltd"
                     />
                     <p className="text-xs text-muted-foreground">
                       Only a superadmin can change this after onboarding
@@ -269,7 +290,10 @@ export default function AgencyOnboardingPage({ params }: Props) {
                         type="tel"
                         value={agencyForm.agencyPhone}
                         onChange={(e) =>
-                          setAgencyForm((f) => ({ ...f, agencyPhone: e.target.value }))
+                          setAgencyForm((f) => ({
+                            ...f,
+                            agencyPhone: e.target.value,
+                          }))
                         }
                         placeholder="+256 700 000000"
                       />
@@ -297,9 +321,12 @@ export default function AgencyOnboardingPage({ params }: Props) {
                         id="a-country"
                         value={agencyForm.agencyCountry}
                         onChange={(e) =>
-                          setAgencyForm((f) => ({ ...f, agencyCountry: e.target.value }))
+                          setAgencyForm((f) => ({
+                            ...f,
+                            agencyCountry: e.target.value,
+                          }))
                         }
-                        placeholder="Uganda"
+                        placeholder="UG"
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -308,7 +335,10 @@ export default function AgencyOnboardingPage({ params }: Props) {
                         id="a-currency"
                         value={agencyForm.agencyCurrency}
                         onChange={(e) =>
-                          setAgencyForm((f) => ({ ...f, agencyCurrency: e.target.value }))
+                          setAgencyForm((f) => ({
+                            ...f,
+                            agencyCurrency: e.target.value,
+                          }))
                         }
                         placeholder="UGX"
                       />
@@ -320,14 +350,20 @@ export default function AgencyOnboardingPage({ params }: Props) {
                       id="a-addr"
                       value={agencyForm.agencyAddress}
                       onChange={(e) =>
-                        setAgencyForm((f) => ({ ...f, agencyAddress: e.target.value }))
+                        setAgencyForm((f) => ({
+                          ...f,
+                          agencyAddress: e.target.value,
+                        }))
                       }
                       placeholder="Plot 12, Kampala Road, Kampala"
                     />
                   </div>
 
                   <div className="flex justify-between pt-2">
-                    <Button variant="outline" onClick={() => setStep("welcome")}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setStep("welcome")}
+                    >
                       <ChevronLeft className="h-4 w-4" />
                       Back
                     </Button>
@@ -417,7 +453,8 @@ export default function AgencyOnboardingPage({ params }: Props) {
                 <CardHeader>
                   <CardTitle>Review & Confirm</CardTitle>
                   <CardDescription>
-                    Please check all details before creating your agency account.
+                    Please check all details before creating your agency
+                    account.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
@@ -428,15 +465,37 @@ export default function AgencyOnboardingPage({ params }: Props) {
                     <div className="rounded-[6px] border border-border divide-y overflow-hidden">
                       {[
                         { label: "Name", value: agencyForm.agencyName },
-                        { label: "Phone", value: agencyForm.agencyPhone || "—" },
-                        { label: "Email", value: agencyForm.agencyContactEmail || "—" },
-                        { label: "Country", value: agencyForm.agencyCountry || "—" },
-                        { label: "Currency", value: agencyForm.agencyCurrency || "—" },
-                        { label: "Address", value: agencyForm.agencyAddress || "—" },
+                        {
+                          label: "Phone",
+                          value: agencyForm.agencyPhone || "—",
+                        },
+                        {
+                          label: "Email",
+                          value: agencyForm.agencyContactEmail || "—",
+                        },
+                        {
+                          label: "Country",
+                          value: agencyForm.agencyCountry || "—",
+                        },
+                        {
+                          label: "Currency",
+                          value: agencyForm.agencyCurrency || "—",
+                        },
+                        {
+                          label: "Address",
+                          value: agencyForm.agencyAddress || "—",
+                        },
                       ].map(({ label, value }) => (
-                        <div key={label} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                          <span className="text-muted-foreground w-24 shrink-0">{label}</span>
-                          <span className="text-right font-medium">{value}</span>
+                        <div
+                          key={label}
+                          className="flex items-center justify-between px-4 py-2.5 text-sm"
+                        >
+                          <span className="text-muted-foreground w-24 shrink-0">
+                            {label}
+                          </span>
+                          <span className="text-right font-medium">
+                            {value}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -454,9 +513,16 @@ export default function AgencyOnboardingPage({ params }: Props) {
                         },
                         { label: "Email", value: data.managerEmail },
                       ].map(({ label, value }) => (
-                        <div key={label} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                          <span className="text-muted-foreground w-24 shrink-0">{label}</span>
-                          <span className="text-right font-medium">{value}</span>
+                        <div
+                          key={label}
+                          className="flex items-center justify-between px-4 py-2.5 text-sm"
+                        >
+                          <span className="text-muted-foreground w-24 shrink-0">
+                            {label}
+                          </span>
+                          <span className="text-right font-medium">
+                            {value}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -470,13 +536,16 @@ export default function AgencyOnboardingPage({ params }: Props) {
                   )}
 
                   <p className="text-xs text-muted-foreground">
-                    By submitting, you confirm that the above details are correct. Your
-                    agency organisation will be created and you will receive login
-                    credentials by email.
+                    By submitting, you confirm that the above details are
+                    correct. Your agency organisation will be created and you
+                    will receive login credentials by email.
                   </p>
 
                   <div className="flex justify-between">
-                    <Button variant="outline" onClick={() => setStep("manager")}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setStep("manager")}
+                    >
                       <ChevronLeft className="h-4 w-4" />
                       Back
                     </Button>
@@ -511,8 +580,11 @@ export default function AgencyOnboardingPage({ params }: Props) {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     We've sent your login credentials to{" "}
-                    <span className="font-medium text-foreground">{data.managerEmail}</span>.
-                    Use those details to sign in and start managing your properties.
+                    <span className="font-medium text-foreground">
+                      {data.managerEmail}
+                    </span>
+                    . Use those details to sign in and start managing your
+                    properties.
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
