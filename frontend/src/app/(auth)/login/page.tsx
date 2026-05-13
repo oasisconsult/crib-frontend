@@ -303,79 +303,17 @@ export default function LoginPage() {
       <div className="flex flex-col justify-center w-full md:w-[45%] lg:w-[42%] px-8 sm:px-12 py-12 bg-[hsl(var(--card))]">
         <div className="w-full max-w-sm mx-auto">
           {/* Logo */}
-          {/* <div className="flex items-center gap-3 mb-10">
+          <div className="flex items-center gap-3 mb-10">
             <div className="flex h-10 w-10 items-center justify-center rounded-[6px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-[0_2px_8px_hsl(168,82%,43%,0.35)]">
               <Building2 className="h-5 w-5" />
             </div>
-            <span className="text-2xl font-bold text-[hsl(var(--foreground))]" style={{ fontFamily: "var(--font-poppins,'Poppins',sans-serif)" }}>
+            <span
+              className="text-2xl font-bold text-[hsl(var(--foreground))]"
+              style={{ fontFamily: "var(--font-poppins,'Poppins',sans-serif)" }}
+            >
               Crib
             </span>
-          </div> */}
-
-          <svg
-            width="512"
-            height="200"
-            viewBox="0 0 512 200"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <g fill="#008080" stroke="#008080" stroke-width="2">
-              <path
-                d="M120 30
-                    A70 70 0 1 0 120 170
-                    L120 150
-                    A50 50 0 1 1 120 50
-                    Z"
-              />
-              <path d="M120 85 L150 60 L180 85 Z" />
-              <rect x="135" y="85" width="60" height="55" rx="2" />
-              <rect x="155" y="100" width="10" height="10" />
-              <rect x="170" y="100" width="10" height="10" />
-              <rect x="155" y="115" width="10" height="10" />
-              <rect x="170" y="115" width="10" height="10" />
-
-              <path
-                d="M230 140
-                    C215 140 205 130 205 110
-                    C205 90 215 80 230 80
-                    C240 80 250 85 255 95
-                    L245 100
-                    C242 92 237 88 230 88
-                    C220 88 213 96 213 110
-                    C213 124 220 132 230 132
-                    C237 132 242 128 245 120
-                    L255 125
-                    C250 135 240 140 230 140
-                    Z"
-              />
-
-              <path d="M270 80 L280 80 L280 140 L270 140 Z" />
-
-              <path
-                d="M300 110
-                    C300 90 310 80 325 80
-                    C340 80 350 90 350 110
-                    C350 130 340 140 325 140
-                    C310 140 300 130 300 110
-                    Z
-                    M310 110
-                    C310 124 316 132 325 132
-                    C334 132 340 124 340 110
-                    C340 96 334 88 325 88
-                    C316 88 310 96 310 110
-                    Z"
-              />
-
-              <path
-                d="M365 80 L375 80 L375 120
-                    C375 128 380 132 388 132
-                    C396 132 400 128 400 120
-                    L400 80 L410 80 L410 120
-                    C410 135 400 140 388 140
-                    C376 140 365 135 365 120
-                    Z"
-              />
-            </g>
-          </svg>
+          </div>
 
           {/* Heading */}
           <div className="mb-8">
