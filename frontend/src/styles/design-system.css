@@ -14,8 +14,10 @@
 
 /* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
 :root {
-  /*--background: 168 77% 97%;           /* #F0FDFA — teal-mint canvas (ui-ux-pro-max) */
-  --background: 210 11% 96%; /* #f2f3f4 */
+  /*--background: 168 77% 97%;  */         /* #F0FDFA — teal-mint canvas (ui-ux-pro-max) */
+  
+  --background: 210 11% 96%;           /* #f2f3f4 */
+
   --foreground: 176 61% 19%;           /* #134E4A — deep teal text (ui-ux-pro-max) */
   --card: 0 0% 100%;                   /* #FFFFFF — white card surface */
   --card-foreground: 176 61% 19%;
@@ -129,7 +131,8 @@
   --color-text-disabled: #8ab5b0;
 
   /* Surfaces */
-  --color-canvas: #f0fdfa;
+  /* --color-canvas: #f0fdfa; */
+  --color-canvas: #f2f3f4;
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #e6f5f1;
