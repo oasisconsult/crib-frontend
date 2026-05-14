@@ -1,6 +1,7 @@
 "use client";
 
-import { Building2, LogOut, Sun, Moon } from "lucide-react";
+import { LogOut, Sun, Moon } from "lucide-react";
+import Image from "next/image";
 import { AuthInitializer } from "@/components/providers/AuthInitializer";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,10 +16,14 @@ function PortalNav() {
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="max-w-4xl mx-auto flex h-14 items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[6px] bg-primary text-primary-foreground">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <span className="font-bold tracking-tight">Crib</span>
+          <Image
+            src="/crib_logo_green.png"
+            alt="Crib"
+            width={120}
+            height={34}
+            priority
+            className="w-[90px] sm:w-[105px] md:w-[120px] h-auto"
+          />
           <span className="text-muted-foreground/50 text-sm">·</span>
           <span className="text-sm text-muted-foreground">Tenant Portal</span>
         </div>
@@ -28,13 +33,19 @@ function PortalNav() {
             aria-label="Toggle theme"
             className="flex h-8 w-8 items-center justify-center rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors"
           >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {isDark ? (
+              <Sun className="h-4 w-4" />
+            ) : (
+              <Moon className="h-4 w-4" />
+            )}
           </button>
           {user && (
             <>
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium leading-none">{user.name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{user.email}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {user.email}
+                </p>
               </div>
               <button
                 onClick={() => logout()}

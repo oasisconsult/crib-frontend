@@ -1,7 +1,8 @@
 "use client";
 
 import { use } from "react";
-import { Building2, Clock, LinkIcon } from "lucide-react";
+import Image from "next/image";
+import { Clock, LinkIcon } from "lucide-react";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { useOnboardingFlowStatus } from "@/hooks/useOnboardingFlow";
 
@@ -27,10 +28,14 @@ export default function OnboardingPage({ params }: Props) {
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-2.5 mb-8">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[6px] bg-primary text-primary-foreground">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <span className="text-xl font-bold tracking-tight gradient-text">Crib</span>
+          <Image
+            src="/crib_logo_green.png"
+            alt="Crib"
+            width={120}
+            height={34}
+            priority
+            className="w-[100px] sm:w-[110px] md:w-[120px] h-auto"
+          />
         </div>
 
         {isLoading ? (
@@ -50,9 +55,10 @@ export default function OnboardingPage({ params }: Props) {
                   Your invite link has expired
                 </h2>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-2 max-w-sm mx-auto">
-                  Onboarding links are valid for 72 hours. Please contact your landlord or
-                  property manager to request a new link — your previously entered information
-                  is safely saved and will be pre-filled when you return.
+                  Onboarding links are valid for 72 hours. Please contact your
+                  landlord or property manager to request a new link — your
+                  previously entered information is safely saved and will be
+                  pre-filled when you return.
                 </p>
               </div>
               <div className="inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 px-3 py-1.5 rounded-full">
@@ -62,26 +68,36 @@ export default function OnboardingPage({ params }: Props) {
             </div>
           ) : (
             <div className="rounded-[6px] border border-destructive/30 bg-destructive/5 p-8 text-center space-y-2">
-              <h2 className="text-lg font-semibold text-destructive">Invalid Link</h2>
+              <h2 className="text-lg font-semibold text-destructive">
+                Invalid Link
+              </h2>
               <p className="text-sm text-muted-foreground">
-                This onboarding link is not recognised. Please check the link in your
-                invitation email or contact your landlord for a new one.
+                This onboarding link is not recognised. Please check the link in
+                your invitation email or contact your landlord for a new one.
               </p>
             </div>
           )
         ) : !data ? null : (
           <>
             <div className="mb-6">
-              <h1 className="text-2xl font-bold tracking-tight">Welcome to Crib</h1>
+              <h1 className="text-2xl font-bold tracking-tight">
+                Welcome to Crib
+              </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Hi <span className="font-medium text-foreground">{data.invite.name}</span>!{" "}
+                Hi{" "}
+                <span className="font-medium text-foreground">
+                  {data.invite.name}
+                </span>
+                !{" "}
                 {data.isActive
                   ? "Your tenancy is active."
                   : data.onboardingPhase === "payment_flow"
-                  ? "Complete your payment and sign your agreement to activate your tenancy."
-                  : ["submitted", "approved"].includes(data.tenant.onboardingState)
-                  ? "Review or update your details below."
-                  : "Complete your profile to begin."}
+                    ? "Complete your payment and sign your agreement to activate your tenancy."
+                    : ["submitted", "approved"].includes(
+                          data.tenant.onboardingState,
+                        )
+                      ? "Review or update your details below."
+                      : "Complete your profile to begin."}
               </p>
             </div>
             <OnboardingWizard

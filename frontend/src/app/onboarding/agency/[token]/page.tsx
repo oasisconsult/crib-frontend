@@ -2,8 +2,8 @@
 
 import { use, useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import Image from "next/image";
 import {
-  Building2,
   Clock,
   CheckCircle2,
   ChevronRight,
@@ -150,11 +150,15 @@ export default function AgencyOnboardingPage({ params }: Props) {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-8 sm:px-6">
       <div className="max-w-lg mx-auto">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-10">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[6px] bg-primary text-primary-foreground">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <span className="text-xl font-bold tracking-tight">Crib</span>
+        <div className="mb-10">
+          <Image
+            src="/crib_logo_green.png"
+            alt="Crib"
+            width={120}
+            height={34}
+            priority
+            className="w-[100px] sm:w-[110px] md:w-[120px] h-auto"
+          />
         </div>
 
         {/* Loading */}

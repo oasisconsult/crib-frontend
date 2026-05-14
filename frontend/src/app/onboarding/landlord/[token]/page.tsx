@@ -2,17 +2,22 @@
 
 import { use, useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import Image from "next/image";
 import {
-  Building2,
   Clock,
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
-  Loader2,
   Home,
   Mail,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,11 +73,15 @@ export default function LandlordOnboardingPage({ params }: Props) {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-8 sm:px-6">
       <div className="max-w-lg mx-auto">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 mb-10">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[6px] bg-primary text-primary-foreground">
-            <Building2 className="h-4 w-4" />
-          </div>
-          <span className="text-xl font-bold tracking-tight">Crib</span>
+        <div className="mb-10">
+          <Image
+            src="/crib_logo_green.png"
+            alt="Crib"
+            width={120}
+            height={34}
+            priority
+            className="w-[100px] sm:w-[110px] md:w-[120px] h-auto"
+          />
         </div>
 
         {/* Loading */}
@@ -85,8 +94,9 @@ export default function LandlordOnboardingPage({ params }: Props) {
         )}
 
         {/* Error states */}
-        {!isLoading && error && (
-          isExpiredError(error) ? (
+        {!isLoading &&
+          error &&
+          (isExpiredError(error) ? (
             <div className="rounded-[6px] border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-8 text-center space-y-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 mx-auto">
                 <Clock className="h-7 w-7 text-amber-600 dark:text-amber-400" />
@@ -96,21 +106,22 @@ export default function LandlordOnboardingPage({ params }: Props) {
                   This invite has expired
                 </h2>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-2 max-w-sm mx-auto">
-                  Landlord invite links are valid for 7 days. Please contact your
-                  property manager to send a new invite.
+                  Landlord invite links are valid for 7 days. Please contact
+                  your property manager to send a new invite.
                 </p>
               </div>
             </div>
           ) : (
             <div className="rounded-[6px] border border-destructive/30 bg-destructive/5 p-8 text-center space-y-2">
-              <h2 className="text-lg font-semibold text-destructive">Invalid Link</h2>
+              <h2 className="text-lg font-semibold text-destructive">
+                Invalid Link
+              </h2>
               <p className="text-sm text-muted-foreground">
                 This invite link is not recognised or has already been used.
                 Contact your property manager for a new invite.
               </p>
             </div>
-          )
-        )}
+          ))}
 
         {/* Steps */}
         {!isLoading && !error && data && (
@@ -120,17 +131,25 @@ export default function LandlordOnboardingPage({ params }: Props) {
               <div className="flex items-center gap-2 mb-8">
                 {(["welcome", "details", "review"] as Step[]).map((s, i) => (
                   <div key={s} className="flex items-center gap-2">
-                    <div className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                      step === s
-                        ? "bg-primary text-primary-foreground"
-                        : ["details", "review"].indexOf(step) > i
-                          ? "bg-emerald-600 text-white"
-                          : "bg-muted text-muted-foreground"
-                    }`}>
+                    <div
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                        step === s
+                          ? "bg-primary text-primary-foreground"
+                          : ["details", "review"].indexOf(step) > i
+                            ? "bg-emerald-600 text-white"
+                            : "bg-muted text-muted-foreground"
+                      }`}
+                    >
                       {["details", "review"].indexOf(step) > i ? "✓" : i + 1}
                     </div>
-                    <span className={`text-xs hidden sm:block ${step === s ? "text-foreground font-medium" : "text-muted-foreground"}`}>
-                      {s === "welcome" ? "Welcome" : s === "details" ? "Your Details" : "Review"}
+                    <span
+                      className={`text-xs hidden sm:block ${step === s ? "text-foreground font-medium" : "text-muted-foreground"}`}
+                    >
+                      {s === "welcome"
+                        ? "Welcome"
+                        : s === "details"
+                          ? "Your Details"
+                          : "Review"}
                     </span>
                     {i < 2 && <div className="flex-1 h-px bg-border w-6" />}
                   </div>
@@ -146,8 +165,8 @@ export default function LandlordOnboardingPage({ params }: Props) {
                     Welcome, {data.firstName}!
                   </CardTitle>
                   <CardDescription>
-                    <strong>{data.agencyName}</strong> has invited you to view your
-                    properties on Crib.
+                    <strong>{data.agencyName}</strong> has invited you to view
+                    your properties on Crib.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -162,7 +181,8 @@ export default function LandlordOnboardingPage({ params }: Props) {
                       You will have view-only access to{" "}
                       {data.properties.length === 1
                         ? "1 property"
-                        : `${data.properties.length} properties`}:
+                        : `${data.properties.length} properties`}
+                      :
                     </p>
                     <div className="space-y-2">
                       {data.properties.map((p) => (
@@ -174,8 +194,12 @@ export default function LandlordOnboardingPage({ params }: Props) {
                             <Home className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{p.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{p.address}</p>
+                            <p className="text-sm font-medium truncate">
+                              {p.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {p.address}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -183,8 +207,8 @@ export default function LandlordOnboardingPage({ params }: Props) {
                   </div>
 
                   <div className="rounded-[6px] bg-primary/5 border border-primary/20 p-4 text-sm text-primary">
-                    After completing this form, you will receive an email with your
-                    login credentials to access your landlord dashboard.
+                    After completing this form, you will receive an email with
+                    your login credentials to access your landlord dashboard.
                   </div>
 
                   <Button className="w-full" onClick={() => setStep("details")}>
@@ -201,8 +225,8 @@ export default function LandlordOnboardingPage({ params }: Props) {
                 <CardHeader>
                   <CardTitle>Your Details</CardTitle>
                   <CardDescription>
-                    Confirm your name and contact information. This will be used for
-                    your Crib account.
+                    Confirm your name and contact information. This will be used
+                    for your Crib account.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -212,7 +236,9 @@ export default function LandlordOnboardingPage({ params }: Props) {
                       <Input
                         id="firstName"
                         value={form.firstName}
-                        onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, firstName: e.target.value }))
+                        }
                         placeholder="Jane"
                       />
                     </div>
@@ -221,7 +247,9 @@ export default function LandlordOnboardingPage({ params }: Props) {
                       <Input
                         id="lastName"
                         value={form.lastName}
-                        onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, lastName: e.target.value }))
+                        }
                         placeholder="Smith"
                       />
                     </div>
@@ -239,13 +267,18 @@ export default function LandlordOnboardingPage({ params }: Props) {
                       id="phone"
                       type="tel"
                       value={form.phone}
-                      onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, phone: e.target.value }))
+                      }
                       placeholder="+256 700 000000"
                     />
                   </div>
 
                   <div className="flex justify-between pt-2">
-                    <Button variant="outline" onClick={() => setStep("welcome")}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setStep("welcome")}
+                    >
                       <ChevronLeft className="h-4 w-4" />
                       Back
                     </Button>
@@ -273,7 +306,10 @@ export default function LandlordOnboardingPage({ params }: Props) {
                 <CardContent className="space-y-5">
                   <div className="divide-y rounded-[6px] border border-border overflow-hidden">
                     {[
-                      { label: "Full name", value: `${form.firstName} ${form.lastName}` },
+                      {
+                        label: "Full name",
+                        value: `${form.firstName} ${form.lastName}`,
+                      },
                       { label: "Email", value: data.email },
                       { label: "Phone", value: form.phone || "—" },
                       { label: "Agency", value: data.agencyName },
@@ -282,20 +318,29 @@ export default function LandlordOnboardingPage({ params }: Props) {
                         value: data.properties.map((p) => p.name).join(", "),
                       },
                     ].map(({ label, value }) => (
-                      <div key={label} className="flex items-start justify-between px-4 py-3 text-sm">
-                        <span className="text-muted-foreground w-28 shrink-0">{label}</span>
+                      <div
+                        key={label}
+                        className="flex items-start justify-between px-4 py-3 text-sm"
+                      >
+                        <span className="text-muted-foreground w-28 shrink-0">
+                          {label}
+                        </span>
                         <span className="text-right font-medium">{value}</span>
                       </div>
                     ))}
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    By submitting, you agree that your account will be created on Crib
-                    with the details above. You will receive a login link by email.
+                    By submitting, you agree that your account will be created
+                    on Crib with the details above. You will receive a login
+                    link by email.
                   </p>
 
                   <div className="flex justify-between">
-                    <Button variant="outline" onClick={() => setStep("details")}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setStep("details")}
+                    >
                       <ChevronLeft className="h-4 w-4" />
                       Back
                     </Button>
@@ -315,9 +360,12 @@ export default function LandlordOnboardingPage({ params }: Props) {
                   <CheckCircle2 className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Account created!</h1>
+                  <h1 className="text-2xl font-bold tracking-tight">
+                    Account created!
+                  </h1>
                   <p className="text-muted-foreground mt-2">
-                    Welcome to Crib, {form.firstName}. Your landlord account has been set up.
+                    Welcome to Crib, {form.firstName}. Your landlord account has
+                    been set up.
                   </p>
                 </div>
                 <div className="rounded-[6px] border border-primary/20 bg-primary/5 p-5 text-left space-y-2">
@@ -327,9 +375,11 @@ export default function LandlordOnboardingPage({ params }: Props) {
                   </div>
                   <p className="text-sm text-muted-foreground">
                     We have sent a login link to{" "}
-                    <span className="font-medium text-foreground">{data.email}</span>.
-                    Click the link in that email to sign in to your dashboard for the
-                    first time.
+                    <span className="font-medium text-foreground">
+                      {data.email}
+                    </span>
+                    . Click the link in that email to sign in to your dashboard
+                    for the first time.
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
