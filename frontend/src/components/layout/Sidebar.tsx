@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -147,16 +148,25 @@ export function Sidebar() {
             sidebarCollapsed ? "justify-center px-4" : "px-4 gap-2.5",
           )}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]">
-            <Building2 className="h-4 w-4" />
-          </div>
-          {!sidebarCollapsed && (
-            <span
-              className="text-[15px] font-bold text-[hsl(var(--sidebar-active-fg))] tracking-[-0.01em]"
-              style={{ fontFamily: "var(--font-poppins,'Poppins',sans-serif)" }}
-            >
-              CRIB
-            </span>
+          {sidebarCollapsed ? (
+            <div className="relative w-8 h-8 shrink-0">
+              <Image
+                src="/crib_logo_green.png"
+                alt="Crib"
+                fill
+                priority
+                className="object-contain"
+              />
+            </div>
+          ) : (
+            <Image
+              src="/crib_logo_green.png"
+              alt="Crib"
+              width={120}
+              height={34}
+              priority
+              className="w-[100px] lg:w-[120px] h-auto"
+            />
           )}
         </div>
 
