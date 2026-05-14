@@ -14,11 +14,7 @@
 
 /* ── LIGHT MODE ─────────────────────────────────────────────────────────── */
 :root {
-  /*--background: 168 77% 97%;  */         /* #F0FDFA — teal-mint canvas (ui-ux-pro-max) */
-  
-  /*--background: 210 11% 96%; */          /* #f2f3f4 */
-  --background: 174 28% 95%;            /* #f0f5f4 — slightly warmer off-white */
-
+  --background: 168 77% 97%;           /* #F0FDFA — teal-mint canvas (ui-ux-pro-max) */
   --foreground: 176 61% 19%;           /* #134E4A — deep teal text (ui-ux-pro-max) */
   --card: 0 0% 100%;                   /* #FFFFFF — white card surface */
   --card-foreground: 176 61% 19%;
@@ -44,9 +40,7 @@
   --danger-foreground: 0 0% 100%;
   --info: 187 83% 34%;                 /* #0F8FA0 — cyan */
   --info-foreground: 0 0% 100%;
-  /*--border: 168 30% 86%;   */            /* #C4E0DA — teal-tinted border */
-  --border: 174 18% 85%;               /* #C6DEDD */
-  --color-border: #C6DEDD;
+  --border: 168 30% 86%;               /* #C4E0DA — teal-tinted border */
   --input: 0 0% 100%;                  /* white inputs */
   --ring: 168 82% 43%;                 /* teal focus ring */
   --radius: 6px;
@@ -134,9 +128,7 @@
   --color-text-disabled: #8ab5b0;
 
   /* Surfaces */
-  /* --color-canvas: #f0fdfa; */
-  --color-canvas: #f2f5f4;
-  --color-card: #eef6f5;
+  --color-canvas: #f0fdfa;
   --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
   --color-surface-sunken: #e6f5f1;
