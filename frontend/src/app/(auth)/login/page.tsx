@@ -308,10 +308,10 @@ export default function LoginPage() {
             <Image
               src="/crib_logo_green.png"
               alt="Crib"
-              width={150}
-              height={42}
+              width={160}
+              height={44}
               priority
-              className="w-[120px] sm:w-[135px] md:w-[150px] h-auto"
+              className="w-[120px] sm:w-[140px] md:w-[160px] h-auto"
             />
           </div>
 
