@@ -343,7 +343,7 @@ export default function LoginPage() {
                 ) : (
                   <Building2 className="h-4 w-4" />
                 )}
-                {loading ? "Redirecting…" : "Continue with Logto"}
+                {loading ? "Redirecting…" : "Continue with Crib"}
               </Button>
 
               {/* Divider */}
@@ -354,7 +354,7 @@ export default function LoginPage() {
                 <div className="relative flex justify-center">
                   <span className="flex items-center gap-1.5 bg-[hsl(var(--card))] px-3 text-xs text-[hsl(var(--muted-foreground))]">
                     <ShieldCheck className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
-                    Secured by Logto OIDC
+                    Secured by Crib
                   </span>
                 </div>
               </div>
@@ -376,7 +376,7 @@ export default function LoginPage() {
               </div>
 
               {/* Sign up link */}
-              <p className="text-center text-sm text-[hsl(var(--muted-foreground))]">
+              {/* <p className="text-center text-sm text-[hsl(var(--muted-foreground))]">
                 Don&apos;t have an account?{" "}
                 <a
                   href="/signup"
@@ -384,7 +384,7 @@ export default function LoginPage() {
                 >
                   Sign up free
                 </a>
-              </p>
+              </p> */}
 
               {/* Legal */}
               <p className="mt-6 text-center text-[11px] text-[hsl(var(--muted-foreground))]/70 leading-relaxed">
