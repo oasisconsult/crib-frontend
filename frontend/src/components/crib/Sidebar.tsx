@@ -3,6 +3,7 @@
 // import { motion } from "framer-motion";
 import { cn } from "@/utils/cn";
 import { useTheme } from "@/contexts/ThemeContext";
+import Image from "next/image";
 import {
   Home,
   Building2,
@@ -14,7 +15,7 @@ import {
   Sun,
   Moon,
   Menu,
-  X
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "./Button";
@@ -32,22 +33,43 @@ interface SidebarProps {
   onToggle?: () => void;
 }
 
-export function Sidebar({ className = "", collapsed = false, onToggle }: SidebarProps) {
+export function Sidebar({
+  className = "",
+  collapsed = false,
+  onToggle,
+}: SidebarProps) {
   const { resolved: theme, setPreference } = useTheme();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const navItems: NavItem[] = [
-    { icon: <Home className="w-5 h-5" />, label: "Dashboard", href: "/dashboard", active: true },
-    { icon: <Building2 className="w-5 h-5" />, label: "Properties", href: "/properties" },
+    {
+      icon: <Home className="w-5 h-5" />,
+      label: "Dashboard",
+      href: "/dashboard",
+      active: true,
+    },
+    {
+      icon: <Building2 className="w-5 h-5" />,
+      label: "Properties",
+      href: "/properties",
+    },
     { icon: <Users className="w-5 h-5" />, label: "Tenants", href: "/tenants" },
-    { icon: <FileText className="w-5 h-5" />, label: "Documents", href: "/documents" },
-    { icon: <Settings className="w-5 h-5" />, label: "Settings", href: "/settings" },
+    {
+      icon: <FileText className="w-5 h-5" />,
+      label: "Documents",
+      href: "/documents",
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: "Settings",
+      href: "/settings",
+    },
   ];
 
   const sidebarClasses = cn(
     "w-64 bg-[hsl(var(--sidebar))] border-r border-[hsl(var(--sidebar-border))] flex flex-col transition-all duration-300",
     collapsed && "w-20",
-    className
+    className,
   );
 
   return (
@@ -65,18 +87,34 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
         className={cn(
           sidebarClasses,
           "fixed lg:relative inset-y-0 left-0 z-50 lg:z-auto transform",
-          isMobileOpen ? "translate-x-0 lg:translate-x-0" : "-translate-x-full lg:translate-x-0"
+          isMobileOpen
+            ? "translate-x-0 lg:translate-x-0"
+            : "-translate-x-full lg:translate-x-0",
         )}
       >
         {/* Header */}
         <div className="p-6 border-b border-[hsl(var(--sidebar-border))]">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-[hsl(var(--primary))] rounded-[6px] flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              {!collapsed && (
-                <span className="text-xl font-bold text-[hsl(var(--foreground))]">CRIB</span>
+              {collapsed ? (
+                <div className="w-8 h-8 relative">
+                  <Image
+                    src="/crib_logo_green.png"
+                    alt="Crib"
+                    fill
+                    priority
+                    className="object-contain"
+                  />
+                </div>
+              ) : (
+                <Image
+                  src="/crib_logo_green.png"
+                  alt="Crib"
+                  width={120}
+                  height={34}
+                  priority
+                  className="w-[100px] lg:w-[120px] h-auto"
+                />
               )}
             </div>
             <button
@@ -98,7 +136,7 @@ export function Sidebar({ className = "", collapsed = false, onToggle }: Sidebar
                 "flex items-center gap-3 px-4 py-3 rounded-[6px] transition-all duration-200",
                 item.active
                   ? "bg-[hsl(var(--sidebar-active-bg))] text-[hsl(var(--sidebar-active-fg))]"
-                  : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[hsl(var(--foreground))]"
+                  : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[hsl(var(--foreground))]",
               )}
             >
               {item.icon}
