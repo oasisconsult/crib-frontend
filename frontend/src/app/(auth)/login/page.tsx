@@ -341,9 +341,9 @@ export default function LoginPage() {
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Building2 className="h-4 w-4" />
+                  <Building2 className="" />
                 )}
-                {loading ? "Redirecting…" : "Continue with Crib"}
+                {loading ? "Redirecting…" : "Sign in to Crib"}
               </Button>
 
               {/* Divider */}

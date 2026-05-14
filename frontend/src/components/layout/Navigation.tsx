@@ -343,7 +343,7 @@ export default function LoginPage() {
                 ) : (
                   <Building2 className="h-4 w-4" />
                 )}
-                {loading ? "Redirecting…" : "Continue with Crib"}
+                {loading ? "Redirecting…" : "Sign in to Crib"}
               </Button>
 
               {/* Divider */}
