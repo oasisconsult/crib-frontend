@@ -149,7 +149,7 @@ export function Sidebar() {
           )}
         >
           {sidebarCollapsed ? (
-            <div className="relative w-8 h-8 shrink-0">
+            <div className="relative w-6 h-6 shrink-0">
               <Image
                 src="/crib_logo_green.png"
                 alt="Crib"
@@ -162,10 +162,10 @@ export function Sidebar() {
             <Image
               src="/crib_logo_green.png"
               alt="Crib"
-              width={120}
-              height={34}
+              width={80}
+              height={24}
               priority
-              className="w-[100px] lg:w-[120px] h-auto"
+              className="w-[72px] lg:w-[80px] h-auto"
             />
           )}
         </div>
