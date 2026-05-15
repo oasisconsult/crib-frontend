@@ -1,76 +1,16 @@
-"use client";
-
-import type { Metadata } from "next";
-import { Poppins, Inter } from "next/font/google";
-import "@/styles/globals.css";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
-import { ToastProvider } from "@/components/providers/ToastProvider";
-import { MSWProvider } from "@/components/providers/MSWProvider";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { CookieConsentBanner } from "@/components/common/CookieConsentBanner";
-import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import { performanceMonitor } from "@/lib/performance";
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-poppins",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-// export const metadata: Metadata = {
-//   title: "Crib | A modern property management system",
-//   icons: {
-//     icon: "/favicon.ico",
-//     apple: "/apple-icon.png",
-//   },
-// };
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <meta name="color-scheme" content="light dark" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/favicon.png" type="image/png" />
-      </head>
-      <body
-        className={`${poppins.variable} ${inter.variable} font-sans antialiased`}
-      >
-        <ErrorBoundary
-          title="Application Error"
-          description="Something went wrong with the application."
-        >
-          <MSWProvider>
-            <QueryClientProvider client={queryClient}>
-              <ThemeProvider>
-                {children}
-                <ToastProvider />
-                <CookieConsentBanner />
-              </ThemeProvider>
-            </QueryClientProvider>
-          </MSWProvider>
-        </ErrorBoundary>
-      </body>
-    </html>
-  );
-}
+// // "use client";
 
 // import type { Metadata } from "next";
 // import { Poppins, Inter } from "next/font/google";
 // import "@/styles/globals.css";
-// import { Providers } from "./providers";
+// import { QueryClientProvider } from "@tanstack/react-query";
+// import { queryClient } from "@/lib/queryClient";
+// import { ToastProvider } from "@/components/providers/ToastProvider";
+// import { MSWProvider } from "@/components/providers/MSWProvider";
+// import { ThemeProvider } from "@/contexts/ThemeContext";
+// import { CookieConsentBanner } from "@/components/common/CookieConsentBanner";
+// import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+// import { performanceMonitor } from "@/lib/performance";
 
 // const poppins = Poppins({
 //   subsets: ["latin"],
@@ -86,7 +26,7 @@ export default function RootLayout({
 // });
 
 // export const metadata: Metadata = {
-//   title: "Crib",
+//   title: "Crib | A modern property management system",
 //   icons: {
 //     icon: "/favicon.ico",
 //     apple: "/apple-icon.png",
@@ -106,8 +46,67 @@ export default function RootLayout({
 //       <body
 //         className={`${poppins.variable} ${inter.variable} font-sans antialiased`}
 //       >
-//         <Providers>{children}</Providers>
+//         <ErrorBoundary
+//           title="Application Error"
+//           description="Something went wrong with the application."
+//         >
+//           <MSWProvider>
+//             <QueryClientProvider client={queryClient}>
+//               <ThemeProvider>
+//                 {children}
+//                 <ToastProvider />
+//                 <CookieConsentBanner />
+//               </ThemeProvider>
+//             </QueryClientProvider>
+//           </MSWProvider>
+//         </ErrorBoundary>
 //       </body>
 //     </html>
 //   );
 // }
+
+import type { Metadata } from "next";
+import { Poppins, Inter } from "next/font/google";
+import "@/styles/globals.css";
+import { Providers } from "./providers";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-poppins",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title:
+    "Crib | A modern property management system for landlords and tenants alike",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <meta name="color-scheme" content="light dark" />
+      </head>
+      <body
+        className={`${poppins.variable} ${inter.variable} font-sans antialiased`}
+      >
+        <Providers>{children}</Providers>
+      </body>
+    </html>
+  );
+}
