@@ -1,49 +1,55 @@
-# ─── Crib — local dev helpers ──────────────────────────────────────────────────
-# All commands assume you have .env.local in the project root.
-# Copy .env.example → .env.local and fill in your values before running.
+# ─── Crib — Local Development Helpers ──────────────────────────────────────────
+# Prerequisites: 
+#   - Docker and Docker Compose installed
+#   - .env file in project root (copy from .env.example)
+#   - docker-compose.local.yml in project root
+#
+# Usage:
+#   make dev-build       # Build and start all services
+#   make seed-logto      # One-time Logto database seeding
+#   make stop            # Stop all services
+#   make logs            # Follow all service logs
+#   make logs-backend    # Follow backend logs only
 
-ENV_FILE=.env.local
-COMPOSE=docker compose -f docker-compose.local.yml --env-file $(ENV_FILE)
+.PHONY: dev-up dev-build dev-build-d stop logs seed-logto logs-backend logs-frontend shell-backend shell-db
 
-.PHONY: dev up down build logs ps migrate shell-backend shell-db test-backend
+## Start all services in background (no rebuild)
+dev-up:
+	docker compose -f docker-compose.local.yml up -d
 
-## Start all local services (builds if needed)
-dev:
-	$(COMPOSE) up --build
+## Build and start all services (foreground, good for first-time setup)
+dev-build:
+	docker compose -f docker-compose.local.yml up --build
 
-## Start in detached mode
-up:
-	$(COMPOSE) up -d --build
+## Build and start all services in background
+dev-build-d:
+	docker compose -f docker-compose.local.yml up -d --build
 
-## Stop and remove containers
-down:
-	$(COMPOSE) down
+## Stop all services and remove containers
+stop:
+	docker compose -f docker-compose.local.yml down
 
-## Rebuild images without cache
-build:
-	$(COMPOSE) build --no-cache
-
-## Follow logs for all services (or pass service=backend)
+## Follow logs for all services (or pass service name: make logs service=backend)
 logs:
-	$(COMPOSE) logs -f $(service)
+	docker compose -f docker-compose.local.yml logs -f $(service)
 
-## Show running containers
-ps:
-	$(COMPOSE) ps
+## One-time: Seed Logto database with default configuration
+## Run this only once during initial setup
+seed-logto:
+	./backend/seed-logto.sh
 
-## Run Alembic migrations inside the backend container
-migrate:
-	$(COMPOSE) exec backend alembic upgrade head
+## Follow backend service logs only
+logs-backend:
+	docker compose -f docker-compose.local.yml logs -f backend
 
-## Open a shell inside the backend container
+## Follow frontend service logs only
+logs-frontend:
+	docker compose -f docker-compose.local.yml logs -f frontend
+
+## Open a bash shell inside the backend container
 shell-backend:
-	$(COMPOSE) exec backend bash
+	docker compose -f docker-compose.local.yml exec backend bash
 
-## Open psql inside the postgres container
+## Open a psql shell inside the postgres database
 shell-db:
-	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-crib} $${POSTGRES_DB:-crib_dev}
-
-## Run the backend test suite (creates crib_test DB if needed)
-test-backend:
-	$(COMPOSE) exec postgres psql -U $${POSTGRES_USER:-crib} -d postgres -c "CREATE DATABASE crib_test" 2>/dev/null || true
-	$(COMPOSE) exec backend pytest -v
+	docker compose -f docker-compose.local.yml exec postgres psql -U $${POSTGRES_USER:-crib} -d $${POSTGRES_DB:-crib_dev}
