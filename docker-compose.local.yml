@@ -21,7 +21,8 @@ services:
       NODE_ENV: development
       NEXT_PUBLIC_LOGTO_ENDPOINT: "http://localhost:3001"
       # Logto app credentials — values substituted from .env at compose startup.
-      # Get these from http://localhost:3002 → Applications → your app.
+      # Get App ID from http://localhost:3002 → Applications → your app.
+      # App type is SPA — LOGTO_APP_SECRET must be empty (no client secret for SPA).
       NEXT_PUBLIC_LOGTO_APP_ID: "${NEXT_PUBLIC_LOGTO_APP_ID}"
       LOGTO_APP_SECRET: "${LOGTO_APP_SECRET}"
       NEXT_PUBLIC_LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE:-http://localhost:8001}"
