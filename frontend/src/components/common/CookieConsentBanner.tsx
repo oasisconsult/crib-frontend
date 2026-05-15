@@ -61,9 +61,11 @@ export function CookieConsentBanner() {
       role="dialog"
       aria-modal="false"
       aria-label="Cookie consent"
+      style={{ backgroundColor: "white" }}
       className={cn(
-        "fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-50",
-        "rounded-[6px] border border-border bg-card text-card-foreground shadow-xl p-4 space-y-3",
+        "fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-[9999]",
+        "rounded-[10px] border border-zinc-200 shadow-2xl p-4 space-y-3",
+        "dark:border-zinc-700 dark:[background-color:#1c1c1e]",
         "animate-in slide-in-from-bottom-4 duration-300",
       )}
     >
