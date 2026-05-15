@@ -1,4 +1,4 @@
-// "use client";
+"use client";
 
 import type { Metadata } from "next";
 import { Poppins, Inter } from "next/font/google";
