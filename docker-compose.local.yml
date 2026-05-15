@@ -116,12 +116,12 @@ services:
     depends_on:
       logto-postgres:
         condition: service_healthy
-    entrypoint:
-      [
-        "sh",
-        "-c",
-        "npx @logto/cli db seed -- --db-url $$DB_URL || true && npm start",
-      ]
+    # entrypoint:
+    #   [
+    #     "sh",
+    #     "-c",
+    #     "npx @logto/cli db seed -- --db-url $$DB_URL || true && npm start",
+    #   ]
     networks:
       - crib-local
 
