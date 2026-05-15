@@ -1,120 +1,120 @@
-version: "3.9"
+# version: "3.9"
 
-services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: production
+# services:
+#   frontend:
+#     build:
+#       context: ./frontend
+#       dockerfile: Dockerfile
+#       target: production
 
-    env_file:
-      - .env.production
+#     env_file:
+#       - .env.production
 
-    environment:
-      NODE_ENV: production
+#     environment:
+#       NODE_ENV: production
 
-    depends_on:
-      - backend
+#     depends_on:
+#       - backend
 
-    restart: unless-stopped
+#     restart: unless-stopped
 
-    networks:
-      - shared-services
+#     networks:
+#       - shared-services
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+#   backend:
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
 
-    env_file:
-      - .env.production
+#     env_file:
+#       - .env.production
 
-    environment:
-      DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/crib"
+#     environment:
+#       DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/crib"
 
-      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+#       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
 
-      MINIO_ENDPOINT: "http://minio:9000"
+#       MINIO_ENDPOINT: "http://minio:9000"
 
-      # Shared Logto instance
-      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
-      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
+#       # Shared Logto instance
+#       LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+#       LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
 
-    restart: unless-stopped
+#     restart: unless-stopped
 
-    networks:
-      - shared-services
+#     networks:
+#       - shared-services
 
-    deploy:
-      replicas: 1
+#     deploy:
+#       replicas: 1
 
-  worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+#   worker:
+#     build:
+#       context: ./backend
+#       dockerfile: Dockerfile
 
-    command:
-      [
-        "celery",
-        "-A",
-        "app.worker.celery_app",
-        "worker",
-        "--loglevel=info",
-        "-Q",
-        "default,notifications,payments",
-        "--concurrency=4",
-      ]
+#     command:
+#       [
+#         "celery",
+#         "-A",
+#         "app.worker.celery_app",
+#         "worker",
+#         "--loglevel=info",
+#         "-Q",
+#         "default,notifications,payments",
+#         "--concurrency=4",
+#       ]
 
-    env_file:
-      - .env.production
+#     env_file:
+#       - .env.production
 
-    environment:
-      DATABASE_URL: "postgresql+asyncpg://${DB_POSTGRES_USER}:${DB_POSTGRES_PASSWORD}@postgres:5432/crib"
+#     environment:
+#       DATABASE_URL: "postgresql+asyncpg://${DB_POSTGRES_USER}:${DB_POSTGRES_PASSWORD}@postgres:5432/crib"
 
-      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
+#       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/0"
 
-      MINIO_ENDPOINT: "http://minio:9000"
+#       MINIO_ENDPOINT: "http://minio:9000"
 
-      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
-      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
+#       LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+#       LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
 
-    restart: unless-stopped
+#     restart: unless-stopped
 
-    networks:
-      - shared-services
+#     networks:
+#       - shared-services
 
-    deploy:
-      replicas: 1
+#     deploy:
+#       replicas: 1
 
-  minio:
-    image: minio/minio:latest
+#   minio:
+#     image: minio/minio:latest
 
-    env_file:
-      - .env.production
+#     env_file:
+#       - .env.production
 
-    environment:
-      MINIO_ROOT_USER: "${MINIO_ACCESS_KEY}"
-      MINIO_ROOT_PASSWORD: "${MINIO_SECRET_KEY}"
+#     environment:
+#       MINIO_ROOT_USER: "${MINIO_ACCESS_KEY}"
+#       MINIO_ROOT_PASSWORD: "${MINIO_SECRET_KEY}"
 
-    volumes:
-      - minio_prod_data:/data
+#     volumes:
+#       - minio_prod_data:/data
 
-    command: server /data --console-address ":9001"
+#     command: server /data --console-address ":9001"
 
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+#     healthcheck:
+#       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+#       interval: 30s
+#       timeout: 20s
+#       retries: 3
 
-    restart: unless-stopped
+#     restart: unless-stopped
 
-    networks:
-      - shared-services
+#     networks:
+#       - shared-services
 
-volumes:
-  minio_prod_data:
+# volumes:
+#   minio_prod_data:
 
-networks:
-  shared-services:
-    external: true
+# networks:
+#   shared-services:
+#     external: true

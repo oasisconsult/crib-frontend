@@ -1,0 +1,93 @@
+version: "3.9"
+
+# Production Compose File — Shared Infrastructure
+# Usage: docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#
+# This assumes you have:
+#   - PostgreSQL managed elsewhere
+#   - Redis managed elsewhere
+#   - Logto managed elsewhere (as shared service)
+#   - MinIO managed elsewhere (or local)
+#
+# Prerequisites:
+#   - .env.production file with connection URLs
+#   - Network connectivity to external services
+
+services:
+  # ─── FastAPI Backend ──────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "${DATABASE_URL}" # e.g., postgresql+asyncpg://user:pass@db.example.com/crib
+      REDIS_URL: "${REDIS_URL}" # e.g., redis://:password@redis.example.com:6379/0
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT}" # e.g., minio.example.com:9000
+      # Logto (shared instance)
+      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}" # e.g., https://logto.yourdomain.com
+      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}" # e.g., https://logto-admin.yourdomain.com
+    env_file:
+      - .env.production
+    restart: unless-stopped
+    networks:
+      - crib-prod
+    deploy:
+      replicas: 1
+
+  # ─── Celery Worker (Background Tasks) ──────────────────────────────────────
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command:
+      [
+        "celery",
+        "-A",
+        "app.worker.celery_app",
+        "worker",
+        "--loglevel=info",
+        "-Q",
+        "default,notifications,payments",
+        "--concurrency=4",
+      ]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "${DATABASE_URL}"
+      REDIS_URL: "${REDIS_URL}"
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
+      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
+    env_file:
+      - .env.production
+    restart: unless-stopped
+    networks:
+      - crib-prod
+    deploy:
+      replicas: 1
+
+  # ─── Next.js Frontend ─────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}" # Browser-accessible
+      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}" # Server-side
+      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}" # Server-side
+      BACKEND_URL: "http://backend:8000" # Internal Docker network
+    env_file:
+      - .env.production
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - crib-prod
+    deploy:
+      replicas: 1
+
+networks:
+  crib-prod:
+    driver: bridge
