@@ -21,9 +21,24 @@ echo "Environment: $NODE_ENV"
 echo "Using compose file: $COMPOSE_FILE"
 echo "Using env file: $ENV_FILE"
 
+# Look for env file in current directory or parent directory
 if [ ! -f "$ENV_FILE" ]; then
-  echo "Error: $ENV_FILE not found!"
-  exit 1
+  if [ -f "../$ENV_FILE" ]; then
+    ENV_FILE="../$ENV_FILE"
+  else
+    echo "Error: $ENV_FILE not found in current directory or parent directory!"
+    exit 1
+  fi
+fi
+
+# Same for compose file
+if [ ! -f "$COMPOSE_FILE" ]; then
+  if [ -f "../$COMPOSE_FILE" ]; then
+    COMPOSE_FILE="../$COMPOSE_FILE"
+  else
+    echo "Error: $COMPOSE_FILE not found in current directory or parent directory!"
+    exit 1
+  fi
 fi
 
 echo "Starting Logto PostgreSQL service..."
