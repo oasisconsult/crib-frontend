@@ -1,10 +1,12 @@
 .PHONY: dev stop logs seed-logto
 
-dev:
-	docker compose -f docker-compose.local.yml --env-file .env.local up
+dev-up:
+	docker compose -f docker-compose.local.yml --env-file .env.local up -d
 
 dev-build:
 	docker compose -f docker-compose.local.yml --env-file .env.local up --build
+dev-build-d:
+	docker compose -f docker-compose.local.yml --env-file .env.local up -d --build
 
 stop:
 	docker compose -f docker-compose.local.yml --env-file .env.local down
@@ -13,7 +15,7 @@ logs:
 	docker compose -f docker-compose.local.yml --env-file .env.local logs -f
 
 seed-logto:
-	./seed-logto.sh
+	./backend/seed-logto.sh
 
 logs-backend:
 	docker compose -f docker-compose.local.yml --env-file .env.local logs -f backend
