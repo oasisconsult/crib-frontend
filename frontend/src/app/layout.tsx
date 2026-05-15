@@ -25,13 +25,13 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Crib | A modern property management system",
-  icons: {
-    icon: "/favicon.ico",
-    apple: "/apple-icon.png",
-  },
-};
+// export const metadata: Metadata = {
+//   title: "Crib | A modern property management system",
+//   icons: {
+//     icon: "/favicon.ico",
+//     apple: "/apple-icon.png",
+//   },
+// };
 
 export default function RootLayout({
   children,
@@ -42,6 +42,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="color-scheme" content="light dark" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon.png" type="image/png" />
       </head>
       <body
         className={`${poppins.variable} ${inter.variable} font-sans antialiased`}
