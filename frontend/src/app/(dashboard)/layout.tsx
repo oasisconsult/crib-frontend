@@ -7,6 +7,7 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { OfflineBanner } from "@/components/common/OfflineBanner";
 import { AuthInitializer } from "@/components/providers/AuthInitializer";
 import { useAppStore } from "@/store/useAppStore";
+import { CookieConsentBanner } from "@/components/common/CookieConsentBanner";
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const isAuthInitialized = useAppStore((s) => s.isAuthInitialized);
@@ -26,10 +27,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     // Client-side safety net: pure tenants belong in the portal, not the staff dashboard.
     // This catches cases where the middleware cookie check runs before cookies are written.
     if (user) {
-      const userRoles: string[] = (user.roles as string[] | undefined) ?? (user.role ? [user.role as string] : []);
-      const isDashboardUser = ["superadmin", "owner", "manager", "maintenance", "landlord"].some(
-        (r) => userRoles.includes(r),
-      );
+      const userRoles: string[] =
+        (user.roles as string[] | undefined) ??
+        (user.role ? [user.role as string] : []);
+      const isDashboardUser = [
+        "superadmin",
+        "owner",
+        "manager",
+        "maintenance",
+        "landlord",
+      ].some((r) => userRoles.includes(r));
       if (!isDashboardUser && userRoles.includes("tenant")) {
         window.location.replace("/portal");
       }
@@ -50,10 +57,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   // redirect is pending. Without this the dashboard renders for one full cycle
   // before the effect fires, causing a visible flash of the staff UI for tenants.
   if (user) {
-    const userRoles: string[] = (user.roles as string[] | undefined) ?? (user.role ? [user.role as string] : []);
-    const isDashboardUser = ["superadmin", "owner", "manager", "maintenance", "landlord"].some(
-      (r) => userRoles.includes(r),
-    );
+    const userRoles: string[] =
+      (user.roles as string[] | undefined) ??
+      (user.role ? [user.role as string] : []);
+    const isDashboardUser = [
+      "superadmin",
+      "owner",
+      "manager",
+      "maintenance",
+      "landlord",
+    ].some((r) => userRoles.includes(r));
     if (!isDashboardUser && userRoles.includes("tenant")) {
       return null;
     }
@@ -95,6 +108,7 @@ export default function DashboardLayout({
             </main>
           </div>
         </div>
+        <CookieConsentBanner />
       </AuthGate>
     </>
   );

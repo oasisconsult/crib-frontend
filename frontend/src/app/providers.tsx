@@ -19,7 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <ThemeProvider>
             {children}
             <ToastProvider />
-            <CookieConsentBanner />
+            {/* <CookieConsentBanner /> */}
           </ThemeProvider>
         </QueryClientProvider>
       </MSWProvider>
