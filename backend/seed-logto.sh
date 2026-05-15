@@ -6,17 +6,19 @@ set -e  # Exit on any error
 # This seeds Logto's own PostgreSQL database with default configuration
 # Separate from FastAPI backend database migrations/seeding
 
-#!/bin/bash
-
-set -e  # Exit on any error
-
-# Logto (OIDC/authentication provider) database seeding script
-# This seeds Logto's own PostgreSQL database with default configuration
-# Separate from FastAPI backend database migrations/seeding
-
 # Find the project root (where docker-compose.local.yml lives)
 # This script is in backend/, so go up one level
 PROJECT_ROOT=$(cd "$(dirname "$0")/.." && pwd)
+
+# Load environment variables from .env
+if [ -f "$PROJECT_ROOT/.env" ]; then
+  set -a
+  source "$PROJECT_ROOT/.env"
+  set +a
+else
+  echo "Error: .env file not found in $PROJECT_ROOT"
+  exit 1
+fi
 
 echo "Starting Logto PostgreSQL service..."
 docker compose -f "$PROJECT_ROOT/docker-compose.local.yml" up -d logto-postgres
