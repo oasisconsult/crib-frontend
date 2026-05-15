@@ -1,4 +1,4 @@
-"use client";
+// "use client";
 
 import type { Metadata } from "next";
 import { Poppins, Inter } from "next/font/google";
@@ -25,6 +25,14 @@ const inter = Inter({
   display: "swap",
 });
 
+export const metadata: Metadata = {
+  title: "Crib | A modern property management system",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -35,8 +43,13 @@ export default function RootLayout({
       <head>
         <meta name="color-scheme" content="light dark" />
       </head>
-      <body className={`${poppins.variable} ${inter.variable} font-sans antialiased`}>
-        <ErrorBoundary title="Application Error" description="Something went wrong with the application.">
+      <body
+        className={`${poppins.variable} ${inter.variable} font-sans antialiased`}
+      >
+        <ErrorBoundary
+          title="Application Error"
+          description="Something went wrong with the application."
+        >
           <MSWProvider>
             <QueryClientProvider client={queryClient}>
               <ThemeProvider>
