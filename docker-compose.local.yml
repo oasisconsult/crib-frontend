@@ -20,6 +20,11 @@ services:
     environment:
       NODE_ENV: development
       NEXT_PUBLIC_LOGTO_ENDPOINT: "http://localhost:3001"
+      # Logto app credentials — values substituted from .env at compose startup.
+      # Get these from http://localhost:3002 → Applications → your app.
+      NEXT_PUBLIC_LOGTO_APP_ID: "${NEXT_PUBLIC_LOGTO_APP_ID}"
+      LOGTO_APP_SECRET: "${LOGTO_APP_SECRET}"
+      NEXT_PUBLIC_LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE:-http://localhost:8001}"
       # Server-side endpoint for token exchange — uses Docker network, not localhost
       LOGTO_ENDPOINT: "http://logto:3001"
       # NEXT_PUBLIC_API_URL: ""
