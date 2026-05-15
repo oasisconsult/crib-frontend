@@ -63,7 +63,8 @@ export function CookieConsentBanner() {
       aria-label="Cookie consent"
       className={cn(
         "fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 sm:max-w-md z-50",
-        "rounded-[6px] border bg-background shadow-lg p-4 space-y-3 animate-in slide-in-from-bottom-4 duration-300",
+        "rounded-[6px] border border-border bg-card text-card-foreground shadow-xl p-4 space-y-3",
+        "animate-in slide-in-from-bottom-4 duration-300",
       )}
     >
       <div className="flex items-start justify-between gap-3">
