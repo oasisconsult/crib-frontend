@@ -7,10 +7,10 @@ set -e  # Exit on any error
 # Separate from FastAPI backend database migrations/seeding
 
 echo "Starting Logto PostgreSQL service..."
-docker-compose up -d logto-postgres
+docker compose up -d logto-postgres
 
 echo "Waiting for PostgreSQL to be healthy..."
-while ! docker-compose exec -T logto-postgres pg_isready -U "${LOGTO_POSTGRES_USER:-logto}" -d "${LOGTO_POSTGRES_DB:-logto}"; do
+while ! docker compose exec -T logto-postgres pg_isready -U "${LOGTO_POSTGRES_USER:-logto}" -d "${LOGTO_POSTGRES_DB:-logto}"; do
   echo "  ...waiting for database..."
   sleep 2
 done
@@ -41,13 +41,13 @@ fi
 DB_URL="${DB_URL:-postgresql://${LOGTO_POSTGRES_USER:-logto}:${LOGTO_POSTGRES_PASSWORD}@logto-postgres:5432/${LOGTO_POSTGRES_DB:-logto}}"
 
 echo "Starting Logto service..."
-docker-compose up -d logto
+docker compose up -d logto
 
 echo "Waiting for Logto to be ready..."
 sleep 5
 
 echo "Running database seed..."
-docker-compose exec -T logto npx @logto/cli db seed -- --db-url "$DB_URL"
+docker compose exec -T logto npx @logto/cli db seed -- --db-url "$DB_URL"
 
 echo "✓ Logto seeding complete!"
 echo "Logto is running at http://localhost:3001"
