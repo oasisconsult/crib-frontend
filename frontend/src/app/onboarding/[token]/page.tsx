@@ -35,6 +35,7 @@ export default function OnboardingPage({ params }: Props) {
             height={34}
             priority
             className="w-[100px] sm:w-[110px] md:w-[120px] h-auto"
+              style={{ height: 'auto' }}
           />
         </div>
 

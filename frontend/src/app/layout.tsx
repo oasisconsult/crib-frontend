@@ -72,15 +72,15 @@ import { Providers } from "./providers";
 
 const poppins = Poppins({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-poppins",
-  display: "swap",
+  display: "optional",  // prevents eager preload of every weight on every page
 });
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  display: "swap",
+  display: "optional",
 });
 
 export const metadata: Metadata = {
@@ -88,7 +88,7 @@ export const metadata: Metadata = {
     "Crib | A modern property management system for landlords and tenants alike",
   icons: {
     icon: "/favicon.ico",
-    apple: "/apple-icon.png",
+    apple: "/crib_logo_green.png",
   },
 };
 

@@ -166,6 +166,7 @@ export function Sidebar() {
               height={24}
               priority
               className="w-[72px] lg:w-[80px] h-auto"
+              style={{ height: 'auto' }}
             />
           )}
         </div>

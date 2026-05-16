@@ -23,6 +23,7 @@ function PortalNav() {
             height={34}
             priority
             className="w-[90px] sm:w-[105px] md:w-[120px] h-auto"
+              style={{ height: 'auto' }}
           />
           <span className="text-muted-foreground/50 text-sm">·</span>
           <span className="text-sm text-muted-foreground">Tenant Portal</span>
