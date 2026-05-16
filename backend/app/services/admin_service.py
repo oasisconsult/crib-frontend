@@ -255,7 +255,7 @@ async def transfer_properties(
 
 async def migrate_landlord_to_personal_org(
     profile_id: uuid.UUID, db: AsyncSession
-) -> Organisation:
+) -> tuple[Organisation, bool, bool]:
     """
     Migrate an existing landlord profile to a personal organisation.
 
@@ -321,20 +321,26 @@ async def migrate_landlord_to_personal_org(
     # Remove user from the old Logto org so their JWT stops carrying the old
     # org_id. Without this _upsert_profile will re-sync the profile back to the
     # old org on every subsequent request.
+    logto_removed = False
+    role_removed = False
     if profile.logto_sub:
         if old_logto_org_id and old_logto_org_id != personal_org.logto_org_id:
-            await logto_service.remove_user_from_org(old_logto_org_id, profile.logto_sub)
+            logto_removed = await logto_service.remove_user_from_org(old_logto_org_id, profile.logto_sub)
+        else:
+            logto_removed = True  # No old org to remove from
         # Remove the landlord app-level role so it doesn't appear in the JWT
         # (otherwise the frontend treats the user as read-only via roles.includes("landlord"))
-        await logto_service.remove_user_app_role(profile.logto_sub, "landlord")
+        role_removed = await logto_service.remove_user_app_role(profile.logto_sub, "landlord")
 
     log.info(
         "admin.landlord_migrated_to_personal_org",
         profile_id=str(profile_id),
         old_org=str(old_org_id),
         new_org=str(personal_org.id),
+        logto_removed=logto_removed,
+        role_removed=role_removed,
     )
-    return personal_org
+    return personal_org, logto_removed, role_removed
 
 
 async def repair_landlord_org(

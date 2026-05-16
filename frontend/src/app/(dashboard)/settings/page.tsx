@@ -94,7 +94,7 @@ export default function SettingsPage() {
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({
-    firstName: "", lastName: "", email: "", phone: "", propertyIds: [] as string[], message: "",
+    firstName: "", lastName: "", email: "", phone: "", propertyIds: [] as string[], message: "", isIndependent: false,
   });
 
   function handleCreateInvite() {
@@ -110,12 +110,13 @@ export default function SettingsPage() {
         phone: inviteForm.phone || undefined,
         propertyIds: inviteForm.propertyIds,
         message: inviteForm.message || undefined,
+        isIndependent: inviteForm.isIndependent,
       },
       {
         onSuccess: () => {
           toast.success("Invite sent", `${inviteForm.email} will receive an onboarding link`);
           setShowInviteModal(false);
-          setInviteForm({ firstName: "", lastName: "", email: "", phone: "", propertyIds: [], message: "" });
+          setInviteForm({ firstName: "", lastName: "", email: "", phone: "", propertyIds: [], message: "", isIndependent: false });
         },
         onError: (err: any) =>
           toast.error("Failed to send invite", err?.response?.data?.detail ?? "Please try again"),
@@ -530,6 +531,46 @@ export default function SettingsPage() {
                       placeholder="+256 700 000000"
                     />
                   </div>
+                  {/* Landlord type — explicit card choice */}
+                  <div className="space-y-1.5">
+                    <Label>Landlord type *</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setInviteForm((f) => ({ ...f, isIndependent: false }))}
+                        className={`rounded-[6px] border p-3 text-left transition-colors ${
+                          !inviteForm.isIndependent
+                            ? "border-primary bg-primary/5 ring-1 ring-primary"
+                            : "border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold">Agency-managed</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Read-only access. Your agency manages everything.
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setInviteForm((f) => ({ ...f, isIndependent: true }))}
+                        className={`rounded-[6px] border p-3 text-left transition-colors ${
+                          inviteForm.isIndependent
+                            ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30 ring-1 ring-violet-500"
+                            : "border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <p className="text-sm font-semibold">Independent</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Own organisation. Manages properties themselves.
+                        </p>
+                      </button>
+                    </div>
+                    {inviteForm.isIndependent && (
+                      <p className="text-xs text-violet-700 dark:text-violet-400">
+                        A personal org is created automatically at onboarding — no admin action needed.
+                      </p>
+                    )}
+                  </div>
+
                   <div className="space-y-1.5">
                     <Label>Properties <span className="text-muted-foreground font-normal">(optional)</span></Label>
                     <p className="text-xs text-muted-foreground">

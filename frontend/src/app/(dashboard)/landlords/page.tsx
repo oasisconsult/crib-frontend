@@ -343,37 +343,43 @@ export default function LandlordsPage() {
                 />
               </div>
 
-              {/* Landlord type toggle */}
-              <div className="rounded-[6px] border p-3 space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium">Independent landlord</p>
-                    <p className="text-xs text-muted-foreground">
-                      {form.isIndependent
-                        ? "Landlord will get their own personal organisation — they manage properties themselves and won't see agency data."
-                        : "Landlord is scoped to this agency — they get read-only access to their assigned properties."}
-                    </p>
-                  </div>
+              {/* Landlord type — explicit card choice */}
+              <div className="space-y-1.5">
+                <Label>Landlord type *</Label>
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    role="switch"
-                    aria-checked={form.isIndependent}
-                    onClick={() => setForm((f) => ({ ...f, isIndependent: !f.isIndependent }))}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                      form.isIndependent ? "bg-primary" : "bg-input"
+                    onClick={() => setForm((f) => ({ ...f, isIndependent: false }))}
+                    className={`rounded-[6px] border p-3 text-left transition-colors ${
+                      !form.isIndependent
+                        ? "border-primary bg-primary/5 ring-1 ring-primary"
+                        : "border-border hover:bg-muted/50"
                     }`}
                   >
-                    <span
-                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${
-                        form.isIndependent ? "translate-x-4" : "translate-x-0"
-                      }`}
-                    />
+                    <p className="text-sm font-semibold">Agency-managed</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Landlord gets read-only access to their properties. Your agency manages everything.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm((f) => ({ ...f, isIndependent: true }))}
+                    className={`rounded-[6px] border p-3 text-left transition-colors ${
+                      form.isIndependent
+                        ? "border-violet-500 bg-violet-50 dark:bg-violet-950/30 ring-1 ring-violet-500"
+                        : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <p className="text-sm font-semibold">Independent</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Landlord gets their own organisation. They manage properties themselves.
+                    </p>
                   </button>
                 </div>
                 {form.isIndependent && (
-                  <div className="rounded bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 px-2.5 py-1.5 text-xs text-violet-800 dark:text-violet-300">
-                    A personal organisation will be created for this landlord when they complete onboarding.
-                  </div>
+                  <p className="text-xs text-violet-700 dark:text-violet-400">
+                    A personal org will be created automatically when they complete onboarding — no admin action needed.
+                  </p>
                 )}
               </div>
 

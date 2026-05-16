@@ -193,7 +193,11 @@ export default function AdminPage() {
     }
     migrateToPersonalOrg(migrateLandlord.id, {
       onSuccess: (res) => {
-        toast.success("Migrated", res.message);
+        if (res.warning) {
+          toast.error("Migrated with warnings", res.warning);
+        } else {
+          toast.success("Migrated successfully", `${res.org_name} created. Logto org removed ✓. Role stripped ✓. Ask the user to log out and back in.`);
+        }
         setMigrateLandlord(null);
       },
       onError: (err: any) =>

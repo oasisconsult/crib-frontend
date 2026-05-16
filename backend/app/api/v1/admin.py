@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -229,7 +229,10 @@ class MigrateToPersonalOrgResponse(BaseModel):
     org_id: str
     org_name: str
     logto_org_id: str
+    logto_org_removed: bool
+    landlord_role_removed: bool
     message: str
+    warning: str | None = None
 
 
 @router.post(
@@ -244,18 +247,31 @@ async def migrate_landlord_to_personal_org(
     """
     Move an existing landlord to their own personal organisation.
 
-    Use this when a landlord was incorrectly scoped to another agency's org
-    (e.g. they were added under the inviting agency at invite time). Creates a
-    new personal Logto org + DB Organisation, updates their profile to owner,
-    and removes them from the old org.
+    Creates a new personal Logto org + DB Organisation, removes them from the
+    old Logto org, strips the 'landlord' app role, and sets their profile to
+    owner. The response includes booleans for each Logto step so the admin
+    knows immediately if manual cleanup is needed.
     """
-    org = await admin_service.migrate_landlord_to_personal_org(profile_id, db)
+    org, logto_removed, role_removed = await admin_service.migrate_landlord_to_personal_org(
+        profile_id, db
+    )
     await db.commit()
+
+    warning = None
+    if not logto_removed or not role_removed:
+        warning = (
+            "Logto cleanup incomplete — user may still see old data after login. "
+            "Use 'Remove from Logto org' in the Repair section to fix manually."
+        )
+
     return MigrateToPersonalOrgResponse(
         org_id=str(org.id),
         org_name=org.name,
         logto_org_id=org.logto_org_id,
+        logto_org_removed=logto_removed,
+        landlord_role_removed=role_removed,
         message=f"Landlord migrated to personal organisation '{org.name}'.",
+        warning=warning,
     )
 
 

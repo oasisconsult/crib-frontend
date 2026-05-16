@@ -71,7 +71,10 @@ export interface MigrateToPersonalOrgResponse {
   org_id: string;
   org_name: string;
   logto_org_id: string;
+  logto_org_removed: boolean;
+  landlord_role_removed: boolean;
   message: string;
+  warning: string | null;
 }
 
 export interface AssignToAgencyRequest {
