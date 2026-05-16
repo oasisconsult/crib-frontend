@@ -22,7 +22,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { agencyInvitesApi } from "@/services/api/agencyInvites";
 
 interface Props {
@@ -30,7 +29,6 @@ interface Props {
 }
 
 type Step = "welcome" | "agency" | "manager" | "review" | "success";
-const STEPS: Step[] = ["welcome", "agency", "manager", "review"];
 
 function isExpiredError(err: unknown): boolean {
   const resp = (err as Record<string, unknown>)?.response as
@@ -60,7 +58,7 @@ function StepIndicator({ current }: { current: Step }) {
             <div className="flex flex-col items-center shrink-0">
               <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
                 isActive
-                  ? "bg-primary text-primary-foreground shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]"
+                  ? "bg-primary text-white shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]"
                   : isDone
                     ? "bg-emerald-700 text-white"           // emerald-700/white ≈ 5.6:1 → WCAG AA ✓
                     : "border-2 border-border bg-card text-foreground" // outlined → foreground on card ✓

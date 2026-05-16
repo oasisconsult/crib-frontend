@@ -143,8 +143,8 @@ export default function LandlordOnboardingPage({ params }: Props) {
                         <div className="flex flex-col items-center shrink-0">
                           <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
                             isActive
-                              // Active: primary bg — shadcn primary/primary-foreground pair is WCAG-compliant by design
-                              ? "bg-primary text-primary-foreground shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]"
+                              // Active: primary bg — force white so the number is always legible
+                              ? "bg-primary text-white shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]"
                               : isDone
                                 // Done: emerald-700 vs white ≈ 5.6:1 → passes AA
                                 ? "bg-emerald-700 text-white"
