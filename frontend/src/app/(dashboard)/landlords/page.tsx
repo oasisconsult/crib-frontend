@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Trash2, Loader2, Users, MailCheck, Copy, Check, RefreshCw, Link2 } from "lucide-react";
+import { Plus, Trash2, Loader2, Users, Mail, Copy, Check, RefreshCw, Link } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,7 +75,7 @@ function InviteUrlRow({ token }: { token: string }) {
         onClick={() => setExpanded((v) => !v)}
         className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
       >
-        <Link2 className="h-3 w-3" />
+        <Link className="h-3 w-3" />
         {expanded ? "Hide link" : "Show link"}
       </button>
       {expanded && (
@@ -121,8 +121,9 @@ function InviteRow({
           </p>
           <p className="text-xs text-muted-foreground truncate">{invite.email}</p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {invite.propertyIds.length}{" "}
-            {invite.propertyIds.length === 1 ? "property" : "properties"}
+            {invite.propertyIds.length === 0
+              ? "No properties assigned"
+              : `${invite.propertyIds.length} ${invite.propertyIds.length === 1 ? "property" : "properties"}`}
           </p>
           {isPending && <InviteUrlRow token={invite.token} />}
         </div>
@@ -183,10 +184,6 @@ export default function LandlordsPage() {
   function handleCreate() {
     if (!form.firstName || !form.lastName || !form.email) {
       toast.error("Please fill in first name, last name and email");
-      return;
-    }
-    if (form.propertyIds.length === 0) {
-      toast.error("Select at least one property");
       return;
     }
     createInvite(
@@ -286,7 +283,7 @@ export default function LandlordsPage() {
           <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MailCheck className="h-5 w-5" />
+                <Mail className="h-5 w-5" />
                 Invite Landlord
               </CardTitle>
               <CardDescription>
@@ -335,9 +332,12 @@ export default function LandlordsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Properties *</Label>
+                <Label>Properties <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                <p className="text-xs text-muted-foreground">
+                  Assign properties now, or skip — the landlord can be assigned properties after they log in.
+                </p>
                 {allProperties.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No properties found</p>
+                  <p className="text-xs text-muted-foreground italic">No properties in this organisation yet.</p>
                 ) : (
                   <div className="border rounded-[6px] divide-y max-h-44 overflow-y-auto">
                     {allProperties.map((p) => (

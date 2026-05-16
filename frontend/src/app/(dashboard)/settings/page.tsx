@@ -77,10 +77,6 @@ export default function SettingsPage() {
       toast.error("Missing fields", "Please fill in name and email");
       return;
     }
-    if (inviteForm.propertyIds.length === 0) {
-      toast.error("No properties selected", "Select at least one property");
-      return;
-    }
     createInvite(
       {
         email: inviteForm.email,
@@ -383,7 +379,9 @@ export default function SettingsPage() {
                         </p>
                         <p className="text-xs text-muted-foreground truncate">{invite.email}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {invite.propertyIds.length} {invite.propertyIds.length === 1 ? "property" : "properties"}
+                          {invite.propertyIds.length === 0
+                            ? "No properties assigned"
+                            : `${invite.propertyIds.length} ${invite.propertyIds.length === 1 ? "property" : "properties"}`}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 ml-4">
@@ -469,9 +467,12 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Properties *</Label>
+                    <Label>Properties <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                    <p className="text-xs text-muted-foreground">
+                      Assign properties now, or skip — the landlord can be assigned properties after they log in.
+                    </p>
                     {allProperties.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No properties available</p>
+                      <p className="text-xs text-muted-foreground italic">No properties in this organisation yet.</p>
                     ) : (
                       <div className="border rounded-[6px] divide-y max-h-40 overflow-y-auto">
                         {allProperties.map((p) => (
