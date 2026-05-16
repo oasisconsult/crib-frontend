@@ -47,6 +47,10 @@ class LandlordInvite(TimestampedBase):
 
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # False (default) = agency-managed: landlord is scoped to inviting agency.
+    # True = independent: a personal org is created for the landlord at onboarding.
+    is_independent: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
     token:  Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=InviteStatus.PENDING)
 

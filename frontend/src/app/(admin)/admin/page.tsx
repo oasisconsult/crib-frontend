@@ -34,6 +34,7 @@ import { PermissionGate } from "@/components/common/PermissionGate";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { RbacPanel } from "@/components/admin/RbacPanel";
 import { useAgencyInvites, useCreateAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
+import { useMigrateToPersonalOrg, useAssignToAgency } from "@/hooks/useAdminLandlords";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 
@@ -97,6 +98,47 @@ const EMPTY_INVITE_FORM = {
 export default function AdminPage() {
   const [tab, setTab] = useState("users");
   const [search, setSearch] = useState("");
+
+  // ── Landlord admin actions ──────────────────────────────────────────────
+  const [migrateProfileId, setMigrateProfileId] = useState("");
+  const [assignProfileId, setAssignProfileId] = useState("");
+  const [assignAgencyOrgId, setAssignAgencyOrgId] = useState("");
+  const { mutate: migrateToPersonalOrg, isPending: migrating } = useMigrateToPersonalOrg();
+  const { mutate: assignToAgency, isPending: assigning } = useAssignToAgency();
+
+  function handleMigrateToPersonalOrg() {
+    if (!migrateProfileId.trim()) {
+      toast.error("Missing field", "Enter the landlord profile ID");
+      return;
+    }
+    migrateToPersonalOrg(migrateProfileId.trim(), {
+      onSuccess: (res) => {
+        toast.success("Migrated", res.message);
+        setMigrateProfileId("");
+      },
+      onError: (err: any) =>
+        toast.error("Migration failed", err?.response?.data?.detail ?? "Please try again"),
+    });
+  }
+
+  function handleAssignToAgency() {
+    if (!assignProfileId.trim() || !assignAgencyOrgId.trim()) {
+      toast.error("Missing fields", "Enter both the landlord profile ID and agency org ID");
+      return;
+    }
+    assignToAgency(
+      { profileId: assignProfileId.trim(), body: { agency_org_id: assignAgencyOrgId.trim() } },
+      {
+        onSuccess: (res) => {
+          toast.success("Assigned", res.message);
+          setAssignProfileId("");
+          setAssignAgencyOrgId("");
+        },
+        onError: (err: any) =>
+          toast.error("Assignment failed", err?.response?.data?.detail ?? "Please try again"),
+      },
+    );
+  }
 
   // ── Agency invites ──────────────────────────────────────────────────────
   const { data: agencyInvites = [], isLoading: loadingInvites } = useAgencyInvites();
@@ -196,6 +238,10 @@ export default function AdminPage() {
             <TabsTrigger value="agencies">
               <Building2 className="h-3.5 w-3.5 mr-1.5" />
               Agencies
+            </TabsTrigger>
+            <TabsTrigger value="landlords">
+              <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+              Landlords
             </TabsTrigger>
             <TabsTrigger value="system">
               <Server className="h-3.5 w-3.5 mr-1.5" />
@@ -613,6 +659,107 @@ export default function AdminPage() {
                 </Card>
               </div>
             )}
+          </TabsContent>
+
+          {/* ─── Landlords tab ───────────────────────────────── */}
+          <TabsContent value="landlords" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-emerald-600" />
+                  Migrate Landlord to Personal Organisation
+                </CardTitle>
+                <CardDescription>
+                  Use this when a landlord was incorrectly linked to an agency org at invite time.
+                  Creates a new personal Logto org, moves the landlord out of the old org, and
+                  makes them owner of their own org. Their properties stay with them.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-[6px] border border-sky-200 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/30 p-3 text-sm text-sky-800 dark:text-sky-200">
+                  <strong>Example:</strong> Tito Mukuru was invited by GeoBox but should be
+                  self-managing. Run this to give them their own isolated org so they stop seeing
+                  GeoBox data.
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="migrate-profile-id">Landlord Profile ID</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="migrate-profile-id"
+                      value={migrateProfileId}
+                      onChange={(e) => setMigrateProfileId(e.target.value)}
+                      placeholder="UUID of the landlord profile"
+                      className="flex-1 font-mono text-xs"
+                    />
+                    <Button
+                      onClick={handleMigrateToPersonalOrg}
+                      loading={migrating}
+                      disabled={!migrateProfileId.trim()}
+                    >
+                      Migrate
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Find the profile ID in the database or from the landlord&apos;s invite record.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-violet-600" />
+                  Assign Landlord to Agency
+                </CardTitle>
+                <CardDescription>
+                  Transfer a self-managing landlord into agency management. All their properties
+                  move to the agency org, LandlordPropertyAccess grants are created so they can
+                  still view their properties, and their personal org is archived.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-[6px] border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-200">
+                  This action archives the landlord&apos;s personal org. Their properties transfer
+                  to the agency. The landlord keeps read-only access via LandlordPropertyAccess.
+                </div>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="assign-profile-id">Landlord Profile ID</Label>
+                    <Input
+                      id="assign-profile-id"
+                      value={assignProfileId}
+                      onChange={(e) => setAssignProfileId(e.target.value)}
+                      placeholder="UUID of the landlord profile"
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="assign-agency-org-id">Target Agency Org ID</Label>
+                    <Input
+                      id="assign-agency-org-id"
+                      value={assignAgencyOrgId}
+                      onChange={(e) => setAssignAgencyOrgId(e.target.value)}
+                      placeholder="UUID of the agency organisation"
+                      className="font-mono text-xs"
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleAssignToAgency}
+                      loading={assigning}
+                      disabled={!assignProfileId.trim() || !assignAgencyOrgId.trim()}
+                      variant="outline"
+                    >
+                      Assign to agency
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Leave property IDs empty to transfer all properties from the landlord&apos;s personal org.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ─── System tab ──────────────────────────────────── */}

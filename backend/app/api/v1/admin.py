@@ -7,6 +7,9 @@ POST /admin/organisations/{id}/transfer-properties — reassign properties to ne
 
 POST /admin/profiles/{id}/deactivate            — soft-delete a system user
 POST /admin/profiles/{id}/restore               — restore a deactivated profile
+
+POST /admin/landlords/{id}/migrate-to-personal-org — move landlord to own personal org
+POST /admin/landlords/{id}/assign-to-agency        — transfer landlord to agency management
 """
 from __future__ import annotations
 
@@ -124,3 +127,79 @@ async def restore_profile(
     """Restore a soft-deleted profile and re-enable their Logto account."""
     await admin_service.restore_profile(profile_id, db)
     await db.commit()
+
+
+# ── Landlord lifecycle ────────────────────────────────────────────────────────
+
+class MigrateToPersonalOrgResponse(BaseModel):
+    org_id: str
+    org_name: str
+    logto_org_id: str
+    message: str
+
+
+@router.post(
+    "/landlords/{profile_id}/migrate-to-personal-org",
+    response_model=MigrateToPersonalOrgResponse,
+    dependencies=[Depends(require_superadmin())],
+)
+async def migrate_landlord_to_personal_org(
+    profile_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> MigrateToPersonalOrgResponse:
+    """
+    Move an existing landlord to their own personal organisation.
+
+    Use this when a landlord was incorrectly scoped to another agency's org
+    (e.g. they were added under the inviting agency at invite time). Creates a
+    new personal Logto org + DB Organisation, updates their profile to owner,
+    and removes them from the old org.
+    """
+    org = await admin_service.migrate_landlord_to_personal_org(profile_id, db)
+    await db.commit()
+    return MigrateToPersonalOrgResponse(
+        org_id=str(org.id),
+        org_name=org.name,
+        logto_org_id=org.logto_org_id,
+        message=f"Landlord migrated to personal organisation '{org.name}'.",
+    )
+
+
+class AssignToAgencyBody(BaseModel):
+    agency_org_id: uuid.UUID
+    property_ids: list[uuid.UUID] | None = None
+
+
+class AssignToAgencyResponse(BaseModel):
+    properties_transferred: int
+    agency_org_id: str
+    message: str
+
+
+@router.post(
+    "/landlords/{profile_id}/assign-to-agency",
+    response_model=AssignToAgencyResponse,
+    dependencies=[Depends(require_superadmin())],
+)
+async def assign_landlord_to_agency(
+    profile_id: uuid.UUID,
+    body: AssignToAgencyBody,
+    db: AsyncSession = Depends(get_db),
+) -> AssignToAgencyResponse:
+    """
+    Transfer a self-managing landlord into agency management.
+
+    Moves their properties to the agency org, creates LandlordPropertyAccess
+    grants, updates their profile to landlord role (read-only), and archives
+    their personal org. Pass property_ids to transfer specific properties, or
+    omit to transfer all properties from their personal org.
+    """
+    result = await admin_service.assign_landlord_to_agency(
+        profile_id, body.agency_org_id, body.property_ids, db
+    )
+    await db.commit()
+    return AssignToAgencyResponse(
+        properties_transferred=result["properties_transferred"],
+        agency_org_id=result["agency_org_id"],
+        message=f"{result['properties_transferred']} properties transferred to agency.",
+    )

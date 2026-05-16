@@ -54,6 +54,7 @@ async def list_payments(
     tenant_record = await get_tenant_record(current_user, db)
     tenant_id_filter = tenant_record.id if tenant_record else None
 
+    landlord_id = current_user.id if current_user.has_role("landlord") else None
     status_list = [s.strip() for s in states.split(",")] if states else ([payment_status] if payment_status else None)
     return await svc.list_payments_org(
         current_user.org_id,
@@ -63,6 +64,7 @@ async def list_payments(
         search=search,
         lease_id_filter=lease_id,
         tenant_id_filter=tenant_id_filter,
+        landlord_profile_id=landlord_id,
         page=page,
         page_size=page_size,
     )

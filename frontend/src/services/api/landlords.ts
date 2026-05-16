@@ -8,6 +8,7 @@ export interface LandlordInvite {
   phone?: string;
   propertyIds: string[];
   message?: string;
+  isIndependent: boolean;
   status: "pending" | "accepted" | "expired" | "revoked";
   token: string;
   createdAt: string;
@@ -22,6 +23,7 @@ export interface CreateLandlordInviteRequest {
   phone?: string;
   propertyIds: string[];
   message?: string;
+  isIndependent?: boolean;
 }
 
 // ── Public onboarding (no auth required) ────────────────────────────────────
@@ -50,12 +52,36 @@ export interface CompleteLandlordOnboardingResponse {
   message: string;
 }
 
+export interface MigrateToPersonalOrgResponse {
+  org_id: string;
+  org_name: string;
+  logto_org_id: string;
+  message: string;
+}
+
+export interface AssignToAgencyRequest {
+  agency_org_id: string;
+  property_ids?: string[];
+}
+
+export interface AssignToAgencyResponse {
+  properties_transferred: number;
+  agency_org_id: string;
+  message: string;
+}
+
 export const landlordsApi = {
   listInvites: () => apiGet<LandlordInvite[]>("/landlords/invites"),
   createInvite: (body: CreateLandlordInviteRequest) =>
     apiPost<LandlordInvite>("/landlords/invites", body),
   revokeInvite: (id: string) => apiDelete(`/landlords/invites/${id}`),
   resendInvite: (id: string) => apiPost<LandlordInvite>(`/landlords/invites/${id}/resend`, {}),
+
+  // Superadmin landlord lifecycle
+  adminMigrateToPersonalOrg: (profileId: string) =>
+    apiPost<MigrateToPersonalOrgResponse>(`/admin/landlords/${profileId}/migrate-to-personal-org`, {}),
+  adminAssignToAgency: (profileId: string, body: AssignToAgencyRequest) =>
+    apiPost<AssignToAgencyResponse>(`/admin/landlords/${profileId}/assign-to-agency`, body),
 
   // Public — no session needed
   getOnboarding: (token: string) =>

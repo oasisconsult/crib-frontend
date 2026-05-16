@@ -927,3 +927,102 @@ async def set_user_suspended(logto_sub: str, *, suspended: bool) -> bool:
     except Exception as exc:  # noqa: BLE001
         log.warning("logto.user_suspend_exception", sub=logto_sub, error=str(exc))
         return False
+
+
+# ── Create personal org for independent landlord ──────────────────────────────
+
+async def create_personal_org_with_owner(
+    *,
+    user_id: str,
+    first_name: str,
+    last_name: str,
+) -> str | None:
+    """
+    Create a personal Logto organisation for an independent landlord and
+    add them as the owner.  Returns the Logto org ID on success, None on failure.
+
+    This is a lighter variant of create_agency_with_manager that skips user
+    creation (the user already exists) and assigns the owner org role.
+    """
+    if not _is_configured():
+        log.debug("logto.m2m_not_configured — skipping personal org creation", user_id=user_id)
+        return None
+
+    try:
+        token = await _get_m2m_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        base = "http://logto:3001/api"
+        org_name = f"{first_name} {last_name}'s Properties"
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            # 1. Create the Logto org
+            org_resp = await client.post(
+                f"{base}/organizations",
+                json={"name": org_name, "description": f"Personal org for independent landlord"},
+                headers=headers,
+            )
+            org_resp.raise_for_status()
+            logto_org_id = org_resp.json()["id"]
+            log.info("logto.personal_org_created", org_id=logto_org_id, name=org_name)
+
+            # 2. Add user to org
+            add_resp = await client.post(
+                f"{base}/organizations/{logto_org_id}/users",
+                json={"userIds": [user_id]},
+                headers=headers,
+            )
+            if add_resp.status_code not in (200, 201, 204):
+                log.warning("logto.personal_org_add_user_failed", status=add_resp.status_code)
+
+            # 3. Assign 'owner' org role (create if missing)
+            await _assign_org_role(client, base, logto_org_id, user_id, "owner", headers)
+            # Also assign app-level 'owner' role as fallback
+            await _assign_app_role(client, base, user_id, "owner", headers)
+
+        log.info("logto.personal_org_provisioned", org_id=logto_org_id, user_id=user_id)
+        return logto_org_id
+
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.personal_org_creation_failed", user_id=user_id, error=str(exc))
+        return None
+
+
+# ── Welcome email for independent landlords ───────────────────────────────────
+
+async def send_independent_landlord_welcome_email(
+    *,
+    email: str,
+    first_name: str,
+    temp_password: str,
+    frontend_url: str,
+) -> None:
+    """
+    Welcome email for independent landlords (self-managing).
+    Differs from the agency-managed landlord email: emphasises that they
+    can log in and create their own properties.
+    """
+    from app.integrations.notifications.email import get_email_provider
+
+    subject = "Welcome to Crib — your landlord account is ready"
+    body = (
+        f"Hi {first_name},\n\n"
+        "Your independent landlord account on Crib has been created.\n\n"
+        "Log in to add your properties, invite tenants, and manage leases:\n\n"
+        f"Dashboard:  {frontend_url}\n"
+        f"Email:      {email}\n"
+        f"Password:   {temp_password}\n\n"
+        "Please change your password after your first sign-in.\n\n"
+        "— The Crib Team"
+    )
+    provider = get_email_provider()
+    result = await provider.send(
+        recipient_name=first_name,
+        recipient_email=email,
+        recipient_phone=None,
+        subject=subject,
+        body=body,
+    )
+    if result.success:
+        log.info("logto.independent_landlord_welcome_sent", email=email)
+    else:
+        log.warning("logto.independent_landlord_welcome_failed", email=email, reason=result.failure_reason)

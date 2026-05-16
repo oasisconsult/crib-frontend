@@ -31,24 +31,26 @@ settings = get_settings()
 
 
 class CreateLandlordInviteRequest(CamelModel):
-    email:      str
-    first_name: str
-    last_name:  str
-    phone:      str | None = None
-    property_ids: list[str]
-    message:    str | None = None
+    email:           str
+    first_name:      str
+    last_name:       str
+    phone:           str | None = None
+    property_ids:    list[str] = []
+    message:         str | None = None
+    is_independent:  bool = False  # True = landlord gets their own personal org
 
 
 class LandlordInviteOut(CamelModel):
-    id:           str
-    email:        str
-    first_name:   str
-    last_name:    str
-    property_ids: list[str]
-    status:       str
-    token:        str
-    expires_at:   str
-    created_at:   str
+    id:              str
+    email:           str
+    first_name:      str
+    last_name:       str
+    property_ids:    list[str]
+    is_independent:  bool
+    status:          str
+    token:           str
+    expires_at:      str
+    created_at:      str
 
 
 class LandlordOnboardingDetails(CamelModel):
@@ -117,6 +119,7 @@ async def create_invite(
         phone=body.phone,
         property_ids=[str(pid) for pid in prop_ids],
         message=body.message,
+        is_independent=body.is_independent,
         token=secrets.token_urlsafe(48),
         status=InviteStatus.PENDING,
         expires_at=datetime.now(timezone.utc) + timedelta(days=7),
@@ -194,14 +197,24 @@ async def complete_onboarding(
     body: CompleteLandlordOnboardingRequest,
 ) -> CompleteLandlordOnboardingResponse:
     """
-    Complete landlord onboarding:
-      1. Validate token
-      2. Create Logto user + assign landlord role
-      3. Create Profile
-      4. Grant LandlordPropertyAccess rows
-      5. Send welcome email
+    Complete landlord onboarding.
+
+    Two paths depending on invite.is_independent:
+
+    INDEPENDENT (is_independent=True)
+      Landlord self-manages their own properties.
+      → A personal Organisation is created for them in both Logto and the DB.
+      → Profile gets role='owner', is_read_only=False, linked to personal org.
+      → No LandlordPropertyAccess rows — they own their org outright.
+      → Isolated from every other org's data from day one.
+
+    AGENCY-MANAGED (is_independent=False, existing behaviour)
+      Agency invited them to view specific properties.
+      → Profile linked to inviting agency's org, role='landlord', is_read_only=True.
+      → LandlordPropertyAccess rows grant per-property read-only access.
     """
     from fastapi import HTTPException, status as http_status
+    from app.models.organisation import Plan
     from app.services import logto_service
     from app.services.logto_service import _generate_temp_password
 
@@ -215,16 +228,104 @@ async def complete_onboarding(
         await db.flush()
         raise HTTPException(status_code=http_status.HTTP_410_GONE, detail="Invite has expired")
 
-    # Fetch the inviting agency org to get its Logto org ID
+    temp_password = _generate_temp_password()
+    s = get_settings()
+
+    # ── INDEPENDENT landlord ────────────────────────────────────────────────────
+    if invite.is_independent:
+        # 1. Create Logto user (no org yet — will create personal org next)
+        logto_user_id = await logto_service.create_landlord_user(
+            email=invite.email,
+            first_name=body.first_name,
+            last_name=body.last_name,
+            temp_password=temp_password,
+            logto_org_id=None,  # no existing org to join
+        )
+
+        # 2. Create personal Logto org and add user as owner
+        import re as _re
+        personal_logto_org_id: str | None = None
+        if logto_user_id:
+            personal_logto_org_id = await logto_service.create_personal_org_with_owner(
+                user_id=logto_user_id,
+                first_name=body.first_name,
+                last_name=body.last_name,
+            )
+
+        # 3. Create personal Organisation DB row
+        base_name = f"{body.first_name} {body.last_name}'s Properties"
+        base_slug = _re.sub(r"[^\w-]", "-", f"{body.first_name}-{body.last_name}".lower())[:30]
+        personal_org = Organisation(
+            logto_org_id=personal_logto_org_id or f"org_personal_{secrets.token_hex(6)}",
+            name=base_name,
+            slug=f"{base_slug}-{secrets.token_hex(4)}",
+            plan=Plan.starter,
+            currency="UGX",
+            settings={},
+            payment_settings={},
+        )
+        db.add(personal_org)
+        await db.flush()
+
+        # 4. Create/update Profile as owner of personal org
+        existing = await db.execute(select(Profile).where(Profile.email == invite.email))
+        profile = existing.scalar_one_or_none()
+
+        if profile is None:
+            profile = Profile(
+                logto_sub=logto_user_id or f"pending_{invite.id}",
+                logto_org_id=personal_logto_org_id,
+                organisation_id=personal_org.id,
+                role="owner",
+                display_name=f"{body.first_name} {body.last_name}",
+                email=invite.email,
+                phone=body.phone,
+                is_read_only=False,
+                gdpr_consent_given=body.gdpr_consent,
+            )
+            db.add(profile)
+        else:
+            profile.role = "owner"
+            profile.is_read_only = False
+            profile.organisation_id = personal_org.id
+            profile.logto_org_id = personal_logto_org_id
+            if logto_user_id:
+                profile.logto_sub = logto_user_id
+            if body.phone:
+                profile.phone = body.phone
+
+        await db.flush()
+
+        # 5. Mark invite accepted
+        invite.status = InviteStatus.ACCEPTED
+        invite.accepted_at = datetime.now(timezone.utc)
+        await db.flush()
+
+        # 6. Welcome email — independent landlord variant
+        await logto_service.send_independent_landlord_welcome_email(
+            email=invite.email,
+            first_name=body.first_name,
+            temp_password=temp_password,
+            frontend_url=s.frontend_url,
+        )
+
+        log.info(
+            "landlord.independent_onboarding_complete",
+            email=invite.email,
+            profile_id=str(profile.id),
+            personal_org_id=str(personal_org.id),
+        )
+        return CompleteLandlordOnboardingResponse(
+            message="Your independent landlord account is ready. Check your email for login details."
+        )
+
+    # ── AGENCY-MANAGED landlord (existing behaviour) ───────────────────────────
     org_result = await db.execute(
         select(Organisation).where(Organisation.id == invite.organisation_id)
     )
     org = org_result.scalar_one_or_none()
     logto_org_id = org.logto_org_id if org else None
 
-    temp_password = _generate_temp_password()
-
-    # 1. Create Logto user, add to agency org, assign landlord org role
     logto_user_id = await logto_service.create_landlord_user(
         email=invite.email,
         first_name=body.first_name,
@@ -233,14 +334,13 @@ async def complete_onboarding(
         logto_org_id=logto_org_id,
     )
 
-    # 2. Create Profile linked to the inviting agency's org
     existing = await db.execute(select(Profile).where(Profile.email == invite.email))
     profile = existing.scalar_one_or_none()
 
     if profile is None:
         profile = Profile(
             logto_sub=logto_user_id or f"pending_{invite.id}",
-            organisation_id=invite.organisation_id,  # scoped to inviting agency
+            organisation_id=invite.organisation_id,
             role="landlord",
             display_name=f"{body.first_name} {body.last_name}",
             email=invite.email,
@@ -259,13 +359,11 @@ async def complete_onboarding(
         if body.phone:
             profile.phone = body.phone
 
-    # 3. Grant property access
     for pid_str in (invite.property_ids or []):
         try:
             pid = uuid.UUID(pid_str)
         except ValueError:
             continue
-        # Check for existing record
         existing_access = await db.execute(
             select(LandlordPropertyAccess).where(
                 LandlordPropertyAccess.landlord_profile_id == profile.id,
@@ -280,13 +378,10 @@ async def complete_onboarding(
                 granted_by_profile_id=invite.invited_by_profile_id,
             ))
 
-    # 4. Mark invite accepted
     invite.status = InviteStatus.ACCEPTED
     invite.accepted_at = datetime.now(timezone.utc)
     await db.flush()
 
-    # 5. Send welcome email
-    s = get_settings()
     await logto_service.send_landlord_welcome_email(
         email=invite.email,
         first_name=body.first_name,
@@ -396,6 +491,7 @@ def _to_out(invite: LandlordInvite) -> LandlordInviteOut:
         first_name=invite.first_name,
         last_name=invite.last_name,
         property_ids=invite.property_ids or [],
+        is_independent=bool(invite.is_independent),
         status=invite.status,
         token=invite.token,
         expires_at=invite.expires_at.isoformat(),

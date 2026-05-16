@@ -25,6 +25,7 @@ const EMPTY_FORM = {
   phone: "",
   propertyIds: [] as string[],
   message: "",
+  isIndependent: false,
 };
 
 function inviteUrl(token: string) {
@@ -120,11 +121,20 @@ function InviteRow({
             {invite.firstName} {invite.lastName}
           </p>
           <p className="text-xs text-muted-foreground truncate">{invite.email}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {invite.propertyIds.length === 0
-              ? "No properties assigned"
-              : `${invite.propertyIds.length} ${invite.propertyIds.length === 1 ? "property" : "properties"}`}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-xs text-muted-foreground">
+              {invite.propertyIds.length === 0
+                ? "No properties assigned"
+                : `${invite.propertyIds.length} ${invite.propertyIds.length === 1 ? "property" : "properties"}`}
+            </p>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
+              invite.isIndependent
+                ? "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-800"
+                : "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800"
+            }`}>
+              {invite.isIndependent ? "Independent" : "Agency-managed"}
+            </span>
+          </div>
           {isPending && <InviteUrlRow token={invite.token} />}
         </div>
 
@@ -194,6 +204,7 @@ export default function LandlordsPage() {
         phone: form.phone || undefined,
         propertyIds: form.propertyIds,
         message: form.message || undefined,
+        isIndependent: form.isIndependent,
       },
       {
         onSuccess: () => {
@@ -331,6 +342,41 @@ export default function LandlordsPage() {
                   placeholder="+256 700 000 000"
                 />
               </div>
+
+              {/* Landlord type toggle */}
+              <div className="rounded-[6px] border p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Independent landlord</p>
+                    <p className="text-xs text-muted-foreground">
+                      {form.isIndependent
+                        ? "Landlord will get their own personal organisation — they manage properties themselves and won't see agency data."
+                        : "Landlord is scoped to this agency — they get read-only access to their assigned properties."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={form.isIndependent}
+                    onClick={() => setForm((f) => ({ ...f, isIndependent: !f.isIndependent }))}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                      form.isIndependent ? "bg-primary" : "bg-input"
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform ${
+                        form.isIndependent ? "translate-x-4" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+                {form.isIndependent && (
+                  <div className="rounded bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 px-2.5 py-1.5 text-xs text-violet-800 dark:text-violet-300">
+                    A personal organisation will be created for this landlord when they complete onboarding.
+                  </div>
+                )}
+              </div>
+
               <div className="space-y-1.5">
                 <Label>Properties <span className="text-muted-foreground font-normal">(optional)</span></Label>
                 <p className="text-xs text-muted-foreground">

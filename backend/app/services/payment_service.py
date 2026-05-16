@@ -1025,11 +1025,25 @@ async def list_payments_org(
     search: str | None = None,
     lease_id_filter: uuid.UUID | None = None,
     tenant_id_filter: uuid.UUID | None = None,
+    landlord_profile_id: uuid.UUID | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
+    from app.models.landlord_invite import LandlordPropertyAccess
     from app.models.lease import Lease
     q = select(Payment).where(Payment.organisation_id == org_id)
+
+    # For agency-managed landlords: restrict to payments on their
+    # accessible properties only — prevents seeing the whole org's data.
+    if landlord_profile_id is not None:
+        allowed_properties = select(LandlordPropertyAccess.property_id).where(
+            LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
+        )
+        allowed_leases = select(Lease.id).where(
+            Lease.property_id.in_(allowed_properties)
+        )
+        q = q.where(Payment.lease_id.in_(allowed_leases))
+
     if status_filters:
         q = q.where(Payment.status.in_(status_filters))
     if category:
@@ -1040,7 +1054,6 @@ async def list_payments_org(
     if lease_id_filter:
         q = q.where(Payment.lease_id == lease_id_filter)
     if tenant_id_filter:
-        # from app.models.lease import Lease
         q = q.join(Lease, Lease.id == Payment.lease_id).where(
             Lease.tenant_id == tenant_id_filter
         )

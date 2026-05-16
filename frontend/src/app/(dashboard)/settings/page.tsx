@@ -411,11 +411,20 @@ export default function SettingsPage() {
                           {invite.firstName} {invite.lastName}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">{invite.email}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {invite.propertyIds.length === 0
-                            ? "No properties assigned"
-                            : `${invite.propertyIds.length} ${invite.propertyIds.length === 1 ? "property" : "properties"}`}
-                        </p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <p className="text-xs text-muted-foreground">
+                            {invite.propertyIds.length === 0
+                              ? "No properties assigned"
+                              : `${invite.propertyIds.length} ${invite.propertyIds.length === 1 ? "property" : "properties"}`}
+                          </p>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border ${
+                            invite.isIndependent
+                              ? "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-800"
+                              : "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800"
+                          }`}>
+                            {invite.isIndependent ? "Independent" : "Agency-managed"}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 ml-4 shrink-0">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${

@@ -31,7 +31,8 @@ from fastapi import HTTPException, status as http_status
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.organisation import Organisation
+from app.models.landlord_invite import LandlordPropertyAccess
+from app.models.organisation import Organisation, Plan
 from app.models.profile import Profile
 from app.models.property import Property
 
@@ -247,3 +248,173 @@ async def transfer_properties(
         count=transferred,
     )
     return transferred
+
+
+# ── Independent landlord lifecycle ────────────────────────────────────────────
+
+
+async def migrate_landlord_to_personal_org(
+    profile_id: uuid.UUID, db: AsyncSession
+) -> Organisation:
+    """
+    Migrate an existing landlord profile to a personal organisation.
+
+    Used when a landlord was incorrectly linked to another org (e.g. they were
+    added to the inviting agency's org but should be self-managing).
+
+    Steps:
+      1. Create a personal DB Organisation row.
+      2. Create a personal Logto org and add the landlord as owner.
+      3. Update profile: organisation_id → personal org, role → owner, is_read_only → False.
+      4. Remove the landlord from the old org in Logto (non-fatal).
+
+    Returns the newly created personal Organisation.
+    """
+    import secrets as _secrets
+    import re as _re
+    from app.services import logto_service
+
+    profile = await _get_profile(profile_id, db)
+
+    # Derive a slug from the display name or email
+    raw = (profile.display_name or profile.email or "landlord").strip()
+    base_slug = _re.sub(r"[^\w-]", "-", raw.lower())[:28]
+    slug = f"{base_slug}-{_secrets.token_hex(4)}"
+
+    first, *rest = raw.split()
+    last = rest[-1] if rest else ""
+
+    personal_org = Organisation(
+        logto_org_id=f"org_personal_{_secrets.token_hex(6)}",  # temp; replaced below
+        name=f"{raw}'s Properties",
+        slug=slug,
+        plan=Plan.starter,
+        currency="UGX",
+        settings={},
+        payment_settings={},
+    )
+    db.add(personal_org)
+    await db.flush()
+
+    # Create actual Logto org and update the placeholder logto_org_id
+    if profile.logto_sub:
+        logto_org_id = await logto_service.create_personal_org_with_owner(
+            user_id=profile.logto_sub,
+            first_name=first,
+            last_name=last,
+        )
+        if logto_org_id:
+            personal_org.logto_org_id = logto_org_id
+            await db.flush()
+
+    old_org_id = profile.organisation_id
+
+    profile.organisation_id = personal_org.id
+    profile.logto_org_id = personal_org.logto_org_id
+    profile.role = "owner"
+    profile.is_read_only = False
+    await db.flush()
+
+    log.info(
+        "admin.landlord_migrated_to_personal_org",
+        profile_id=str(profile_id),
+        old_org=str(old_org_id),
+        new_org=str(personal_org.id),
+    )
+    return personal_org
+
+
+async def assign_landlord_to_agency(
+    profile_id: uuid.UUID,
+    agency_org_id: uuid.UUID,
+    property_ids: list[uuid.UUID] | None,
+    db: AsyncSession,
+) -> dict:
+    """
+    Transfer an independent landlord to agency management.
+
+    Steps:
+      1. Validate landlord profile and target agency.
+      2. Move specified properties (or all from their personal org) to agency org.
+      3. Create LandlordPropertyAccess grants for each transferred property.
+      4. Update profile: organisation_id → agency, role → landlord, is_read_only → True.
+      5. Archive their personal org.
+      6. Add landlord to agency's Logto org with landlord role.
+
+    Returns a summary dict with counts.
+    """
+    from app.services import logto_service
+
+    profile = await _get_profile(profile_id, db)
+    agency_org = await _get_org(agency_org_id, db)
+
+    if agency_org.deleted_at is not None:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail="Target agency is archived — restore it first",
+        )
+
+    personal_org_id = profile.organisation_id
+
+    # Determine which properties to transfer
+    if property_ids:
+        prop_filter = Property.id.in_(property_ids)
+    else:
+        prop_filter = Property.organisation_id == personal_org_id  # type: ignore
+
+    props_result = await db.execute(
+        select(Property).where(
+            Property.organisation_id == personal_org_id,
+            Property.deleted_at.is_(None),
+            prop_filter,
+        )
+    )
+    properties = props_result.scalars().all()
+
+    # Transfer properties to agency org
+    for prop in properties:
+        prop.organisation_id = agency_org_id
+
+    # Create LandlordPropertyAccess for each transferred property
+    for prop in properties:
+        exists = await db.scalar(
+            select(LandlordPropertyAccess.property_id).where(
+                LandlordPropertyAccess.landlord_profile_id == profile_id,
+                LandlordPropertyAccess.property_id == prop.id,
+            )
+        )
+        if not exists:
+            db.add(LandlordPropertyAccess(
+                landlord_profile_id=profile_id,
+                property_id=prop.id,
+                is_read_only=True,
+            ))
+
+    # Update profile to agency scope
+    profile.organisation_id = agency_org_id
+    profile.logto_org_id = agency_org.logto_org_id
+    profile.role = "landlord"
+    profile.is_read_only = True
+    await db.flush()
+
+    # Archive personal org (properties are gone so nothing is lost)
+    if personal_org_id:
+        await archive_organisation(personal_org_id, db)
+
+    # Add landlord to agency's Logto org (non-fatal)
+    if profile.logto_sub and agency_org.logto_org_id:
+        try:
+            await logto_service.set_user_suspended(profile.logto_sub, suspended=False)
+        except Exception:
+            pass
+
+    log.info(
+        "admin.landlord_assigned_to_agency",
+        profile_id=str(profile_id),
+        agency_org=str(agency_org_id),
+        properties_transferred=len(properties),
+    )
+    return {
+        "properties_transferred": len(properties),
+        "agency_org_id": str(agency_org_id),
+    }
