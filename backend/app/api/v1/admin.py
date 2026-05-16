@@ -297,3 +297,45 @@ async def assign_landlord_to_agency(
         agency_org_id=result["agency_org_id"],
         message=f"{result['properties_transferred']} properties transferred to agency.",
     )
+
+
+class RepairOrgBody(BaseModel):
+    target_org_id: uuid.UUID
+
+
+class RepairOrgResponse(BaseModel):
+    profile_id: str
+    target_org_id: str
+    target_org_name: str
+    removed_from_logto_orgs: int
+    message: str
+
+
+@router.post(
+    "/landlords/{profile_id}/repair-org",
+    response_model=RepairOrgResponse,
+    dependencies=[Depends(require_superadmin())],
+)
+async def repair_landlord_org(
+    profile_id: uuid.UUID,
+    body: RepairOrgBody,
+    db: AsyncSession = Depends(get_db),
+) -> RepairOrgResponse:
+    """
+    Fix a landlord whose profile reverted to the wrong org after migration.
+
+    This happens when the old Logto org membership was not cleaned up, causing
+    _upsert_profile to re-sync the profile back to the old org on every login.
+
+    Steps performed:
+      - Points the profile at target_org (their personal org).
+      - Removes the user from every Logto org except target_org.
+      - Removes the 'landlord' app-level role from their Logto account.
+      - Sets role=owner, is_read_only=False in the DB profile.
+
+    The user must log out and back in after this action for the new JWT
+    (with the correct org context) to take effect.
+    """
+    result = await admin_service.repair_landlord_org(profile_id, body.target_org_id, db)
+    await db.commit()
+    return RepairOrgResponse(**result)

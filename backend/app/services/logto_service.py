@@ -987,6 +987,105 @@ async def create_personal_org_with_owner(
         return None
 
 
+# ── Org membership cleanup ────────────────────────────────────────────────────
+
+
+async def remove_user_from_org(logto_org_id: str, user_id: str) -> bool:
+    """Remove a user from a Logto organisation. Non-fatal on failure."""
+    if not _is_configured():
+        return False
+    try:
+        token = await _get_m2m_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        base = "http://logto:3001/api"
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.delete(
+                f"{base}/organizations/{logto_org_id}/users",
+                json={"userIds": [user_id]},
+                headers=headers,
+            )
+        if resp.status_code in (200, 201, 204):
+            log.info("logto.user_removed_from_org", org_id=logto_org_id, user_id=user_id)
+            return True
+        log.warning(
+            "logto.remove_from_org_failed",
+            org_id=logto_org_id, user_id=user_id,
+            status=resp.status_code, body=resp.text[:200],
+        )
+        return False
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.remove_from_org_exception", org_id=logto_org_id, user_id=user_id, error=str(exc))
+        return False
+
+
+async def remove_user_app_role(user_id: str, role_name: str) -> bool:
+    """
+    Remove a named app-level role from a Logto user.
+    Looks up the role ID first; silently succeeds if the user doesn't have it.
+    """
+    if not _is_configured():
+        return False
+    try:
+        token = await _get_m2m_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        base = "http://logto:3001/api"
+        async with httpx.AsyncClient(timeout=10) as client:
+            # Find which roles the user currently holds
+            user_roles_resp = await client.get(
+                f"{base}/users/{user_id}/roles", headers=headers
+            )
+            if user_roles_resp.status_code != 200:
+                return False
+            role_ids = [
+                r["id"] for r in user_roles_resp.json()
+                if r.get("name", "").lower() == role_name.lower()
+            ]
+            if not role_ids:
+                return True  # User doesn't have the role — nothing to do
+            # DELETE endpoint accepts a list of role IDs
+            del_resp = await client.delete(
+                f"{base}/users/{user_id}/roles",
+                json={"roleIds": role_ids},
+                headers=headers,
+            )
+        if del_resp.status_code in (200, 201, 204):
+            log.info("logto.app_role_removed", user_id=user_id, role=role_name)
+            return True
+        log.warning(
+            "logto.remove_app_role_failed",
+            user_id=user_id, role=role_name,
+            status=del_resp.status_code, body=del_resp.text[:200],
+        )
+        return False
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.remove_app_role_exception", user_id=user_id, error=str(exc))
+        return False
+
+
+async def get_user_logto_org_ids(user_id: str) -> list[str]:
+    """Return all Logto org IDs the user currently belongs to."""
+    if not _is_configured():
+        return []
+    try:
+        token = await _get_m2m_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        base = "http://logto:3001/api"
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"{base}/users/{user_id}/organizations", headers=headers
+            )
+        if resp.status_code == 200:
+            return [o["id"] for o in resp.json()]
+        log.warning(
+            "logto.get_user_orgs_failed", user_id=user_id,
+            status=resp.status_code, body=resp.text[:200],
+        )
+        return []
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.get_user_orgs_exception", user_id=user_id, error=str(exc))
+        return []
+
+
 # ── Welcome email for independent landlords ───────────────────────────────────
 
 async def send_independent_landlord_welcome_email(

@@ -34,7 +34,7 @@ import { PermissionGate } from "@/components/common/PermissionGate";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { RbacPanel } from "@/components/admin/RbacPanel";
 import { useAgencyInvites, useCreateAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
-import { useMigrateToPersonalOrg, useAssignToAgency } from "@/hooks/useAdminLandlords";
+import { useMigrateToPersonalOrg, useAssignToAgency, useRepairLandlordOrg } from "@/hooks/useAdminLandlords";
 import { AdminSearchCombobox, type ComboboxOption } from "@/components/admin/AdminSearchCombobox";
 import { landlordsApi } from "@/services/api/landlords";
 import { toast } from "@/store/useUIStore";
@@ -105,8 +105,11 @@ export default function AdminPage() {
   const [migrateLandlord, setMigrateLandlord] = useState<ComboboxOption | null>(null);
   const [assignLandlord, setAssignLandlord] = useState<ComboboxOption | null>(null);
   const [assignAgency, setAssignAgency] = useState<ComboboxOption | null>(null);
+  const [repairLandlord, setRepairLandlord] = useState<ComboboxOption | null>(null);
+  const [repairTargetOrg, setRepairTargetOrg] = useState<ComboboxOption | null>(null);
   const { mutate: migrateToPersonalOrg, isPending: migrating } = useMigrateToPersonalOrg();
   const { mutate: assignToAgency, isPending: assigning } = useAssignToAgency();
+  const { mutate: repairOrg, isPending: repairing } = useRepairLandlordOrg();
 
   async function searchAllProfiles(q: string): Promise<ComboboxOption[]> {
     const results = await landlordsApi.searchProfiles(q);
@@ -128,6 +131,25 @@ export default function AdminPage() {
       badge: r.role,
       badgeClassName: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800",
     }));
+  }
+
+  function handleRepairOrg() {
+    if (!repairLandlord || !repairTargetOrg) {
+      toast.error("Missing fields", "Select both the landlord and their personal org");
+      return;
+    }
+    repairOrg(
+      { profileId: repairLandlord.id, targetOrgId: repairTargetOrg.id },
+      {
+        onSuccess: (res) => {
+          toast.success("Repaired", res.message);
+          setRepairLandlord(null);
+          setRepairTargetOrg(null);
+        },
+        onError: (err: any) =>
+          toast.error("Repair failed", err?.response?.data?.detail ?? "Please try again"),
+      },
+    );
   }
 
   async function searchAgencies(q: string): Promise<ComboboxOption[]> {
@@ -788,6 +810,63 @@ export default function AdminPage() {
                       variant="outline"
                     >
                       Assign to agency
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Repair Org Membership
+                </CardTitle>
+                <CardDescription>
+                  Use this when a landlord has already been migrated but still sees another
+                  agency&apos;s data. This happens because the migration did not remove them from
+                  the old Logto org, so every login reverts their session back to the old org.
+                  After running this, ask the user to log out and back in.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="rounded-[6px] border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30 p-3 text-sm text-red-800 dark:text-red-300">
+                  <strong>Tito Mukuru fix:</strong> Search for Tito, then search for
+                  &ldquo;Tito&apos;s Properties&rdquo; as the target org. Click Repair, then ask Tito to log out and back in.
+                </div>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label>Affected Landlord</Label>
+                    <AdminSearchCombobox
+                      placeholder="Search by name or email…"
+                      onSearch={searchAllProfiles}
+                      onSelect={setRepairLandlord}
+                      selected={repairLandlord}
+                      disabled={repairing}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Their Personal Org (target)</Label>
+                    <AdminSearchCombobox
+                      placeholder="Search org by name, e.g. Tito's Properties…"
+                      onSearch={searchAgencies}
+                      onSelect={setRepairTargetOrg}
+                      selected={repairTargetOrg}
+                      disabled={repairing}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Search for the personal org that was created during migration.
+                    </p>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleRepairOrg}
+                      loading={repairing}
+                      disabled={!repairLandlord || !repairTargetOrg}
+                      variant="destructive"
+                    >
+                      Repair org membership
                     </Button>
                   </div>
                 </div>

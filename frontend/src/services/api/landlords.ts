@@ -85,6 +85,14 @@ export interface AssignToAgencyResponse {
   message: string;
 }
 
+export interface RepairOrgResponse {
+  profile_id: string;
+  target_org_id: string;
+  target_org_name: string;
+  removed_from_logto_orgs: number;
+  message: string;
+}
+
 export const landlordsApi = {
   listInvites: () => apiGet<LandlordInvite[]>("/landlords/invites"),
   createInvite: (body: CreateLandlordInviteRequest) =>
@@ -103,6 +111,8 @@ export const landlordsApi = {
     apiPost<MigrateToPersonalOrgResponse>(`/admin/landlords/${profileId}/migrate-to-personal-org`, {}),
   adminAssignToAgency: (profileId: string, body: AssignToAgencyRequest) =>
     apiPost<AssignToAgencyResponse>(`/admin/landlords/${profileId}/assign-to-agency`, body),
+  adminRepairOrg: (profileId: string, targetOrgId: string) =>
+    apiPost<RepairOrgResponse>(`/admin/landlords/${profileId}/repair-org`, { target_org_id: targetOrgId }),
 
   // Public — no session needed
   getOnboarding: (token: string) =>

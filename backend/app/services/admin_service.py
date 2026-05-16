@@ -276,6 +276,9 @@ async def migrate_landlord_to_personal_org(
 
     profile = await _get_profile(profile_id, db)
 
+    # Capture the old Logto org before we change anything — needed for cleanup.
+    old_logto_org_id = profile.logto_org_id
+
     # Derive a slug from the display name or email
     raw = (profile.display_name or profile.email or "landlord").strip()
     base_slug = _re.sub(r"[^\w-]", "-", raw.lower())[:28]
@@ -315,6 +318,16 @@ async def migrate_landlord_to_personal_org(
     profile.is_read_only = False
     await db.flush()
 
+    # Remove user from the old Logto org so their JWT stops carrying the old
+    # org_id. Without this _upsert_profile will re-sync the profile back to the
+    # old org on every subsequent request.
+    if profile.logto_sub:
+        if old_logto_org_id and old_logto_org_id != personal_org.logto_org_id:
+            await logto_service.remove_user_from_org(old_logto_org_id, profile.logto_sub)
+        # Remove the landlord app-level role so it doesn't appear in the JWT
+        # (otherwise the frontend treats the user as read-only via roles.includes("landlord"))
+        await logto_service.remove_user_app_role(profile.logto_sub, "landlord")
+
     log.info(
         "admin.landlord_migrated_to_personal_org",
         profile_id=str(profile_id),
@@ -322,6 +335,73 @@ async def migrate_landlord_to_personal_org(
         new_org=str(personal_org.id),
     )
     return personal_org
+
+
+async def repair_landlord_org(
+    profile_id: uuid.UUID,
+    target_org_id: uuid.UUID,
+    db: AsyncSession,
+) -> dict:
+    """
+    Repair a landlord profile that ended up with the wrong org context after
+    migration (e.g. _upsert_profile reverted it because the old Logto org
+    membership was never cleaned up).
+
+    Steps:
+      1. Set profile.organisation_id → target_org (the personal org).
+      2. Remove user from ALL Logto orgs except the target org.
+      3. Remove 'landlord' app-level role from user.
+      4. Set profile.role → 'owner', is_read_only → False.
+
+    The user must log out and back in for the JWT to reflect the new org context.
+    """
+    profile = await _get_profile(profile_id, db)
+    target_org = await _get_org(target_org_id, db)
+
+    if target_org.deleted_at is not None:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail="Target organisation is archived",
+        )
+
+    from app.services import logto_service
+
+    # Update the DB profile to point at the correct personal org
+    profile.organisation_id = target_org.id
+    profile.logto_org_id = target_org.logto_org_id
+    profile.role = "owner"
+    profile.is_read_only = False
+    await db.flush()
+
+    removed_from: list[str] = []
+    if profile.logto_sub:
+        # Remove from every Logto org except the target one
+        current_orgs = await logto_service.get_user_logto_org_ids(profile.logto_sub)
+        for org_id in current_orgs:
+            if org_id != target_org.logto_org_id:
+                ok = await logto_service.remove_user_from_org(org_id, profile.logto_sub)
+                if ok:
+                    removed_from.append(org_id)
+
+        # Remove the landlord app-level role
+        await logto_service.remove_user_app_role(profile.logto_sub, "landlord")
+
+    log.info(
+        "admin.landlord_org_repaired",
+        profile_id=str(profile_id),
+        target_org=str(target_org_id),
+        removed_from_orgs=removed_from,
+    )
+    return {
+        "profile_id": str(profile_id),
+        "target_org_id": str(target_org_id),
+        "target_org_name": target_org.name,
+        "removed_from_logto_orgs": len(removed_from),
+        "message": (
+            f"Profile repaired. Removed from {len(removed_from)} old Logto org(s). "
+            "Ask the user to log out and back in for the change to take effect."
+        ),
+    }
 
 
 async def assign_landlord_to_agency(

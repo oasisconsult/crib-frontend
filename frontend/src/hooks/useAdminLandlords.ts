@@ -15,3 +15,10 @@ export function useAssignToAgency() {
       landlordsApi.adminAssignToAgency(profileId, body),
   });
 }
+
+export function useRepairLandlordOrg() {
+  return useMutation({
+    mutationFn: ({ profileId, targetOrgId }: { profileId: string; targetOrgId: string }) =>
+      landlordsApi.adminRepairOrg(profileId, targetOrgId),
+  });
+}
