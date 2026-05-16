@@ -22,3 +22,10 @@ export function useRepairLandlordOrg() {
       landlordsApi.adminRepairOrg(profileId, targetOrgId),
   });
 }
+
+export function useRemoveFromLogtoOrg() {
+  return useMutation({
+    mutationFn: ({ profileId, logtoOrgId }: { profileId: string; logtoOrgId: string }) =>
+      landlordsApi.adminRemoveFromLogtoOrg(profileId, logtoOrgId),
+  });
+}

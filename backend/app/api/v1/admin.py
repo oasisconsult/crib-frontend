@@ -299,6 +299,77 @@ async def assign_landlord_to_agency(
     )
 
 
+class RemoveFromLogtoOrgBody(BaseModel):
+    logto_org_id: str  # The Logto org ID shown in the Logto admin console
+
+
+class RemoveFromLogtoOrgResponse(BaseModel):
+    profile_id: str
+    logto_sub: str
+    logto_org_id: str
+    removed: bool
+    role_removed: bool
+    message: str
+
+
+@router.post(
+    "/landlords/{profile_id}/remove-from-logto-org",
+    response_model=RemoveFromLogtoOrgResponse,
+    dependencies=[Depends(require_superadmin())],
+)
+async def remove_landlord_from_logto_org(
+    profile_id: uuid.UUID,
+    body: RemoveFromLogtoOrgBody,
+    db: AsyncSession = Depends(get_db),
+) -> RemoveFromLogtoOrgResponse:
+    """
+    Directly remove a landlord from a specific Logto organisation.
+
+    Use this when a landlord's Logto org membership wasn't cleaned up during
+    migration. The Logto org ID is visible in the Logto admin console
+    (e.g. 'o90iciqf8717' shown next to the org name).
+
+    Also removes the 'landlord' app-level role so it no longer appears in
+    the JWT, which prevents the view-only banner from showing.
+
+    The user must log out and back in after this for the new JWT to take effect.
+    """
+    from app.services import logto_service as ls
+
+    result = await db.execute(select(Profile).where(Profile.id == profile_id))
+    profile = result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    removed = await ls.remove_user_from_org(body.logto_org_id, profile.logto_sub)
+    role_removed = await ls.remove_user_app_role(profile.logto_sub, "landlord")
+
+    # Also fix the DB profile if it currently points at the wrong org
+    org_result = await db.execute(
+        select(Organisation).where(Organisation.logto_org_id == body.logto_org_id)
+    )
+    wrong_org = org_result.scalar_one_or_none()
+    if wrong_org and profile.organisation_id == wrong_org.id:
+        # Profile is still pointing at the org we just removed them from.
+        # Don't update here — the caller should use repair-org to set the correct one.
+        pass
+
+    await db.commit()
+
+    return RemoveFromLogtoOrgResponse(
+        profile_id=str(profile_id),
+        logto_sub=profile.logto_sub,
+        logto_org_id=body.logto_org_id,
+        removed=removed,
+        role_removed=role_removed,
+        message=(
+            f"Removed from Logto org {body.logto_org_id} (removed={removed}), "
+            f"landlord role stripped (role_removed={role_removed}). "
+            "Ask the user to log out and back in."
+        ),
+    )
+
+
 class RepairOrgBody(BaseModel):
     target_org_id: uuid.UUID
 
@@ -322,19 +393,8 @@ async def repair_landlord_org(
     db: AsyncSession = Depends(get_db),
 ) -> RepairOrgResponse:
     """
-    Fix a landlord whose profile reverted to the wrong org after migration.
-
-    This happens when the old Logto org membership was not cleaned up, causing
-    _upsert_profile to re-sync the profile back to the old org on every login.
-
-    Steps performed:
-      - Points the profile at target_org (their personal org).
-      - Removes the user from every Logto org except target_org.
-      - Removes the 'landlord' app-level role from their Logto account.
-      - Sets role=owner, is_read_only=False in the DB profile.
-
-    The user must log out and back in after this action for the new JWT
-    (with the correct org context) to take effect.
+    Fix the DB profile so it points at the correct personal org, and clean up
+    all Logto org memberships except the target one.
     """
     result = await admin_service.repair_landlord_org(profile_id, body.target_org_id, db)
     await db.commit()

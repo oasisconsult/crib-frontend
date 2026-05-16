@@ -85,6 +85,15 @@ export interface AssignToAgencyResponse {
   message: string;
 }
 
+export interface RemoveFromLogtoOrgResponse {
+  profile_id: string;
+  logto_sub: string;
+  logto_org_id: string;
+  removed: boolean;
+  role_removed: boolean;
+  message: string;
+}
+
 export interface RepairOrgResponse {
   profile_id: string;
   target_org_id: string;
@@ -113,6 +122,8 @@ export const landlordsApi = {
     apiPost<AssignToAgencyResponse>(`/admin/landlords/${profileId}/assign-to-agency`, body),
   adminRepairOrg: (profileId: string, targetOrgId: string) =>
     apiPost<RepairOrgResponse>(`/admin/landlords/${profileId}/repair-org`, { target_org_id: targetOrgId }),
+  adminRemoveFromLogtoOrg: (profileId: string, logtoOrgId: string) =>
+    apiPost<RemoveFromLogtoOrgResponse>(`/admin/landlords/${profileId}/remove-from-logto-org`, { logto_org_id: logtoOrgId }),
 
   // Public — no session needed
   getOnboarding: (token: string) =>
