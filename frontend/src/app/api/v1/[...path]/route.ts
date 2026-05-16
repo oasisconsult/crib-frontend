@@ -111,15 +111,32 @@ async function proxy(
 
   let upstream: Response;
   try {
-    upstream = await fetch(upstreamUrl, {
-      method: request.method,
-      headers,
-      body: body && body.byteLength > 0 ? body : undefined,
-      redirect: "manual", // pass redirects through to the browser
-    });
+    // 10-second hard timeout so a slow/restarting backend fails fast instead
+    // of leaving the browser hanging for 30+ seconds.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
+    try {
+      upstream = await fetch(upstreamUrl, {
+        method: request.method,
+        headers,
+        body: body && body.byteLength > 0 ? body : undefined,
+        redirect: "manual", // pass redirects through to the browser
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
   } catch (err) {
-    console.error("[bff] Backend unreachable:", upstreamUrl, err);
-    return NextResponse.json({ error: "backend_unavailable" }, { status: 503 });
+    const isTimeout = err instanceof Error && err.name === "AbortError";
+    console.error(
+      isTimeout ? "[bff] Backend timeout:" : "[bff] Backend unreachable:",
+      upstreamUrl,
+      err,
+    );
+    return NextResponse.json(
+      { error: isTimeout ? "backend_timeout" : "backend_unavailable" },
+      { status: 503 },
+    );
   }
 
   // Forward response headers (strip hop-by-hop)
