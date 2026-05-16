@@ -815,7 +815,6 @@ export default function AdminPage() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
             <Card>
               <CardHeader>
