@@ -345,12 +345,12 @@ export function OnboardingWizard({
       )}
 
       {resubmitBanner && (
-        <div className="max-w-lg mx-auto">{resubmitBanner}</div>
+        <div className="max-w-3xl mx-auto">{resubmitBanner}</div>
       )}
 
       {/* ── PHASE 1: Profile collection ──────────────────────────────── */}
       {!isApproved && (
-        <div className="max-w-lg mx-auto space-y-6">
+        <div className="max-w-3xl mx-auto space-y-6">
           {profileStep === "profile" && (
             <Card>
               <CardHeader>
@@ -365,7 +365,8 @@ export function OnboardingWizard({
                   })}
                   className="space-y-4"
                 >
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Row 1: name */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="firstName">First Name *</Label>
                       <Input
@@ -388,91 +389,51 @@ export function OnboardingWizard({
                       />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="phone">Phone Number *</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+256 700 000000"
-                      error={!!form.formState.errors.phone}
-                      {...form.register("phone")}
-                    />
-                    {form.formState.errors.phone && (
-                      <p className="text-xs text-destructive">
-                        {form.formState.errors.phone.message}
+
+                  {/* Row 2: phone + whatsapp */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phone">Phone Number *</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="+256 700 000000"
+                        error={!!form.formState.errors.phone}
+                        {...form.register("phone")}
+                      />
+                      {form.formState.errors.phone && (
+                        <p className="text-xs text-destructive">
+                          {form.formState.errors.phone.message}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
+                      <Input
+                        id="whatsappNumber"
+                        type="tel"
+                        placeholder="+256 700 000000"
+                        {...form.register("whatsappNumber")}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Used on the tenancy agreement
                       </p>
-                    )}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="whatsappNumber">WhatsApp Number</Label>
-                    <Input
-                      id="whatsappNumber"
-                      type="tel"
-                      placeholder="+256 700 000000"
-                      {...form.register("whatsappNumber")}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Used as your contact number on the tenancy agreement
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nin">National ID Number (NIN)</Label>
-                    <Input
-                      id="nin"
-                      placeholder="e.g. CM12345678ABCDE"
-                      {...form.register("nin")}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Your NIN will appear on the tenancy agreement
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label>Mobile Money</Label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="mobileMoneyProvider"
-                          className="text-xs text-muted-foreground"
-                        >
-                          Provider
-                        </Label>
-                        <Select
-                          value={form.watch("mobileMoneyProvider") ?? ""}
-                          onValueChange={(v) =>
-                            form.setValue(
-                              "mobileMoneyProvider",
-                              v as "mtn" | "airtel" | "",
-                            )
-                          }
-                        >
-                          <SelectTrigger id="mobileMoneyProvider">
-                            <SelectValue placeholder="Select provider" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="mtn">
-                              MTN Mobile Money
-                            </SelectItem>
-                            <SelectItem value="airtel">Airtel Money</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label
-                          htmlFor="mobileMoneyNumber"
-                          className="text-xs text-muted-foreground"
-                        >
-                          Number
-                        </Label>
-                        <Input
-                          id="mobileMoneyNumber"
-                          type="tel"
-                          placeholder="+256 770 000000"
-                          {...form.register("mobileMoneyNumber")}
-                        />
-                      </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+
+                  {/* Row 3: NIN + DOB */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="nin">National ID Number (NIN)</Label>
+                      <Input
+                        id="nin"
+                        placeholder="e.g. CM12345678ABCDE"
+                        {...form.register("nin")}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Appears on the tenancy agreement
+                      </p>
+                    </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="dob">Date of Birth</Label>
                       <Input
@@ -481,6 +442,10 @@ export function OnboardingWizard({
                         {...form.register("dateOfBirth")}
                       />
                     </div>
+                  </div>
+
+                  {/* Row 4: nationality + mobile money provider */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="nationality">Nationality</Label>
                       <Input
@@ -489,7 +454,38 @@ export function OnboardingWizard({
                         {...form.register("nationality")}
                       />
                     </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="mobileMoneyProvider">Mobile Money Provider</Label>
+                      <Select
+                        value={form.watch("mobileMoneyProvider") ?? ""}
+                        onValueChange={(v) =>
+                          form.setValue("mobileMoneyProvider", v as "mtn" | "airtel" | "")
+                        }
+                      >
+                        <SelectTrigger id="mobileMoneyProvider">
+                          <SelectValue placeholder="Select provider" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mtn">MTN Mobile Money</SelectItem>
+                          <SelectItem value="airtel">Airtel Money</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+
+                  {/* Row 5: mobile money number (half width) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="mobileMoneyNumber">Mobile Money Number</Label>
+                      <Input
+                        id="mobileMoneyNumber"
+                        type="tel"
+                        placeholder="+256 770 000000"
+                        {...form.register("mobileMoneyNumber")}
+                      />
+                    </div>
+                  </div>
+
                   <Button type="submit" className="w-full">
                     Next: Documents →
                   </Button>
@@ -595,7 +591,7 @@ export function OnboardingWizard({
 
       {/* ── Pending approval gate ─────────────────────────────────────── */}
       {isApproved && !invite.leaseId && paymentStep !== "done" && (
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-3xl mx-auto">
           <Card className="text-center">
             <CardContent className="pt-8 pb-8 space-y-3">
               <Clock className="h-10 w-10 text-amber-500 mx-auto" />
@@ -624,9 +620,9 @@ export function OnboardingWizard({
             />
           )}
 
-          {/* All other payment steps — centred at max-w-2xl to match the stepper width */}
+          {/* All other payment steps — match stepper width */}
           {paymentStep !== "agreement_preview" && (
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-3xl mx-auto space-y-6">
               {paymentStep === "terms_acceptance" && (
                 <TermsAcceptanceStep
                   token={token}
