@@ -52,7 +52,7 @@ async def list_inspections(
     db: AsyncSession = Depends(get_db),
 ):
     state_list = [s.strip() for s in states.split(",")] if states else ([state] if state else None)
-    landlord_id = current_user.id if current_user.has_role("landlord") else None
+    landlord_id = current_user.id if current_user.profile.is_read_only else None
     return await inspection_service.list_inspections(
         org_id=current_user.org_id,
         db=db,
@@ -136,7 +136,7 @@ async def list_maintenance(
     db: AsyncSession = Depends(get_db),
 ):
     state_list = [s.strip() for s in states.split(",")] if states else ([state] if state else None)
-    landlord_id = current_user.id if current_user.has_role("landlord") else None
+    landlord_id = current_user.id if current_user.profile.is_read_only else None
     return await inspection_service.list_maintenance(
         org_id=current_user.org_id,
         db=db,

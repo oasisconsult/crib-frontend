@@ -63,7 +63,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/landlords",
     label: "Landlords",
     icon: KeyRound,
-    roles: ["owner", "manager", "superadmin"],
+    roles: ["manager", "superadmin"],
   },
   {
     href: "/leases",

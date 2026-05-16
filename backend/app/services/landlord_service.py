@@ -242,7 +242,10 @@ async def complete_onboarding(
             logto_org_id=None,  # no existing org to join
         )
 
-        # 2. Create personal Logto org and add user as owner
+        # 2. Create personal Logto org and add user as owner.
+        # Also remove the 'landlord' app role that create_landlord_user just assigned —
+        # independent landlords must not have that role or has_role/is_read_only checks
+        # will treat them as agency-managed and filter their data by LandlordPropertyAccess.
         import re as _re
         personal_logto_org_id: str | None = None
         if logto_user_id:
@@ -251,6 +254,7 @@ async def complete_onboarding(
                 first_name=body.first_name,
                 last_name=body.last_name,
             )
+            await logto_service.remove_user_app_role(logto_user_id, "landlord")
 
         # 3. Create personal Organisation DB row
         base_name = f"{body.first_name} {body.last_name}'s Properties"

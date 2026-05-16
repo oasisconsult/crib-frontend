@@ -33,7 +33,7 @@ async def dashboard_stats(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = _require_org(current_user)
-    landlord_id = current_user.id if current_user.has_role("landlord") else None
+    landlord_id = current_user.id if current_user.profile.is_read_only else None
     return await analytics_service.get_dashboard_stats(org_id, db, landlord_profile_id=landlord_id)
 
 

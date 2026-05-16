@@ -65,7 +65,7 @@ async def list_properties(
 ):
     if current_user.org_id is None:
         raise HTTPException(status_code=403, detail="No organisation context")
-    landlord_id = current_user.id if current_user.has_role("landlord") else None
+    landlord_id = current_user.id if current_user.profile.is_read_only else None
     return await svc.list_properties(
         current_user.org_id, db, page, page_size, status, type, search,
         landlord_profile_id=landlord_id,
@@ -89,7 +89,7 @@ async def get_property(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    landlord_id = current_user.id if current_user.has_role("landlord") else None
+    landlord_id = current_user.id if current_user.profile.is_read_only else None
     prop = await svc.get_property(property_id, current_user.org_id, db, landlord_profile_id=landlord_id)
     return await svc._property_out(prop, db)
 
