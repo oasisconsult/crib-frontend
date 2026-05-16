@@ -344,6 +344,7 @@ async def complete_onboarding(
     if profile is None:
         profile = Profile(
             logto_sub=logto_user_id or f"pending_{invite.id}",
+            logto_org_id=logto_org_id,
             organisation_id=invite.organisation_id,
             role="landlord",
             display_name=f"{body.first_name} {body.last_name}",
@@ -358,6 +359,7 @@ async def complete_onboarding(
         profile.role = "landlord"
         profile.is_read_only = True
         profile.organisation_id = invite.organisation_id
+        profile.logto_org_id = logto_org_id
         if logto_user_id:
             profile.logto_sub = logto_user_id
         if body.phone:
