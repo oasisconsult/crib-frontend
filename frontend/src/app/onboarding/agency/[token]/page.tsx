@@ -152,7 +152,7 @@ export default function AgencyOnboardingPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-8 sm:px-6">
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-3xl mx-auto">
         {/* Logo */}
         <div className="mb-10">
           <Image
@@ -294,7 +294,7 @@ export default function AgencyOnboardingPage({ params }: Props) {
                       Only a superadmin can change this after onboarding
                     </p>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="a-phone">Phone</Label>
                       <Input
@@ -326,7 +326,7 @@ export default function AgencyOnboardingPage({ params }: Props) {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="a-country">Country</Label>
                       <Input
@@ -404,7 +404,7 @@ export default function AgencyOnboardingPage({ params }: Props) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="m-first">First name *</Label>
                       <Input

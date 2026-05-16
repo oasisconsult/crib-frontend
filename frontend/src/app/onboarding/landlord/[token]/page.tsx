@@ -71,7 +71,7 @@ export default function LandlordOnboardingPage({ params }: Props) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-8 sm:px-6">
-      <div className="max-w-lg mx-auto">
+      <div className="max-w-3xl mx-auto">
         {/* Logo */}
         <div className="mb-10">
           <Image
@@ -264,7 +264,7 @@ export default function LandlordOnboardingPage({ params }: Props) {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label htmlFor="firstName">First name *</Label>
                       <Input
@@ -288,24 +288,26 @@ export default function LandlordOnboardingPage({ params }: Props) {
                       />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="email">Email address</Label>
-                    <Input id="email" value={data.email} disabled />
-                    <p className="text-xs text-muted-foreground">
-                      Your login email — this cannot be changed here
-                    </p>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="phone">Phone number (optional)</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      value={form.phone}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, phone: e.target.value }))
-                      }
-                      placeholder="+256 700 000000"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email">Email address</Label>
+                      <Input id="email" value={data.email} disabled />
+                      <p className="text-xs text-muted-foreground">
+                        Your login email — cannot be changed here
+                      </p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="phone">Phone number (optional)</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={form.phone}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, phone: e.target.value }))
+                        }
+                        placeholder="+256 700 000000"
+                      />
+                    </div>
                   </div>
 
                   <div className="flex justify-between pt-2">
