@@ -455,12 +455,12 @@ function ResendInviteSection({ tenant }: { tenant: Tenant }) {
         <CardTitle className="text-base flex items-center gap-2">
           <RefreshCw className="h-4 w-4" />
           {tenant.onboardingState === "rejected"
-            ? "Re-invite Tenant"
+            ? "Awaiting Resubmission"
             : "Resend Invite"}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           {tenant.onboardingState === "rejected"
-            ? "Generate a new link so the tenant can resubmit their application."
+            ? "The tenant's link has been extended 7 days so they can resubmit on the same link. Only generate a new link if they can't find their original email."
             : tenant.onboardingState === "started"
               ? "The tenant started but hasn't finished. Send a fresh link — their progress is saved."
               : "The invite link may have expired. Generate a new 72-hour link."}

@@ -460,9 +460,16 @@ async def submit_onboarding(
             )
             db.add(doc)
 
-    # Advance state machine on fresh submissions; re-submissions keep current state
-    _resubmit_states = {OnboardingState.submitted, OnboardingState.approved, OnboardingState.rejected}
-    if tenant.onboarding_state not in _resubmit_states:
+    # Advance state machine.
+    # - Fresh submission (invited/started): invited→started→submitted
+    # - Resubmission after rejection: rejected→submitted (landlord can re-review)
+    # - Resubmission when already submitted/approved: keep current state
+    _keep_state = {OnboardingState.submitted, OnboardingState.approved}
+    if tenant.onboarding_state == OnboardingState.rejected:
+        tenant.onboarding_state = onboarding_sm.transition_or_422(
+            tenant.onboarding_state, "RESUBMITTED"
+        )
+    elif tenant.onboarding_state not in _keep_state:
         tenant.onboarding_state = onboarding_sm.transition_or_422(
             tenant.onboarding_state, "ONBOARDING_COMPLETED"
         )
@@ -579,11 +586,11 @@ async def resend_invite(
     )
     db.add(new_invite)
 
-    # Update the tenant's onboarding token and reset rejected state
+    # Update the tenant's onboarding token.
+    # For rejected tenants: keep the rejected state and rejection reason so the
+    # tenant sees the feedback when they open the new link. The resubmission
+    # itself (submit_onboarding) will move the state back to submitted.
     tenant.onboarding_token = token
-    if tenant.onboarding_state == OnboardingState.rejected:
-        tenant.onboarding_state = OnboardingState.invited
-        tenant.rejection_reason = None
 
     await db.flush()
     await db.refresh(new_invite)
@@ -827,6 +834,21 @@ async def reject_tenant(
         tenant.onboarding_state, "TENANT_REJECTED"
     )
     tenant.rejection_reason = reason
+
+    # Extend the most recent invite's expiry by 7 days so the tenant can
+    # resubmit on their existing link without the landlord needing to resend.
+    now = datetime.now(timezone.utc)
+    invite_result = await db.execute(
+        select(TenantInvite)
+        .where(TenantInvite.tenant_id == tenant_id)
+        .order_by(TenantInvite.sent_at.desc())
+        .limit(1)
+    )
+    latest_invite = invite_result.scalar_one_or_none()
+    if latest_invite:
+        latest_invite.expires_at = now + timedelta(days=7)
+        latest_invite.status = InviteStatus.pending  # reactivate so tenant can use link
+
     await db.flush()
     await db.refresh(tenant, attribute_names=["onboarding_state", "rejection_reason", "updated_at"])
     return _tenant_out(tenant)

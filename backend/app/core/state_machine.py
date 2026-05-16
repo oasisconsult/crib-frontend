@@ -61,7 +61,10 @@ ONBOARDING_TRANSITIONS: dict[OnboardingState, dict[str, OnboardingState]] = {
     },
     OnboardingState.approved:  {"TENANT_ACTIVATED": OnboardingState.activated},
     OnboardingState.activated: {},
-    OnboardingState.rejected:  {"INVITE_SENT": OnboardingState.invited},
+    OnboardingState.rejected:  {
+        "INVITE_SENT":  OnboardingState.invited,    # landlord manually resends (fresh start)
+        "RESUBMITTED":  OnboardingState.submitted,  # tenant adds new docs and resubmits
+    },
 }
 
 onboarding_sm = StateMachine(ONBOARDING_TRANSITIONS)

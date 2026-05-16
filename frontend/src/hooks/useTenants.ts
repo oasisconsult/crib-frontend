@@ -85,6 +85,7 @@ export function useRejectOnboarding() {
     onSuccess: (_, { tenantId }) => {
       qc.invalidateQueries({ queryKey: queryKeys.tenants.detail(tenantId) });
       qc.invalidateQueries({ queryKey: queryKeys.tenants.all() });
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.documents(tenantId) });
       toast.success("Application rejected");
     },
     onError: () => toast.error("Failed to reject application"),
