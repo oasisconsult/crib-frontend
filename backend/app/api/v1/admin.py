@@ -15,15 +15,109 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_superadmin
 from app.core.database import get_db
+from app.models.organisation import Organisation
+from app.models.profile import Profile
 from app.services import admin_service
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+# ── Search helpers ─────────────────────────────────────────────────────────────
+
+class ProfileSearchResult(BaseModel):
+    id: str
+    display_name: str | None
+    email: str | None
+    role: str
+    organisation_id: str | None
+
+
+class OrgSearchResult(BaseModel):
+    id: str
+    name: str
+    slug: str
+    is_archived: bool
+
+
+@router.get(
+    "/search/profiles",
+    response_model=list[ProfileSearchResult],
+    dependencies=[Depends(require_superadmin())],
+)
+async def search_profiles(
+    q: str = Query(..., min_length=1, description="Name or email fragment"),
+    role: str | None = Query(None, description="Filter by role (e.g. 'landlord')"),
+    db: AsyncSession = Depends(get_db),
+) -> list[ProfileSearchResult]:
+    """
+    Full-text search over profiles by display_name or email.
+    Optionally filter by role. Excludes anonymised profiles.
+    Returns up to 20 results.
+    """
+    term = f"%{q.lower()}%"
+    stmt = (
+        select(Profile)
+        .where(
+            Profile.anonymised_at.is_(None),
+            or_(
+                Profile.display_name.ilike(term),
+                Profile.email.ilike(term),
+            ),
+        )
+        .limit(20)
+    )
+    if role:
+        stmt = stmt.where(Profile.role == role)
+
+    rows = (await db.execute(stmt)).scalars().all()
+    return [
+        ProfileSearchResult(
+            id=str(r.id),
+            display_name=r.display_name,
+            email=r.email,
+            role=r.role,
+            organisation_id=str(r.organisation_id) if r.organisation_id else None,
+        )
+        for r in rows
+    ]
+
+
+@router.get(
+    "/search/organisations",
+    response_model=list[OrgSearchResult],
+    dependencies=[Depends(require_superadmin())],
+)
+async def search_organisations(
+    q: str = Query(..., min_length=1, description="Organisation name fragment"),
+    active_only: bool = Query(False, description="When true, exclude archived orgs"),
+    db: AsyncSession = Depends(get_db),
+) -> list[OrgSearchResult]:
+    """Search organisations by name. Returns up to 20 results."""
+    stmt = (
+        select(Organisation)
+        .where(Organisation.name.ilike(f"%{q}%"))
+        .limit(20)
+    )
+    if active_only:
+        stmt = stmt.where(Organisation.deleted_at.is_(None))
+
+    rows = (await db.execute(stmt)).scalars().all()
+    return [
+        OrgSearchResult(
+            id=str(r.id),
+            name=r.name,
+            slug=r.slug,
+            is_archived=r.deleted_at is not None,
+        )
+        for r in rows
+    ]
 
 
 # ── Organisation lifecycle ────────────────────────────────────────────────────

@@ -35,6 +35,8 @@ import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { RbacPanel } from "@/components/admin/RbacPanel";
 import { useAgencyInvites, useCreateAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
 import { useMigrateToPersonalOrg, useAssignToAgency } from "@/hooks/useAdminLandlords";
+import { AdminSearchCombobox, type ComboboxOption } from "@/components/admin/AdminSearchCombobox";
+import { landlordsApi } from "@/services/api/landlords";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 
@@ -100,21 +102,41 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
 
   // ── Landlord admin actions ──────────────────────────────────────────────
-  const [migrateProfileId, setMigrateProfileId] = useState("");
-  const [assignProfileId, setAssignProfileId] = useState("");
-  const [assignAgencyOrgId, setAssignAgencyOrgId] = useState("");
+  const [migrateLandlord, setMigrateLandlord] = useState<ComboboxOption | null>(null);
+  const [assignLandlord, setAssignLandlord] = useState<ComboboxOption | null>(null);
+  const [assignAgency, setAssignAgency] = useState<ComboboxOption | null>(null);
   const { mutate: migrateToPersonalOrg, isPending: migrating } = useMigrateToPersonalOrg();
   const { mutate: assignToAgency, isPending: assigning } = useAssignToAgency();
 
+  async function searchLandlords(q: string): Promise<ComboboxOption[]> {
+    const results = await landlordsApi.searchProfiles(q, "landlord");
+    return results.map((r) => ({
+      id: r.id,
+      label: r.displayName ?? r.email ?? r.id,
+      sublabel: r.email ?? undefined,
+      badge: r.role,
+      badgeClassName: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800",
+    }));
+  }
+
+  async function searchAgencies(q: string): Promise<ComboboxOption[]> {
+    const results = await landlordsApi.searchOrganisations(q, true);
+    return results.map((r) => ({
+      id: r.id,
+      label: r.name,
+      sublabel: r.slug,
+    }));
+  }
+
   function handleMigrateToPersonalOrg() {
-    if (!migrateProfileId.trim()) {
-      toast.error("Missing field", "Enter the landlord profile ID");
+    if (!migrateLandlord) {
+      toast.error("Missing field", "Search for and select a landlord first");
       return;
     }
-    migrateToPersonalOrg(migrateProfileId.trim(), {
+    migrateToPersonalOrg(migrateLandlord.id, {
       onSuccess: (res) => {
         toast.success("Migrated", res.message);
-        setMigrateProfileId("");
+        setMigrateLandlord(null);
       },
       onError: (err: any) =>
         toast.error("Migration failed", err?.response?.data?.detail ?? "Please try again"),
@@ -122,17 +144,17 @@ export default function AdminPage() {
   }
 
   function handleAssignToAgency() {
-    if (!assignProfileId.trim() || !assignAgencyOrgId.trim()) {
-      toast.error("Missing fields", "Enter both the landlord profile ID and agency org ID");
+    if (!assignLandlord || !assignAgency) {
+      toast.error("Missing fields", "Select both a landlord and an agency");
       return;
     }
     assignToAgency(
-      { profileId: assignProfileId.trim(), body: { agency_org_id: assignAgencyOrgId.trim() } },
+      { profileId: assignLandlord.id, body: { agency_org_id: assignAgency.id } },
       {
         onSuccess: (res) => {
           toast.success("Assigned", res.message);
-          setAssignProfileId("");
-          setAssignAgencyOrgId("");
+          setAssignLandlord(null);
+          setAssignAgency(null);
         },
         onError: (err: any) =>
           toast.error("Assignment failed", err?.response?.data?.detail ?? "Please try again"),
@@ -682,26 +704,26 @@ export default function AdminPage() {
                   GeoBox data.
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="migrate-profile-id">Landlord Profile ID</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="migrate-profile-id"
-                      value={migrateProfileId}
-                      onChange={(e) => setMigrateProfileId(e.target.value)}
-                      placeholder="UUID of the landlord profile"
-                      className="flex-1 font-mono text-xs"
-                    />
-                    <Button
-                      onClick={handleMigrateToPersonalOrg}
-                      loading={migrating}
-                      disabled={!migrateProfileId.trim()}
-                    >
-                      Migrate
-                    </Button>
-                  </div>
+                  <Label>Landlord</Label>
+                  <AdminSearchCombobox
+                    placeholder="Search by name or email…"
+                    onSearch={searchLandlords}
+                    onSelect={setMigrateLandlord}
+                    selected={migrateLandlord}
+                    disabled={migrating}
+                  />
                   <p className="text-xs text-muted-foreground">
-                    Find the profile ID in the database or from the landlord&apos;s invite record.
+                    Type at least 2 characters to search landlord profiles.
                   </p>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleMigrateToPersonalOrg}
+                    loading={migrating}
+                    disabled={!migrateLandlord}
+                  >
+                    Migrate to personal org
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -725,38 +747,38 @@ export default function AdminPage() {
                 </div>
                 <div className="space-y-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="assign-profile-id">Landlord Profile ID</Label>
-                    <Input
-                      id="assign-profile-id"
-                      value={assignProfileId}
-                      onChange={(e) => setAssignProfileId(e.target.value)}
-                      placeholder="UUID of the landlord profile"
-                      className="font-mono text-xs"
+                    <Label>Landlord</Label>
+                    <AdminSearchCombobox
+                      placeholder="Search landlord by name or email…"
+                      onSearch={searchLandlords}
+                      onSelect={setAssignLandlord}
+                      selected={assignLandlord}
+                      disabled={assigning}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="assign-agency-org-id">Target Agency Org ID</Label>
-                    <Input
-                      id="assign-agency-org-id"
-                      value={assignAgencyOrgId}
-                      onChange={(e) => setAssignAgencyOrgId(e.target.value)}
-                      placeholder="UUID of the agency organisation"
-                      className="font-mono text-xs"
+                    <Label>Target Agency</Label>
+                    <AdminSearchCombobox
+                      placeholder="Search agency by name…"
+                      onSearch={searchAgencies}
+                      onSelect={setAssignAgency}
+                      selected={assignAgency}
+                      disabled={assigning}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Only active (non-archived) agencies are shown.
+                    </p>
                   </div>
                   <div className="flex justify-end">
                     <Button
                       onClick={handleAssignToAgency}
                       loading={assigning}
-                      disabled={!assignProfileId.trim() || !assignAgencyOrgId.trim()}
+                      disabled={!assignLandlord || !assignAgency}
                       variant="outline"
                     >
                       Assign to agency
                     </Button>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Leave property IDs empty to transfer all properties from the landlord&apos;s personal org.
-                  </p>
                 </div>
               </CardContent>
             </Card>
