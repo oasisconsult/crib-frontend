@@ -35,6 +35,8 @@ services:
       # AuthInitializer fetches a real Bearer token from /api/auth/token.
       # To use MSW mock data instead, comment this line out (or set to "true").
       NEXT_PUBLIC_MOCK_API: "false"
+      # Dev tooling — MailHog inbox. Set to empty string in production.
+      NEXT_PUBLIC_MAILHOG_URL: "http://localhost:8025"
     # depends_on:
     #   - backend
     networks:
@@ -66,11 +68,20 @@ services:
       # JWKS are fetched server-to-server so use the Docker-internal hostname.
       LOGTO_JWKS_URI_OVERRIDE: "http://logto:3001/oidc/jwks"
       LOGTO_ADMIN_ENDPOINT: "http://logto:3002/"
+      # Email — route all mail through MailHog in local dev
+      EMAIL_PROVIDER: "smtp"
+      SMTP_HOST: "mailhog"
+      SMTP_PORT: "1025"
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+      EMAIL_FROM: "noreply@crib.local"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     networks:
       - crib-local
 
@@ -176,11 +187,25 @@ services:
       LOGTO_ENDPOINT: "http://localhost:3001/"
       LOGTO_JWKS_URI_OVERRIDE: "http://logto:3001/oidc/jwks"
       LOGTO_ADMIN_ENDPOINT: "http://logto:3002/"
+      EMAIL_PROVIDER: "smtp"
+      SMTP_HOST: "mailhog"
+      SMTP_PORT: "1025"
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+      EMAIL_FROM: "noreply@crib.local"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - crib-local
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - "1025:1025"   # SMTP — backend sends to this
+      - "8025:8025"   # Web UI — open http://localhost:8025 to read emails
     networks:
       - crib-local
 

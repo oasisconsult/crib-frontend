@@ -11,6 +11,7 @@ import {
   Moon,
   Monitor,
   MessageCircle,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -85,6 +86,20 @@ export function Header() {
       </button>
 
       <div className="ml-auto flex items-center gap-1.5">
+        {/* ── MailHog dev inbox (only when NEXT_PUBLIC_MAILHOG_URL is set) ── */}
+        {process.env.NEXT_PUBLIC_MAILHOG_URL && (
+          <a
+            href={process.env.NEXT_PUBLIC_MAILHOG_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open MailHog dev inbox"
+            className="hidden sm:flex items-center gap-1.5 h-8 px-2.5 rounded-[6px] text-xs font-medium text-amber-700 bg-amber-100 border border-amber-300 hover:bg-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700 dark:hover:bg-amber-900/60 transition-colors"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            MailHog
+          </a>
+        )}
+
         {/* ── 3-way theme toggle ──────────────────────────────────── */}
         <div
           className="hidden sm:flex items-center gap-0.5 rounded-[10px] bg-header border border-border p-0.5"
