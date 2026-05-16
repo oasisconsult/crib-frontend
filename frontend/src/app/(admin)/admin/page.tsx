@@ -108,6 +108,17 @@ export default function AdminPage() {
   const { mutate: migrateToPersonalOrg, isPending: migrating } = useMigrateToPersonalOrg();
   const { mutate: assignToAgency, isPending: assigning } = useAssignToAgency();
 
+  async function searchAllProfiles(q: string): Promise<ComboboxOption[]> {
+    const results = await landlordsApi.searchProfiles(q);
+    return results.map((r) => ({
+      id: r.id,
+      label: r.displayName ?? r.email ?? r.id,
+      sublabel: r.email ?? undefined,
+      badge: r.role,
+      badgeClassName: "bg-muted text-muted-foreground border-border",
+    }));
+  }
+
   async function searchLandlords(q: string): Promise<ComboboxOption[]> {
     const results = await landlordsApi.searchProfiles(q, "landlord");
     return results.map((r) => ({
@@ -707,13 +718,13 @@ export default function AdminPage() {
                   <Label>Landlord</Label>
                   <AdminSearchCombobox
                     placeholder="Search by name or email…"
-                    onSearch={searchLandlords}
+                    onSearch={searchAllProfiles}
                     onSelect={setMigrateLandlord}
                     selected={migrateLandlord}
                     disabled={migrating}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Type at least 2 characters to search landlord profiles.
+                    Searches all profiles by name or email regardless of role.
                   </p>
                 </div>
                 <div className="flex justify-end">

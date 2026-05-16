@@ -132,13 +132,14 @@ export function AdminSearchCombobox({
       </div>
 
       {open && query.length >= minChars && (
-        <div className="absolute z-50 mt-1 w-full rounded-[6px] border border-border bg-popover shadow-md overflow-hidden">
+        <div
+          className="absolute z-[200] mt-1 w-full rounded-[6px] border border-border shadow-lg overflow-hidden"
+          style={{ backgroundColor: "hsl(var(--card))", color: "hsl(var(--card-foreground))" }}
+        >
           {options.length === 0 && !loading ? (
-            <p className="px-3 py-2.5 text-sm text-muted-foreground">
-              {query.length < minChars ? "Type to search…" : "No results found"}
-            </p>
+            <p className="px-3 py-2.5 text-sm text-muted-foreground">No results found</p>
           ) : (
-            <ul className="max-h-56 overflow-y-auto divide-y">
+            <ul className="max-h-56 overflow-y-auto divide-y divide-border">
               {options.map((opt) => (
                 <li key={opt.id}>
                   <button
