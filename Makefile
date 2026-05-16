@@ -11,7 +11,7 @@
 #   make logs            # Follow all service logs
 #   make logs-backend    # Follow backend logs only
 
-.PHONY: dev-up dev-build dev-build-d stop logs seed-logto logs-backend logs-frontend shell-backend shell-db
+.PHONY: dev-up dev-build dev-build-d stop logs seed-logto logs-backend logs-frontend shell-backend shell-db pull
 
 ## Start all services in background (no rebuild)
 dev-up:
@@ -53,3 +53,9 @@ shell-backend:
 ## Open a psql shell inside the postgres database
 shell-db:
 	docker compose -f docker-compose.local.yml exec postgres psql -U $${POSTGRES_USER:-crib} -d $${POSTGRES_DB:-crib_dev}
+
+## Pull latest from origin, discarding any locally-copied files that block the merge.
+## Use this instead of plain 'git pull' when working in WSL after Windows pushes.
+pull:
+	git checkout -- . 2>/dev/null || true
+	git pull origin main
