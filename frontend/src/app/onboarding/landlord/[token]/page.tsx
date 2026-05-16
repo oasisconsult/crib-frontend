@@ -128,35 +128,46 @@ export default function LandlordOnboardingPage({ params }: Props) {
         {!isLoading && !error && data && (
           <>
             {/* Step indicator */}
-            {step !== "success" && (
-              <div className="flex items-center mb-8">
-                {(["welcome", "details", "review"] as const).map((s, i) => {
-                  const steps = ["welcome", "details", "review"];
-                  const current = steps.indexOf(step);
-                  const isDone = current > i;
-                  const isActive = step === s;
-                  return (
-                    <div key={s} className="flex items-center flex-1 last:flex-none">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
-                          isActive ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
-                            : isDone ? "bg-emerald-500 text-white"
-                            : "bg-muted text-muted-foreground"
-                        }`}>
-                          {isDone ? "✓" : i + 1}
+            {step !== "success" && (() => {
+              const allSteps = ["welcome", "details", "review"] as const;
+              const ci = allSteps.indexOf(step as typeof allSteps[number]);
+              return (
+                <div className="flex items-start mb-8">
+                  {allSteps.map((s, i) => {
+                    const isDone = i < ci;
+                    const isActive = step === s;
+                    const label = s === "welcome" ? "Welcome" : s === "details" ? "Your Details" : "Review";
+                    return (
+                      <div key={s} className="flex items-start flex-1 last:flex-none">
+                        {/* Dot + label */}
+                        <div className="flex flex-col items-center shrink-0">
+                          <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
+                            isActive
+                              ? "bg-primary text-primary-foreground shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]"
+                              : isDone
+                                ? "bg-emerald-500 text-white"
+                                : "bg-muted text-muted-foreground"
+                          }`}>
+                            {isDone ? "✓" : i + 1}
+                          </div>
+                          <span className={`text-[11px] mt-1 font-medium whitespace-nowrap ${
+                            isActive ? "text-foreground" : "text-muted-foreground"
+                          }`}>
+                            {label}
+                          </span>
                         </div>
-                        <span className={`text-[11px] font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-                          {s === "welcome" ? "Welcome" : s === "details" ? "Your Details" : "Review"}
-                        </span>
+                        {/* Connector bar — between steps only */}
+                        {i < allSteps.length - 1 && (
+                          <div className={`flex-1 h-0.5 mt-[14px] mx-2 rounded-full transition-colors ${
+                            isDone ? "bg-emerald-500" : "bg-border"
+                          }`} />
+                        )}
                       </div>
-                      {i < 2 && (
-                        <div className={`flex-1 h-0.5 mx-2 mb-4 rounded-full transition-colors ${isDone ? "bg-emerald-500" : "bg-border"}`} />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             {/* ── Welcome ── */}
             {step === "welcome" && (
