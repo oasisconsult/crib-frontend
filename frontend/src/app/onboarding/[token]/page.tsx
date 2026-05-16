@@ -27,16 +27,17 @@ export default function OnboardingPage({ params }: Props) {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-6 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-2.5 mb-8">
+        <div className="flex items-center justify-between mb-8">
           <Image
             src="/crib_logo_green.png"
             alt="Crib"
             width={120}
             height={34}
             priority
-            className="w-[100px] sm:w-[110px] md:w-[120px] h-auto"
-              style={{ height: 'auto' }}
+            className="w-[90px] sm:w-[105px] md:w-[120px] h-auto"
+            style={{ height: "auto" }}
           />
+          <span className="text-xs text-muted-foreground">Tenant Onboarding</span>
         </div>
 
         {isLoading ? (

@@ -4,11 +4,11 @@ import { use, useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Image from "next/image";
 import {
+  Building2,
   Clock,
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
-  Loader2,
   Mail,
   User,
 } from "lucide-react";
@@ -50,32 +50,30 @@ function StepIndicator({ current }: { current: Step }) {
   const visible: Step[] = ["welcome", "agency", "manager", "review"];
   const ci = visible.indexOf(current);
   return (
-    <div className="flex items-center gap-2 mb-8">
-      {visible.map((s, i) => (
-        <div key={s} className="flex items-center gap-2">
-          <div
-            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-              current === s
-                ? "bg-primary text-primary-foreground"
-                : i < ci
-                  ? "bg-emerald-600 text-white"
+    <div className="flex items-center mb-8">
+      {visible.map((s, i) => {
+        const isDone = i < ci;
+        const isActive = current === s;
+        return (
+          <div key={s} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center gap-1">
+              <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                isActive ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                  : isDone ? "bg-emerald-500 text-white"
                   : "bg-muted text-muted-foreground"
-            }`}
-          >
-            {i < ci ? "✓" : i + 1}
+              }`}>
+                {isDone ? "✓" : i + 1}
+              </div>
+              <span className={`text-[11px] font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                {labels[s]}
+              </span>
+            </div>
+            {i < visible.length - 1 && (
+              <div className={`flex-1 h-0.5 mx-2 mb-4 rounded-full transition-colors ${isDone ? "bg-emerald-500" : "bg-border"}`} />
+            )}
           </div>
-          <span
-            className={`text-xs hidden sm:block ${
-              current === s
-                ? "text-foreground font-medium"
-                : "text-muted-foreground"
-            }`}
-          >
-            {labels[s]}
-          </span>
-          {i < visible.length - 1 && <div className="h-px w-5 bg-border" />}
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -208,46 +206,49 @@ export default function AgencyOnboardingPage({ params }: Props) {
 
             {/* ── Welcome ── */}
             {step === "welcome" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Welcome to Crib</CardTitle>
-                  <CardDescription>
-                    You've been invited to set up{" "}
-                    <strong>{data.agencyName}</strong> on the Crib property
-                    management platform.
-                  </CardDescription>
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Building2 className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl leading-tight">Welcome to Crib</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Set up <span className="font-medium text-foreground">{data.agencyName}</span> in a few steps.
+                      </p>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <div className="rounded-[6px] bg-muted/60 border border-border p-4 space-y-3 text-sm">
-                    <p className="font-medium">What happens next:</p>
-                    <ul className="space-y-1.5 text-muted-foreground">
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 text-emerald-600 shrink-0" />
-                        Confirm your agency details and manager profile
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 text-emerald-600 shrink-0" />
-                        Your organisation will be created on Crib
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 text-emerald-600 shrink-0" />
-                        You'll receive login credentials by email
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 text-emerald-600 shrink-0" />
-                        Log in and start managing your properties
-                      </li>
+                  {/* What happens next */}
+                  <div className="space-y-2.5">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">What to expect</p>
+                    <ul className="space-y-2">
+                      {[
+                        "Confirm your agency name and contact details",
+                        "Set up your personal manager profile",
+                        "Review everything before submitting",
+                        "Receive your login credentials by email",
+                      ].map((item, i) => (
+                        <li key={i} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold mt-0.5">
+                            {i + 1}
+                          </span>
+                          {item}
+                        </li>
+                      ))}
                     </ul>
                   </div>
 
-                  <div className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      Invited by:
-                    </span>{" "}
-                    Crib Platform
+                  <div className="rounded-[8px] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3 flex gap-3">
+                    <Mail className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                      Takes about 2 minutes. You'll receive an email with login credentials when done.
+                    </p>
                   </div>
 
-                  <Button className="w-full" onClick={() => setStep("agency")}>
+                  <Button className="w-full h-11" onClick={() => setStep("agency")}>
                     Set up my agency
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -578,18 +579,17 @@ export default function AgencyOnboardingPage({ params }: Props) {
                     {managerForm.managerFirstName}!
                   </p>
                 </div>
-                <div className="rounded-[6px] border border-primary/20 bg-primary/5 p-5 text-left space-y-2">
-                  <div className="flex items-center gap-2 text-primary font-medium text-sm">
+                <div className="rounded-[8px] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-4 text-left space-y-1.5">
+                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-medium text-sm">
                     <Mail className="h-4 w-4" />
                     Check your inbox
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-emerald-800/80 dark:text-emerald-300/80">
                     We've sent your login credentials to{" "}
-                    <span className="font-medium text-foreground">
+                    <span className="font-semibold text-emerald-900 dark:text-emerald-200">
                       {data.managerEmail}
                     </span>
-                    . Use those details to sign in and start managing your
-                    properties.
+                    . Use those details to sign in and start managing your properties.
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
