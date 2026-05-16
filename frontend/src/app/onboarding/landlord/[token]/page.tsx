@@ -129,90 +129,108 @@ export default function LandlordOnboardingPage({ params }: Props) {
           <>
             {/* Step indicator */}
             {step !== "success" && (
-              <div className="flex items-center gap-2 mb-8">
-                {(["welcome", "details", "review"] as Step[]).map((s, i) => (
-                  <div key={s} className="flex items-center gap-2">
-                    <div
-                      className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                        step === s
-                          ? "bg-primary text-primary-foreground"
-                          : ["details", "review"].indexOf(step) > i
-                            ? "bg-emerald-600 text-white"
+              <div className="flex items-center mb-8">
+                {(["welcome", "details", "review"] as const).map((s, i) => {
+                  const steps = ["welcome", "details", "review"];
+                  const current = steps.indexOf(step);
+                  const isDone = current > i;
+                  const isActive = step === s;
+                  return (
+                    <div key={s} className="flex items-center flex-1 last:flex-none">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                          isActive ? "bg-primary text-primary-foreground ring-4 ring-primary/20"
+                            : isDone ? "bg-emerald-500 text-white"
                             : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {["details", "review"].indexOf(step) > i ? "✓" : i + 1}
+                        }`}>
+                          {isDone ? "✓" : i + 1}
+                        </div>
+                        <span className={`text-[11px] font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
+                          {s === "welcome" ? "Welcome" : s === "details" ? "Your Details" : "Review"}
+                        </span>
+                      </div>
+                      {i < 2 && (
+                        <div className={`flex-1 h-0.5 mx-2 mb-4 rounded-full transition-colors ${isDone ? "bg-emerald-500" : "bg-border"}`} />
+                      )}
                     </div>
-                    <span
-                      className={`text-xs hidden sm:block ${step === s ? "text-foreground font-medium" : "text-muted-foreground"}`}
-                    >
-                      {s === "welcome"
-                        ? "Welcome"
-                        : s === "details"
-                          ? "Your Details"
-                          : "Review"}
-                    </span>
-                    {i < 2 && <div className="flex-1 h-px bg-border w-6" />}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
             {/* ── Welcome ── */}
             {step === "welcome" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">
-                    Welcome, {data.firstName}!
-                  </CardTitle>
-                  <CardDescription>
-                    <strong>{data.agencyName}</strong> has invited you to view
-                    your properties on Crib.
-                  </CardDescription>
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3 mb-1">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary text-lg font-bold">
+                      {data.firstName[0]}
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl leading-tight">
+                        Welcome, {data.firstName}!
+                      </CardTitle>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        <span className="font-medium text-foreground">{data.agencyName}</span>{" "}
+                        has invited you to Crib.
+                      </p>
+                    </div>
+                  </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
+
+                <CardContent className="space-y-5">
+                  {/* Personal message from agency */}
                   {data.message && (
-                    <div className="rounded-[6px] bg-muted/60 border border-border p-4 text-sm text-muted-foreground italic">
-                      "{data.message}"
+                    <div className="relative rounded-[8px] bg-primary/5 border border-primary/15 px-4 py-3">
+                      <p className="text-sm text-foreground/80 leading-relaxed">
+                        {data.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1.5">— {data.agencyName}</p>
                     </div>
                   )}
 
+                  {/* Properties */}
                   <div>
-                    <p className="text-sm font-medium mb-3">
-                      You will have view-only access to{" "}
-                      {data.properties.length === 1
-                        ? "1 property"
-                        : `${data.properties.length} properties`}
-                      :
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                      {data.properties.length > 0 ? "Your Properties" : "Properties"}
                     </p>
-                    <div className="space-y-2">
-                      {data.properties.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex items-start gap-3 rounded-[6px] border border-border bg-background p-3"
-                        >
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-primary/10 text-primary mt-0.5">
-                            <Home className="h-4 w-4" />
+                    {data.properties.length > 0 ? (
+                      <div className="space-y-2">
+                        {data.properties.map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex items-center gap-3 rounded-[8px] border bg-background px-3 py-2.5"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[6px] bg-primary/10 text-primary">
+                              <Home className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{p.name}</p>
+                              {p.address && (
+                                <p className="text-xs text-muted-foreground truncate">{p.address}</p>
+                              )}
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {p.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {p.address}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-[8px] border border-dashed border-border bg-muted/30 px-4 py-4 text-center">
+                        <p className="text-sm text-muted-foreground">
+                          No properties assigned yet — your agency will link them after your account is set up.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="rounded-[6px] bg-primary/5 border border-primary/20 p-4 text-sm text-primary">
-                    After completing this form, you will receive an email with
-                    your login credentials to access your landlord dashboard.
+                  {/* What happens next */}
+                  <div className="rounded-[8px] bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3 flex gap-3">
+                    <Mail className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                    <p className="text-sm text-emerald-800 dark:text-emerald-300">
+                      Once you complete this short form, you'll receive an email with your login credentials.
+                    </p>
                   </div>
 
-                  <Button className="w-full" onClick={() => setStep("details")}>
+                  <Button className="w-full h-11" onClick={() => setStep("details")}>
                     Get started
                     <ChevronRight className="h-4 w-4" />
                   </Button>
