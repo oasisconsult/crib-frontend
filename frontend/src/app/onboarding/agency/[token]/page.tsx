@@ -62,13 +62,13 @@ function StepIndicator({ current }: { current: Step }) {
                 isActive
                   ? "bg-primary text-primary-foreground shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]"
                   : isDone
-                    ? "bg-emerald-500 text-white"
-                    : "bg-muted text-muted-foreground"
+                    ? "bg-emerald-700 text-white"           // emerald-700/white ≈ 5.6:1 → WCAG AA ✓
+                    : "border-2 border-border bg-card text-foreground" // outlined → foreground on card ✓
               }`}>
                 {isDone ? "✓" : i + 1}
               </div>
-              <span className={`text-[11px] mt-1 font-medium whitespace-nowrap ${
-                isActive ? "text-foreground" : "text-muted-foreground"
+              <span className={`text-[11px] mt-1 font-semibold whitespace-nowrap ${
+                isActive || isDone ? "text-foreground" : "text-foreground/65"
               }`}>
                 {labels[s]}
               </span>
@@ -76,7 +76,7 @@ function StepIndicator({ current }: { current: Step }) {
             {/* Connector bar — between steps only */}
             {i < visible.length - 1 && (
               <div className={`flex-1 h-0.5 mt-[14px] mx-2 rounded-full transition-colors ${
-                isDone ? "bg-emerald-500" : "bg-border"
+                isDone ? "bg-emerald-700" : "bg-border"
               }`} />
             )}
           </div>

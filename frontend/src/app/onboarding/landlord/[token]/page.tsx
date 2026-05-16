@@ -143,15 +143,19 @@ export default function LandlordOnboardingPage({ params }: Props) {
                         <div className="flex flex-col items-center shrink-0">
                           <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
                             isActive
+                              // Active: primary bg — shadcn primary/primary-foreground pair is WCAG-compliant by design
                               ? "bg-primary text-primary-foreground shadow-[0_0_0_4px_hsl(var(--primary)/0.15)]"
                               : isDone
-                                ? "bg-emerald-500 text-white"
-                                : "bg-muted text-muted-foreground"
+                                // Done: emerald-700 vs white ≈ 5.6:1 → passes AA
+                                ? "bg-emerald-700 text-white"
+                                // Inactive: outlined circle — foreground text on card bg guarantees contrast
+                                : "border-2 border-border bg-card text-foreground"
                           }`}>
                             {isDone ? "✓" : i + 1}
                           </div>
-                          <span className={`text-[11px] mt-1 font-medium whitespace-nowrap ${
-                            isActive ? "text-foreground" : "text-muted-foreground"
+                          <span className={`text-[11px] mt-1 font-semibold whitespace-nowrap ${
+                            // Active/done labels: full foreground; inactive: 65% → ~#595959 on white ≈ 7:1 ✓
+                            isActive || isDone ? "text-foreground" : "text-foreground/65"
                           }`}>
                             {label}
                           </span>
@@ -159,7 +163,7 @@ export default function LandlordOnboardingPage({ params }: Props) {
                         {/* Connector bar — between steps only */}
                         {i < allSteps.length - 1 && (
                           <div className={`flex-1 h-0.5 mt-[14px] mx-2 rounded-full transition-colors ${
-                            isDone ? "bg-emerald-500" : "bg-border"
+                            isDone ? "bg-emerald-700" : "bg-border"
                           }`} />
                         )}
                       </div>
