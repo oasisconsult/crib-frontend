@@ -20,9 +20,12 @@ export function usePermissions() {
 
   const role = roles[0]; // primary role (highest priority)
 
-  const isLandlord = roles.includes("landlord");
-  // Landlords invited by an agency are always read-only — they cannot mutate
-  // properties, leases, maintenance or inspections managed by the agency.
+  const hasHigherRole = roles.some((r) => ["owner", "manager", "superadmin"].includes(r));
+  // A user is a read-only agency-managed landlord only if they have the
+  // 'landlord' role AND no higher role. If 'owner' or 'manager' is also
+  // present (e.g. from a failed role-cleanup leaving both in the JWT),
+  // the higher role takes precedence — matching backend _primary_role logic.
+  const isLandlord = roles.includes("landlord") && !hasHigherRole;
   const isReadOnly = isLandlord;
 
   return {
