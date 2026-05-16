@@ -465,7 +465,8 @@ async def submit_onboarding(
     # - Resubmission after rejection: rejected→submitted (landlord can re-review)
     # - Resubmission when already submitted/approved: keep current state
     _keep_state = {OnboardingState.submitted, OnboardingState.approved}
-    if tenant.onboarding_state == OnboardingState.rejected:
+    is_resubmission = tenant.onboarding_state == OnboardingState.rejected
+    if is_resubmission:
         tenant.onboarding_state = onboarding_sm.transition_or_422(
             tenant.onboarding_state, "RESUBMITTED"
         )
@@ -481,6 +482,10 @@ async def submit_onboarding(
 
     await db.flush()
     await db.refresh(tenant, attribute_names=["status", "onboarding_state", "updated_at", "documents"])
+
+    # Notify the landlord/manager that the tenant has resubmitted (non-fatal)
+    if is_resubmission:
+        await _notify_resubmission(tenant, invite.organisation_id, db)
 
     return _tenant_out(tenant)
 
@@ -812,6 +817,95 @@ async def send_onboarding_link(
 
 
 # ── Approve / Reject ──────────────────────────────────────────────────────────
+
+async def _notify_resubmission(
+    tenant: "Tenant",
+    organisation_id: uuid.UUID,
+    db: AsyncSession,
+) -> None:
+    """
+    Email the organisation's contact when a tenant resubmits after rejection.
+    Looks up the org's contact_email (settings blob) and falls back to any
+    active manager/owner profile email in the org.
+    Non-fatal — logs a warning on failure without raising.
+    """
+    from app.core.config import get_settings
+    from app.integrations.notifications.email import get_email_provider
+    from app.models.organisation import Organisation
+    from app.models.profile import Profile
+
+    try:
+        s = get_settings()
+
+        # 1. Try org contact email
+        org = await db.get(Organisation, organisation_id)
+        recipient_email: str | None = (org.settings or {}).get("contact_email") if org else None
+        recipient_name: str = org.name if org else "Property Manager"
+
+        # 2. Fallback: first active manager/owner profile in the org
+        if not recipient_email:
+            mgr_result = await db.execute(
+                select(Profile).where(
+                    Profile.organisation_id == organisation_id,
+                    Profile.role.in_(["owner", "manager"]),
+                    Profile.deleted_at.is_(None),
+                    Profile.email.is_not(None),
+                ).limit(1)
+            )
+            mgr = mgr_result.scalar_one_or_none()
+            if mgr:
+                recipient_email = mgr.email
+                recipient_name = mgr.display_name or recipient_name
+
+        if not recipient_email:
+            log.warning(
+                "tenant.resubmission_notify_skipped",
+                tenant_id=str(tenant.id),
+                reason="no_contact_email_found",
+            )
+            return
+
+        tenant_name = f"{tenant.first_name} {tenant.last_name}".strip()
+        dashboard_url = f"{s.frontend_url}/tenants/{tenant.id}"
+
+        subject = f"Application resubmitted — {tenant_name}"
+        body = (
+            f"Hi {recipient_name},\n\n"
+            f"{tenant_name} has updated and resubmitted their rental application "
+            f"on Crib after your feedback.\n\n"
+            f"Please log in to review their updated documents and either approve "
+            f"or provide further feedback:\n\n"
+            f"  {dashboard_url}\n\n"
+            "— The Crib Team"
+        )
+
+        provider = get_email_provider()
+        result = await provider.send(
+            recipient_name=recipient_name,
+            recipient_email=recipient_email,
+            recipient_phone=None,
+            subject=subject,
+            body=body,
+        )
+        if result.success:
+            log.info(
+                "tenant.resubmission_notify_sent",
+                tenant_id=str(tenant.id),
+                recipient=recipient_email,
+            )
+        else:
+            log.warning(
+                "tenant.resubmission_notify_failed",
+                tenant_id=str(tenant.id),
+                reason=result.failure_reason,
+            )
+    except Exception:
+        log.warning(
+            "tenant.resubmission_notify_exception",
+            tenant_id=str(tenant.id),
+            exc_info=True,
+        )
+
 
 async def approve_tenant(
     tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
