@@ -68,9 +68,55 @@ export function useDeleteProperty() {
     mutationFn: (id: string) => propertiesApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.properties.all() });
-      toast.success("Property deleted");
+      toast.success("Property archived — it is no longer visible on the dashboard.");
     },
-    onError: () => toast.error("Failed to delete property"),
+    onError: (err: any) =>
+      toast.error(
+        "Cannot archive property",
+        err?.response?.data?.detail ?? "Make sure all leases are terminated first.",
+      ),
+  });
+}
+
+export function useRestoreProperty() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => propertiesApi.restore(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.properties.all() });
+      toast.success("Property restored and is now visible on the dashboard.");
+    },
+    onError: () => toast.error("Failed to restore property"),
+  });
+}
+
+export function useArchiveUnit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ propertyId, unitId }: { propertyId: string; unitId: string }) =>
+      propertiesApi.deleteUnit(propertyId, unitId),
+    onSuccess: (_, { propertyId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.properties.units(propertyId) });
+      toast.success("Unit archived.");
+    },
+    onError: (err: any) =>
+      toast.error(
+        "Cannot archive unit",
+        err?.response?.data?.detail ?? "Make sure the unit is not occupied.",
+      ),
+  });
+}
+
+export function useRestoreUnit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ propertyId, unitId }: { propertyId: string; unitId: string }) =>
+      propertiesApi.restoreUnit(propertyId, unitId),
+    onSuccess: (_, { propertyId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.properties.units(propertyId) });
+      toast.success("Unit restored.");
+    },
+    onError: () => toast.error("Failed to restore unit"),
   });
 }
 

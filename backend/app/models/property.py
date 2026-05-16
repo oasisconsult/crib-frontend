@@ -13,7 +13,7 @@ not stored as columns.
 import enum
 import uuid
 
-from sqlalchemy import Boolean, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -82,6 +82,12 @@ class Property(TimestampedBase):
     amenities: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="UGX")
 
+    # Soft-delete — NULL = active, non-NULL = archived (recoverable by superadmin)
+    # Blocked when any unit is occupied or has an active lease.
+    deleted_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
     # Relationships
     units: Mapped[list["Unit"]] = relationship(
         "Unit", back_populates="property", cascade="all, delete-orphan", lazy="select"
@@ -137,6 +143,11 @@ class Unit(TimestampedBase):
         UUID(as_uuid=True), nullable=True
     )
     last_inspection_date: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+    # Soft-delete — NULL = active, non-NULL = archived. Blocked when occupied.
+    deleted_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
     # Relationships
     property: Mapped[Property] = relationship("Property", back_populates="units")

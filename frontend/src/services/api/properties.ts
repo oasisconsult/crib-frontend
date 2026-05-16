@@ -17,6 +17,9 @@ export const propertiesApi = {
   delete: (id: string) =>
     apiDelete<void>(`/properties/${id}`),
 
+  restore: (id: string) =>
+    apiPost<Property>(`/properties/${id}/restore`, {}),
+
   updateRules: (id: string, rules: PropertyRules) =>
     apiPatch<Property>(`/properties/${id}/rules`, rules),
 
@@ -35,6 +38,9 @@ export const propertiesApi = {
 
   deleteUnit: (propertyId: string, unitId: string) =>
     apiDelete<void>(`/properties/${propertyId}/units/${unitId}`),
+
+  restoreUnit: (propertyId: string, unitId: string) =>
+    apiPost<Unit>(`/properties/${propertyId}/units/${unitId}/restore`, {}),
 
   bulkUpdateUnits: (propertyId: string, unitIds: string[], data: Partial<Unit>) =>
     apiPatch<Unit[]>(`/properties/${propertyId}/units/bulk`, { unitIds, ...data }),

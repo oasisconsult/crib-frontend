@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency } from "@/utils/formatters";
-import { useProperty, useUpdateProperty } from "@/hooks/useProperties";
+import { useProperty, useUpdateProperty, useDeleteProperty } from "@/hooks/useProperties";
 import { uploadsApi } from "@/services/api/uploads";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
@@ -421,6 +421,8 @@ export default function PropertyDetailPage({ params }: Props) {
   const { can } = usePermissions();
   const canEdit = can("properties:write");
   const [editing, setEditing] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+  const { mutate: archiveProperty, isPending: archiving } = useDeleteProperty();
 
   if (isLoading) return <PageSkeleton />;
   if (!property) return null;
@@ -448,6 +450,17 @@ export default function PropertyDetailPage({ params }: Props) {
             <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
               <Edit className="h-3.5 w-3.5" />
               Edit
+            </Button>
+          )}
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive border-destructive/30 hover:bg-destructive/10"
+              onClick={() => setConfirmArchive(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Archive
             </Button>
           )}
           <Button variant="outline" onClick={() => router.push(`/properties/${id}/rules`)}>
@@ -618,6 +631,42 @@ export default function PropertyDetailPage({ params }: Props) {
             </Button>
           </div>
         </>
+      )}
+
+      {/* ── Archive confirmation modal ── */}
+      {confirmArchive && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border rounded-[10px] shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-semibold">Archive Property?</h2>
+            <p className="text-sm text-muted-foreground">
+              <strong>{property.name}</strong> will be archived and hidden from the dashboard.
+              All units will be archived too. No data is deleted — a superadmin can restore it later.
+              <br /><br />
+              This is blocked if any unit is currently occupied or has an active lease.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setConfirmArchive(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                loading={archiving}
+                onClick={() =>
+                  archiveProperty(id, {
+                    onSuccess: () => {
+                      setConfirmArchive(false);
+                      router.push("/properties");
+                    },
+                    onSettled: () => setConfirmArchive(false),
+                  })
+                }
+              >
+                Archive property
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

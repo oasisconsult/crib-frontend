@@ -27,7 +27,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_org_access
+from app.api.deps import CurrentUser, require_org_access, require_superadmin
 from app.core.database import get_db
 from app.schemas.common import PaginatedResponse
 from app.schemas.property import (
@@ -122,7 +122,20 @@ async def delete_property(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
+    """Soft-archive a property. Blocked if any unit is occupied or has an active lease."""
+    assert current_user.org_id is not None
     await svc.delete_property(property_id, current_user.org_id, db)
+
+
+@router.post("/{property_id}/restore", response_model=PropertyOut)
+async def restore_property(
+    property_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_superadmin()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Restore a soft-archived property and all its units (superadmin only)."""
+    assert current_user.org_id is not None
+    return await svc.restore_property(property_id, current_user.org_id, db)
 
 
 # ── Units ─────────────────────────────────────────────────────────────────────
@@ -210,4 +223,18 @@ async def delete_unit(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
+    """Soft-archive a unit. Blocked if the unit is currently occupied."""
+    assert current_user.org_id is not None
     await svc.delete_unit(property_id, unit_id, current_user.org_id, db)
+
+
+@router.post("/{property_id}/units/{unit_id}/restore", response_model=UnitOut)
+async def restore_unit(
+    property_id: uuid.UUID,
+    unit_id: uuid.UUID,
+    current_user: CurrentUser = Depends(require_superadmin()),
+    db: AsyncSession = Depends(get_db),
+):
+    """Restore a soft-archived unit (superadmin only)."""
+    assert current_user.org_id is not None
+    return await svc.restore_unit(property_id, unit_id, current_user.org_id, db)

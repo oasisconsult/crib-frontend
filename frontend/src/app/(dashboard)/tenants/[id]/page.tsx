@@ -48,6 +48,7 @@ import {
   useRejectOnboarding,
   useResendInvite,
   useCancelInvite,
+  useAnonymiseTenant,
 } from "@/hooks/useTenants";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Tenant, TenantStatus } from "@/types";
@@ -610,8 +611,10 @@ export default function TenantDetailPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
   const { data: tenant, isLoading } = useTenant(id);
-  const { can } = usePermissions();
+  const { can, isSuperAdmin } = usePermissions();
   const canEdit = can("tenants:write");
+  const [confirmGdpr, setConfirmGdpr] = useState(false);
+  const { mutate: anonymiseTenant, isPending: anonymising } = useAnonymiseTenant();
 
   const [editing, setEditing] = useState(false);
 
@@ -857,6 +860,70 @@ export default function TenantDetailPage({ params }: Props) {
                 )}
               </CardContent>
             </Card>
+            {/* ── GDPR / Data erasure ── (superadmin or owner only) */}
+            {(isSuperAdmin || can("admin:write")) && !tenant.anonymisedAt && (
+              <Card className="border-destructive/30">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base text-destructive">GDPR — Remove Personal Data</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Permanently replaces all PII (name, email, phone, NIN, documents) with
+                    anonymous placeholders. Financial records (leases, payments) are retained
+                    for legal compliance. This action cannot be undone.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full border-destructive/40 text-destructive hover:bg-destructive/10"
+                    onClick={() => setConfirmGdpr(true)}
+                  >
+                    Erase personal data
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+            {tenant.anonymisedAt && (
+              <Card className="border-muted bg-muted/30">
+                <CardContent className="pt-4 text-xs text-muted-foreground">
+                  Personal data was erased on {new Date(tenant.anonymisedAt).toLocaleDateString()}.
+                  Financial records are retained for legal compliance.
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── GDPR erasure confirmation ── */}
+      {confirmGdpr && tenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card border rounded-[10px] shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-semibold text-destructive">Erase Personal Data?</h2>
+            <p className="text-sm text-muted-foreground">
+              This will permanently replace all personal information for <strong>{tenant.firstName} {tenant.lastName}</strong> with
+              anonymous placeholders. Lease and payment records are kept for legal compliance.
+              <br /><br />
+              <strong>This cannot be undone.</strong>
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" size="sm" onClick={() => setConfirmGdpr(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                loading={anonymising}
+                onClick={() =>
+                  anonymiseTenant(tenant.id, {
+                    onSuccess: () => setConfirmGdpr(false),
+                    onSettled: () => setConfirmGdpr(false),
+                  })
+                }
+              >
+                Erase personal data
+              </Button>
+            </div>
           </div>
         </div>
       )}

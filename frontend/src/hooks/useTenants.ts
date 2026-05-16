@@ -182,3 +182,16 @@ export function useUpdateTenant() {
     onError: () => toast.error("Failed to update tenant"),
   });
 }
+
+export function useAnonymiseTenant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tenantId: string) => tenantsApi.anonymise(tenantId),
+    onSuccess: (_, tenantId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.detail(tenantId) });
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.all() });
+      toast.success("Personal data removed — GDPR erasure complete.");
+    },
+    onError: () => toast.error("Failed to anonymise tenant data"),
+  });
+}

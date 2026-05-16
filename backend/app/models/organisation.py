@@ -7,7 +7,9 @@ The `logto_org_id` is the foreign key into Logto's organisations table.
 
 import enum
 
-from sqlalchemy import Enum, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, Enum, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -49,7 +51,12 @@ class Organisation(TimestampedBase):
     payment_settings: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Soft-delete / suspension
+    # is_active=False → org suspended (cannot log in, not visible on dashboard)
+    # deleted_at set → org archived; records retained, properties transferable
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
     # Billing contact info (cached — authoritative source is Logto/Stripe)
     billing_email: Mapped[str | None] = mapped_column(String(255), nullable=True)

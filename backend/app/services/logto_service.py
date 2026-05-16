@@ -887,3 +887,43 @@ async def resend_login_credentials(
     except Exception as exc:  # noqa: BLE001
         log.warning("logto.resend_credentials_failed", email=email, error=str(exc))
         return False
+
+
+# ── Suspend / unsuspend user ───────────────────────────────────────────────────
+
+async def set_user_suspended(logto_sub: str, *, suspended: bool) -> bool:
+    """
+    Suspend or unsuspend a Logto user account.
+    Called when a profile is deactivated/restored.
+    Returns True on success, False on failure (logged but not raised).
+    """
+    if not _is_configured():
+        log.debug(
+            "logto.m2m_not_configured — skipping user suspend toggle",
+            sub=logto_sub, suspended=suspended
+        )
+        return False
+
+    try:
+        token = await _get_m2m_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        base = "http://logto:3001/api"
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.patch(
+                f"{base}/users/{logto_sub}",
+                json={"isSuspended": suspended},
+                headers=headers,
+            )
+        if resp.status_code in (200, 201, 204):
+            log.info("logto.user_suspended_set", sub=logto_sub, suspended=suspended)
+            return True
+        log.warning(
+            "logto.user_suspend_failed",
+            sub=logto_sub, suspended=suspended,
+            status=resp.status_code, body=resp.text[:200],
+        )
+        return False
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.user_suspend_exception", sub=logto_sub, error=str(exc))
+        return False

@@ -112,7 +112,10 @@ async def list_properties(
     search: str | None = None,
     landlord_profile_id: uuid.UUID | None = None,
 ) -> dict:
-    q = select(Property).where(Property.organisation_id == org_id)
+    q = select(Property).where(
+        Property.organisation_id == org_id,
+        Property.deleted_at.is_(None),      # exclude archived properties
+    )
     if landlord_profile_id is not None:
         # Restrict to only properties this landlord has been granted access to
         allowed = select(LandlordPropertyAccess.property_id).where(
@@ -148,7 +151,11 @@ async def get_property(
     landlord_profile_id: uuid.UUID | None = None,
 ) -> Property:
     result = await db.execute(
-        select(Property).where(Property.id == prop_id, Property.organisation_id == org_id)
+        select(Property).where(
+            Property.id == prop_id,
+            Property.organisation_id == org_id,
+            Property.deleted_at.is_(None),  # archived properties are not visible
+        )
     )
     prop = result.scalar_one_or_none()
     if not prop:
@@ -218,9 +225,78 @@ async def update_property_rules(
 
 
 async def delete_property(prop_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> None:
+    """
+    Soft-delete (archive) a property. Blocked if any unit is occupied or has
+    an active lease — you cannot archive a building with active tenants.
+    """
+    from app.models.lease import Lease, LeaseStatus
+
     prop = await get_property(prop_id, org_id, db)
-    await db.delete(prop)
+
+    # Block if any unit is occupied
+    occupied = await db.scalar(
+        select(func.count(Unit.id)).where(
+            Unit.property_id == prop_id,
+            Unit.status == UnitStatus.occupied,
+            Unit.deleted_at.is_(None),
+        )
+    ) or 0
+    if occupied:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot archive property: {occupied} unit(s) are currently occupied. "
+                   "Terminate all active leases first.",
+        )
+
+    # Block if any active lease exists on this property
+    active_leases = await db.scalar(
+        select(func.count(Lease.id)).where(
+            Lease.property_id == prop_id,
+            Lease.status == LeaseStatus.active,
+        )
+    ) or 0
+    if active_leases:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot archive property: {active_leases} active lease(s) exist. "
+                   "Terminate all active leases first.",
+        )
+
+    prop.deleted_at = datetime.now(timezone.utc)
+    # Also soft-delete all units belonging to this property
+    await db.execute(
+        update(Unit)
+        .where(Unit.property_id == prop_id, Unit.deleted_at.is_(None))
+        .values(deleted_at=datetime.now(timezone.utc))
+    )
     await db.flush()
+
+
+async def restore_property(prop_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> PropertyOut:
+    """Restore a soft-deleted property and all its (also soft-deleted) units."""
+    result = await db.execute(
+        select(Property).where(
+            Property.id == prop_id,
+            Property.organisation_id == org_id,
+        )
+    )
+    prop = result.scalar_one_or_none()
+    if not prop:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    if prop.deleted_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Property is not archived"
+        )
+
+    prop.deleted_at = None
+    await db.execute(
+        update(Unit)
+        .where(Unit.property_id == prop_id)
+        .values(deleted_at=None)
+    )
+    await db.flush()
+    await db.refresh(prop)
+    return await _property_out(prop, db)
 
 
 # ── Unit CRUD ─────────────────────────────────────────────────────────────────
@@ -236,6 +312,7 @@ async def _get_unit(
             Unit.id == unit_id,
             Unit.property_id == prop_id,
             Property.organisation_id == org_id,
+            Unit.deleted_at.is_(None),          # archived units are not visible
         )
     )
     unit = result.scalar_one_or_none()
@@ -252,7 +329,10 @@ async def list_units(
     # Verify property belongs to org
     await get_property(prop_id, org_id, db)
 
-    q = select(Unit).where(Unit.property_id == prop_id)
+    q = select(Unit).where(
+        Unit.property_id == prop_id,
+        Unit.deleted_at.is_(None),          # exclude archived units
+    )
     if status_filter:
         q = q.where(Unit.status == status_filter)
 
@@ -400,6 +480,40 @@ async def bulk_update_units(
 async def delete_unit(
     prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
 ) -> None:
+    """Soft-delete (archive) a unit. Blocked if the unit is currently occupied."""
     unit = await _get_unit(prop_id, unit_id, org_id, db)
-    await db.delete(unit)
+
+    if unit.status == UnitStatus.occupied:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot archive unit: it is currently occupied. "
+                   "Terminate the active lease first.",
+        )
+
+    unit.deleted_at = datetime.now(timezone.utc)
     await db.flush()
+
+
+async def restore_unit(
+    prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> UnitOut:
+    """Restore a soft-deleted unit (superadmin only)."""
+    result = await db.execute(
+        select(Unit)
+        .join(Property, Unit.property_id == Property.id)
+        .where(
+            Unit.id == unit_id,
+            Unit.property_id == prop_id,
+            Property.organisation_id == org_id,
+        )
+    )
+    unit = result.scalar_one_or_none()
+    if not unit:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
+    if unit.deleted_at is None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Unit is not archived")
+
+    unit.deleted_at = None
+    await db.flush()
+    await db.refresh(unit)
+    return _unit_out(unit)

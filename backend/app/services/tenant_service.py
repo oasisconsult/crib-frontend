@@ -159,12 +159,17 @@ async def list_tenants(
     search: str | None = None,
     onboarding_state: str | None = None,
     tenant_status: str | None = None,
+    include_anonymised: bool = False,
 ) -> dict:
     q = (
         select(Tenant)
         .options(selectinload(Tenant.documents))
         .where(Tenant.organisation_id == org_id)
     )
+    # By default exclude GDPR-anonymised tenants from dashboard lists.
+    # Admins can pass include_anonymised=True to see the anonymised stubs.
+    if not include_anonymised:
+        q = q.where(Tenant.anonymised_at.is_(None))
     if search:
         term = f"%{search}%"
         q = q.where(

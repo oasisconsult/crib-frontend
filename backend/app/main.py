@@ -116,6 +116,7 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1 import (
+        admin,
         agency_invites, analytics, health, inspections, landlords, leases, me, messages,
         mobile_money, notifications, onboarding, organisations, payments, properties,
         property_import, rbac, system_settings, tenant_import, tenants, uploads, wallet, webhooks,
@@ -155,6 +156,7 @@ def create_app() -> FastAPI:
     application.include_router(tenant_import.router, prefix=settings.api_prefix)
     application.include_router(landlords.router, prefix=settings.api_prefix)
     application.include_router(agency_invites.router, prefix=settings.api_prefix)
+    application.include_router(admin.router, prefix=settings.api_prefix)
     application.include_router(webhooks.router, prefix=settings.api_prefix)
 
     return application

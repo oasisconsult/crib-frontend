@@ -83,6 +83,13 @@ class Profile(TimestampedBase):
         DateTime(timezone=True), nullable=True
     )
 
+    # ── Soft-delete ───────────────────────────────────────────────────────────
+    # NULL = active. Non-NULL = deactivated; profile hidden from normal queries.
+    # LandlordPropertyAccess rows are kept so access is restored on un-delete.
+    deleted_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
     # ── Activity ─────────────────────────────────────────────────────────────
     last_seen_at: Mapped[DateTime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
