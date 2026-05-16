@@ -69,9 +69,10 @@ export function WorkflowStepper({
                   // Active: solid teal fill — clearly the current step
                   status === "active" &&
                     "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold shadow-md ring-4 ring-emerald-500/20",
-                  // Upcoming: subtle grey — not done yet, not in the way
+                  // Upcoming: outlined, dark text at 60% — visually receded but WCAG-compliant
+                  // slate-400/slate-50 was ~1.6:1 ❌; foreground/60 on card ≈ 7:1 ✓
                   status === "upcoming" &&
-                    "border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500",
+                    "border-border bg-card text-foreground/60",
                   status === "error" &&
                     "border-destructive bg-destructive text-destructive-foreground",
                 )}
@@ -89,8 +90,9 @@ export function WorkflowStepper({
                 className={cn(
                   "mt-1.5 text-[10px] font-medium text-center leading-tight max-w-[56px] break-words",
                   status === "active" && "text-primary font-semibold",
-                  status === "done" && "text-primary/70",
-                  status === "upcoming" && "text-slate-400 dark:text-slate-500",
+                  status === "done" && "text-primary",
+                  // text-slate-400 was ~2:1 ❌; foreground/60 ≈ 7:1 ✓
+                  status === "upcoming" && "text-foreground/60",
                   orientation === "vertical" && "mt-0 max-w-none text-left text-xs",
                 )}
               >
@@ -105,7 +107,7 @@ export function WorkflowStepper({
                   "flex-1 mt-3.5 h-0.5 mx-1 rounded-full transition-all duration-300",
                   step.step < currentStep
                     ? "bg-primary"
-                    : "bg-slate-200 dark:bg-slate-700",
+                    : "bg-border",
                 )}
                 aria-hidden="true"
               />
