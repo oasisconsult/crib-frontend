@@ -173,7 +173,7 @@ export default function LandlordsPage() {
   const { data: invites = [], isLoading } = useLandlordInvites();
   const { mutate: createInvite, isPending: creating } = useCreateLandlordInvite();
   const { mutate: revokeInvite } = useRevokeLandlordInvite();
-  const { mutate: resendInvite, variables: resendingId } = useResendLandlordInvite();
+  const { mutate: resendInvite, variables: resendingId, isPending: isResending } = useResendLandlordInvite();
 
   const { data: propertiesData } = useProperties();
   const allProperties = propertiesData?.data ?? [];
@@ -269,7 +269,7 @@ export default function LandlordsPage() {
                         toast.error("Failed to resend", err?.response?.data?.detail ?? ""),
                     })
                   }
-                  resending={resendingId === invite.id}
+                  resending={isResending && resendingId === invite.id}
                 />
               ))}
             </div>

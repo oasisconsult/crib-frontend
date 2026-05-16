@@ -65,7 +65,7 @@ export default function SettingsPage() {
   const { data: landlordInvites = [], isLoading: loadingInvites } = useLandlordInvites();
   const { mutate: createInvite, isPending: creatingInvite } = useCreateLandlordInvite();
   const { mutate: revokeInvite } = useRevokeLandlordInvite();
-  const { mutate: resendLandlordInvite, variables: resendingLandlordId } = useResendLandlordInvite();
+  const { mutate: resendLandlordInvite, variables: resendingLandlordId, isPending: isResendingLandlord } = useResendLandlordInvite();
   const { data: propertiesData } = useProperties();
   const allProperties = propertiesData?.data ?? [];
 
@@ -444,10 +444,10 @@ export default function SettingsPage() {
                             variant="ghost"
                             className="h-7 w-7 text-muted-foreground hover:text-primary"
                             title="Resend invite"
-                            disabled={resendingLandlordId === invite.id}
+                            disabled={isResendingLandlord && resendingLandlordId === invite.id}
                             onClick={() => resendLandlordInvite(invite.id, { onSuccess: () => toast.success("Invite resent") })}
                           >
-                            <RefreshCw className={`h-3.5 w-3.5 ${resendingLandlordId === invite.id ? "animate-spin" : ""}`} />
+                            <RefreshCw className={`h-3.5 w-3.5 ${isResendingLandlord && resendingLandlordId === invite.id ? "animate-spin" : ""}`} />
                           </Button>
                           <Button
                             size="icon"
