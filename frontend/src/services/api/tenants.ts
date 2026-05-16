@@ -36,6 +36,9 @@ export const tenantsApi = {
   resendInvite: (tenantId: string) =>
     apiPost<TenantInvite>(`/tenants/${tenantId}/resend-invite`, {}),
 
+  cancelInvite: (tenantId: string) =>
+    apiDelete<void>(`/tenants/${tenantId}/invite`),
+
   approveOnboarding: (tenantId: string) =>
     apiPatch<Tenant>(`/tenants/${tenantId}/approve`, {}),
 

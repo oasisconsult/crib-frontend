@@ -588,6 +588,43 @@ async def resend_invite(
     return _invite_out(new_invite)
 
 
+# ── Cancel invite ────────────────────────────────────────────────────────────
+
+async def cancel_invite(
+    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+) -> None:
+    """
+    Cancel all pending invites for a tenant and reset their onboarding state
+    back to invited so the invite can be re-sent later if needed.
+
+    Only valid when the tenant is in an invited or started state.
+    Submitted / approved / activated tenants cannot have their invite cancelled.
+    """
+    tenant = await _get_tenant(tenant_id, org_id, db)
+
+    _blocked_states = {OnboardingState.submitted, OnboardingState.approved, OnboardingState.activated}
+    if tenant.onboarding_state in _blocked_states:
+        from fastapi import HTTPException, status
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot cancel invite for a tenant in '{tenant.onboarding_state}' state",
+        )
+
+    # Expire all pending invites
+    invite_result = await db.execute(
+        select(TenantInvite).where(
+            TenantInvite.tenant_id == tenant_id,
+            TenantInvite.status == InviteStatus.pending,
+        )
+    )
+    for inv in invite_result.scalars():
+        inv.status = InviteStatus.expired
+
+    tenant.onboarding_token = None
+    await db.flush()
+    log.info("tenant.invite_cancelled", tenant_id=str(tenant_id))
+
+
 # ── Resend login credentials ─────────────────────────────────────────────────
 
 async def resend_login_credentials(

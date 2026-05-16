@@ -25,6 +25,7 @@ from app.services.agency_invite_service import (
     create_agency_invite,
     get_agency_invite_by_token,
     list_agency_invites,
+    resend_agency_invite,
     revoke_agency_invite,
 )
 
@@ -59,6 +60,19 @@ async def list_invites(
     db: AsyncSession = Depends(get_db),
 ) -> list[AgencyInviteOut]:
     return await list_agency_invites(db=db)
+
+
+@router.post(
+    "/{invite_id}/resend",
+    response_model=AgencyInviteOut,
+    dependencies=[Depends(require_role("superadmin"))],
+)
+async def resend_invite(
+    invite_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> AgencyInviteOut:
+    """Superadmin: resend onboarding email and extend expiry by 14 days."""
+    return await resend_agency_invite(db=db, invite_id=invite_id)
 
 
 @router.delete(

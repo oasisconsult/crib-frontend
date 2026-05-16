@@ -157,6 +157,19 @@ export function useResendInvite() {
   });
 }
 
+export function useCancelInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (tenantId: string) => tenantsApi.cancelInvite(tenantId),
+    onSuccess: (_, tenantId) => {
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.detail(tenantId) });
+      qc.invalidateQueries({ queryKey: queryKeys.tenants.all() });
+      toast.success("Invite cancelled");
+    },
+    onError: () => toast.error("Failed to cancel invite"),
+  });
+}
+
 export function useUpdateTenant() {
   const qc = useQueryClient();
   return useMutation({

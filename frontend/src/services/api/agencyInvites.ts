@@ -10,6 +10,7 @@ export interface AgencyInvite {
   agencyContactEmail?: string;
   agencyCountry?: string;
   status: "pending" | "accepted" | "expired" | "revoked";
+  token: string;
   createdAt: string;
   expiresAt: string;
   acceptedAt?: string;
@@ -63,6 +64,7 @@ export const agencyInvitesApi = {
   list: () => apiGet<AgencyInvite[]>("/agency-invites"),
   create: (body: CreateAgencyInviteRequest) =>
     apiPost<AgencyInvite>("/agency-invites", body),
+  resend: (id: string) => apiPost<AgencyInvite>(`/agency-invites/${id}/resend`, {}),
   revoke: (id: string) => apiDelete(`/agency-invites/${id}`),
 
   // Public — no session needed

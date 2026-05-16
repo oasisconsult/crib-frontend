@@ -41,6 +41,7 @@ class AgencyInviteOut(CamelModel):
     manager_first_name: str
     manager_last_name:  str
     status:             str
+    token:              str
     expires_at:         str
     created_at:         str
 
@@ -330,6 +331,38 @@ async def list_agency_invites(*, db: AsyncSession) -> list[AgencyInviteOut]:
     return [_to_out(inv) for inv in result.scalars()]
 
 
+async def resend_agency_invite(*, db: AsyncSession, invite_id: uuid.UUID) -> AgencyInviteOut:
+    """
+    Resend the onboarding email for a pending agency invite.
+    Extends expiry by 14 days and re-sends the onboarding URL.
+    """
+    from fastapi import HTTPException, status as http_status
+
+    result = await db.execute(select(AgencyInvite).where(AgencyInvite.id == invite_id))
+    invite = result.scalar_one_or_none()
+    if not invite:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Invite not found")
+    if invite.status != AgencyInviteStatus.PENDING:
+        raise HTTPException(
+            status_code=http_status.HTTP_409_CONFLICT,
+            detail=f"Cannot resend a {invite.status} invite",
+        )
+
+    invite.expires_at = datetime.now(timezone.utc) + timedelta(days=14)
+    await db.flush()
+
+    s = get_settings()
+    onboarding_url = f"{s.frontend_url}/onboarding/agency/{invite.token}"
+    await _send_agency_invite_email(
+        email=invite.manager_email,
+        first_name=invite.manager_first_name,
+        agency_name=invite.agency_name,
+        onboarding_url=onboarding_url,
+    )
+    log.info("agency_invite.resent", invite_id=str(invite.id), email=invite.manager_email)
+    return _to_out(invite)
+
+
 async def revoke_agency_invite(*, db: AsyncSession, invite_id: uuid.UUID) -> None:
     from fastapi import HTTPException, status as http_status
 
@@ -341,6 +374,34 @@ async def revoke_agency_invite(*, db: AsyncSession, invite_id: uuid.UUID) -> Non
     await db.flush()
 
 
+async def _send_agency_invite_email(
+    *, email: str, first_name: str, agency_name: str, onboarding_url: str
+) -> None:
+    from app.integrations.notifications.email import get_email_provider
+
+    subject = f"You're invited to set up {agency_name} on Crib"
+    body = (
+        f"Hi {first_name},\n\n"
+        f"You have been invited to onboard {agency_name} onto Crib.\n\n"
+        "Click the link below to complete your agency setup:\n"
+        f"{onboarding_url}\n\n"
+        "This link expires in 14 days.\n\n"
+        "— The Crib Team"
+    )
+    provider = get_email_provider()
+    result = await provider.send(
+        recipient_name=first_name,
+        recipient_email=email,
+        recipient_phone=None,
+        subject=subject,
+        body=body,
+    )
+    if result.success:
+        log.info("agency_invite.email_sent", email=email)
+    else:
+        log.warning("agency_invite.email_failed", email=email, reason=result.failure_reason)
+
+
 def _to_out(invite: AgencyInvite) -> AgencyInviteOut:
     return AgencyInviteOut(
         id=str(invite.id),
@@ -349,6 +410,7 @@ def _to_out(invite: AgencyInvite) -> AgencyInviteOut:
         manager_first_name=invite.manager_first_name,
         manager_last_name=invite.manager_last_name,
         status=invite.status,
+        token=invite.token,
         expires_at=invite.expires_at.isoformat(),
         created_at=invite.created_at.isoformat(),
     )

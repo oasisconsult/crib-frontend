@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, MailCheck } from "lucide-react";
+import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, Mail, RefreshCw, Copy, Check, Link } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,8 @@ import { useUIStore } from "@/store/useUIStore";
 import { toast } from "@/store/useUIStore";
 import { useOrganisation, useUpdateOrganisation } from "@/hooks/useOrganisation";
 import { usePermissions } from "@/hooks/usePermissions";
-import { useLandlordInvites, useCreateLandlordInvite, useRevokeLandlordInvite } from "@/hooks/useLandlordInvites";
+import { useLandlordInvites, useCreateLandlordInvite, useRevokeLandlordInvite, useResendLandlordInvite } from "@/hooks/useLandlordInvites";
+import { useAgencyInvites, useResendAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
 import { useProperties } from "@/hooks/useProperties";
 
 export default function SettingsPage() {
@@ -64,8 +65,32 @@ export default function SettingsPage() {
   const { data: landlordInvites = [], isLoading: loadingInvites } = useLandlordInvites();
   const { mutate: createInvite, isPending: creatingInvite } = useCreateLandlordInvite();
   const { mutate: revokeInvite } = useRevokeLandlordInvite();
+  const { mutate: resendLandlordInvite, variables: resendingLandlordId } = useResendLandlordInvite();
   const { data: propertiesData } = useProperties();
   const allProperties = propertiesData?.data ?? [];
+
+  // ── Agency invite state (superadmin only) ────────────────────────────────
+  const { data: agencyInvites = [], isLoading: loadingAgencyInvites } = useAgencyInvites();
+  const { mutate: resendAgencyInvite, variables: resendingAgencyId, isPending: resendingAgency } = useResendAgencyInvite();
+  const { mutate: revokeAgencyInvite, isPending: revokingAgency } = useRevokeAgencyInvite();
+  const [copiedAgencyId, setCopiedAgencyId] = useState<string | null>(null);
+  const [copiedLandlordId, setCopiedLandlordId] = useState<string | null>(null);
+
+  function agencyInviteUrl(token: string) {
+    return `${window.location.origin}/onboarding/agency/${token}`;
+  }
+  function landlordInviteUrl(token: string) {
+    return `${window.location.origin}/onboarding/landlord/${token}`;
+  }
+  async function copyToClipboard(text: string, id: string, setter: (id: string | null) => void) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setter(id);
+      setTimeout(() => setter(null), 2000);
+    } catch {
+      toast.error("Could not copy to clipboard");
+    }
+  }
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteForm, setInviteForm] = useState({
@@ -153,7 +178,9 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile">
-        <TabsList className={`grid w-full ${isLandlord ? "grid-cols-4" : "grid-cols-6"}`}>
+        <TabsList className={`grid w-full ${
+          isLandlord ? "grid-cols-4" : isSuperAdmin ? "grid-cols-7" : "grid-cols-6"
+        }`}>
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Profile</span>
@@ -166,6 +193,12 @@ export default function SettingsPage() {
             <TabsTrigger value="landlords" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Landlords</span>
+            </TabsTrigger>
+          )}
+          {isSuperAdmin && (
+            <TabsTrigger value="agencies" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Agencies</span>
             </TabsTrigger>
           )}
           {!isLandlord && (
@@ -384,7 +417,7 @@ export default function SettingsPage() {
                             : `${invite.propertyIds.length} ${invite.propertyIds.length === 1 ? "property" : "properties"}`}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 ml-4">
+                      <div className="flex items-center gap-2 ml-4 shrink-0">
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                           invite.status === "accepted"
                             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
@@ -394,16 +427,38 @@ export default function SettingsPage() {
                         }`}>
                           {invite.status}
                         </span>
-                        {canManageOrg && invite.status === "pending" && (
+                        {canManageOrg && invite.status === "pending" && (<>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            title="Copy invite link"
+                            onClick={() => copyToClipboard(landlordInviteUrl(invite.token), invite.id, setCopiedLandlordId)}
+                          >
+                            {copiedLandlordId === invite.id
+                              ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                              : <Link className="h-3.5 w-3.5" />}
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            title="Resend invite"
+                            disabled={resendingLandlordId === invite.id}
+                            onClick={() => resendLandlordInvite(invite.id, { onSuccess: () => toast.success("Invite resent") })}
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${resendingLandlordId === invite.id ? "animate-spin" : ""}`} />
+                          </Button>
                           <Button
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            title="Revoke invite"
                             onClick={() => revokeInvite(invite.id)}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
-                        )}
+                        </>)}
                       </div>
                     </div>
                   ))}
@@ -534,6 +589,93 @@ export default function SettingsPage() {
             </div>
           )}
         </TabsContent>
+
+        {/* ── Agencies (superadmin only) ── */}
+        {isSuperAdmin && (
+          <TabsContent value="agencies" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Agency Invites</CardTitle>
+                <CardDescription>
+                  Manage agency onboarding invites. Resend links, copy them, or revoke access.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingAgencyInvites ? (
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />Loading…
+                  </div>
+                ) : agencyInvites.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                    <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                    <p className="text-sm">No agency invites yet</p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {agencyInvites.map((invite) => (
+                      <div key={invite.id} className="py-3 space-y-1.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{invite.agencyName}</p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {invite.managerFirstName} {invite.managerLastName} · {invite.managerEmail}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              invite.status === "accepted"
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                : invite.status === "pending"
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                                  : "bg-muted text-muted-foreground"
+                            }`}>{invite.status}</span>
+                            {invite.status === "pending" && (<>
+                              <Button
+                                size="icon" variant="ghost"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                title="Copy onboarding link"
+                                onClick={() => copyToClipboard(agencyInviteUrl(invite.token), invite.id, setCopiedAgencyId)}
+                              >
+                                {copiedAgencyId === invite.id
+                                  ? <Check className="h-3.5 w-3.5 text-emerald-500" />
+                                  : <Link className="h-3.5 w-3.5" />}
+                              </Button>
+                              <Button
+                                size="icon" variant="ghost"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                                title="Resend invite email"
+                                disabled={resendingAgencyId === invite.id && resendingAgency}
+                                onClick={() => resendAgencyInvite(invite.id, { onSuccess: () => toast.success("Agency invite resent — expiry extended by 14 days") })}
+                              >
+                                <RefreshCw className={`h-3.5 w-3.5 ${resendingAgencyId === invite.id && resendingAgency ? "animate-spin" : ""}`} />
+                              </Button>
+                              <Button
+                                size="icon" variant="ghost"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                title="Revoke invite"
+                                disabled={revokingAgency}
+                                onClick={() => revokeAgencyInvite(invite.id, { onSuccess: () => toast.success("Agency invite revoked") })}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </>)}
+                          </div>
+                        </div>
+                        {invite.status === "pending" && (
+                          <div className="flex items-center gap-2">
+                            <code className="text-[11px] bg-muted/60 rounded px-2 py-1 truncate flex-1 select-all">
+                              {agencyInviteUrl(invite.token)}
+                            </code>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* ── Notifications ── */}
         <TabsContent value="notifications" className="mt-6">

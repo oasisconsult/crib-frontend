@@ -21,6 +21,14 @@ export function useCreateAgencyInvite() {
   });
 }
 
+export function useResendAgencyInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => agencyInvitesApi.resend(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function useRevokeAgencyInvite() {
   const qc = useQueryClient();
   return useMutation({

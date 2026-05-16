@@ -47,6 +47,7 @@ import {
   useApproveOnboarding,
   useRejectOnboarding,
   useResendInvite,
+  useCancelInvite,
 } from "@/hooks/useTenants";
 import { usePermissions } from "@/hooks/usePermissions";
 import type { Tenant, TenantStatus } from "@/types";
@@ -423,6 +424,7 @@ function TenantNotesSection({ tenant }: { tenant: Tenant }) {
 /** Shown in the sidebar when the tenant hasn't finished onboarding yet. */
 function ResendInviteSection({ tenant }: { tenant: Tenant }) {
   const { mutate: resend, isPending, data: newInvite } = useResendInvite();
+  const { mutate: cancelInvite, isPending: cancelling } = useCancelInvite();
   const [copied, setCopied] = useState(false);
 
   const resendableStates = ["invited", "started", "rejected"];
@@ -493,15 +495,28 @@ function ResendInviteSection({ tenant }: { tenant: Tenant }) {
             )}
           </div>
         ) : (
-          <Button
-            size="sm"
-            className="w-full"
-            loading={isPending}
-            onClick={() => resend(tenant.id)}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Generate New Link
-          </Button>
+          <div className="space-y-2">
+            <Button
+              size="sm"
+              className="w-full"
+              loading={isPending}
+              onClick={() => resend(tenant.id)}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Generate New Link
+            </Button>
+            {tenant.onboardingState !== "rejected" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                loading={cancelling}
+                onClick={() => cancelInvite(tenant.id)}
+              >
+                Cancel Invite
+              </Button>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

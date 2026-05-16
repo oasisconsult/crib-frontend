@@ -194,6 +194,22 @@ async def resend_invite(
     return await svc.resend_invite(tenant_id, current_user.org_id, db)
 
 
+# ── Cancel invite ─────────────────────────────────────────────────────────────
+
+@router.delete("/{tenant_id}/invite", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_invite(
+    tenant_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Cancel all pending invites for this tenant and reset their onboarding state.
+    Only valid for invited / started states.
+    """
+    assert current_user.org_id is not None
+    await svc.cancel_invite(tenant_id, current_user.org_id, db)
+
+
 # ── Resend login credentials ─────────────────────────────────────────────────
 
 @router.post("/{tenant_id}/resend-login", response_model=dict)
