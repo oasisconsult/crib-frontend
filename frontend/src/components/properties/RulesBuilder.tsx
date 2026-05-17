@@ -63,10 +63,23 @@ export function RulesBuilder({ propertyId, initialRules, onSave, isSaving, readO
     ...(schemaToDefaultValues(DEFAULT_RULE_SCHEMA, initialRules) as Record<string, unknown>),
   } as unknown as PropertyRules;
 
-  const { register, handleSubmit, watch, control, formState: { errors, isDirty } } = useForm<PropertyRules>({
+  const { register, handleSubmit, watch, control, reset, formState: { errors, isDirty } } = useForm<PropertyRules>({
     resolver: zodResolver(rulesSchema),
     defaultValues,
   });
+
+  // Re-sync form values when initialRules arrives asynchronously (e.g. after
+  // the parent fetches property data while this component is already mounted).
+  // Only reset if the user hasn't touched the form yet to avoid clobbering edits.
+  useEffect(() => {
+    if (!isDirty) {
+      reset({
+        ...(initialRules as Record<string, unknown>),
+        ...(schemaToDefaultValues(DEFAULT_RULE_SCHEMA, initialRules) as Record<string, unknown>),
+      } as PropertyRules);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialRules]);
 
   const values = watch();
   const visibleFields = getVisibleFields(DEFAULT_RULE_SCHEMA.fields, values as unknown as Record<string, unknown>);
