@@ -884,6 +884,56 @@ async def _send_tenant_invite_email(
         log.warning("tenant.invite_email_exception", email=email, exc_info=True)
 
 
+async def _send_rejection_email(
+    *,
+    email: str,
+    first_name: str,
+    reason: str,
+    onboarding_token: str,
+) -> None:
+    """
+    Notify the tenant that their application was rejected and give them the
+    link to resubmit. The invite expiry has already been extended by 7 days
+    before this is called.
+    """
+    from app.core.config import get_settings
+    from app.integrations.notifications.email import get_email_provider
+
+    try:
+        s = get_settings()
+        onboarding_url = f"{s.frontend_url}/onboarding/{onboarding_token}"
+
+        subject = "Your rental application needs attention"
+        body = (
+            f"Hi {first_name},\n\n"
+            "Your landlord has reviewed your rental application and has requested "
+            "some changes before it can be approved.\n\n"
+            f"Reason: {reason}\n\n"
+            "Please use the link below to update your application. Your previous "
+            "information is saved — you only need to make the requested changes and "
+            "resubmit:\n\n"
+            f"  {onboarding_url}\n\n"
+            "This link is valid for 7 days. If you have any questions, contact "
+            "your property manager directly.\n\n"
+            "— The Crib Team"
+        )
+
+        provider = get_email_provider()
+        result = await provider.send(
+            recipient_name=first_name,
+            recipient_email=email,
+            recipient_phone=None,
+            subject=subject,
+            body=body,
+        )
+        if result.success:
+            log.info("tenant.rejection_email_sent", email=email)
+        else:
+            log.warning("tenant.rejection_email_failed", email=email, reason=result.failure_reason)
+    except Exception:
+        log.warning("tenant.rejection_email_exception", email=email, exc_info=True)
+
+
 # ── Approve / Reject ──────────────────────────────────────────────────────────
 
 async def _notify_resubmission(
@@ -1013,6 +1063,16 @@ async def reject_tenant(
 
     await db.flush()
     await db.refresh(tenant, attribute_names=["onboarding_state", "rejection_reason", "updated_at"])
+
+    # Email the tenant so they know to resubmit on their original link (non-fatal)
+    if latest_invite and tenant.email:
+        await _send_rejection_email(
+            email=tenant.email,
+            first_name=tenant.first_name,
+            reason=reason,
+            onboarding_token=latest_invite.token,
+        )
+
     return _tenant_out(tenant)
 
 
