@@ -27,14 +27,14 @@ class Settings(BaseSettings):
 
     # ── Security ─────────────────────────────────────────────────────────────
     secret_key: str = Field(min_length=32)
-    cors_origins: list[str] = ["http://localhost:8001", "http://localhost:3000", "http://localhost:3001"]  # comma-separated or list
+    # Stored as a plain string so pydantic-settings doesn't try to JSON-decode it.
+    # The property below splits on commas so the rest of the app sees a list.
+    # In .env.production: CORS_ORIGINS=https://crib.example.com,https://other.com
+    cors_origins: str = "http://localhost:8001,http://localhost:3000,http://localhost:3001"
 
-    @field_validator("cors_origins", mode="before")
-    @classmethod
-    def parse_cors(cls, v: str | list[str]) -> list[str]:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",")]
-        return v
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     # ── Database ─────────────────────────────────────────────────────────────
     database_url: str  # postgresql+asyncpg://...
