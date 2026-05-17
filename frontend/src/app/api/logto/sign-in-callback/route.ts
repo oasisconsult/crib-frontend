@@ -16,6 +16,16 @@ import {
 import { decodeJwt } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  try {
+    return await handleCallback(request);
+  } catch (err) {
+    console.error("[callback] Unhandled crash:", err);
+    const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    return NextResponse.redirect(new URL("/login?error=server_error", base));
+  }
+}
+
+async function handleCallback(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const stateParam = searchParams.get("state");
