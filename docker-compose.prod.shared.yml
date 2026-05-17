@@ -123,6 +123,7 @@ services:
 
   # ─── Next.js Frontend ───────────────────────────────────────────────────────
   frontend:
+    container_name: crib-frontend-prod   # explicit name — use this in NPM: crib-frontend-prod:3000
     build:
       context: ./frontend
       dockerfile: Dockerfile
