@@ -62,11 +62,24 @@ async function postToTokenEndpoint(
   const url = tokenEndpoint();
   console.debug("[oidc] POST", url, "grant_type:", params.grant_type);
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    clearTimeout(timeoutId);
+    const isTimeout = err instanceof Error && err.name === "AbortError";
+    console.error("[oidc] Fetch failed:", isTimeout ? "timeout after 10s" : err, "url:", url);
+    throw new OidcError(isTimeout ? 408 : 503, isTimeout ? "token_endpoint_timeout" : String(err));
+  }
+  clearTimeout(timeoutId);
 
   if (!res.ok) {
     const text = await res.text();
