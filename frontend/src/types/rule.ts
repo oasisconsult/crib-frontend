@@ -92,6 +92,15 @@ export const DEFAULT_RULE_SCHEMA: RuleSchema = {
       required: true,
     },
     {
+      key: "advanceRentMonths",
+      label: "Advance Rent (months)",
+      type: "number",
+      defaultValue: 1,
+      min: 1,
+      max: 6,
+      required: true,
+    },
+    {
       key: "noticePeriodDays",
       label: "Notice Period",
       type: "days",

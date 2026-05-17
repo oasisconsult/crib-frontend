@@ -144,15 +144,19 @@ export default function NewLeasePage() {
   const selectedProperty = selectableProperties.find((p) => p.id === propertyId);
   const selectedUnit     = availableUnits.find((u) => u.id === unitId);
 
-  // When a unit is selected auto-fill rent from unit data
+  // When a unit is selected auto-fill rent and recalculate deposit from rules
   useEffect(() => {
     if (selectedUnit) {
       setMonthlyRent(selectedUnit.monthlyRent);
       setCurrency(selectedUnit.currency ?? "UGX");
+      // Deposit = depositMonths × monthly rent (from property rules, default 1)
+      const depositMths = selectedProperty?.rules?.depositMonths ?? 1;
+      setDepositAmount(depositMths * selectedUnit.monthlyRent);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUnit]);
 
-  // When a property is selected auto-fill policy fields from property rules
+  // When a property is selected auto-fill all rule-driven fields
   useEffect(() => {
     if (selectedProperty?.rules) {
       const r = selectedProperty.rules;
@@ -161,6 +165,9 @@ export default function NewLeasePage() {
       setLateFeeType(r.lateFeeType);
       setLateFeeValue(r.lateFeeValue);
       setPaymentDueDay(r.rentDayOfMonth);
+      setAdvanceMonths(r.advanceRentMonths ?? 1);
+      // Deposit will be recalculated when unit (and its rent) is selected
+      setDepositAmount(0);
     }
     // Reset unit when switching property
     setUnitId("");
@@ -505,7 +512,7 @@ export default function NewLeasePage() {
             </CardTitle>
             {selectedUnit && (
               <CardDescription>
-                Pre-filled from unit — adjust if needed
+                Pre-filled from unit and property rules — adjust if needed
               </CardDescription>
             )}
           </CardHeader>
