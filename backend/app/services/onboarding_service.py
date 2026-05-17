@@ -291,9 +291,19 @@ async def get_onboarding_flow_status(
             lease.agreement_preview_snapshot.get("generatedAt", ""),
         )
 
+    # Resolve property and unit names so the wizard can display them
+    # (e.g. on the "Your Tenancy is Active" screen) without falling back to UUIDs.
+    from app.models.property import Property, Unit as PropertyUnit
+    _prop_id = invite.property_id or (lease.property_id if lease else None)
+    _unit_id = invite.unit_id or (lease.unit_id if lease else None)
+    _prop = await db.get(Property, _prop_id) if _prop_id else None
+    _unit = await db.get(PropertyUnit, _unit_id) if _unit_id else None
+    property_name = _prop.name if _prop else None
+    unit_name = _unit.name if _unit else None
+
     return OnboardingFlowStatus(
         tenant=_tenant_out(tenant).model_dump(by_alias=True),
-        invite=_invite_out(invite).model_dump(by_alias=True),
+        invite=_invite_out(invite, property_name=property_name, unit_name=unit_name).model_dump(by_alias=True),
         lease=_lease_out_dict(lease) if lease else None,
         agreement_preview=preview,
         onboarding_phase=phase,

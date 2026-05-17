@@ -721,7 +721,7 @@ export function OnboardingWizard({
                       <p className="text-muted-foreground text-sm mt-1">
                         Welcome home. Your tenancy at{" "}
                         <strong>
-                          {invite.propertyName ?? invite.propertyId}
+                          {invite.propertyName || "your property"}
                         </strong>
                         {invite.unitName && (
                           <>
