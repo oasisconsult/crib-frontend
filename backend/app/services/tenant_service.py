@@ -800,7 +800,7 @@ async def send_onboarding_link(
     )
     latest = latest_result.scalar_one_or_none()
 
-    if latest and latest.status != InviteStatus.cancelled:
+    if latest:
         # Reuse existing invite — patch in the lease and extend the expiry
         latest.lease_id = lease.id
         latest.property_id = lease.property_id
