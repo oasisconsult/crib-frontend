@@ -14,6 +14,7 @@ import {
   Upload,
   AlertTriangle,
   Calendar,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -507,7 +508,7 @@ interface TenantDocumentsSectionProps {
 export function TenantDocumentsSection({
   tenantId,
 }: TenantDocumentsSectionProps) {
-  const { data: documents = [], isLoading } = useTenantDocuments(tenantId);
+  const { data: documents = [], isLoading, refetch, isFetching } = useTenantDocuments(tenantId);
   const { can } = usePermissions();
   const canWrite = can("tenants:write");
   const canVerify = can("tenants:write");
@@ -557,16 +558,28 @@ export function TenantDocumentsSection({
                 </span>
               )}
             </CardTitle>
-            {canWrite && (
+            <div className="flex items-center gap-2">
               <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowUpload(true)}
+                size="icon-sm"
+                variant="ghost"
+                onClick={() => refetch()}
+                disabled={isFetching}
+                title="Refresh documents"
+                className="text-muted-foreground hover:text-foreground"
               >
-                <Plus className="h-3.5 w-3.5" />
-                Add Document
+                <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
               </Button>
-            )}
+              {canWrite && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowUpload(true)}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Document
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Summary chips */}

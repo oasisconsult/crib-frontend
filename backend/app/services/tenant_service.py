@@ -439,9 +439,17 @@ async def submit_onboarding(
     if body.documents:
         from dateutil.parser import parse as parse_dt
         existing_urls = {d.url for d in (tenant.documents or [])}
+        log.info(
+            "tenant.submit_onboarding.documents",
+            tenant_id=str(tenant.id),
+            received=len(body.documents),
+            existing_count=len(existing_urls),
+        )
         for doc_data in body.documents:
             if doc_data.url in existing_urls:
+                log.info("tenant.submit_onboarding.doc_skipped", url=doc_data.url[:80])
                 continue  # already saved from a previous draft-save or re-upload
+            log.info("tenant.submit_onboarding.doc_added", name=doc_data.name, url=doc_data.url[:80])
             try:
                 doc_type = IdDocumentType(doc_data.type)
             except ValueError:
