@@ -1108,7 +1108,8 @@ export default function TenantPortalPage() {
                   <CardContent>
                     <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
                       {[
-                        ["Reference", myLease.reference],
+                        ["Property", myLease.propertyName ?? "—"],
+                        ["Unit", myLease.unitName ?? "—"],
                         ["Type", myLease.type?.replace(/_/g, " ")],
                         ["Start date", formatDate(myLease.terms.startDate)],
                         ["End date", myLease.terms.endDate ? formatDate(myLease.terms.endDate) : "—"],
