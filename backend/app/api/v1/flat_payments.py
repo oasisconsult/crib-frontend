@@ -19,7 +19,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_tenant_record, require_org_access
+from app.api.deps import CurrentUser, get_org_id, get_tenant_record, require_org_access
 from app.core.database import get_db
 from app.schemas.payment import PaymentCreateFlat, PaymentOut
 from app.services import payment_service as svc
@@ -46,9 +46,7 @@ async def list_payments(
     db: AsyncSession = Depends(get_db),
 ):
     """List all payments for the organisation, optionally filtered by lease."""
-    if current_user.org_id is None:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="No organisation context")
+    org_id = get_org_id(current_user)
 
     # Tenants only see payments tied to their own leases.
     tenant_record = await get_tenant_record(current_user, db)
@@ -57,7 +55,7 @@ async def list_payments(
     landlord_id = current_user.id if current_user.profile.is_read_only else None
     status_list = [s.strip() for s in states.split(",")] if states else ([payment_status] if payment_status else None)
     return await svc.list_payments_org(
-        current_user.org_id,
+        org_id,
         db,
         status_filters=status_list,
         category=category,
@@ -77,10 +75,7 @@ async def create_payment(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a payment. Tenants may submit payments for their own lease."""
-    if current_user.org_id is None:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=403, detail="No organisation context")
-    return await svc.create_payment_flat(body, current_user.org_id, db)
+    return await svc.create_payment_flat(body, get_org_id(current_user), db)
 
 
 @payments_router.get("/{payment_id}", response_model=PaymentOut)

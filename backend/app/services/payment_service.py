@@ -1018,7 +1018,7 @@ async def export_payments_csv(
 # ── Flat (org-level) queries ───────────────────────────────────────────────────
 
 async def list_payments_org(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     status_filters: list[str] | None = None,
     category: str | None = None,
@@ -1134,7 +1134,7 @@ async def get_payment_by_org(
 
 async def create_payment_flat(
     body: PaymentCreateFlat,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> PaymentOut:
     """Create a payment with lease_id supplied in the request body."""

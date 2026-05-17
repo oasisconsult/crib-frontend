@@ -52,7 +52,7 @@ def _msg_with_lease_out(m: Message) -> MessageWithLeaseOut:
 
 async def list_messages(
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     page: int = 1,
     page_size: int = 50,
@@ -100,7 +100,7 @@ async def create_message(
 
 
 async def unread_count(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     profile_id: str,
     db: AsyncSession,
 ) -> int:
@@ -114,7 +114,7 @@ async def unread_count(
 
 
 async def list_messages_flat(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     page: int = 1,
     page_size: int = 20,
@@ -143,7 +143,7 @@ async def list_messages_flat(
 async def mark_read(
     lease_id: uuid.UUID,
     message_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> MessageOut:
     result = await db.execute(

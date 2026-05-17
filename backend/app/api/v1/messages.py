@@ -15,24 +15,18 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_org_access
+from app.api.deps import CurrentUser, get_org_id, require_org_access
 from app.core.database import get_db
-from app.schemas.message import MessageCreate, MessageOut, MessageWithLeaseOut, UnreadCountOut
+from app.schemas.message import MessageCreate, MessageOut, UnreadCountOut
 from app.services import message_service as svc
 
 router = APIRouter(prefix="/leases", tags=["messages"])
 flat_router = APIRouter(prefix="/messages", tags=["messages"])
 
 _access = Depends(require_org_access(allow_tenant_own=True))
-
-
-def _require_org(current_user: CurrentUser) -> uuid.UUID:
-    if current_user.org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No organisation context")
-    return current_user.org_id
 
 
 @router.get("/{lease_id}/messages", response_model=dict)
@@ -43,7 +37,7 @@ async def list_messages(
     current_user: CurrentUser = _access,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.list_messages(lease_id, _require_org(current_user), db, page, page_size)
+    return await svc.list_messages(lease_id, get_org_id(current_user), db, page, page_size)
 
 
 @router.post("/{lease_id}/messages", response_model=MessageOut, status_code=201)
@@ -63,7 +57,7 @@ async def mark_message_read(
     current_user: CurrentUser = _access,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.mark_read(lease_id, message_id, _require_org(current_user), db)
+    return await svc.mark_read(lease_id, message_id, get_org_id(current_user), db)
 
 
 # ── Flat (org-level) endpoints ────────────────────────────────────────────────
@@ -73,7 +67,7 @@ async def get_unread_count(
     current_user: CurrentUser = _access,
     db: AsyncSession = Depends(get_db),
 ):
-    org_id = _require_org(current_user)
+    org_id = get_org_id(current_user)
     count = await svc.unread_count(org_id, str(current_user.profile.id), db)
     return UnreadCountOut(count=count)
 
@@ -86,7 +80,7 @@ async def list_all_messages(
     current_user: CurrentUser = _access,
     db: AsyncSession = Depends(get_db),
 ):
-    org_id = _require_org(current_user)
+    org_id = get_org_id(current_user)
     return await svc.list_messages_flat(
         org_id, db, page, page_size,
         unread_only=unread_only,

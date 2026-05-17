@@ -60,7 +60,7 @@ async def _landlord_property_ids(
 
 
 async def get_dashboard_stats(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     landlord_profile_id: uuid.UUID | None = None,
 ) -> dict:
@@ -223,7 +223,7 @@ async def get_dashboard_stats(
 # ── Occupancy series ───────────────────────────────────────────────────────────
 
 async def get_occupancy_series(
-    org_id: uuid.UUID, db: AsyncSession, months: int = 12
+    org_id: uuid.UUID | None, db: AsyncSession, months: int = 12
 ) -> list[dict]:
     """
     For each month: count units with an active lease that overlaps that month
@@ -266,7 +266,7 @@ async def get_occupancy_series(
 # ── Revenue series ─────────────────────────────────────────────────────────────
 
 async def get_revenue_series(
-    org_id: uuid.UUID, db: AsyncSession, months: int = 12
+    org_id: uuid.UUID | None, db: AsyncSession, months: int = 12
 ) -> list[dict]:
     result = []
     for year, month in _months_back(months):
@@ -312,7 +312,7 @@ async def get_revenue_series(
 # ── Cash flow series ───────────────────────────────────────────────────────────
 
 async def get_cashflow_series(
-    org_id: uuid.UUID, db: AsyncSession, months: int = 12
+    org_id: uuid.UUID | None, db: AsyncSession, months: int = 12
 ) -> list[dict]:
     """
     Inflow  = confirmed payments received.

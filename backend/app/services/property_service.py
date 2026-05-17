@@ -103,7 +103,7 @@ def _unit_out(unit: Unit) -> UnitOut:
 # ── Property CRUD ─────────────────────────────────────────────────────────────
 
 async def list_properties(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     page: int = 1,
     page_size: int = 20,
@@ -172,7 +172,7 @@ async def get_property(
     return prop
 
 
-async def create_property(body: PropertyCreate, org_id: uuid.UUID, db: AsyncSession) -> PropertyOut:
+async def create_property(body: PropertyCreate, org_id: uuid.UUID | None, db: AsyncSession) -> PropertyOut:
     prop = Property(
         organisation_id=org_id,
         name=body.name,

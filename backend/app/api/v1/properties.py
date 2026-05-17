@@ -27,7 +27,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_org_access, require_superadmin
+from app.api.deps import CurrentUser, get_org_id, require_org_access, require_superadmin
 from app.core.database import get_db
 from app.schemas.common import PaginatedResponse
 from app.schemas.property import (
@@ -63,11 +63,10 @@ async def list_properties(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.org_id is None:
-        raise HTTPException(status_code=403, detail="No organisation context")
+    org_id = get_org_id(current_user)
     landlord_id = current_user.id if current_user.profile.is_read_only else None
     return await svc.list_properties(
-        current_user.org_id, db, page, page_size, status, type, search,
+        org_id, db, page, page_size, status, type, search,
         landlord_profile_id=landlord_id,
     )
 
@@ -78,9 +77,7 @@ async def create_property(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.org_id is None:
-        raise HTTPException(status_code=403, detail="No organisation context")
-    return await svc.create_property(body, current_user.org_id, db)
+    return await svc.create_property(body, get_org_id(current_user), db)
 
 
 @router.get("/{property_id}", response_model=PropertyOut)

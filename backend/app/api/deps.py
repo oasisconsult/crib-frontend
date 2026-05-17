@@ -296,6 +296,21 @@ def require_superadmin() -> Callable:
     return _guard
 
 
+def get_org_id(current_user: "CurrentUser") -> "uuid.UUID | None":
+    """
+    Return the user's organisation UUID, or None for superadmin (platform-wide access).
+    Raises 403 for any other role that lacks org context.
+    """
+    if current_user.has_role("superadmin"):
+        return current_user.org_id  # None is OK — queries naturally return empty
+    if current_user.org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No organisation context in token",
+        )
+    return current_user.org_id
+
+
 async def get_tenant_record(
     current_user: CurrentUser,
     db: AsyncSession,

@@ -28,7 +28,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user, require_org_access
+from app.api.deps import CurrentUser, get_current_user, get_org_id, require_org_access
 from app.core.database import get_db
 from app.schemas.payment import (
     ChannelCostEstimateOut,
@@ -63,8 +63,7 @@ async def _payment_create_guard(
     policy: PolicyService = Depends(get_policy_service),
 ) -> CurrentUser:
     """Managers/owners always allowed; tenants need payment:create RBAC permission."""
-    if current_user.org_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No organisation context")
+    get_org_id(current_user)  # raises 403 for non-superadmin without org context
     if current_user.is_owner_or_manager():
         return current_user
     if not await policy.can(current_user.roles, "create", "payment", db):
