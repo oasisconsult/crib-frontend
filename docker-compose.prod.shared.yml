@@ -156,8 +156,9 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - crib-prod      # reaches backend via internal network
-      - npm-network    # NPM must be able to reach this container to proxy crib.geoboxafrica.com
+      - crib-prod       # reaches backend via internal network
+      - npm-network     # NPM proxies crib.geoboxafrica.com → this container
+      - geobox-network  # server-side token exchange reaches geobox-logto-prod directly
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Networks
