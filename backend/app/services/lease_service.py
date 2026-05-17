@@ -50,6 +50,7 @@ def _lease_out(
     tenant_name: str | None = None,
     unit_name: str | None = None,
     property_name: str | None = None,
+    effective_advance_months: int | None = None,
 ) -> LeaseOut:
     def _d(v) -> str | None:
         if v is None:
@@ -91,7 +92,7 @@ def _lease_out(
         deposit_amount=float(lease.deposit_amount) if lease.deposit_amount is not None else None,
         deposit_paid=lease.deposit_paid,
         deposit_paid_at=_d(lease.deposit_paid_at),
-        advance_months=lease.advance_months,
+        advance_months=effective_advance_months if effective_advance_months is not None else lease.advance_months,
         rent_day_of_month=lease.rent_day_of_month,
         grace_period_days=lease.grace_period_days,
         late_fee_type=lease.late_fee_type,
@@ -238,13 +239,30 @@ async def get_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) ->
         if u:
             unit_name = u.name
 
+    effective_advance_months = lease.advance_months
     if lease.property_id:
         p = await db.scalar(select(Property).where(Property.id == lease.property_id))
         if p:
             property_name = p.name
+            # Resolve advance_months from property rules when not set on the lease
+            if effective_advance_months is None:
+                rules = {}
+                if lease.unit_id and u:
+                    rules = getattr(u, "rules", None) or {}
+                if not rules:
+                    rules = p.rules or {}
+                effective_advance_months = int(
+                    rules.get("advanceRentMonths") or rules.get("advance_rent_months") or 1
+                )
 
-    return _lease_out(lease, agreement=agreement, tenant_name=tenant_name,
-                      unit_name=unit_name, property_name=property_name)
+    return _lease_out(
+        lease,
+        agreement=agreement,
+        tenant_name=tenant_name,
+        unit_name=unit_name,
+        property_name=property_name,
+        effective_advance_months=effective_advance_months,
+    )
 
 
 async def list_leases(
