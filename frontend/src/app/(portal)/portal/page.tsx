@@ -780,9 +780,37 @@ export default function TenantPortalPage() {
 
   const nextPaymentDate = myLease?.terms
     ? (() => {
+        const startDate = new Date(myLease.terms.startDate + "T00:00:00");
+        // How many months of advance rent the tenant already paid.
+        // Falls back to 1 if the lease record doesn't store advance_months.
+        const advanceMonths = myLease.advanceMonths ?? 1;
+        // Day of month rent is due (from lease terms).
+        const dueDay = myLease.terms.paymentDueDay ?? 1;
+
+        // First real payment = the rent due day of the month AFTER the advance period.
+        // e.g. start=1 Jun 2026, advance=3 → first payment = 1 Sep 2026.
+        const firstPayment = new Date(
+          startDate.getFullYear(),
+          startDate.getMonth() + advanceMonths,
+          dueDay,
+        );
+
         const today = new Date();
-        const next = new Date(today.getFullYear(), today.getMonth() + (today.getDate() > 1 ? 1 : 0), 1);
-        return next.toLocaleDateString("en-UG", { month: "long", day: "numeric", year: "numeric" });
+        today.setHours(0, 0, 0, 0);
+
+        let nextDue: Date;
+        if (today <= firstPayment) {
+          // Still within or at the boundary of the advance period
+          nextDue = firstPayment;
+        } else {
+          // Past the advance period — find the next upcoming due day
+          const thisMonthDue = new Date(today.getFullYear(), today.getMonth(), dueDay);
+          nextDue = thisMonthDue >= today
+            ? thisMonthDue
+            : new Date(today.getFullYear(), today.getMonth() + 1, dueDay);
+        }
+
+        return nextDue.toLocaleDateString("en-UG", { month: "long", day: "numeric", year: "numeric" });
       })()
     : "—";
 
