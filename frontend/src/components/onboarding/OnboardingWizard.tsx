@@ -196,9 +196,13 @@ export function OnboardingWizard({
     },
   });
 
+  const initialDocCount = (tenant.documents ?? []).length;
   const [uploadedDocs, setUploadedDocs] = useState<UploadResult[]>(() =>
     (tenant.documents ?? []).map(docToUploadResult),
   );
+  // True once the tenant adds at least one new document in this session.
+  // Used to warn resubmitting tenants who click submit without a new upload.
+  const [newDocAdded, setNewDocAdded] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
 
   const { mutate: submit, isPending } = useSubmitOnboarding();
@@ -526,16 +530,21 @@ export function OnboardingWizard({
                   tenantId={tenant.id}
                   onboardingToken={token}
                   maxFiles={5}
-                  onUpload={(results) =>
+                  onUpload={(results) => {
                     setUploadedDocs((prev) => {
                       const existing = new Set(prev.map((d) => d.url));
-                      return [
-                        ...prev,
-                        ...results.filter((r) => !existing.has(r.url)),
-                      ];
-                    })
-                  }
+                      const newDocs = results.filter((r) => !existing.has(r.url));
+                      if (newDocs.length > 0) setNewDocAdded(true);
+                      return [...prev, ...newDocs];
+                    });
+                  }}
                 />
+                {/* Warn resubmitting tenants who haven't added a new document */}
+                {isResubmit && tenant.onboardingState === "rejected" && !newDocAdded && uploadedDocs.length === initialDocCount && (
+                  <div className="rounded-[6px] border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 px-3 py-2.5 text-sm text-amber-800 dark:text-amber-300">
+                    Your landlord asked for additional documents. Please upload them above before resubmitting.
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
