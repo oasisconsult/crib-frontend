@@ -147,20 +147,24 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - crib-prod          # talks to backend via internal network
-      # No geobox-network needed — frontend only talks to backend
+      - crib-prod      # reaches backend via internal network
+      - npm-network    # NPM must be able to reach this container to proxy crib.geoboxafrica.com
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Networks
 # crib-prod    — internal network for Crib containers only
-# geobox-network — external network declared by the GeoBox stack; joining it
-#                  lets backend/worker reach geobox-db-prod, geobox-redis-prod,
-#                  and geobox-logto-prod by their container names.
+# geobox-network — external (GeoBox stack); backend/worker reach shared services
+# npm-network    — external (NPM stack); frontend is reachable by NPM so it can
+#                  proxy crib.geoboxafrica.com → frontend:3000
 # ─────────────────────────────────────────────────────────────────────────────
 networks:
   crib-prod:
     driver: bridge
 
   geobox-network:
-    external: true          # already created by the GeoBox compose stack
-    name: geobox-network    # must match GeoBox's network name exactly
+    external: true
+    name: geobox-network
+
+  npm-network:
+    external: true
+    name: nginx-proxy-manager_nginx-proxy-manager_default
