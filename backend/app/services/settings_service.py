@@ -190,18 +190,32 @@ async def get_storage_config(db: AsyncSession) -> dict[str, Any]:
 
 
 async def get_email_config(db: AsyncSession) -> dict[str, Any]:
-    """Return email provider config dict."""
-    provider = await get("email.provider", db, "sendgrid")
+    """
+    Return email provider config dict.
+
+    Env vars take precedence over DB settings so that docker-compose.local.yml
+    can route all dev mail through MailHog without touching the DB.
+    DB values are used only when the corresponding env var is not set.
+    """
+    from app.core.config import get_settings
+    s = get_settings()
+
+    # Env-var overrides (set in docker-compose.local.yml for MailHog)
+    provider = s.email_provider if s.email_provider else await get("email.provider", db, "sendgrid")
+    smtp_host = s.smtp_host if s.smtp_host and s.smtp_host != "localhost" else await get("email.smtp.host", db, "localhost")
+    smtp_port = s.smtp_port if s.smtp_port != 587 else await get_int("email.smtp.port", db, 587)
+    email_from = s.email_from if s.email_from else await get("email.from_address", db, "noreply@crib.app")
+
     return {
         "provider": provider,
-        "from_address": await get("email.from_address", db, "noreply@crib.app"),
+        "from_address": email_from,
         "from_name": await get("email.from_name", db, "Crib"),
-        "sendgrid_api_key": await get("email.sendgrid.api_key", db),
-        "smtp_host": await get("email.smtp.host", db, "localhost"),
-        "smtp_port": await get_int("email.smtp.port", db, 587),
-        "smtp_username": await get("email.smtp.username", db),
-        "smtp_password": await get("email.smtp.password", db),
-        "smtp_use_tls": await get_bool("email.smtp.use_tls", db, True),
+        "sendgrid_api_key": s.sendgrid_api_key or await get("email.sendgrid.api_key", db),
+        "smtp_host": smtp_host,
+        "smtp_port": smtp_port,
+        "smtp_username": s.smtp_username or await get("email.smtp.username", db),
+        "smtp_password": s.smtp_password or await get("email.smtp.password", db),
+        "smtp_use_tls": smtp_port == 587,
     }
 
 

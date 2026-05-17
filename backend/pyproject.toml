@@ -49,6 +49,7 @@ dependencies = [
     # Notifications
     "sendgrid==6.11.0",
     "twilio==9.3.7",
+    "aiosmtplib>=3.0.0",  # async SMTP for dev (MailHog) and production SMTP relay
 
     # Utilities
     "python-multipart==0.0.20",

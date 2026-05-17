@@ -327,7 +327,14 @@ async def invite_tenant(
     db.add(invite)
     await db.flush()
 
-    # TODO Sprint 8: queue notification to send invite email/SMS
+    # Send invite email to tenant (non-fatal)
+    await _send_tenant_invite_email(
+        email=body.email,
+        first_name=first_name,
+        token=token,
+        org_id=org_id,
+        db=db,
+    )
 
     return _invite_out(invite)
 
@@ -811,9 +818,70 @@ async def send_onboarding_link(
         token=token[:8] + "…",
     )
 
-    # TODO Sprint 8: queue email/SMS to tenant with the onboarding URL
+    # Send fresh invite email to tenant (non-fatal)
+    await _send_tenant_invite_email(
+        email=tenant.email,
+        first_name=tenant.first_name,
+        token=token,
+        org_id=org_id,
+        db=db,
+    )
 
     return _invite_out(new_invite)
+
+
+# ── Email helpers ─────────────────────────────────────────────────────────────
+
+async def _send_tenant_invite_email(
+    *,
+    email: str,
+    first_name: str,
+    token: str,
+    org_id: uuid.UUID,
+    db: AsyncSession,
+) -> None:
+    """
+    Send the tenant their onboarding invite link by email.
+    Looks up the org name for a personalised greeting.
+    Non-fatal — logs a warning on failure without raising.
+    """
+    from app.core.config import get_settings
+    from app.integrations.notifications.email import get_email_provider
+    from app.models.organisation import Organisation
+
+    try:
+        s = get_settings()
+        org = await db.get(Organisation, org_id)
+        org_name = org.name if org else "your property manager"
+
+        onboarding_url = f"{s.frontend_url}/onboarding/{token}"
+
+        subject = f"You've been invited to Crib by {org_name}"
+        body = (
+            f"Hi {first_name},\n\n"
+            f"{org_name} has invited you to set up your tenant account on Crib.\n\n"
+            "Complete your profile and upload your documents using the link below "
+            "— it only takes a few minutes:\n\n"
+            f"  {onboarding_url}\n\n"
+            "This link is valid for 72 hours. If it expires, contact your property "
+            "manager to request a new one.\n\n"
+            "— The Crib Team"
+        )
+
+        provider = get_email_provider()
+        result = await provider.send(
+            recipient_name=first_name,
+            recipient_email=email,
+            recipient_phone=None,
+            subject=subject,
+            body=body,
+        )
+        if result.success:
+            log.info("tenant.invite_email_sent", email=email)
+        else:
+            log.warning("tenant.invite_email_failed", email=email, reason=result.failure_reason)
+    except Exception:
+        log.warning("tenant.invite_email_exception", email=email, exc_info=True)
 
 
 # ── Approve / Reject ──────────────────────────────────────────────────────────

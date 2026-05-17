@@ -97,13 +97,19 @@ class SmtpProvider(NotificationProvider):
             msg["From"] = self._from_email
             msg["To"] = f"{recipient_name} <{recipient_email}>"
 
+            # Port 587 = STARTTLS (production relay).
+            # All other ports (e.g. 1025 for MailHog) = plain SMTP, no TLS.
+            use_tls = False
+            start_tls = self._port == 587
+
             await aiosmtplib.send(
                 msg,
                 hostname=self._host,
                 port=self._port,
                 username=self._username or None,
                 password=self._password or None,
-                start_tls=self._port == 587,
+                use_tls=use_tls,
+                start_tls=start_tls,
             )
             return DeliveryResult(success=True)
         except Exception as exc:
