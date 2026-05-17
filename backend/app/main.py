@@ -159,6 +159,16 @@ def create_app() -> FastAPI:
     application.include_router(admin.router, prefix=settings.api_prefix)
     application.include_router(webhooks.router, prefix=settings.api_prefix)
 
+    # ── Prometheus metrics ────────────────────────────────────────────────────
+    # Exposes GET /metrics for the shared Prometheus instance on geobox-network.
+    # Scrape target is added in GeoBox core/config/prometheus/prometheus.yml.
+    from prometheus_fastapi_instrumentator import Instrumentator
+    Instrumentator(
+        should_group_status_codes=True,
+        should_ignore_untemplated=True,
+        excluded_handlers=["/api/v1/health"],
+    ).instrument(application).expose(application, include_in_schema=False)
+
     return application
 
 
