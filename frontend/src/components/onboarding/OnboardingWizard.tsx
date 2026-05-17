@@ -555,7 +555,12 @@ export function OnboardingWizard({
                   <Button
                     className="flex-1"
                     onClick={handleFinalSubmit}
-                    disabled={uploadedDocs.length === 0 || isPending}
+                    disabled={
+                      isPending ||
+                      uploadedDocs.length === 0 ||
+                      // Block resubmission after rejection until a new doc is uploaded
+                      (isResubmit && tenant.onboardingState === "rejected" && !newDocAdded)
+                    }
                     loading={isPending}
                   >
                     {isResubmit
