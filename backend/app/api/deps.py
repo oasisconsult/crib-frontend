@@ -321,6 +321,9 @@ def require_org_access(allow_tenant_own: bool = False) -> Callable:
     async def _guard(
         current_user: CurrentUser = Depends(get_current_user),
     ) -> CurrentUser:
+        # Superadmin has platform-wide access — no org context required.
+        if current_user.has_role("superadmin"):
+            return current_user
         if current_user.org_id is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
