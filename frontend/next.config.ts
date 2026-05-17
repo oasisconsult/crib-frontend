@@ -25,10 +25,12 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     const isDev = process.env.NODE_ENV !== "production";
-    // In development MSW injects inline scripts; tighten CSP in production.
+    // Next.js 15 App Router generates inline scripts for React Server Components
+    // hydration and chunk loading — 'unsafe-inline' is required in both envs.
+    // 'unsafe-eval' is only needed in dev for MSW / hot reload.
     const scriptSrc = isDev
       ? "'self' 'unsafe-inline' 'unsafe-eval'"
-      : "'self'";
+      : "'self' 'unsafe-inline'";
 
     return [
       {
