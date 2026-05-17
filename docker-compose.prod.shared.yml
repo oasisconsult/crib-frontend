@@ -129,8 +129,11 @@ services:
       target: production
       # NEXT_PUBLIC_* vars are baked into the bundle at build time by Next.js.
       # They must be passed as build args — runtime env vars arrive too late.
+      # Build args — NEXT_PUBLIC_* vars baked into the JS bundle at build time.
+      # Use LOGTO_PUBLIC_ENDPOINT (the browser-reachable public URL) here,
+      # NOT LOGTO_ENDPOINT which is the internal Docker hostname for server-side.
       args:
-        NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+        NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_PUBLIC_ENDPOINT}"
         NEXT_PUBLIC_LOGTO_APP_ID: "${LOGTO_APP_ID}"
         NEXT_PUBLIC_LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE}"
         NEXT_PUBLIC_APP_URL: "${FRONTEND_URL}"
@@ -140,16 +143,18 @@ services:
       - .env.production
     environment:
       NODE_ENV: production
-      # Public (browser) Logto URL — must match what the browser can reach
-      NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+      # Browser-facing vars (also set at runtime for SSR that reads process.env)
+      NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_PUBLIC_ENDPOINT}"
       NEXT_PUBLIC_LOGTO_APP_ID: "${LOGTO_APP_ID}"
       NEXT_PUBLIC_LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE}"
       NEXT_PUBLIC_APP_URL: "${FRONTEND_URL}"
-      # Server-side (BFF) — can use internal Docker hostname
+      # Server-side only — internal Docker hostname avoids hairpin NAT
+      # Token exchange: Next.js server → geobox-logto-prod:3001 (direct, no public internet)
       LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
       LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
       LOGTO_APP_SECRET: "${LOGTO_APP_SECRET}"
-      # Backend BFF target — internal network, not exposed publicly
+      LOGTO_JWKS_URI_OVERRIDE: "${LOGTO_JWKS_URI_OVERRIDE}"
+      # Backend BFF target — internal network
       BACKEND_URL: "http://backend:8000"
     depends_on:
       backend:
