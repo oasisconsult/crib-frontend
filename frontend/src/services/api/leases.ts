@@ -89,7 +89,7 @@ function toPaginatedLeases(raw: Record<string, unknown>): PaginatedResponse<Leas
  *   { startDate, monthlyRent, rentDayOfMonth, tenantId, unitId, ... }
  */
 function toLeaseCreatePayload(data: Omit<Lease, "id" | "createdAt" | "updatedAt" | "state">) {
-  const { terms, unitId, tenantId, notes } = data;
+  const { terms, unitId, tenantId, notes, advanceMonths } = data;
   return {
     unitId,
     tenantId,
@@ -103,6 +103,7 @@ function toLeaseCreatePayload(data: Omit<Lease, "id" | "createdAt" | "updatedAt"
     gracePeriodDays: terms.gracePeriodDays,
     lateFeeType: terms.lateFeeType,
     lateFeeValue: terms.lateFeeValue,
+    advanceMonths: advanceMonths ?? null,
     notes: notes ?? null,
   };
 }
