@@ -4,6 +4,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 const withNextIntl = createNextIntlPlugin("./src/lib/i18n.ts");
 
 const nextConfig: NextConfig = {
+  output: "standalone",  // required for Docker production image (creates .next/standalone)
   reactStrictMode: true,
   poweredByHeader: false,
   eslint: { ignoreDuringBuilds: true },
