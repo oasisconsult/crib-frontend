@@ -24,7 +24,11 @@ function toLeaseModel(raw: Record<string, unknown>): Lease {
     tenantId: (raw.tenantId as string) ?? "",
     propertyId: raw.propertyId as string,
     unitId: (raw.unitId as string) ?? "",
-    reference: raw.id as string,
+    // Build a human-readable reference from property/unit names.
+    // The backend LeaseOut has no reference field yet, so we construct one.
+    reference: (raw.propertyName as string)
+      ? `${raw.propertyName}${raw.unitName ? ` — ${raw.unitName}` : ""}`
+      : (raw.id as string),
     terms: {
       startDate: raw.startDate as string,
       endDate: (raw.endDate as string) ?? undefined,

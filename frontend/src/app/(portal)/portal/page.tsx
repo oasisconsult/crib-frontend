@@ -876,7 +876,10 @@ export default function TenantPortalPage() {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Current Lease</p>
-                  <p className="font-mono font-semibold">{myLease.reference}</p>
+                  <p className="font-semibold">
+                    {myLease.propertyName ?? "Property"}
+                    {myLease.unitName && <span className="text-muted-foreground font-normal"> — {myLease.unitName}</span>}
+                  </p>
                   <p className="text-sm text-muted-foreground mt-0.5">
                     {formatDate(myLease.terms.startDate)}
                     {myLease.terms.endDate ? ` — ${formatDate(myLease.terms.endDate)}` : " · Ongoing"}
