@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Image from "next/image";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -286,9 +286,9 @@ function MarketingPanel() {
   );
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────
+// ── Page content (useSearchParams requires Suspense in Next.js 15) ──────────
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") ?? "/";
   const [loading, setLoading] = useState(false);
@@ -427,5 +427,15 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginContent />
+    </Suspense>
   );
 }
