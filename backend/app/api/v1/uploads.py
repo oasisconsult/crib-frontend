@@ -165,7 +165,7 @@ async def presign_upload_onboarding(
     """
     from datetime import datetime, timezone
 
-    from app.models.tenant import InviteStatus, TenantInvite
+    from app.models.tenant import TenantInvite
 
     result = await db.execute(
         select(TenantInvite).where(TenantInvite.token == token)
@@ -178,8 +178,11 @@ async def presign_upload_onboarding(
     if invite.expires_at.replace(tzinfo=timezone.utc) < now:
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invite token has expired")
 
-    if invite.status == InviteStatus.accepted:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Onboarding already completed")
+    # Do NOT block on invite.status == accepted — after a landlord rejects and
+    # the tenant needs to upload more documents, submit_onboarding has already set
+    # status=accepted from the previous submission. The expiry check above is the
+    # correct security gate. submit_onboarding itself guards against re-activating
+    # a fully activated tenant.
 
     # Restrict which categories a public onboarding upload can use
     if body.category not in {"document", "signature"}:

@@ -231,7 +231,8 @@ async def test_onboarding_presign_accepted_invite(client: AsyncClient, db_sessio
         "/api/v1/upload/presign/onboarding/accepted-token-xyz",
         json={"filename": "id.pdf", "mimeType": "application/pdf", "category": "document"},
     )
-    assert r.status_code == 409
+    # 200 — accepted status no longer blocks uploads; expiry is the correct gate
+    assert r.status_code == 200
 
 
 @pytest.mark.asyncio
