@@ -827,6 +827,8 @@ async def send_onboarding_link(
         db.add(new_invite)
 
     tenant.onboarding_token = new_invite.token
+    # token is only defined in the else branch; always resolve it from the invite
+    token = new_invite.token
 
     await db.flush()
     await db.refresh(new_invite)
@@ -838,7 +840,7 @@ async def send_onboarding_link(
         token=token[:8] + "…",
     )
 
-    # Send fresh invite email to tenant (non-fatal)
+    # Notify the tenant that their lease agreement is ready (non-fatal)
     await _send_tenant_invite_email(
         email=tenant.email,
         first_name=tenant.first_name,
