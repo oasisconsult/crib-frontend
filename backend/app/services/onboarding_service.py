@@ -440,6 +440,136 @@ async def accept_terms(
     )
 
 
+async def _notify_landlord_payment_submitted(
+    lease: "Lease",
+    tenant: "Tenant",
+    payments: list,
+    db: AsyncSession,
+) -> None:
+    """Email the landlord/agency when the tenant submits onboarding payments."""
+    from app.core.config import get_settings
+    from app.integrations.notifications.email import get_email_provider
+    from app.models.organisation import Organisation
+    from app.models.profile import Profile
+
+    try:
+        s = get_settings()
+        org = await db.get(Organisation, lease.organisation_id)
+
+        # Resolve recipient — prefer org contact_email, fall back to owner profile
+        recipient_email: str | None = (org.settings or {}).get("contact_email") if org else None
+        recipient_name = org.name if org else "Property Manager"
+        if not recipient_email:
+            mgr = (await db.execute(
+                select(Profile).where(
+                    Profile.organisation_id == lease.organisation_id,
+                    Profile.role.in_(["owner", "manager"]),
+                    Profile.deleted_at.is_(None),
+                    Profile.email.is_not(None),
+                ).limit(1)
+            )).scalar_one_or_none()
+            if mgr:
+                recipient_email = mgr.email
+                recipient_name = mgr.display_name or recipient_name
+
+        if not recipient_email:
+            return
+
+        tenant_name = f"{tenant.first_name} {tenant.last_name}".strip()
+        total = sum(float(p.get("amount", 0)) for p in payments)
+        currency = payments[0].get("currency", "UGX") if payments else "UGX"
+        dashboard_url = f"{s.frontend_url}/leases/{lease.id}"
+
+        subject = f"Payment received — {tenant_name}"
+        body = (
+            f"Hi {recipient_name},\n\n"
+            f"{tenant_name} has submitted their onboarding payment"
+            f" of {currency} {total:,.0f}.\n\n"
+            "Please log in to confirm the payment so their tenancy agreement "
+            "can be finalised:\n\n"
+            f"  {dashboard_url}\n\n"
+            "— The Crib Team"
+        )
+
+        result = await get_email_provider().send(
+            recipient_name=recipient_name,
+            recipient_email=recipient_email,
+            recipient_phone=None,
+            subject=subject,
+            body=body,
+        )
+        if result.success:
+            log.info("onboarding.landlord_payment_notify_sent", lease_id=str(lease.id))
+        else:
+            log.warning("onboarding.landlord_payment_notify_failed", reason=result.failure_reason)
+    except Exception:
+        log.warning("onboarding.landlord_payment_notify_exception", exc_info=True)
+
+
+async def _send_payment_receipt(
+    lease: "Lease",
+    tenant: "Tenant",
+    payments: list,
+    db: AsyncSession,
+) -> None:
+    """Email the tenant a payment receipt after the landlord confirms payment."""
+    from app.core.config import get_settings
+    from app.integrations.notifications.email import get_email_provider
+    from app.models.property import Property, Unit
+
+    try:
+        s = get_settings()
+        if not tenant.email:
+            return
+
+        # Resolve property/unit names
+        unit = await db.get(Unit, lease.unit_id) if lease.unit_id else None
+        prop = await db.get(Property, lease.property_id) if lease.property_id else None
+        property_label = f"{prop.name} — {unit.name}" if prop and unit else (prop.name if prop else "your property")
+
+        tenant_name = f"{tenant.first_name} {tenant.last_name}".strip()
+        total = sum(float(p.get("amount", 0)) for p in payments)
+        currency = payments[0].get("currency", "UGX") if payments else "UGX"
+        from datetime import date
+        receipt_date = date.today().strftime("%-d %B %Y") if hasattr(date.today(), "strftime") else str(date.today())
+
+        # Build itemised lines
+        lines = []
+        for p in payments:
+            amt = float(p.get("amount", 0))
+            cat = str(p.get("category", "payment")).replace("_", " ").title()
+            lines.append(f"  {cat:<25} {currency} {amt:>12,.0f}")
+        items = "\n".join(lines)
+
+        subject = f"Payment receipt — {property_label}"
+        body = (
+            f"Hi {tenant_name},\n\n"
+            "Your payment has been confirmed. Here is your receipt:\n\n"
+            f"  Property:  {property_label}\n"
+            f"  Date:      {receipt_date}\n"
+            f"  Lease ref: {str(lease.id)[:8].upper()}\n\n"
+            f"{items}\n"
+            f"  {'─' * 40}\n"
+            f"  {'Total':<25} {currency} {total:>12,.0f}\n\n"
+            "Please keep this email as proof of payment.\n\n"
+            "— The Crib Team"
+        )
+
+        result = await get_email_provider().send(
+            recipient_name=tenant_name,
+            recipient_email=tenant.email,
+            recipient_phone=None,
+            subject=subject,
+            body=body,
+        )
+        if result.success:
+            log.info("onboarding.payment_receipt_sent", tenant_id=str(tenant.id))
+        else:
+            log.warning("onboarding.payment_receipt_failed", reason=result.failure_reason)
+    except Exception:
+        log.warning("onboarding.payment_receipt_exception", exc_info=True)
+
+
 async def submit_onboarding_payments(
     token: str, body: OnboardingPaymentCreate, db: AsyncSession
 ) -> OnboardingPaymentOut:
@@ -529,6 +659,9 @@ async def submit_onboarding_payments(
     await db.flush()
     await db.refresh(lease, attribute_names=["status", "onboarding_payment_ids", "updated_at"])
 
+    # Notify the landlord that payments have been submitted (non-fatal)
+    await _notify_landlord_payment_submitted(lease, tenant, payment_outs, db)
+
     return OnboardingPaymentOut(
         lease_id=str(lease.id),
         lease_status=lease.status.value,
@@ -605,10 +738,16 @@ async def confirm_onboarding_payment(
         select(Payment).where(Payment.id.in_(ids))
     )).scalars().all()
 
+    payment_dicts = [_payment_dict(p) for p in payments]
+
+    # Send receipt to tenant after payment is confirmed (non-fatal)
+    tenant = await _resolve_tenant(invite, db)
+    await _send_payment_receipt(lease, tenant, payment_dicts, db)
+
     return OnboardingPaymentOut(
         lease_id=str(lease.id),
         lease_status=lease.status.value,
-        payments=[_payment_dict(p) for p in payments],
+        payments=payment_dicts,
     )
 
 
