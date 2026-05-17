@@ -22,6 +22,24 @@ CMD ["npm", "run", "dev"]
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# NEXT_PUBLIC_* vars must be available at build time — Next.js bakes them
+# into the static bundle during 'next build'. Pass them as --build-arg
+# in docker compose (see build.args in docker-compose.prod.shared.yml).
+ARG NEXT_PUBLIC_LOGTO_ENDPOINT
+ARG NEXT_PUBLIC_LOGTO_APP_ID
+ARG NEXT_PUBLIC_LOGTO_API_RESOURCE
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_MOCK_API=false
+ARG NEXT_PUBLIC_MAILHOG_URL=""
+
+ENV NEXT_PUBLIC_LOGTO_ENDPOINT=$NEXT_PUBLIC_LOGTO_ENDPOINT
+ENV NEXT_PUBLIC_LOGTO_APP_ID=$NEXT_PUBLIC_LOGTO_APP_ID
+ENV NEXT_PUBLIC_LOGTO_API_RESOURCE=$NEXT_PUBLIC_LOGTO_API_RESOURCE
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_MOCK_API=$NEXT_PUBLIC_MOCK_API
+ENV NEXT_PUBLIC_MAILHOG_URL=$NEXT_PUBLIC_MAILHOG_URL
+
 RUN npm run build
 
 # ─── Production ──────────────────────────────────────────────────────

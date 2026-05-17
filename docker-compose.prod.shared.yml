@@ -127,6 +127,15 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
+      # NEXT_PUBLIC_* vars are baked into the bundle at build time by Next.js.
+      # They must be passed as build args — runtime env vars arrive too late.
+      args:
+        NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+        NEXT_PUBLIC_LOGTO_APP_ID: "${LOGTO_APP_ID}"
+        NEXT_PUBLIC_LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE}"
+        NEXT_PUBLIC_APP_URL: "${FRONTEND_URL}"
+        NEXT_PUBLIC_MOCK_API: "false"
+        NEXT_PUBLIC_MAILHOG_URL: ""
     env_file:
       - .env.production
     environment:
