@@ -1,0 +1,73 @@
+# ─── Crib — Production Operations ───────────────────────────────────────────
+# Run these on the production VPS only.
+# Prerequisites:
+#   - .env.production file present in this directory
+#   - geobox-network and npm network already created by GeoBox stack
+#
+# Usage:
+#   make -f Makefile.prod deploy      # Pull latest, rebuild, restart
+#   make -f Makefile.prod migrate     # Run database migrations
+#   make -f Makefile.prod logs        # Follow all logs
+#   make -f Makefile.prod rollback    # Restart containers from previous image
+
+COMPOSE := docker compose -f docker-compose.prod.shared.yml --env-file .env.production
+
+.PHONY: deploy up down build migrate logs logs-backend logs-frontend logs-worker \
+        shell-backend rollback status restart
+
+## Pull latest code, rebuild images and restart all services
+deploy:
+	git pull origin main
+	$(COMPOSE) up -d --build
+	$(COMPOSE) exec backend alembic upgrade head
+
+## Start all services without rebuilding
+up:
+	$(COMPOSE) up -d
+
+## Stop and remove containers (data volumes preserved)
+down:
+	$(COMPOSE) down
+
+## Rebuild images without starting
+build:
+	$(COMPOSE) build
+
+## Run database migrations only
+migrate:
+	$(COMPOSE) exec backend alembic upgrade head
+
+## Follow logs for all services (or: make -f Makefile.prod logs service=backend)
+logs:
+	$(COMPOSE) logs -f $(service)
+
+## Follow backend logs only
+logs-backend:
+	$(COMPOSE) logs -f backend
+
+## Follow frontend logs only
+logs-frontend:
+	$(COMPOSE) logs -f frontend
+
+## Follow worker logs only
+logs-worker:
+	$(COMPOSE) logs -f worker
+
+## Open a bash shell in the backend container
+shell-backend:
+	$(COMPOSE) exec backend bash
+
+## Show running containers and their status
+status:
+	$(COMPOSE) ps
+
+## Restart all services without rebuilding (quick config reload)
+restart:
+	$(COMPOSE) restart
+
+## Rollback: restart containers from the currently built image (no rebuild)
+## Use if a new deploy introduced a bug — run 'make -f Makefile.prod deploy'
+## after fixing the issue in git.
+rollback:
+	$(COMPOSE) down
+	$(COMPOSE) up -d
