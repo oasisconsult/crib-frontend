@@ -1,93 +1,165 @@
 version: "3.9"
 
-# Production Compose File — Shared Infrastructure
-# Usage: docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+# ─────────────────────────────────────────────────────────────────────────────
+# Crib — Production (Shared-Infrastructure Edition)
 #
-# This assumes you have:
-#   - PostgreSQL managed elsewhere
-#   - Redis managed elsewhere
-#   - Logto managed elsewhere (as shared service)
-#   - MinIO managed elsewhere (or local)
+# Runs ONLY Crib-specific containers.  Postgres, Redis, Logto, and Nginx Proxy
+# Manager are all shared with GeoBox on the same VPS.
 #
-# Prerequisites:
-#   - .env.production file with connection URLs
-#   - Network connectivity to external services
+# Usage:
+#   docker compose -f docker-compose.prod.shared.yml --env-file .env.production up -d
+#
+# Pre-flight checklist:
+#   1. On the GeoBox server, add Crib to the shared network so containers can
+#      reach each other:
+#        docker network connect geobox-network <container>    # or use external network below
+#   2. Create the Crib database on the shared Postgres instance:
+#        psql -U postgres -c "CREATE DATABASE crib_prod;"
+#        psql -U postgres -c "CREATE USER crib WITH PASSWORD '...'; GRANT ALL ON DATABASE crib_prod TO crib;"
+#   3. Run Crib migrations once containers are up:
+#        docker compose -f docker-compose.prod.shared.yml exec backend alembic upgrade head
+#   4. In Logto Admin (geobox's Logto instance):
+#        a. Create a new Application  → type "Traditional Web" → note App ID + Secret
+#        b. Create a new API Resource → audience = https://crib.yourdomain.com/api
+#        c. Create a new M2M Application for Crib backend → note M2M App ID + Secret
+#        d. Add org roles: owner, manager, landlord, tenant, maintenance
+#   5. In Nginx Proxy Manager:
+#        Add proxy hosts for crib.yourdomain.com → frontend:3000
+#        Add proxy host for crib-api.yourdomain.com → backend:8000 (optional, BFF handles most traffic)
+# ─────────────────────────────────────────────────────────────────────────────
 
 services:
-  # ─── FastAPI Backend ──────────────────────────────────────────────────────
+
+  # ─── FastAPI Backend ────────────────────────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: "${DATABASE_URL}" # e.g., postgresql+asyncpg://user:pass@db.example.com/crib
-      REDIS_URL: "${REDIS_URL}" # e.g., redis://:password@redis.example.com:6379/0
-      MINIO_ENDPOINT: "${MINIO_ENDPOINT}" # e.g., minio.example.com:9000
-      # Logto (shared instance)
-      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}" # e.g., https://logto.yourdomain.com
-      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}" # e.g., https://logto-admin.yourdomain.com
+    command:
+      [
+        "sh", "-c",
+        "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2",
+      ]
     env_file:
       - .env.production
+    environment:
+      # ── Database — shared Postgres, dedicated Crib database ──────────────
+      # Format: postgresql+asyncpg://crib:<password>@geobox-db-prod:5432/crib_prod
+      DATABASE_URL: "${DATABASE_URL}"
+
+      # ── Redis — shared instance, Crib uses DB index 1 (GeoBox uses 0) ───
+      # Format: redis://:<password>@geobox-redis-prod:6379/1
+      REDIS_URL: "${REDIS_URL}"
+
+      # ── Logto — shared instance, Crib-specific app credentials ──────────
+      # LOGTO_ENDPOINT must be the PUBLIC URL (browser-accessible) because
+      # it is used as the OIDC issuer in JWT validation.
+      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+      LOGTO_JWKS_URI_OVERRIDE: "${LOGTO_JWKS_URI_OVERRIDE}"   # internal Docker hostname for JWKS fetch
+      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
+      LOGTO_APP_ID: "${LOGTO_APP_ID}"
+      LOGTO_APP_SECRET: "${LOGTO_APP_SECRET}"
+      LOGTO_M2M_APP_ID: "${LOGTO_M2M_APP_ID}"
+      LOGTO_M2M_APP_SECRET: "${LOGTO_M2M_APP_SECRET}"
+      LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE}"
+
+      # ── MinIO / S3 object storage ────────────────────────────────────────
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-crib-prod}"
+      MINIO_SECURE: "${MINIO_SECURE:-true}"
+
+      # ── App ──────────────────────────────────────────────────────────────
+      SECRET_KEY: "${SECRET_KEY}"
+      FRONTEND_URL: "${FRONTEND_URL}"
+      CORS_ORIGINS: "${CORS_ORIGINS}"
+      ENVIRONMENT: production
     restart: unless-stopped
     networks:
       - crib-prod
-    deploy:
-      replicas: 1
+      - geobox-network    # attach to GeoBox network to reach shared services
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # ─── Celery Worker (Background Tasks) ──────────────────────────────────────
+  # ─── Celery Worker ──────────────────────────────────────────────────────────
   worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
     command:
       [
-        "celery",
-        "-A",
-        "app.worker.celery_app",
-        "worker",
+        "celery", "-A", "app.worker.celery_app", "worker",
         "--loglevel=info",
-        "-Q",
-        "default,notifications,payments",
-        "--concurrency=4",
+        "-Q", "default,notifications,payments",
+        "--concurrency=2",       # keep low — shared VPS
       ]
-    environment:
-      NODE_ENV: production
-      DATABASE_URL: "${DATABASE_URL}"
-      REDIS_URL: "${REDIS_URL}"
-      MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
-      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
-      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
     env_file:
       - .env.production
+    environment:
+      DATABASE_URL: "${DATABASE_URL}"
+      REDIS_URL: "${REDIS_URL}"
+      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
+      LOGTO_M2M_APP_ID: "${LOGTO_M2M_APP_ID}"
+      LOGTO_M2M_APP_SECRET: "${LOGTO_M2M_APP_SECRET}"
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+      SECRET_KEY: "${SECRET_KEY}"
+      ENVIRONMENT: production
     restart: unless-stopped
     networks:
       - crib-prod
-    deploy:
-      replicas: 1
+      - geobox-network
+    depends_on:
+      backend:
+        condition: service_healthy
 
-  # ─── Next.js Frontend ─────────────────────────────────────────────────────
+  # ─── Next.js Frontend ───────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       target: production
-    environment:
-      NODE_ENV: production
-      NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}" # Browser-accessible
-      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}" # Server-side
-      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}" # Server-side
-      BACKEND_URL: "http://backend:8000" # Internal Docker network
     env_file:
       - .env.production
+    environment:
+      NODE_ENV: production
+      # Public (browser) Logto URL — must match what the browser can reach
+      NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+      NEXT_PUBLIC_LOGTO_APP_ID: "${LOGTO_APP_ID}"
+      NEXT_PUBLIC_LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE}"
+      NEXT_PUBLIC_APP_URL: "${FRONTEND_URL}"
+      # Server-side (BFF) — can use internal Docker hostname
+      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
+      LOGTO_APP_SECRET: "${LOGTO_APP_SECRET}"
+      # Backend BFF target — internal network, not exposed publicly
+      BACKEND_URL: "http://backend:8000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     networks:
-      - crib-prod
-    deploy:
-      replicas: 1
+      - crib-prod          # talks to backend via internal network
+      # No geobox-network needed — frontend only talks to backend
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Networks
+# crib-prod    — internal network for Crib containers only
+# geobox-network — external network declared by the GeoBox stack; joining it
+#                  lets backend/worker reach geobox-db-prod, geobox-redis-prod,
+#                  and geobox-logto-prod by their container names.
+# ─────────────────────────────────────────────────────────────────────────────
 networks:
   crib-prod:
     driver: bridge
+
+  geobox-network:
+    external: true          # already created by the GeoBox compose stack
+    name: geobox-network    # must match GeoBox's network name exactly
