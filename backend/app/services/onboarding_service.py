@@ -145,8 +145,10 @@ async def _advance_payment_months(
     if lease is not None and lease.advance_months is not None:
         return max(1, lease.advance_months)
     rules = unit.rules or prop.rules or {}
-    if "advancePaymentMonths" in rules:
-        return int(rules["advancePaymentMonths"])
+    # Check both legacy key and the key used by PropertyRulesSchema
+    for key in ("advanceRentMonths", "advancePaymentMonths", "advance_rent_months"):
+        if key in rules:
+            return max(1, int(rules[key]))
     val = await _get_setting("payments.advance_payment_months", "1", db)
     return max(1, int(val))
 
@@ -383,9 +385,13 @@ async def preview_agreement(token: str, db: AsyncSession) -> AgreementPreviewOut
         lease.status = LeaseStatus.onboarding_started
     lease.status = LeaseStatus.agreement_previewed
     lease.agreement_preview_snapshot = snapshot
+    # Persist the resolved advance_months so the portal and other services
+    # can use it without re-resolving from unit/property rules each time.
+    if lease.advance_months is None:
+        lease.advance_months = advance_months
 
     await db.flush()
-    await db.refresh(lease, attribute_names=["status", "agreement_preview_snapshot", "updated_at"])
+    await db.refresh(lease, attribute_names=["status", "agreement_preview_snapshot", "advance_months", "updated_at"])
 
     rendered_html = await _render_agreement_html(lease, tenant, unit, prop, db)
     out = _snapshot_to_preview(snapshot, now.isoformat())
