@@ -612,7 +612,7 @@ export function OnboardingWizard({
               <h2 className="text-lg font-semibold">Waiting for lease setup</h2>
               <p className="text-muted-foreground text-sm">
                 Your application has been approved. Your landlord is preparing
-                your lease — you&apos;ll receive a new link shortly.
+                your lease — this page will update automatically when it&apos;s ready.
               </p>
             </CardContent>
           </Card>

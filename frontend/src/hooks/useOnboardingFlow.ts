@@ -19,6 +19,16 @@ export function useOnboardingFlowStatus(token: string) {
     queryFn: () => onboardingFlowApi.getFlowStatus(token),
     staleTime: 10_000,
     retry: false,
+    // Auto-poll while the tenant is approved but waiting for the landlord to
+    // link a lease. Once the lease appears the page transitions automatically
+    // and polling stops.
+    refetchInterval: (query) => {
+      const data = query.state.data as { tenant?: { onboardingState?: string }; invite?: { leaseId?: string } } | undefined;
+      if (data?.tenant?.onboardingState === "approved" && !data?.invite?.leaseId) {
+        return 15_000; // 15 s — fast enough to feel responsive
+      }
+      return false;
+    },
   });
 }
 

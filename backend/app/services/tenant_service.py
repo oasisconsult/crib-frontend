@@ -787,34 +787,46 @@ async def send_onboarding_link(
             detail="Tenant onboarding is already complete.",
         )
 
-    # Expire existing pending invites for this tenant
-    existing = await db.execute(
-        select(TenantInvite).where(
-            TenantInvite.tenant_id == tenant.id,
-            TenantInvite.status == InviteStatus.pending,
-        )
-    )
-    for old_invite in existing.scalars().all():
-        old_invite.status = InviteStatus.expired
-
+    # Prefer updating the tenant's most recent invite so they can use the same
+    # URL they already have rather than waiting for a new link by email.
+    # Only fall back to creating a new invite if the existing one was cancelled.
     now = datetime.now(timezone.utc)
-    token = secrets.token_urlsafe(48)
 
-    new_invite = TenantInvite(
-        tenant_id=tenant.id,
-        organisation_id=org_id,
-        property_id=lease.property_id,
-        unit_id=lease.unit_id,
-        lease_id=lease.id,
-        email=tenant.email,
-        name=f"{tenant.first_name} {tenant.last_name}",
-        token=token,
-        status=InviteStatus.pending,
-        sent_at=now,
-        expires_at=now + timedelta(hours=INVITE_EXPIRY_HOURS),
+    latest_result = await db.execute(
+        select(TenantInvite)
+        .where(TenantInvite.tenant_id == tenant.id)
+        .order_by(TenantInvite.sent_at.desc())
+        .limit(1)
     )
-    db.add(new_invite)
-    tenant.onboarding_token = token
+    latest = latest_result.scalar_one_or_none()
+
+    if latest and latest.status != InviteStatus.cancelled:
+        # Reuse existing invite — patch in the lease and extend the expiry
+        latest.lease_id = lease.id
+        latest.property_id = lease.property_id
+        latest.unit_id = lease.unit_id
+        latest.status = InviteStatus.pending
+        latest.expires_at = now + timedelta(hours=INVITE_EXPIRY_HOURS)
+        new_invite = latest
+    else:
+        # No usable invite — create a fresh one
+        token = secrets.token_urlsafe(48)
+        new_invite = TenantInvite(
+            tenant_id=tenant.id,
+            organisation_id=org_id,
+            property_id=lease.property_id,
+            unit_id=lease.unit_id,
+            lease_id=lease.id,
+            email=tenant.email,
+            name=f"{tenant.first_name} {tenant.last_name}",
+            token=token,
+            status=InviteStatus.pending,
+            sent_at=now,
+            expires_at=now + timedelta(hours=INVITE_EXPIRY_HOURS),
+        )
+        db.add(new_invite)
+
+    tenant.onboarding_token = new_invite.token
 
     await db.flush()
     await db.refresh(new_invite)
