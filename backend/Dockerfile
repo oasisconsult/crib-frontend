@@ -35,6 +35,8 @@ RUN pip install --no-cache-dir pip-tools \
         kombu==5.4.2 \
         sendgrid==6.11.0 \
         twilio==9.3.7 \
+        aiosmtplib>=3.0.0 \
+        prometheus-fastapi-instrumentator==7.0.0 \
         python-multipart==0.0.20 \
         python-dateutil==2.9.0 \
         structlog==24.4.0 \
