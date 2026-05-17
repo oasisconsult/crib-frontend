@@ -19,6 +19,8 @@ export interface PropertyRules {
   lateFeeCapAmount?: number;
   depositMonths: number;
   advanceRentMonths: number;
+  minimumLeaseMonths: number;
+  maxOccupants: number;
   noticePeriodDays: number;
   allowSubletting: boolean;
   allowPets: boolean;

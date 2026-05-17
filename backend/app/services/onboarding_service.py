@@ -919,10 +919,34 @@ async def _render_agreement_html(
     from app.core.agreement_template import render_agreement
     from app.models.organisation import Organisation
 
-    # Resolve landlord name: agency setting → org name → fallback
-    agency_name = await _get_setting("agency.name", "", db)
+    # Resolve landlord name.
+    # Priority: owner profile display_name (for individual/personal orgs)
+    #           → org.name (for agencies)
+    #           → system agency.name setting (platform fallback)
+    #           → "Landlord"
+    from app.models.profile import Profile
     org = await db.get(Organisation, lease.organisation_id)
-    landlord_name = agency_name.strip() or (org.name if org else "Landlord")
+    agency_name = await _get_setting("agency.name", "", db)
+
+    landlord_name: str = "Landlord"
+    if org:
+        # Look for a single owner profile — indicates a personal/individual landlord
+        owner_result = await db.execute(
+            select(Profile).where(
+                Profile.organisation_id == org.id,
+                Profile.role == "owner",
+                Profile.deleted_at.is_(None),
+            ).limit(2)
+        )
+        owners = owner_result.scalars().all()
+        if len(owners) == 1 and owners[0].display_name:
+            # Single owner with a name → individual landlord, use their name
+            landlord_name = owners[0].display_name
+        else:
+            # Agency or no owner profile → use org name
+            landlord_name = org.name or agency_name.strip() or "Landlord"
+    elif agency_name.strip():
+        landlord_name = agency_name.strip()
 
     # Resolve contact phones from system settings
     agency_phone = await _get_setting("agency.contact_phone", "", db)
@@ -952,6 +976,23 @@ async def _render_agreement_html(
             return f"{d.day} {d.strftime('%B %Y')}"
         return str(d)
 
+    # Resolve minimum lease months and max occupants from effective rules
+    effective_rules: dict = {}
+    if unit and unit.rules:
+        effective_rules = unit.rules
+    elif prop and prop.rules:
+        effective_rules = prop.rules
+    minimum_lease_months = int(effective_rules.get("minimum_lease_months", 6))
+    max_occupants = int(effective_rules.get("max_occupants", 2))
+
+    # Rolling date = start_date + minimum_lease_months
+    from dateutil.relativedelta import relativedelta as _relativedelta
+    if lease.start_date:
+        rolling_dt = lease.start_date + _relativedelta(months=minimum_lease_months)
+        rolling_date_str = _fmt_date(rolling_dt)
+    else:
+        rolling_date_str = _fmt_date(lease.start_date)
+
     now = datetime.now(timezone.utc)
 
     return render_agreement(
@@ -974,6 +1015,9 @@ async def _render_agreement_html(
         late_fee_value=float(lease.late_fee_value),
         agreement_date=f"{now.day} {now.strftime('%B %Y')}",
         advance_months=await _advance_payment_months(unit, prop, db, lease=lease),
+        minimum_lease_months=minimum_lease_months,
+        rolling_date=rolling_date_str,
+        max_occupants=max_occupants,
         tenant_signature_data_url=tenant_signature_data_url,
         tenant_signed_at=tenant_signed_at,
         landlord_signature_data_url=landlord_signature_data_url,

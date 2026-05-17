@@ -183,8 +183,8 @@ that Landlord is unable to provide the House on the exact start date, then Landl
 provide the House as soon as possible, and Tenant&rsquo;s obligation to pay rent shall
 abate during such period. Tenant shall not be entitled to any other remedy for any delay
 in providing the House.</p>
-<p>A minimum of six months tenancy, monthly rolling thereafter from
-<strong>{{ start_date }}</strong> to rent the house specified only.
+<p>A minimum of {{ minimum_lease_months }} ({{ minimum_lease_months_words }}) month{{ minimum_lease_months_plural }} tenancy,
+monthly rolling thereafter from <strong>{{ rolling_date }}</strong> to rent the house specified only.
 <strong>{{ notice_period_days }} days&rsquo;</strong> notice needs to be given if the
 Tenant or Landlord wishes to end the agreement.</p>
 
@@ -226,8 +226,9 @@ ordinances, rules, and orders of appropriate governmental authorities and homes
 associations, if any, with respect to the House.</p>
 
 <h2>7.&nbsp; Number of Occupants.</h2>
-<p>Tenant agrees that the House shall be occupied by no more than two persons without the
-prior written consent of Landlord.</p>
+<p>Tenant agrees that the House shall be occupied by no more than
+{{ max_occupants }} ({{ max_occupants_words }}) person{{ max_occupants_plural }}
+without the prior written consent of Landlord.</p>
 
 <h2>8.&nbsp; Condition of Premises.</h2>
 <p class="sub">A.&nbsp; Tenant agrees that Tenant has examined the House, including the
@@ -475,6 +476,9 @@ def render_agreement(
     late_fee_value: float,
     agreement_date: str,
     advance_months: int = 1,
+    minimum_lease_months: int = 6,
+    rolling_date: str = "",
+    max_occupants: int = 2,
     # Signature fields
     tenant_signature_data_url: str | None = None,
     tenant_signed_at: str | None = None,
@@ -525,6 +529,13 @@ def render_agreement(
         advance_months_plural="s" if advance_months != 1 else "",
         advance_rent_amount=format_amount(monthly_rent * advance_months),
         advance_rent_words=number_to_words(monthly_rent * advance_months),
+        minimum_lease_months=minimum_lease_months,
+        minimum_lease_months_words=number_to_words(minimum_lease_months),
+        minimum_lease_months_plural="s" if minimum_lease_months != 1 else "",
+        rolling_date=rolling_date or start_date,
+        max_occupants=max_occupants,
+        max_occupants_words=number_to_words(max_occupants),
+        max_occupants_plural="s" if max_occupants != 1 else "",
         agreement_date=agreement_date,
         tenant_sig_html=tenant_sig_html,
         landlord_sig_html=landlord_sig_html,
