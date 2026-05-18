@@ -81,12 +81,8 @@ async def _get_m2m_token() -> str:
     
     s = get_settings()
 
-    # base_url = str(s.logto_endpoint)
-    base_url = f"http://logto:3001"
-    # resource = str(s.logto_admin_api_resource)
-    resource = f"https://default.logto.app/api"  # Match configured API identifier
-
-    url = f"{base_url.rstrip('/')}/oidc/token"
+    resource = str(s.logto_admin_api_resource)
+    url = f"{str(s.logto_endpoint).rstrip('/')}/oidc/token"
 
     log.info("logto.m2m_request", url=url, resource=resource)
 

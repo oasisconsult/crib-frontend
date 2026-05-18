@@ -58,6 +58,9 @@ services:
       LOGTO_M2M_APP_ID: "${LOGTO_M2M_APP_ID}"
       LOGTO_M2M_APP_SECRET: "${LOGTO_M2M_APP_SECRET}"
       LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE}"
+      # Management API resource identifier — for self-hosted Logto this is
+      # the public Logto URL + /api  (e.g. https://auth.yourdomain.com/api)
+      LOGTO_ADMIN_API_RESOURCE: "${LOGTO_ADMIN_API_RESOURCE}"
 
       # ── MinIO / S3 object storage ────────────────────────────────────────
       MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
