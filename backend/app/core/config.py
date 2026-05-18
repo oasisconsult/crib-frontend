@@ -171,7 +171,9 @@ class Settings(BaseSettings):
 
     @property
     def logto_management_api_base(self) -> str:
-        return f"{self.logto_endpoint}api"
+        # Management API is on the admin port (3002), not the public OIDC port.
+        # logto_admin_endpoint = http://geobox-logto-prod:3002
+        return f"{self.logto_admin_endpoint}api"
 
 
 @lru_cache
