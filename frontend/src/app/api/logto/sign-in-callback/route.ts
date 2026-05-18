@@ -129,6 +129,21 @@ async function handleCallback(request: NextRequest) {
     }
   }
 
+  // ── Organisation access gate ──────────────────────────────────────────────
+  // If the user has no org memberships and is not a superadmin, they
+  // authenticated successfully but haven't been invited to any organisation.
+  // Redirect to a friendly "no access" page rather than letting them hit
+  // the dashboard and see a wall of 403s.
+  const roles = extractRoles(accessToken);
+  if (orgIds.length === 0 && !roles.includes("superadmin")) {
+    const noAccess = new URL("/no-access", baseOrigin);
+    const noAccessResponse = NextResponse.redirect(noAccess);
+    noAccessResponse.cookies.delete(COOKIE.PKCE_VERIFIER);
+    noAccessResponse.cookies.delete(COOKIE.PKCE_STATE);
+    noAccessResponse.cookies.delete(COOKIE.POST_LOGIN_REDIRECT);
+    return noAccessResponse;
+  }
+
   // ── Build redirect response ───────────────────────────────────────────────
   const redirectTo =
     request.cookies.get(COOKIE.POST_LOGIN_REDIRECT)?.value ?? "/";
@@ -141,7 +156,7 @@ async function handleCallback(request: NextRequest) {
 
   // Set session cookies
   const role = extractRole(accessToken);
-  const roles = extractRoles(accessToken);
+  // roles already computed above for the org gate check
   const claims = decodeJwt(accessToken);
 
   response.cookies.set(COOKIE.SESSION, accessToken, {
