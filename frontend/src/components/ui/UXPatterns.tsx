@@ -122,7 +122,7 @@ export function Skeleton({ className, lines = 3 }: SkeletonProps) {
         <div
           key={i}
           className={cn(
-            "bg-gray-200 rounded animate-pulse",
+            "bg-muted rounded animate-pulse",
             i === 0 ? "h-4 w-3/4" : i === lines - 1 ? "h-4 w-1/2" : "h-4 w-full"
           )}
         />
@@ -133,7 +133,7 @@ export function Skeleton({ className, lines = 3 }: SkeletonProps) {
 
 export function CardSkeleton({ className }: SkeletonProps) {
   return (
-    <div className={cn("bg-white border border-gray-200 rounded-[6px] p-6", className)}>
+    <div className={cn("bg-card border border-border rounded-[var(--radius-lg)] p-6", className)}>
       <Skeleton lines={2} />
     </div>
   );
@@ -141,15 +141,15 @@ export function CardSkeleton({ className }: SkeletonProps) {
 
 export function TableSkeleton({ rows = 5, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cn("bg-white border border-gray-200 rounded-[6px] overflow-hidden", className)}>
+    <div className={cn("bg-card border border-border rounded-[var(--radius-lg)] overflow-hidden", className)}>
       {/* Table Header */}
-      <div className="border-b border-gray-200 p-4">
+      <div className="border-b border-border p-4">
         <div className="h-4 bg-gray-200 rounded w-1/4 animate-pulse" />
       </div>
       
       {/* Table Rows */}
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="border-b border-gray-200 p-4">
+        <div key={i} className="border-b border-border p-4">
           <div className="flex items-center space-x-4">
             <div className="h-4 bg-gray-200 rounded w-1/4 animate-pulse" />
             <div className="h-4 bg-gray-200 rounded w-1/3 animate-pulse" />
@@ -164,7 +164,7 @@ export function TableSkeleton({ rows = 5, className }: { rows?: number; classNam
 
 export function DashboardCardSkeleton({ className }: SkeletonProps) {
   return (
-    <div className={cn("bg-white border border-gray-200 rounded-[6px] p-6", className)}>
+    <div className={cn("bg-card border border-border rounded-[var(--radius-lg)] p-6", className)}>
       <div className="space-y-4">
         <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse" />
         <div className="h-8 bg-gray-200 rounded w-3/4 animate-pulse" />
@@ -240,9 +240,9 @@ export function NotificationToast({ notification, onClose }: NotificationToastPr
       <div className="flex items-start gap-3">
         {getIcon()}
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-semibold text-gray-900">{notification.title}</h4>
+          <h4 className="text-sm font-semibold text-foreground">{notification.title}</h4>
           {notification.message && (
-            <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+            <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
           )}
           {notification.action && (
             <button
@@ -255,7 +255,7 @@ export function NotificationToast({ notification, onClose }: NotificationToastPr
         </div>
         <button
           onClick={() => onClose(notification.id)}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -276,13 +276,13 @@ interface SearchBarProps {
 export function SearchBar({ value, onChange, placeholder = "Search...", className }: SearchBarProps) {
   return (
     <div className={cn("relative", className)}>
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-[6px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        className="w-full pl-10 pr-4 py-2 border border-border rounded-[var(--radius-md)] bg-input text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-primary"
       />
       {value && (
         <button
@@ -307,7 +307,7 @@ export function FilterButton({ activeFilters, onClick, className }: FilterButton
     <button
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-[6px] hover:bg-gray-50 transition-colors",
+        "inline-flex items-center gap-2 px-4 py-2 border border-border rounded-[var(--radius-md)] hover:bg-muted text-foreground transition-colors",
         activeFilters > 0 && "bg-teal-50 border-teal-200 text-teal-600",
         className
       )}
@@ -369,7 +369,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       case 'active':
         return { label: 'Active', className: 'bg-green-100 text-green-800' };
       case 'inactive':
-        return { label: 'Inactive', className: 'bg-gray-100 text-gray-800' };
+        return { label: 'Inactive', className: 'bg-muted text-muted-foreground' };
       case 'pending':
         return { label: 'Pending', className: 'bg-yellow-100 text-yellow-800' };
       case 'paid':
@@ -379,7 +379,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       case 'overdue':
         return { label: 'Overdue', className: 'bg-red-100 text-red-800' };
       default:
-        return { label: status, className: 'bg-gray-100 text-gray-800' };
+        return { label: status, className: 'bg-muted text-muted-foreground' };
     }
   };
 

@@ -21,7 +21,7 @@ const inputBase = [
   "focus-visible:outline-none",
   "focus-visible:border-[hsl(var(--primary))]",
   "focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]/20",
-  "focus-visible:bg-white",
+  "focus-visible:bg-[hsl(var(--input))]",
   // Disabled state
   "disabled:cursor-not-allowed disabled:bg-[hsl(var(--muted))] disabled:text-[hsl(var(--muted-foreground))] disabled:border-[hsl(var(--border))]",
   "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-[hsl(var(--foreground))]",

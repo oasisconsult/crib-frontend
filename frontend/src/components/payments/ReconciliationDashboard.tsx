@@ -54,7 +54,7 @@ const STATUS_CONFIG: Record<
   expired: {
     label: "Expired",
     icon: XCircle,
-    className: "bg-slate-100 text-slate-600 border-slate-200",
+    className: "bg-muted text-muted-foreground border-border",
   },
 };
 

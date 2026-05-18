@@ -200,7 +200,7 @@ export function TooltipWrapper({ children, content, position = "top" }: TooltipW
       </div>
       {isVisible && (
         <div className={cn(
-          "absolute z-50 px-2 py-1 text-xs text-white bg-gray-900 rounded shadow-lg whitespace-nowrap transition-opacity duration-200",
+          "absolute z-50 px-2 py-1 text-xs text-[hsl(var(--background))] bg-[hsl(var(--foreground))] rounded shadow-lg whitespace-nowrap transition-opacity duration-200",
           position === "top" && "bottom-full left-1/2 transform -translate-x-1/2 mb-1",
           position === "bottom" && "top-full left-1/2 transform -translate-x-1/2 mt-1",
           position === "left" && "right-full top-1/2 transform -translate-y-1/2 mr-1",
@@ -208,7 +208,7 @@ export function TooltipWrapper({ children, content, position = "top" }: TooltipW
         )}>
           {content}
           <div className={cn(
-            "absolute w-2 h-2 bg-gray-900 transform rotate-45",
+            "absolute w-2 h-2 bg-[hsl(var(--foreground))] transform rotate-45",
             position === "top" && "bottom-full left-1/2 transform -translate-x-1/2 translate-y-1",
             position === "bottom" && "top-full left-1/2 transform -translate-x-1/2 -translate-y-1",
             position === "left" && "right-full top-1/2 transform -translate-y-1/2 translate-x-1",

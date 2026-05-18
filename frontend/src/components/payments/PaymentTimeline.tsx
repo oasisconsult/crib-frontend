@@ -37,7 +37,7 @@ const STATUS_CONFIG: Record<
   { icon: React.ElementType; color: string; label: string }
 > = {
   // v4 happy path
-  initiated:          { icon: Clock,        color: "text-slate-400",   label: "Initiated"      },
+  initiated:          { icon: Clock,        color: "text-muted-foreground",   label: "Initiated"      },
   predicted:          { icon: Clock,        color: "text-indigo-500",  label: "Analysed"       },
   routed:             { icon: Clock,        color: "text-blue-500",    label: "Routed"         },
   pending:            { icon: Clock,        color: "text-amber-500",   label: "Processing"     },
@@ -51,7 +51,7 @@ const STATUS_CONFIG: Record<
   // legacy
   confirmed:          { icon: CheckCircle2, color: "text-emerald-500", label: "Confirmed"      },
   failed:             { icon: XCircle,      color: "text-red-500",     label: "Failed"         },
-  refunded:           { icon: RefreshCw,    color: "text-slate-500",   label: "Refunded"       },
+  refunded:           { icon: RefreshCw,    color: "text-muted-foreground",   label: "Refunded"       },
 };
 
 // ── Method config ─────────────────────────────────────────────────────────────

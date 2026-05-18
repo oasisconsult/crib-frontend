@@ -62,20 +62,20 @@ const CurvedButton = forwardRef<HTMLButtonElement, CurvedButtonProps>(
         case "secondary":
           return cn(
             "re-button-secondary",
-            "bg-white",
-            "text-gray-700",
-            "border-2 border-gray-200",
-            "hover:border-blue-300",
-            "hover:bg-gray-50",
+            "bg-[hsl(var(--card))]",
+            "text-[hsl(var(--foreground))]",
+            "border-2 border-[hsl(var(--border))]",
+            "hover:border-[hsl(var(--primary))]/40",
+            "hover:bg-[hsl(var(--muted))]",
             "active:scale-95",
             "transition-all duration-200 ease-out"
           );
         case "ghost":
           return cn(
             "re-button-ghost",
-            "text-gray-600",
-            "hover:text-blue-600",
-            "hover:bg-blue-50",
+            "text-[hsl(var(--muted-foreground))]",
+            "hover:text-[hsl(var(--primary))]",
+            "hover:bg-[hsl(var(--accent))]",
             "active:scale-95",
             "transition-all duration-150 ease-out"
           );

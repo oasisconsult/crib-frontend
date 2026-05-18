@@ -119,8 +119,8 @@ const TRANSITION_ACTIONS: {
 function StateBadge({ state }: { state: string }) {
   const cfg = MAINTENANCE_STATE_DISPLAY[state as MaintenanceState] ?? {
     label: state,
-    color: "text-slate-600",
-    bgColor: "bg-slate-100",
+    color: "text-muted-foreground",
+    bgColor: "bg-muted",
   };
   return (
     <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize", cfg.color, cfg.bgColor)}>
