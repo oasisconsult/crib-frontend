@@ -121,9 +121,9 @@ def upgrade() -> None:
         sa.Column("organisation_id", UUID(as_uuid=True), sa.ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False, unique=True, index=True),
         sa.Column("plan_id", UUID(as_uuid=True), sa.ForeignKey("subscription_plans.id"), nullable=False),
 
-        sa.Column("status", sa.Enum(name=SUBSCRIPTION_STATUS_ENUM, create_type=False), nullable=False, default="active"),
-        sa.Column("billing_cycle", sa.Enum(name=BILLING_CYCLE_ENUM, create_type=False), nullable=False, default="none"),
-        sa.Column("currency", sa.Enum(name=BILLING_CURRENCY_ENUM, create_type=False), nullable=False, default="UGX"),
+        sa.Column("status", sa.String(50), nullable=False, server_default="active"),
+        sa.Column("billing_cycle", sa.String(20), nullable=False, server_default="none"),
+        sa.Column("currency", sa.String(10), nullable=False, server_default="UGX"),
 
         sa.Column("current_period_start", sa.DateTime(timezone=True), nullable=True),
         sa.Column("current_period_end", sa.DateTime(timezone=True), nullable=True),
@@ -161,7 +161,7 @@ def upgrade() -> None:
         sa.Column("due_date", sa.DateTime(timezone=True), nullable=True),
         sa.Column("paid_at", sa.DateTime(timezone=True), nullable=True),
 
-        sa.Column("status", sa.Enum(name=INVOICE_STATUS_ENUM, create_type=False), nullable=False, default="draft"),
+        sa.Column("status", sa.String(20), nullable=False, server_default="draft"),
         sa.Column("pdf_file_key", sa.String(500), nullable=True),
         sa.Column("line_items", JSONB, nullable=False, server_default="[]"),
         sa.Column("notes", sa.Text, nullable=True),
@@ -178,7 +178,7 @@ def upgrade() -> None:
         sa.Column("subscription_id", UUID(as_uuid=True), sa.ForeignKey("organisation_subscriptions.id"), nullable=False),
         sa.Column("invoice_id", UUID(as_uuid=True), sa.ForeignKey("subscription_invoices.id"), nullable=True),
 
-        sa.Column("payment_method", sa.Enum(name=SUBSCRIPTION_PAYMENT_METHOD_ENUM, create_type=False), nullable=False),
+        sa.Column("payment_method", sa.String(30), nullable=False),
         sa.Column("amount", sa.BigInteger, nullable=False),
         sa.Column("currency", sa.String(3), nullable=False, default="UGX"),
 
@@ -193,7 +193,7 @@ def upgrade() -> None:
         sa.Column("proof_file_key", sa.String(500), nullable=True),
         sa.Column("proof_uploaded_at", sa.DateTime(timezone=True), nullable=True),
 
-        sa.Column("status", sa.Enum(name=SUBSCRIPTION_PAYMENT_STATUS_ENUM, create_type=False), nullable=False, default="pending"),
+        sa.Column("status", sa.String(30), nullable=False, server_default="pending"),
         sa.Column("submitted_at", sa.DateTime(timezone=True), nullable=True),
 
         # Admin verification fields
@@ -212,7 +212,7 @@ def upgrade() -> None:
         sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column("organisation_id", UUID(as_uuid=True), sa.ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False, index=True),
         sa.Column("subscription_id", UUID(as_uuid=True), sa.ForeignKey("organisation_subscriptions.id"), nullable=True),
-        sa.Column("event_type", sa.Enum(name=SUBSCRIPTION_EVENT_ENUM, create_type=False), nullable=False),
+        sa.Column("event_type", sa.String(50), nullable=False),
 
         # Who triggered the event (NULL = system/cron)
         sa.Column("actor_id", UUID(as_uuid=True), sa.ForeignKey("profiles.id"), nullable=True),
@@ -227,6 +227,20 @@ def upgrade() -> None:
         # Immutable — no updated_at
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
     )
+
+    # ── Cast string columns to their enum types ───────────────────────────────
+    # Tables were created with String columns to avoid SQLAlchemy auto-creating
+    # the enum types. Now cast them to the proper enum types.
+    for stmt in [
+        f"ALTER TABLE organisation_subscriptions ALTER COLUMN status TYPE {SUBSCRIPTION_STATUS_ENUM} USING status::{SUBSCRIPTION_STATUS_ENUM}",
+        f"ALTER TABLE organisation_subscriptions ALTER COLUMN billing_cycle TYPE {BILLING_CYCLE_ENUM} USING billing_cycle::{BILLING_CYCLE_ENUM}",
+        f"ALTER TABLE organisation_subscriptions ALTER COLUMN currency TYPE {BILLING_CURRENCY_ENUM} USING currency::{BILLING_CURRENCY_ENUM}",
+        f"ALTER TABLE subscription_invoices ALTER COLUMN status TYPE {INVOICE_STATUS_ENUM} USING status::{INVOICE_STATUS_ENUM}",
+        f"ALTER TABLE subscription_payments ALTER COLUMN payment_method TYPE {SUBSCRIPTION_PAYMENT_METHOD_ENUM} USING payment_method::{SUBSCRIPTION_PAYMENT_METHOD_ENUM}",
+        f"ALTER TABLE subscription_payments ALTER COLUMN status TYPE {SUBSCRIPTION_PAYMENT_STATUS_ENUM} USING status::{SUBSCRIPTION_PAYMENT_STATUS_ENUM}",
+        f"ALTER TABLE subscription_audit_log ALTER COLUMN event_type TYPE {SUBSCRIPTION_EVENT_ENUM} USING event_type::{SUBSCRIPTION_EVENT_ENUM}",
+    ]:
+        op.execute(sa.text(stmt))
 
     # ── Seed subscription plans ───────────────────────────────────────────────
     now = datetime.now(timezone.utc).isoformat()
