@@ -47,12 +47,12 @@ const ALL_STATUSES: PropertyStatus[] = ["active", "inactive", "maintenance"];
 
 // ── Property type config ──────────────────────────────────────────────────
 
-const TYPE_CONFIG: Record<PropertyType, { gradient: string; icon: React.ComponentType<{ className?: string }> }> = {
-  flat:       { gradient: "from-[hsl(168,82%,32%)] to-[hsl(187,83%,28%)]", icon: Building2 },
-  house:      { gradient: "from-[hsl(43,90%,40%)] to-[hsl(32,89%,44%)]",  icon: Home },
-  hostel:     { gradient: "from-[hsl(230,28%,26%)] to-[hsl(230,28%,18%)]", icon: Hotel },
-  commercial: { gradient: "from-[hsl(187,83%,26%)] to-[hsl(230,28%,22%)]", icon: Briefcase },
-  villa:      { gradient: "from-[hsl(170,81%,28%)] to-[hsl(168,82%,20%)]", icon: Castle },
+const TYPE_CONFIG: Record<PropertyType, { accent: string; iconBg: string; icon: React.ComponentType<{ className?: string }> }> = {
+  flat:       { accent: "border-t-[hsl(var(--primary))]",    iconBg: "bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))]",       icon: Building2  },
+  house:      { accent: "border-t-amber-300",                 iconBg: "bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400", icon: Home       },
+  hostel:     { accent: "border-t-slate-400",                 iconBg: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",   icon: Hotel      },
+  commercial: { accent: "border-t-indigo-400",                iconBg: "bg-indigo-50 text-indigo-500 dark:bg-indigo-900/20 dark:text-indigo-400", icon: Briefcase  },
+  villa:      { accent: "border-t-emerald-400",               iconBg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-500", icon: Castle     },
 };
 
 // ── Grid card ─────────────────────────────────────────────────────────────
@@ -79,7 +79,11 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
 
   return (
     <div
-      className="group cursor-pointer rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden focus-within:ring-2 focus-within:ring-[hsl(var(--ring))] focus-within:ring-offset-2"
+      className={cn(
+        "group cursor-pointer border border-t-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)] hover:-translate-y-0.5 transition-all duration-200 overflow-hidden focus-within:ring-2 focus-within:ring-[hsl(var(--ring))] focus-within:ring-offset-2",
+        "rounded-[var(--radius-lg)]",
+        typeConf.accent,
+      )}
       onClick={onClick}
       role="article"
     >
@@ -93,28 +97,25 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
         />
       ) : (
         <div
-          className={cn("relative h-36 bg-gradient-to-br", typeConf.gradient)}
+          className="relative flex items-center justify-between px-4 pt-4 pb-3"
           aria-hidden="true"
         >
-          {/* Decorative circles */}
-          <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-white/10" />
-          <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-white/10" />
-
-          {/* Centred icon */}
-          <div className="flex h-full items-center justify-center relative z-10">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[8px] bg-white/20 border border-white/30 backdrop-blur-sm">
-              <TypeIcon className="h-7 w-7 text-white" />
+          {/* Type icon + label */}
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-[hsl(var(--border))]",
+              typeConf.iconBg,
+            )}>
+              <TypeIcon className="h-5 w-5" />
             </div>
+            <span className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide">
+              {TYPE_LABELS[property.type] ?? property.type}
+            </span>
           </div>
 
-          {/* Type pill — bottom left */}
-          <span className="absolute bottom-3 left-3 text-[10px] font-semibold rounded-[5px] bg-black/25 text-white/90 px-2 py-0.5 backdrop-blur-sm">
-            {TYPE_LABELS[property.type] ?? property.type}
-          </span>
-
-          {/* Status — top right */}
+          {/* Status badge — top right */}
           <span className={cn(
-            "absolute top-3 right-3 flex items-center gap-1 text-[10px] font-semibold rounded-full px-2.5 py-1 capitalize",
+            "flex items-center gap-1 text-[10px] font-semibold rounded-full px-2.5 py-1 capitalize",
             STATUS_STYLES[property.status],
           )}>
             <span className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[property.status])} />
@@ -143,7 +144,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
             { label: "Occupied", value: `${property.occupiedUnits}/${property.totalUnits}`, colored: true },
             { label: "Rate",     value: `${occupancyPct}%`, rate: true },
           ].map((s) => (
-            <div key={s.label} className="rounded-[6px] bg-[hsl(var(--muted))]/60 px-2 py-1.5">
+            <div key={s.label} className="rounded-[var(--radius-md)] bg-[hsl(var(--muted))]/60 px-2 py-1.5">
               <p className="text-[9px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] mb-0.5">{s.label}</p>
               <p className={cn(
                 "text-sm font-bold",
