@@ -80,6 +80,10 @@ def downgrade() -> None:
         )
     """)
 
+    # Normalise any role values that are not in role_enum before casting.
+    # 'superuser' was used briefly in production before being renamed to 'superadmin'.
+    op.execute("UPDATE profiles SET role = 'superadmin' WHERE role NOT IN ('superadmin','owner','manager','tenant','maintenance')")
+
     # Drop the string default before changing the column type, then re-add it
     # as an enum cast. Without this, Postgres refuses to cast the default value.
     op.execute("ALTER TABLE profiles ALTER COLUMN role DROP DEFAULT")
