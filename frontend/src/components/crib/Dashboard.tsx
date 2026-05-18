@@ -89,8 +89,7 @@ function KpiCard({
         ) : (
           <>
             <p
-              className="text-[28px] font-bold text-foreground leading-none tracking-[-0.03em]"
-              style={{ fontFamily: "var(--font-poppins,'Poppins',sans-serif)" }}
+              className="text-[28px] font-bold text-foreground leading-none tracking-[-0.03em] tabular-nums"
             >
               {value}
             </p>

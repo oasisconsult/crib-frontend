@@ -126,9 +126,6 @@ export function MobileNav() {
             </div>
             <span
               className="font-bold text-[15px] text-[hsl(var(--foreground))] tracking-[-0.01em]"
-              style={{
-                fontFamily: "var(--font-poppins, 'Poppins', sans-serif)",
-              }}
             >
               CRIB
             </span>

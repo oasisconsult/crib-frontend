@@ -39,7 +39,6 @@ export function PageHeader({
         <div className="flex flex-col gap-1">
           <h1
             className="text-[20px] font-semibold tracking-[-0.02em] text-foreground leading-tight"
-            style={{ fontFamily: "var(--font-poppins, 'Poppins', system-ui, sans-serif)" }}
           >
             {title}
           </h1>
