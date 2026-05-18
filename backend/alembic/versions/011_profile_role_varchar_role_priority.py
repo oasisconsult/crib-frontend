@@ -80,12 +80,13 @@ def downgrade() -> None:
         )
     """)
 
-    # Cast back — any non-standard role names will fail; acceptable for rollback.
+    # Drop the string default before changing the column type, then re-add it
+    # as an enum cast. Without this, Postgres refuses to cast the default value.
+    op.execute("ALTER TABLE profiles ALTER COLUMN role DROP DEFAULT")
     op.execute("""
         ALTER TABLE profiles
         ALTER COLUMN role TYPE role_enum USING role::role_enum
     """)
-
     op.execute("ALTER TABLE profiles ALTER COLUMN role SET DEFAULT 'tenant'::role_enum")
 
     # Remove priority column
