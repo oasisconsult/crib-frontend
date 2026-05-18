@@ -123,10 +123,12 @@ async def provision_organisation(
     await db.flush()
 
     # Step 3: Link the profile
+    # Preserve superadmin role — don't downgrade to owner.
     profile = current_user.profile
     profile.organisation_id = org.id
     profile.logto_org_id = logto_org_id
-    profile.role = "owner"
+    if profile.role != "superadmin":
+        profile.role = "owner"
     await db.flush()
 
     return OrganisationOut(
