@@ -66,21 +66,16 @@
 // }
 
 import type { Metadata } from "next";
-import { Poppins, Inter } from "next/font/google";
+import { Inter } from "next/font/google";
 import "@/styles/globals.css";
 import { Providers } from "./providers";
-
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-poppins",
-  display: "optional",  // prevents eager preload of every weight on every page
-});
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  display: "optional",
+  display: "swap",
+  // Load the weights used across the dashboard
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -102,9 +97,7 @@ export default function RootLayout({
       <head>
         <meta name="color-scheme" content="light dark" />
       </head>
-      <body
-        className={`${poppins.variable} ${inter.variable} font-sans antialiased`}
-      >
+      <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

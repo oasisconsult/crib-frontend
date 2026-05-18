@@ -63,15 +63,17 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Real estate brand colours — Rightmove-style teal palette
+        // Crib brand colours — modern SaaS teal palette
         brand: {
-          teal: "#14C6A3",    // Primary brand teal
-          "teal-dark": "#0F8F7A", // Secondary teal
-          "teal-deep": "#0A6B5A", // Dark teal
-          cyan: "#0F8FA0",    // Cyan accent
-          yellow: "#F5B000",  // Warm yellow
-          orange: "#F28C18",  // Orange accent
-          navy: "#1E2235",    // Dark navy text / dark mode bg
+          teal: "#239487",       // Primary brand teal
+          "teal-light": "#38B2A3", // Primary-400
+          "teal-dark": "#1C7A70", // Primary-600
+          "teal-deep": "#16665D", // Primary-700
+          "teal-subtle": "#F3FCFA", // Primary-50
+          indigo: "#6366F1",     // Analytics / secondary accent
+          yellow: "#F59E0B",     // Warning amber
+          orange: "#F28C18",     // Orange accent
+          navy: "#0F172A",       // Dark mode background
           white: "#FFFFFF",
         },
         // Domain colours
@@ -109,16 +111,18 @@ const config: Config = {
         },
       },
       borderRadius: {
-        lg: "6px",
-        md: "5px",
-        sm: "4px",
-        xl: "6px",
-        "2xl": "8px",
-        "3xl": "12px",
+        sm: "6px",
+        DEFAULT: "8px",
+        md: "8px",
+        lg: "12px",
+        xl: "16px",
+        "2xl": "20px",
+        "3xl": "24px",
+        full: "9999px",
       },
       fontFamily: {
-        sans: ["var(--font-poppins)", "var(--font-inter)", "Inter", ...fontFamily.sans],
-        heading: ["var(--font-poppins)", "Poppins", ...fontFamily.sans],
+        sans: ["var(--font-inter)", "Inter", ...fontFamily.sans],
+        heading: ["var(--font-inter)", "Inter", ...fontFamily.sans],
         body: ["var(--font-inter)", "Inter", ...fontFamily.sans],
         mono: ["JetBrains Mono", ...fontFamily.mono],
       },
