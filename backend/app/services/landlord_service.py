@@ -293,6 +293,7 @@ async def complete_onboarding(
             profile.is_read_only = False
             profile.organisation_id = personal_org.id
             profile.logto_org_id = personal_logto_org_id
+            profile.display_name = f"{body.first_name} {body.last_name}"
             if logto_user_id:
                 profile.logto_sub = logto_user_id
             if body.phone:
@@ -368,6 +369,7 @@ async def complete_onboarding(
         profile.is_read_only = True
         profile.organisation_id = invite.organisation_id
         profile.logto_org_id = logto_org_id
+        profile.display_name = f"{body.first_name} {body.last_name}"
         if logto_user_id:
             profile.logto_sub = logto_user_id
         if body.phone:

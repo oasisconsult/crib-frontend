@@ -1085,20 +1085,26 @@ async def _render_agreement_html(
 
     landlord_name: str = "Landlord"
     if org:
-        # Look for a single owner profile — indicates a personal/individual landlord
+        # Look for a single senior profile (owner or superadmin) to detect a
+        # personal/individual landlord vs a multi-person agency.
         owner_result = await db.execute(
             select(Profile).where(
                 Profile.organisation_id == org.id,
-                Profile.role == "owner",
+                Profile.role.in_(["owner", "superadmin"]),
                 Profile.deleted_at.is_(None),
             ).limit(2)
         )
         owners = owner_result.scalars().all()
         if len(owners) == 1 and owners[0].display_name:
-            # Single owner with a name → individual landlord, use their name
+            # Single named individual → use their personal name, not the org name.
+            # This ensures lease contracts read "between Caleb Nahabwe and tenant"
+            # rather than "between Caleb Nahabwe's Properties and tenant".
             landlord_name = owners[0].display_name
+        elif len(owners) == 1 and owners[0].email:
+            # Has a profile but no display_name — use email prefix as fallback
+            landlord_name = owners[0].email.split("@")[0].replace(".", " ").title()
         else:
-            # Agency or no owner profile → use org name
+            # Agency with multiple staff or no profile → use org/agency name
             landlord_name = org.name or agency_name.strip() or "Landlord"
     elif agency_name.strip():
         landlord_name = agency_name.strip()
