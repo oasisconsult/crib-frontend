@@ -16,6 +16,7 @@ from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.organisation import Organisation, Plan
 from app.schemas.common import CamelModel
+from app.services.logto_service import _get_m2m_token
 
 router = APIRouter(prefix="/organisations", tags=["organisations"])
 settings = get_settings()
@@ -55,22 +56,8 @@ async def _create_logto_org(name: str, slug: str) -> str:
     Create an organization in Logto via the Management API.
     Returns the new Logto organization ID.
     """
-    # First obtain a Management API token (M2M)
+    mgmt_token = await _get_m2m_token()
     async with httpx.AsyncClient(timeout=15) as client:
-        token_resp = await client.post(
-            f"{settings.logto_endpoint}oidc/token",
-            data={
-                "grant_type": "client_credentials",
-                "client_id": settings.logto_m2m_app_id,
-                "client_secret": settings.logto_m2m_app_secret,
-                "scope": "all",
-                "resource": f"{settings.logto_admin_api_resource}",
-            },
-        )
-        token_resp.raise_for_status()
-        mgmt_token = token_resp.json()["access_token"]
-
-        # Create the org
         org_resp = await client.post(
             f"{settings.logto_management_api_base}/organizations",
             json={"name": name, "description": f"Organisation: {slug}"},
