@@ -1,47 +1,21 @@
-/* Real Estate SaaS Theme - Modern Professional Color Palette */
+/*
+ * Real Estate Theme — v5.0
+ * Phase 2: Migrated to design token system. All colours consume
+ * CSS variables from design-system.css rather than hardcoded hex.
+ *
+ * Domain palettes (status colours) are kept as-is since they map to
+ * standard semantic meanings and are not brand-dependent.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
+
+/* ─── DOMAIN STATUS PALETTES ────────────────────────────────────────────────
+   These are semantic status colours — not brand colours.
+   They do not change with the brand, only with WCAG requirements.
+   ────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* Primary Brand Colors - Deep Navy Blue */
-  --re-primary-50: #f8fafc;
-  --re-primary-100: #f1f5f9;
-  --re-primary-200: #e2e8f0;
-  --re-primary-300: #cbd5e1;
-  --re-primary-400: #94a3b8;
-  --re-primary-500: #64748b;
-  --re-primary-600: #475569;
-  --re-primary-700: #334155;
-  --re-primary-800: #1e293b;
-  --re-primary-900: #0f172a;
-  --re-primary-950: #020617;
-
-  /* Secondary Brand - Slate Blue */
-  --re-secondary-50: #f8fafc;
-  --re-secondary-100: #f1f5f9;
-  --re-secondary-200: #e2e8f0;
-  --re-secondary-300: #cbd5e1;
-  --re-secondary-400: #94a3b8;
-  --re-secondary-500: #64748b;
-  --re-secondary-600: #475569;
-  --re-secondary-700: #334155;
-  --re-secondary-800: #1e293b;
-  --re-secondary-900: #0f172a;
-  --re-secondary-950: #020617;
-
-  /* Accent - Emerald Green */
-  --re-accent-50: #ecfdf5;
-  --re-accent-100: #d1fae5;
-  --re-accent-200: #a7f3d0;
-  --re-accent-300: #6ee7b7;
-  --re-accent-400: #34d399;
-  --re-accent-500: #10b981;
-  --re-accent-600: #059669;
-  --re-accent-700: #047857;
-  --re-accent-800: #065f46;
-  --re-accent-900: #064e3b;
-  --re-accent-950: #022c22;
-
-  /* Success - Forest Green */
-  --re-success-50: #f0fdf4;
+  /* Success - Green */
+  --re-success-50:  #f0fdf4;
   --re-success-100: #dcfce7;
   --re-success-200: #bbf7d0;
   --re-success-300: #86efac;
@@ -51,10 +25,9 @@
   --re-success-700: #15803d;
   --re-success-800: #166534;
   --re-success-900: #14532d;
-  --re-success-950: #052e16;
 
   /* Warning - Amber */
-  --re-warning-50: #fffbeb;
+  --re-warning-50:  #fffbeb;
   --re-warning-100: #fef3c7;
   --re-warning-200: #fde68a;
   --re-warning-300: #fcd34d;
@@ -64,36 +37,33 @@
   --re-warning-700: #b45309;
   --re-warning-800: #92400e;
   --re-warning-900: #78350f;
-  --re-warning-950: #451a03;
 
-  /* Error - Rose */
-  --re-error-50: #fdf2f8;
-  --re-error-100: #fce7f3;
-  --re-error-200: #fbcfe8;
-  --re-error-300: #f9a8d4;
-  --re-error-400: #f472b6;
-  --re-error-500: #ec4899;
-  --re-error-600: #db2777;
-  --re-error-700: #be185d;
-  --re-error-800: #9d174d;
-  --re-error-900: #831843;
-  --re-error-950: #500724;
+  /* Error / Danger - Red */
+  --re-error-50:  #fef2f2;
+  --re-error-100: #fee2e2;
+  --re-error-200: #fecaca;
+  --re-error-300: #fca5a5;
+  --re-error-400: #f87171;
+  --re-error-500: #ef4444;
+  --re-error-600: #dc2626;
+  --re-error-700: #b91c1c;
+  --re-error-800: #991b1b;
+  --re-error-900: #7f1d1d;
 
-  /* Property Blue */
-  --re-property-50: #eff6ff;
-  --re-property-100: #dbeafe;
-  --re-property-200: #bfdbfe;
-  --re-property-300: #93c5fd;
-  --re-property-400: #60a5fa;
-  --re-property-500: #3b82f6;
-  --re-property-600: #2563eb;
-  --re-property-700: #1d4ed8;
-  --re-property-800: #1e40af;
-  --re-property-900: #1e3a8a;
-  --re-property-950: #172554;
+  /* Property — Indigo (analytics / occupancy) */
+  --re-property-50:  #eef2ff;
+  --re-property-100: #e0e7ff;
+  --re-property-200: #c7d2fe;
+  --re-property-300: #a5b4fc;
+  --re-property-400: #818cf8;
+  --re-property-500: #6366f1;
+  --re-property-600: #4f46e5;
+  --re-property-700: #4338ca;
+  --re-property-800: #3730a3;
+  --re-property-900: #312e81;
 
-  /* Tenant Purple */
-  --re-tenant-50: #faf5ff;
+  /* Tenant — Violet */
+  --re-tenant-50:  #faf5ff;
   --re-tenant-100: #f3e8ff;
   --re-tenant-200: #e9d5ff;
   --re-tenant-300: #d8b4fe;
@@ -103,10 +73,9 @@
   --re-tenant-700: #7c3aed;
   --re-tenant-800: #6b21a8;
   --re-tenant-900: #581c87;
-  --re-tenant-950: #3b0764;
 
-  /* Revenue Gold */
-  --re-revenue-50: #fffbeb;
+  /* Revenue — Amber (same as warning, distinct from brand teal) */
+  --re-revenue-50:  #fffbeb;
   --re-revenue-100: #fef3c7;
   --re-revenue-200: #fde68a;
   --re-revenue-300: #fcd34d;
@@ -116,10 +85,9 @@
   --re-revenue-700: #b45309;
   --re-revenue-800: #92400e;
   --re-revenue-900: #78350f;
-  --re-revenue-950: #451a03;
 
   /* Neutral Grays */
-  --re-neutral-50: #fafafa;
+  --re-neutral-50:  #fafafa;
   --re-neutral-100: #f5f5f5;
   --re-neutral-200: #e5e5e5;
   --re-neutral-300: #d4d4d4;
@@ -129,320 +97,154 @@
   --re-neutral-700: #404040;
   --re-neutral-800: #262626;
   --re-neutral-900: #171717;
-  --re-neutral-950: #0a0a0a;
 
-  /* Surface Colors */
-  --re-surface-50: #ffffff;
-  --re-surface-100: #f8fafc;
-  --re-surface-200: #f1f5f9;
-  --re-surface-300: #e2e8f0;
-  --re-surface-400: #cbd5e1;
-  --re-surface-500: #94a3b8;
-  --re-surface-600: #64748b;
-  --re-surface-700: #475569;
-  --re-surface-800: #334155;
-  --re-surface-900: #1e293b;
-  --re-surface-950: #0f172a;
+  /* ── Semantic aliases — consume design-system.css tokens ── */
+  --re-background:       hsl(var(--background));
+  --re-foreground:       hsl(var(--foreground));
+  --re-muted:            hsl(var(--muted));
+  --re-muted-foreground: hsl(var(--muted-foreground));
+  --re-card:             hsl(var(--card));
+  --re-card-foreground:  hsl(var(--card-foreground));
+  --re-border:           hsl(var(--border));
+  --re-input:            hsl(var(--input));
+  --re-ring:             hsl(var(--ring));
 
-  /* Semantic Variables */
-  --re-background: var(--re-surface-50);
-  --re-foreground: var(--re-primary-900);
-  --re-muted: var(--re-surface-100);
-  --re-muted-foreground: var(--re-primary-600);
-  --re-popover: var(--re-surface-50);
-  --re-popover-foreground: var(--re-primary-900);
-  --re-card: var(--re-surface-50);
-  --re-card-foreground: var(--re-primary-900);
-  --re-border: var(--re-surface-200);
-  --re-input: var(--re-surface-100);
-  --re-ring: var(--re-property-500);
-
-  /* Dashboard Specific Colors */
-  --re-revenue-bg: linear-gradient(135deg, var(--re-revenue-50), var(--re-revenue-100));
-  --re-revenue-text: var(--re-revenue-700);
-  --re-revenue-icon: var(--re-revenue-600);
+  /* Dashboard KPI card colour groups */
+  --re-revenue-bg:     linear-gradient(135deg, var(--re-revenue-50), var(--re-revenue-100));
+  --re-revenue-text:   var(--re-revenue-700);
+  --re-revenue-icon:   var(--re-revenue-600);
   --re-revenue-border: var(--re-revenue-200);
 
-  --re-occupancy-bg: linear-gradient(135deg, var(--re-property-50), var(--re-property-100));
-  --re-occupancy-text: var(--re-property-700);
-  --re-occupancy-icon: var(--re-property-600);
+  --re-occupancy-bg:     linear-gradient(135deg, var(--re-property-50), var(--re-property-100));
+  --re-occupancy-text:   var(--re-property-700);
+  --re-occupancy-icon:   var(--re-property-600);
   --re-occupancy-border: var(--re-property-200);
 
-  --re-tenants-bg: linear-gradient(135deg, var(--re-tenant-50), var(--re-tenant-100));
-  --re-tenants-text: var(--re-tenant-700);
-  --re-tenants-icon: var(--re-tenant-600);
+  --re-tenants-bg:     linear-gradient(135deg, var(--re-tenant-50), var(--re-tenant-100));
+  --re-tenants-text:   var(--re-tenant-700);
+  --re-tenants-icon:   var(--re-tenant-600);
   --re-tenants-border: var(--re-tenant-200);
 
-  --re-overdue-bg: linear-gradient(135deg, var(--re-error-50), var(--re-error-100));
-  --re-overdue-text: var(--re-error-700);
-  --re-overdue-icon: var(--re-error-600);
+  --re-overdue-bg:     linear-gradient(135deg, var(--re-error-50), var(--re-error-100));
+  --re-overdue-text:   var(--re-error-700);
+  --re-overdue-icon:   var(--re-error-600);
   --re-overdue-border: var(--re-error-200);
 
-  --re-maintenance-bg: linear-gradient(135deg, var(--re-warning-50), var(--re-warning-100));
-  --re-maintenance-text: var(--re-warning-700);
-  --re-maintenance-icon: var(--re-warning-600);
+  --re-maintenance-bg:     linear-gradient(135deg, var(--re-warning-50), var(--re-warning-100));
+  --re-maintenance-text:   var(--re-warning-700);
+  --re-maintenance-icon:   var(--re-warning-600);
   --re-maintenance-border: var(--re-warning-200);
 
-  --re-growth-bg: linear-gradient(135deg, var(--re-accent-50), var(--re-accent-100));
-  --re-growth-text: var(--re-accent-700);
-  --re-growth-icon: var(--re-accent-600);
-  --re-growth-border: var(--re-accent-200);
+  --re-growth-bg:     linear-gradient(135deg, var(--re-success-50), var(--re-success-100));
+  --re-growth-text:   var(--re-success-700);
+  --re-growth-icon:   var(--re-success-600);
+  --re-growth-border: var(--re-success-200);
 }
 
-/* Dark Theme Variables */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --re-background: var(--re-surface-950);
-    --re-foreground: var(--re-surface-50);
-    --re-muted: var(--re-surface-800);
-    --re-muted-foreground: var(--re-surface-300);
-    --re-popover: var(--re-surface-900);
-    --re-popover-foreground: var(--re-surface-50);
-    --re-card: var(--re-surface-900);
-    --re-card-foreground: var(--re-surface-50);
-    --re-border: var(--re-surface-700);
-    --re-input: var(--re-surface-800);
-    --re-ring: var(--re-property-400);
-  }
+/* ─── DARK MODE ──────────────────────────────────────────────────────────── */
+.dark {
+  --re-background:       hsl(var(--background));
+  --re-foreground:       hsl(var(--foreground));
+  --re-muted:            hsl(var(--muted));
+  --re-muted-foreground: hsl(var(--muted-foreground));
+  --re-card:             hsl(var(--card));
+  --re-card-foreground:  hsl(var(--card-foreground));
+  --re-border:           hsl(var(--border));
+  --re-input:            hsl(var(--input));
+  --re-ring:             hsl(var(--ring));
 }
 
-/* Component-Specific Styles */
+/* ─── STAT CARDS ─────────────────────────────────────────────────────────── */
+
 .re-stat-card {
- /* background: linear-gradient(135deg, var(--re-surface-50), var(--re-surface-100));*/
-  background: #ffffff;
-  border: none;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  transition: all 0.2s ease-in-out;
-  border-radius: 6px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
-.re-card,
-.re-form-section,
-.re-table-wrap,
-.re-form-section,
-.re-stat-card,
-.re-card-base {
-  background: #ffffff !important;
-}
-
-/*.re-stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-}*/
-
 .re-stat-card:hover {
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 
-.re-stat-card.revenue {
-  --re-icon-bg: var(--re-revenue-bg);
-  --re-icon-color: var(--re-revenue-icon);
+/* Enforce card backgrounds via token — remove old !important override */
+.re-card,
+.re-form-section,
+.re-table-wrap,
+.re-card-base {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-lg);
 }
 
-.re-stat-card.occupancy {
-  --re-icon-bg: var(--re-occupancy-bg);
-  --re-icon-color: var(--re-occupancy-icon);
-}
-
-.re-stat-card.tenants {
-  --re-icon-bg: var(--re-tenants-bg);
-  --re-icon-color: var(--re-tenants-icon);
-}
-
-.re-stat-card.overdue {
-  --re-icon-bg: var(--re-overdue-bg);
-  --re-icon-color: var(--re-overdue-icon);
-}
-
-.re-stat-card.maintenance {
-  --re-icon-bg: var(--re-maintenance-bg);
-  --re-icon-color: var(--re-maintenance-icon);
-}
-
-.re-stat-card.growth {
-  --re-icon-bg: var(--re-growth-bg);
-  --re-icon-color: var(--re-growth-icon);
-}
-
-/* .re-icon-wrapper {
-  background: var(--re-icon-bg);
-  transition: transform 0.2s ease-in-out;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-} */
+/* Stat card colour variants */
+.re-stat-card.revenue     { --re-icon-bg: var(--re-revenue-bg);     --re-icon-color: var(--re-revenue-icon);     }
+.re-stat-card.occupancy   { --re-icon-bg: var(--re-occupancy-bg);   --re-icon-color: var(--re-occupancy-icon);   }
+.re-stat-card.tenants     { --re-icon-bg: var(--re-tenants-bg);     --re-icon-color: var(--re-tenants-icon);     }
+.re-stat-card.overdue     { --re-icon-bg: var(--re-overdue-bg);     --re-icon-color: var(--re-overdue-icon);     }
+.re-stat-card.maintenance { --re-icon-bg: var(--re-maintenance-bg); --re-icon-color: var(--re-maintenance-icon); }
+.re-stat-card.growth      { --re-icon-bg: var(--re-growth-bg);      --re-icon-color: var(--re-growth-icon);      }
 
 .re-icon-wrapper {
-  background: #f8fafc;
-  border: 1px solid var(--re-border);
-  border-radius: 10px;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
   box-shadow: none;
+  transition: transform 0.15s ease;
 }
 
 .re-stat-card:hover .re-icon-wrapper {
   transform: scale(1.05);
 }
 
+/* ─── PROGRESS BARS ──────────────────────────────────────────────────────── */
+
 .re-progress-bar {
-  background-color: var(--re-neutral-200);
-  border-radius: 8px;
+  background-color: hsl(var(--muted));
+  border-radius: var(--radius-full);
 }
 
-.re-progress-bar.success {
-  background-color: var(--re-success-500);
-}
+.re-progress-bar.success { background-color: var(--re-success-500); }
+.re-progress-bar.warning { background-color: var(--re-warning-500); }
+.re-progress-bar.error   { background-color: var(--re-error-500);   }
 
-.re-progress-bar.warning {
-  background-color: var(--re-warning-500);
-}
+/* ─── TYPOGRAPHY SCALE ───────────────────────────────────────────────────── */
 
-.re-progress-bar.error {
-  background-color: var(--re-error-500);
-}
-
-/* Fixed Typography System */
 :root {
-  /* Fixed font sizes for better control */
-  --re-text-xs: 0.75rem;     /* 12px */
-  --re-text-sm: 0.875rem;    /* 14px */
+  --re-text-xs:   0.75rem;   /* 12px */
+  --re-text-sm:   0.875rem;  /* 14px */
   --re-text-base: 1rem;      /* 16px */
-  --re-text-lg: 1.125rem;    /* 18px */
-  --re-text-xl: 1.25rem;     /* 20px */
-  --re-text-2xl: 1.5rem;     /* 24px */
-  --re-text-3xl: 1.75rem;    /* 28px */
-  --re-text-4xl: 2rem;       /* 32px */
-  --re-text-5xl: 2.25rem;    /* 36px */
-  --re-text-6xl: 2.5rem;     /* 40px */
-  
-  /* Fixed spacing */
-  --re-spacing-xs: 0.25rem;  /* 4px */
-  --re-spacing-sm: 0.5rem;   /* 8px */
-  --re-spacing-md: 0.75rem;  /* 12px */
-  --re-spacing-lg: 1rem;     /* 16px */
-  --re-spacing-xl: 1.5rem;   /* 24px */
-  --re-spacing-2xl: 2rem;    /* 32px */
+  --re-text-lg:   1.125rem;  /* 18px */
+  --re-text-xl:   1.25rem;   /* 20px */
+  --re-text-2xl:  1.5rem;    /* 24px */
+  --re-text-3xl:  1.75rem;   /* 28px */
+  --re-text-4xl:  2rem;      /* 32px */
+  --re-text-5xl:  2.25rem;   /* 36px */
+  --re-text-6xl:  2.5rem;    /* 40px */
+
+  --re-spacing-xs:  0.25rem;
+  --re-spacing-sm:  0.5rem;
+  --re-spacing-md:  0.75rem;
+  --re-spacing-lg:  1rem;
+  --re-spacing-xl:  1.5rem;
+  --re-spacing-2xl: 2rem;
 }
 
-/* Typography classes */
-.re-heading {
-  color: var(--re-foreground);
-  font-weight: 600;
-  font-size: var(--re-text-2xl);
-  line-height: 1.2;
-}
+/* Utility typography classes */
+.re-heading    { color: hsl(var(--foreground));        font-weight: 600; font-size: var(--re-text-2xl); line-height: 1.2; }
+.re-subheading { color: hsl(var(--muted-foreground));  font-weight: 500; font-size: var(--re-text-lg);  line-height: 1.3; }
+.re-body       { color: hsl(var(--foreground));        font-size: var(--re-text-base); line-height: 1.5; }
+.re-caption    { color: hsl(var(--muted-foreground));  font-size: var(--re-text-sm);   line-height: 1.4; }
 
-.re-subheading {
-  color: var(--re-muted-foreground);
-  font-weight: 500;
-  font-size: var(--re-text-lg);
-  line-height: 1.3;
-}
-
-.re-body {
-  color: var(--re-foreground);
-  font-size: var(--re-text-base);
-  line-height: 1.5;
-}
-
-.re-caption {
-  color: var(--re-muted-foreground);
-  font-size: var(--re-text-sm);
-  line-height: 1.4;
-}
-
-.re-text-xs {
-  font-size: var(--re-text-xs);
-  line-height: 1.4;
-}
-
-.re-text-sm {
-  font-size: var(--re-text-sm);
-  line-height: 1.4;
-}
-
-.re-text-base {
-  font-size: var(--re-text-base);
-  line-height: 1.5;
-}
-
-.re-text-lg {
-  font-size: var(--re-text-lg);
-  line-height: 1.4;
-}
-
-.re-text-xl {
-  font-size: var(--re-text-xl);
-  line-height: 1.3;
-}
-
-.re-text-2xl {
-  font-size: var(--re-text-2xl);
-  line-height: 1.2;
-}
-
-.re-text-3xl {
-  font-size: var(--re-text-3xl);
-  line-height: 1.2;
-}
-
-.re-text-4xl {
-  font-size: var(--re-text-4xl);
-  line-height: 1.1;
-}
-
-.re-text-5xl {
-  font-size: var(--re-text-5xl);
-  line-height: 1.1;
-}
-
-.re-text-6xl {
-  font-size: var(--re-text-6xl);
-  line-height: 1;
-}
-
-/* Button size variants - Fixed sizes */
-button[data-size="sm"],
-.btn-sm {
-  font-size: 0.6875rem !important; /* 11px */
-  padding: 4px 8px !important;
-}
-
-button[data-size="lg"],
-.btn-lg {
-  font-size: 0.875rem !important; /* 14px */
-  padding: 8px 16px !important;
-}
-
-/* Dashboard specific text scaling - Small fixed sizes */
-.dashboard-title {
-  font-size: 1.125rem; /* 18px */
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.dashboard-subtitle {
-  font-size: 0.875rem; /* 14px */
-  font-weight: 400;
-  line-height: 1.5;
-}
-
-.card-title {
-  font-size: 1rem; /* 16px */
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.card-subtitle {
-  font-size: 0.75rem; /* 12px */
-  font-weight: 500;
-  line-height: 1.4;
-}
-
+/* Dashboard stat labels */
 .stat-value {
-  font-size: 1.25rem; /* 20px */
+  font-size: 1.375rem; /* 22px — legible without being oversized */
   font-weight: 700;
   line-height: 1.2;
+  color: hsl(var(--foreground));
 }
 
 .stat-label {
@@ -450,176 +252,147 @@ button[data-size="lg"],
   font-weight: 600;
   line-height: 1.4;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
+  color: hsl(var(--muted-foreground));
 }
 
 .stat-trend {
-  font-size: 0.75rem; /* 12px */
+  font-size: 0.75rem;
   font-weight: 500;
   line-height: 1.4;
 }
 
-/* Remove responsive overrides to maintain fixed sizes */
+.dashboard-title    { font-size: 1.125rem; font-weight: 700;  line-height: 1.2; color: hsl(var(--foreground)); }
+.dashboard-subtitle { font-size: 0.875rem; font-weight: 400;  line-height: 1.5; color: hsl(var(--muted-foreground)); }
+.card-title         { font-size: 0.9375rem; font-weight: 600; line-height: 1.3; color: hsl(var(--foreground)); }
+.card-subtitle      { font-size: 0.75rem;   font-weight: 500; line-height: 1.4; color: hsl(var(--muted-foreground)); }
 
-/* Modern Curved Button Styles */
+/* ─── BUTTON COMPONENT CLASSES ───────────────────────────────────────────── */
+/*
+ * These apply to components that explicitly use .re-button-* classes.
+ * Global button overrides that conflict with Tailwind/shadcn have been
+ * removed — shadcn CVA variants are the source of truth for all buttons.
+ */
+
 .re-button-primary {
-  background-color: var(--re-property-500);
-  /* color: white; */
-  color: #ffffff !important;
+  background-color: var(--color-primary);
+  color: #ffffff;
   border: none;
-  border-radius: 50px; /* Fully rounded/pill shape */
-  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
   font-weight: 600;
   font-size: 14px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  position: relative;
-  overflow: hidden;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .re-button-primary:hover {
-  background-color: var(--re-property-600);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  background-color: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
 }
 
 .re-button-primary:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+  background-color: var(--color-primary-dark);
+  box-shadow: none;
 }
 
 .re-button-secondary {
-  background-color: var(--re-surface-100);
-  color: var(--re-foreground);
-  border: 1px solid var(--re-border);
-  border-radius: 12px; /* Medium radius - professional yet modern */
-  padding: 10px 20px;
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius-md);
+  padding: 9px 18px;
   font-weight: 500;
   font-size: 14px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  box-shadow: var(--shadow-xs);
 }
 
 .re-button-secondary:hover {
-  background-color: var(--re-surface-200);
-  border-color: var(--re-property-300);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.re-button-secondary:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  background-color: hsl(var(--muted));
+  border-color: hsl(var(--ring));
 }
 
 .re-button-ghost {
   background-color: transparent;
-  color: var(--re-foreground);
+  color: hsl(var(--foreground));
   border: none;
-  border-radius: 8px; /* Subtle radius for ghost buttons */
-  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  padding: 8px 14px;
   font-weight: 500;
   font-size: 14px;
-  transition: all 0.2s ease-in-out;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .re-button-ghost:hover {
-  background-color: var(--re-surface-100);
-  color: var(--re-property-600);
-}
-
-.re-button-ghost:active {
-  background-color: var(--re-surface-200);
+  background-color: hsl(var(--muted));
+  color: var(--color-primary);
 }
 
 .re-button-destructive {
-  background-color: var(--re-error-500);
-  color: white;
+  background-color: var(--color-danger);
+  color: #ffffff;
   border: none;
-  border-radius: 12px; /* Medium radius for destructive actions */
-  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  padding: 9px 18px;
   font-weight: 600;
   font-size: 14px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 6px -1px rgba(236, 72, 153, 0.3), 0 2px 4px -1px rgba(236, 72, 153, 0.2);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
 }
 
 .re-button-destructive:hover {
-  background-color: var(--re-error-600);
-  transform: translateY(-1px);
-  box-shadow: 0 10px 15px -3px rgba(236, 72, 153, 0.4), 0 4px 6px -2px rgba(236, 72, 153, 0.3);
+  background-color: #b91c1c;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35);
 }
 
-.re-button-destructive:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px -1px rgba(236, 72, 153, 0.3), 0 1px 2px -1px rgba(236, 72, 153, 0.2);
-}
-
-/* Small button variants */
-.re-button-primary.sm {
-  padding: 8px 16px;
-  font-size: 12px;
-  border-radius: 20px; /* Smaller pill shape */
-}
-
-.re-button-secondary.sm {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 8px;
-}
-
-.re-button-ghost.sm {
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 6px;
-}
-
-/* Large button variants */
-.re-button-primary.lg {
-  padding: 16px 32px;
-  font-size: 16px;
-  border-radius: 50px;
-}
-
-.re-button-secondary.lg {
-  padding: 14px 28px;
-  font-size: 16px;
-  border-radius: 16px;
-}
-
-/* Icon buttons */
 .re-button-icon {
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   padding: 8px;
-  transition: all 0.2s ease-in-out;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.15s ease, transform 0.15s ease;
 }
 
 .re-button-icon:hover {
-  transform: scale(1.05);
-  background-color: var(--re-surface-100);
+  background-color: hsl(var(--muted));
 }
 
-.re-button-icon:active {
-  transform: scale(0.95);
+/* ─── CHARTS ─────────────────────────────────────────────────────────────── */
+
+.re-chart-line  { stroke: var(--color-primary); stroke-width: 2.5; }
+.re-chart-area  { fill: var(--color-primary); fill-opacity: 0.08; }
+.re-chart-grid  { stroke: hsl(var(--border)); stroke-dasharray: 3 3; }
+
+/* ─── STATUS BADGES ──────────────────────────────────────────────────────── */
+
+.re-status-success { color: var(--re-success-600); background-color: var(--re-success-50); }
+.re-status-warning { color: var(--re-warning-600); background-color: var(--re-warning-50); }
+.re-status-error   { color: var(--re-error-600);   background-color: var(--re-error-50);   }
+.re-status-info    { color: var(--color-info);      background-color: var(--color-info-subtle); }
+
+/* ─── ANIMATIONS ─────────────────────────────────────────────────────────── */
+
+@keyframes re-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
 }
 
-/* Button with custom curve using clip-path */
-.re-button-custom-curve {
-  border-radius: 0;
-  clip-path: ellipse(50% 40% at 50% 50%);
-  padding: 12px 24px;
-  transition: all 0.3s ease-in-out;
+@keyframes re-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
 }
 
-.re-button-custom-curve:hover {
-  clip-path: ellipse(55% 45% at 50% 50%);
-  transform: translateY(-1px);
+@keyframes re-spin {
+  0%   { transform: rotate(0deg);   }
+  100% { transform: rotate(360deg); }
 }
 
-/* Loading state */
+.re-fade-in  { animation: re-fade-in  0.2s ease-out; }
+.re-slide-up { animation: re-slide-up 0.25s ease-out; }
+
+/* Loading button state */
 .re-button-loading {
   position: relative;
   color: transparent;
@@ -630,394 +403,59 @@ button[data-size="lg"],
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 16px;
-  height: 16px;
-  margin: -8px 0 0 -8px;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
   border: 2px solid transparent;
-  border-top-color: currentColor;
+  border-top-color: #ffffff;
   border-radius: 50%;
-  animation: re-spin 1s linear infinite;
+  animation: re-spin 0.7s linear infinite;
 }
 
-@keyframes re-spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Charts and Data Visualization */
-.re-chart-line {
-  stroke: var(--re-property-500);
-  stroke-width: 2.5;
-}
-
-.re-chart-area {
-  fill: var(--re-property-500);
-  fill-opacity: 0.1;
-}
-
-.re-chart-grid {
-  stroke: var(--re-border);
-  stroke-dasharray: 3 3;
-}
-
-/* Status Indicators */
-.re-status-success {
-  color: var(--re-success-600);
-  background-color: var(--re-success-50);
-}
-
-.re-status-warning {
-  color: var(--re-warning-600);
-  background-color: var(--re-warning-50);
-}
-
-.re-status-error {
-  color: var(--re-error-600);
-  background-color: var(--re-error-50);
-}
-
-.re-status-info {
-  color: var(--re-property-600);
-  background-color: var(--re-property-50);
-}
-
-/* Animations */
-@keyframes re-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.re-fade-in {
-  animation: re-fade-in 0.5s ease-out;
-}
-
-@keyframes re-slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.re-slide-up {
-  animation: re-slide-up 0.6s ease-out;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .re-stat-card {
-    margin-bottom: 1rem;
-  }
-  
-  .re-stat-card:hover {
-    transform: none;
-  }
-}
-
-/* Focus and Accessibility */
-.re-focus-ring {
-  outline: 2px solid var(--re-ring);
-  outline-offset: 2px;
-}
+/* ─── FOCUS / ACCESSIBILITY ──────────────────────────────────────────────── */
 
 .re-focus-ring:focus-visible {
-  outline: 2px solid var(--re-ring);
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
-/* Global Button Styling - Apply modern curved design to all buttons */
+/* ─── RADIX COMPONENT OVERRIDES ──────────────────────────────────────────── */
 
-/* Base button styles - Comprehensive overrides */
-button, .btn, [role="button"], input[type="button"], input[type="submit"] {
-  border-radius: 8px !important;
-  transition: all 0.2s ease-in-out !important;
-  font-weight: 500 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  border: 1px solid transparent !important;
-  white-space: nowrap !important;
-  font-size: 0.75rem !important; /* 12px */
-  padding: 6px 12px !important;
-  line-height: 1.4 !important;
-  min-height: auto !important;
-  height: auto !important;
-  max-width: none !important;
-  text-decoration: none !important;
-  box-sizing: border-box !important;
-}
-
-/* Primary buttons - Pill shaped for CTA */
-button[class*="primary"],
-button[data-variant="primary"],
-.bg-primary {
-  border-radius: 50px;
-  background: linear-gradient(135deg, var(--re-property-500), var(--re-property-600));
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  font-weight: 600;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-button[class*="primary"]:hover,
-button[data-variant="primary"]:hover,
-.bg-primary:hover {
-  background: linear-gradient(135deg, var(--re-property-600), var(--re-property-700));
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-}
-
-button[class*="primary"]:active,
-button[data-variant="primary"]:active,
-.bg-primary:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
-}
-
-/* Secondary buttons - Medium radius */
-button[class*="secondary"],
-button[data-variant="secondary"],
-.bg-secondary {
-  border-radius: 12px;
-  background: var(--re-surface-100);
-  color: var(--re-foreground);
-  border: 1px solid var(--re-border);
-  padding: 10px 20px;
-  font-weight: 500;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-}
-
-button[class*="secondary"]:hover,
-button[data-variant="secondary"]:hover,
-.bg-secondary:hover {
-  background: var(--re-surface-200);
-  border-color: var(--re-property-300);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-button[class*="secondary"]:active,
-button[data-variant="secondary"]:active,
-.bg-secondary:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-/* Ghost buttons - Subtle radius */
-button[class*="ghost"],
-button[data-variant="ghost"],
-.bg-ghost {
-  border-radius: 8px;
-  background: transparent;
-  color: var(--re-foreground);
-  border: none;
-  padding: 8px 16px;
-  font-weight: 500;
-}
-
-button[class*="ghost"]:hover,
-button[data-variant="ghost"]:hover,
-.bg-ghost:hover {
-  background: var(--re-surface-100);
-  color: var(--re-property-600);
-}
-
-button[class*="ghost"]:active,
-button[data-variant="ghost"]:active,
-.bg-ghost:active {
-  background: var(--re-surface-200);
-}
-
-/* Destructive buttons - Medium radius */
-button[class*="destructive"],
-button[data-variant="destructive"],
-.bg-destructive {
-  border-radius: 12px;
-  background: var(--re-error-500);
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  font-weight: 600;
-  box-shadow: 0 4px 6px -1px rgba(236, 72, 153, 0.3), 0 2px 4px -1px rgba(236, 72, 153, 0.2);
-}
-
-button[class*="destructive"]:hover,
-button[data-variant="destructive"]:hover,
-.bg-destructive:hover {
-  background: var(--re-error-600);
-  transform: translateY(-1px);
-  box-shadow: 0 10px 15px -3px rgba(236, 72, 153, 0.4), 0 4px 6px -2px rgba(236, 72, 153, 0.3);
-}
-
-button[class*="destructive"]:active,
-button[data-variant="destructive"]:active,
-.bg-destructive:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px -1px rgba(236, 72, 153, 0.3), 0 1px 2px -1px rgba(236, 72, 153, 0.2);
-}
-
-/* Size variants */
-button[data-size="sm"],
-.btn-sm {
-  padding: 6px 12px;
-  font-size: 12px;
-  border-radius: 20px;
-}
-
-button[data-size="lg"],
-.btn-lg {
-  padding: 14px 28px;
-  font-size: 16px;
-  border-radius: 50px;
-}
-
-/* Icon buttons */
-button[class*="icon"],
-.btn-icon {
-  border-radius: 12px;
-  padding: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-button[class*="icon"]:hover,
-.btn-icon:hover {
-  transform: scale(1.05);
-  background: var(--re-surface-100);
-}
-
-button[class*="icon"]:active,
-.btn-icon:active {
-  transform: scale(0.95);
-}
-
-/* Remove button responsive overrides to maintain fixed sizes */
-
-/* Maximum specificity text size overrides */
-body h1,
-body h2,
-body h3,
-body h4,
-body h5,
-body h6,
-html h1,
-html h2,
-html h3,
-html h4,
-html h5,
-html h6,
-* h1,
-* h2,
-* h3,
-* h4,
-* h5,
-* h6 {
-  font-size: 1rem !important; /* 16px max for all headings */
-}
-
-body .text-3xl,
-body .text-4xl,
-body .text-5xl,
-body .text-6xl,
-html .text-3xl,
-html .text-4xl,
-html .text-5xl,
-html .text-6xl,
-* .text-3xl,
-* .text-4xl,
-* .text-5xl,
-* .text-6xl {
-  font-size: 1.125rem !important; /* 18px max for large text */
-}
-
-body .text-2xl,
-html .text-2xl,
-* .text-2xl {
-  font-size: 1.125rem !important; /* 18px */
-}
-
-body .text-xl,
-html .text-xl,
-* .text-xl {
-  font-size: 1rem !important; /* 16px */
-}
-
-body .text-lg,
-html .text-lg,
-* .text-lg {
-  font-size: 0.9375rem !important; /* 15px */
-}
-
-body .text-base,
-html .text-base,
-* .text-base {
-  font-size: 0.875rem !important; /* 14px */
-}
-
-body .text-sm,
-html .text-sm,
-* .text-sm {
-  font-size: 0.75rem !important; /* 12px */
-}
-
-body .text-xs,
-html .text-xs,
-* .text-xs {
-  font-size: 0.6875rem !important; /* 11px */
-}
-
-/* Universal font size overrides removed - causing issues on other pages */
-
-/* Dashboard-specific overrides removed - using inline styles only */
-
-/* Universal button overrides removed - causing issues on other pages */
-
-/* Card layout fixes removed - using inline styles instead */
-
-/* Fix for specific UI components */
 [data-radix-collection-item] button,
 [data-radix-select-item] button,
 [data-radix-dropdown-menu-item] button {
-  border-radius: 6px;
-  padding: 6px 12px !important;
-  font-size: 0.75rem !important; /* 12px */
+  border-radius: var(--radius-sm);
   transform: none !important;
 }
 
 [data-radix-collection-item] button:hover,
 [data-radix-select-item] button:hover,
 [data-radix-dropdown-menu-item] button:hover {
-  transform: none;
-  background: var(--re-surface-100);
+  background: hsl(var(--muted));
 }
 
-/* Print Styles */
+/* ─── RESPONSIVE ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .re-stat-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+/* ─── PRINT ──────────────────────────────────────────────────────────────── */
+
 @media print {
   .re-stat-card {
     background: white !important;
     box-shadow: none !important;
     border: 1px solid var(--re-neutral-300) !important;
   }
-  
-  /* .re-icon-wrapper {
+
+  .re-icon-wrapper {
     background: var(--re-neutral-100) !important;
-  } */
-   .re-icon-wrapper {
-    background: #f8fafc !important;
-   }
-  
+  }
+
   button {
     transform: none !important;
     box-shadow: none !important;
