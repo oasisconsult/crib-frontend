@@ -229,18 +229,29 @@ def upgrade() -> None:
     )
 
     # ── Cast string columns to their enum types ───────────────────────────────
-    # Tables were created with String columns to avoid SQLAlchemy auto-creating
-    # the enum types. Now cast them to the proper enum types.
-    for stmt in [
-        f"ALTER TABLE organisation_subscriptions ALTER COLUMN status TYPE {SUBSCRIPTION_STATUS_ENUM} USING status::{SUBSCRIPTION_STATUS_ENUM}",
-        f"ALTER TABLE organisation_subscriptions ALTER COLUMN billing_cycle TYPE {BILLING_CYCLE_ENUM} USING billing_cycle::{BILLING_CYCLE_ENUM}",
-        f"ALTER TABLE organisation_subscriptions ALTER COLUMN currency TYPE {BILLING_CURRENCY_ENUM} USING currency::{BILLING_CURRENCY_ENUM}",
-        f"ALTER TABLE subscription_invoices ALTER COLUMN status TYPE {INVOICE_STATUS_ENUM} USING status::{INVOICE_STATUS_ENUM}",
-        f"ALTER TABLE subscription_payments ALTER COLUMN payment_method TYPE {SUBSCRIPTION_PAYMENT_METHOD_ENUM} USING payment_method::{SUBSCRIPTION_PAYMENT_METHOD_ENUM}",
-        f"ALTER TABLE subscription_payments ALTER COLUMN status TYPE {SUBSCRIPTION_PAYMENT_STATUS_ENUM} USING status::{SUBSCRIPTION_PAYMENT_STATUS_ENUM}",
-        f"ALTER TABLE subscription_audit_log ALTER COLUMN event_type TYPE {SUBSCRIPTION_EVENT_ENUM} USING event_type::{SUBSCRIPTION_EVENT_ENUM}",
-    ]:
-        op.execute(sa.text(stmt))
+    # Must drop the string DEFAULT before casting, then re-add as a typed enum
+    # default. PostgreSQL cannot auto-cast a varchar DEFAULT to an enum type.
+    casts = [
+        # (table, column, enum_type, new_default or None)
+        ("organisation_subscriptions", "status",        SUBSCRIPTION_STATUS_ENUM,        "'active'"),
+        ("organisation_subscriptions", "billing_cycle", BILLING_CYCLE_ENUM,              "'none'"),
+        ("organisation_subscriptions", "currency",      BILLING_CURRENCY_ENUM,           "'UGX'"),
+        ("subscription_invoices",      "status",        INVOICE_STATUS_ENUM,             "'draft'"),
+        ("subscription_payments",      "payment_method",SUBSCRIPTION_PAYMENT_METHOD_ENUM, None),
+        ("subscription_payments",      "status",        SUBSCRIPTION_PAYMENT_STATUS_ENUM,"'pending'"),
+        ("subscription_audit_log",     "event_type",    SUBSCRIPTION_EVENT_ENUM,          None),
+    ]
+    for table, col, enum_type, default in casts:
+        op.execute(sa.text(f"ALTER TABLE {table} ALTER COLUMN {col} DROP DEFAULT"))
+        op.execute(sa.text(
+            f"ALTER TABLE {table} ALTER COLUMN {col} "
+            f"TYPE {enum_type} USING {col}::{enum_type}"
+        ))
+        if default:
+            op.execute(sa.text(
+                f"ALTER TABLE {table} ALTER COLUMN {col} "
+                f"SET DEFAULT {default}::{enum_type}"
+            ))
 
     # ── Seed subscription plans ───────────────────────────────────────────────
     now = datetime.now(timezone.utc).isoformat()
