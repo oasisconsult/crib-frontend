@@ -42,42 +42,43 @@ SUBSCRIPTION_EVENT_ENUM = "subscription_event_enum"
 
 
 def upgrade() -> None:
-    # ── Create enum types ─────────────────────────────────────────────────────
-    sa.Enum(
-        "trialing", "active", "pending_payment", "pending_verification",
-        "grace_period", "past_due", "suspended", "cancelled", "expired",
-        name=SUBSCRIPTION_STATUS_ENUM,
-    ).create(op.get_bind())
+    # ── Create enum types idempotently ────────────────────────────────────────
+    # Use DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN null; END $$ so
+    # the migration is safe to re-run if it was interrupted after enum creation
+    # but before table creation.
+    for stmt in [
+        "DO $$ BEGIN CREATE TYPE subscription_status_enum AS ENUM ("
+        "'trialing','active','pending_payment','pending_verification',"
+        "'grace_period','past_due','suspended','cancelled','expired'"
+        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
 
-    sa.Enum(
-        "none", "monthly", "annual",
-        name=BILLING_CYCLE_ENUM,
-    ).create(op.get_bind())
+        "DO $$ BEGIN CREATE TYPE billing_cycle_enum AS ENUM ("
+        "'none','monthly','annual'"
+        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
 
-    sa.Enum(
-        "mtn_momo", "airtel_money", "bank_transfer", "cash",
-        name=SUBSCRIPTION_PAYMENT_METHOD_ENUM,
-    ).create(op.get_bind())
+        "DO $$ BEGIN CREATE TYPE subscription_payment_method_enum AS ENUM ("
+        "'mtn_momo','airtel_money','bank_transfer','cash'"
+        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
 
-    sa.Enum(
-        "pending", "pending_verification", "verified", "rejected", "refunded",
-        name=SUBSCRIPTION_PAYMENT_STATUS_ENUM,
-    ).create(op.get_bind())
+        "DO $$ BEGIN CREATE TYPE subscription_payment_status_enum AS ENUM ("
+        "'pending','pending_verification','verified','rejected','refunded'"
+        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
 
-    sa.Enum(
-        "draft", "issued", "paid", "void", "overdue",
-        name=INVOICE_STATUS_ENUM,
-    ).create(op.get_bind())
+        "DO $$ BEGIN CREATE TYPE invoice_status_enum AS ENUM ("
+        "'draft','issued','paid','void','overdue'"
+        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
 
-    sa.Enum("UGX", "USD", name=BILLING_CURRENCY_ENUM).create(op.get_bind())
+        "DO $$ BEGIN CREATE TYPE billing_currency_enum AS ENUM ("
+        "'UGX','USD'"
+        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
 
-    sa.Enum(
-        "created", "upgraded", "downgraded", "cancelled", "reinstated",
-        "payment_submitted", "payment_verified", "payment_rejected",
-        "suspended", "grace_period_started", "expired", "trial_started",
-        "plan_changed",
-        name=SUBSCRIPTION_EVENT_ENUM,
-    ).create(op.get_bind())
+        "DO $$ BEGIN CREATE TYPE subscription_event_enum AS ENUM ("
+        "'created','upgraded','downgraded','cancelled','reinstated',"
+        "'payment_submitted','payment_verified','payment_rejected',"
+        "'suspended','grace_period_started','expired','trial_started','plan_changed'"
+        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
+    ]:
+        op.execute(sa.text(stmt))
 
     # ── subscription_plans ────────────────────────────────────────────────────
     op.create_table(
@@ -430,10 +431,10 @@ def downgrade() -> None:
     # Remove seeded system settings
     op.execute("DELETE FROM system_settings WHERE category = 'billing'")
 
-    # Drop enum types
+    # Drop enum types idempotently
     for name in [
         SUBSCRIPTION_EVENT_ENUM, BILLING_CURRENCY_ENUM, INVOICE_STATUS_ENUM,
         SUBSCRIPTION_PAYMENT_STATUS_ENUM, SUBSCRIPTION_PAYMENT_METHOD_ENUM,
         BILLING_CYCLE_ENUM, SUBSCRIPTION_STATUS_ENUM,
     ]:
-        sa.Enum(name=name).drop(op.get_bind())
+        op.execute(sa.text(f"DROP TYPE IF EXISTS {name}"))
