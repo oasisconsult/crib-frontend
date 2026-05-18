@@ -5,474 +5,294 @@ Revises: 027
 Create Date: 2026-05-18
 
 Creates:
-  subscription_plans            — product catalogue (Free/Professional/Agency/Enterprise)
+  subscription_plans            — product catalogue
   organisation_subscriptions    — one active subscription per org
-  subscription_payments         — proof-of-payment records (separate from rent payments)
   subscription_invoices         — generated invoices
+  subscription_payments         — proof-of-payment records
   subscription_audit_log        — immutable lifecycle event trail
 
-Also seeds:
-  - Four default subscription plans
-  - Billing system settings (VAT, bank details, trial/grace periods)
+Uses pure SQL throughout to avoid SQLAlchemy/asyncpg type-inference issues
+(UUID params typed as VARCHAR, dict params rejected for JSONB, etc.).
 """
 from __future__ import annotations
 
-import uuid
 from collections.abc import Sequence
-from datetime import datetime, timezone
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 revision: str = "028"
 down_revision: str | None = "027"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# ─── Enum type names ──────────────────────────────────────────────────────────
-
-SUBSCRIPTION_STATUS_ENUM = "subscription_status_enum"
-BILLING_CYCLE_ENUM = "billing_cycle_enum"
-SUBSCRIPTION_PAYMENT_METHOD_ENUM = "subscription_payment_method_enum"
-SUBSCRIPTION_PAYMENT_STATUS_ENUM = "subscription_payment_status_enum"
-INVOICE_STATUS_ENUM = "invoice_status_enum"
-BILLING_CURRENCY_ENUM = "billing_currency_enum"
-SUBSCRIPTION_EVENT_ENUM = "subscription_event_enum"
-
 
 def upgrade() -> None:
-    # ── Create enum types idempotently ────────────────────────────────────────
-    # Use DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN null; END $$ so
-    # the migration is safe to re-run if it was interrupted after enum creation
-    # but before table creation.
-    for stmt in [
-        "DO $$ BEGIN CREATE TYPE subscription_status_enum AS ENUM ("
-        "'trialing','active','pending_payment','pending_verification',"
-        "'grace_period','past_due','suspended','cancelled','expired'"
-        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
+    conn = op.get_bind()
 
-        "DO $$ BEGIN CREATE TYPE billing_cycle_enum AS ENUM ("
-        "'none','monthly','annual'"
-        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
+    # ── 1. Create enum types idempotently ─────────────────────────────────────
+    conn.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE subscription_status_enum AS ENUM (
+                'trialing','active','pending_payment','pending_verification',
+                'grace_period','past_due','suspended','cancelled','expired'
+            );
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    conn.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE billing_cycle_enum AS ENUM ('none','monthly','annual');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    conn.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE billing_currency_enum AS ENUM ('UGX','USD');
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    conn.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE subscription_payment_method_enum AS ENUM (
+                'mtn_momo','airtel_money','bank_transfer','cash'
+            );
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    conn.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE subscription_payment_status_enum AS ENUM (
+                'pending','pending_verification','verified','rejected','refunded'
+            );
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    conn.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE invoice_status_enum AS ENUM (
+                'draft','issued','paid','void','overdue'
+            );
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
+    conn.execute(sa.text("""
+        DO $$ BEGIN
+            CREATE TYPE subscription_event_enum AS ENUM (
+                'created','upgraded','downgraded','cancelled','reinstated',
+                'payment_submitted','payment_verified','payment_rejected',
+                'suspended','grace_period_started','expired','trial_started','plan_changed'
+            );
+        EXCEPTION WHEN duplicate_object THEN null; END $$
+    """))
 
-        "DO $$ BEGIN CREATE TYPE subscription_payment_method_enum AS ENUM ("
-        "'mtn_momo','airtel_money','bank_transfer','cash'"
-        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
+    # ── 2. Create tables ───────────────────────────────────────────────────────
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS subscription_plans (
+            id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            name                    VARCHAR(100) NOT NULL,
+            slug                    VARCHAR(50)  NOT NULL UNIQUE,
+            description             TEXT,
+            monthly_price_ugx       BIGINT  NOT NULL DEFAULT 0,
+            annual_price_ugx        BIGINT  NOT NULL DEFAULT 0,
+            monthly_price_usd_cents INTEGER NOT NULL DEFAULT 0,
+            annual_price_usd_cents  INTEGER NOT NULL DEFAULT 0,
+            max_properties          INTEGER NOT NULL DEFAULT 1,
+            max_units               INTEGER NOT NULL DEFAULT 5,
+            max_users               INTEGER NOT NULL DEFAULT 1,
+            max_storage_mb          INTEGER NOT NULL DEFAULT 100,
+            features                JSONB   NOT NULL DEFAULT '{}',
+            trial_days              INTEGER NOT NULL DEFAULT 0,
+            is_active               BOOLEAN NOT NULL DEFAULT TRUE,
+            is_publicly_visible     BOOLEAN NOT NULL DEFAULT TRUE,
+            display_order           INTEGER NOT NULL DEFAULT 0,
+            created_at              TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at              TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
 
-        "DO $$ BEGIN CREATE TYPE subscription_payment_status_enum AS ENUM ("
-        "'pending','pending_verification','verified','rejected','refunded'"
-        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS organisation_subscriptions (
+            id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            organisation_id      UUID NOT NULL UNIQUE REFERENCES organisations(id) ON DELETE CASCADE,
+            plan_id              UUID NOT NULL REFERENCES subscription_plans(id),
+            status               subscription_status_enum NOT NULL DEFAULT 'active',
+            billing_cycle        billing_cycle_enum       NOT NULL DEFAULT 'none',
+            currency             billing_currency_enum    NOT NULL DEFAULT 'UGX',
+            current_period_start TIMESTAMPTZ,
+            current_period_end   TIMESTAMPTZ,
+            trial_ends_at        TIMESTAMPTZ,
+            grace_period_until   TIMESTAMPTZ,
+            next_invoice_date    TIMESTAMPTZ,
+            auto_renew           BOOLEAN NOT NULL DEFAULT TRUE,
+            cancelled_at         TIMESTAMPTZ,
+            cancellation_reason  TEXT,
+            price_paid           BIGINT,
+            price_currency       VARCHAR(3),
+            created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+    conn.execute(sa.text(
+        "CREATE INDEX IF NOT EXISTS ix_org_subscriptions_org_id "
+        "ON organisation_subscriptions(organisation_id)"
+    ))
 
-        "DO $$ BEGIN CREATE TYPE invoice_status_enum AS ENUM ("
-        "'draft','issued','paid','void','overdue'"
-        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS subscription_invoices (
+            id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            organisation_id UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+            subscription_id UUID NOT NULL REFERENCES organisation_subscriptions(id),
+            invoice_number  VARCHAR(30) NOT NULL UNIQUE,
+            subtotal        BIGINT NOT NULL,
+            tax_amount      BIGINT NOT NULL DEFAULT 0,
+            total           BIGINT NOT NULL,
+            currency        VARCHAR(3) NOT NULL DEFAULT 'UGX',
+            period_start    TIMESTAMPTZ,
+            period_end      TIMESTAMPTZ,
+            due_date        TIMESTAMPTZ,
+            paid_at         TIMESTAMPTZ,
+            status          invoice_status_enum NOT NULL DEFAULT 'draft',
+            pdf_file_key    VARCHAR(500),
+            line_items      JSONB NOT NULL DEFAULT '[]',
+            notes           TEXT,
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+    conn.execute(sa.text(
+        "CREATE INDEX IF NOT EXISTS ix_sub_invoices_org_id "
+        "ON subscription_invoices(organisation_id)"
+    ))
 
-        "DO $$ BEGIN CREATE TYPE billing_currency_enum AS ENUM ("
-        "'UGX','USD'"
-        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS subscription_payments (
+            id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            organisation_id       UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+            subscription_id       UUID NOT NULL REFERENCES organisation_subscriptions(id),
+            invoice_id            UUID REFERENCES subscription_invoices(id),
+            payment_method        subscription_payment_method_enum  NOT NULL,
+            amount                BIGINT NOT NULL,
+            currency              VARCHAR(3) NOT NULL DEFAULT 'UGX',
+            transaction_reference VARCHAR(200),
+            phone_number          VARCHAR(20),
+            account_name          VARCHAR(200),
+            bank_name             VARCHAR(200),
+            transfer_date         DATE,
+            proof_file_key        VARCHAR(500),
+            proof_uploaded_at     TIMESTAMPTZ,
+            status                subscription_payment_status_enum NOT NULL DEFAULT 'pending',
+            submitted_at          TIMESTAMPTZ,
+            verified_by_id        UUID REFERENCES profiles(id),
+            verified_at           TIMESTAMPTZ,
+            rejection_reason      TEXT,
+            notes                 TEXT,
+            created_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
+            updated_at            TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+    conn.execute(sa.text(
+        "CREATE INDEX IF NOT EXISTS ix_sub_payments_org_id "
+        "ON subscription_payments(organisation_id)"
+    ))
 
-        "DO $$ BEGIN CREATE TYPE subscription_event_enum AS ENUM ("
-        "'created','upgraded','downgraded','cancelled','reinstated',"
-        "'payment_submitted','payment_verified','payment_rejected',"
-        "'suspended','grace_period_started','expired','trial_started','plan_changed'"
-        "); EXCEPTION WHEN duplicate_object THEN null; END $$",
-    ]:
-        op.execute(sa.text(stmt))
+    conn.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS subscription_audit_log (
+            id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            organisation_id UUID NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+            subscription_id UUID REFERENCES organisation_subscriptions(id),
+            event_type      subscription_event_enum NOT NULL,
+            actor_id        UUID REFERENCES profiles(id),
+            from_plan_id    UUID REFERENCES subscription_plans(id),
+            to_plan_id      UUID REFERENCES subscription_plans(id),
+            metadata        JSONB NOT NULL DEFAULT '{}',
+            created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """))
+    conn.execute(sa.text(
+        "CREATE INDEX IF NOT EXISTS ix_sub_audit_log_org_id "
+        "ON subscription_audit_log(organisation_id)"
+    ))
 
-    # ── subscription_plans ────────────────────────────────────────────────────
-    op.create_table(
-        "subscription_plans",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("name", sa.String(100), nullable=False),
-        sa.Column("slug", sa.String(50), unique=True, nullable=False, index=True),
-        sa.Column("description", sa.Text, nullable=True),
+    # ── 3. Seed subscription plans ─────────────────────────────────────────────
+    plans_sql = """
+        INSERT INTO subscription_plans
+            (name, slug, description,
+             monthly_price_ugx, annual_price_ugx,
+             monthly_price_usd_cents, annual_price_usd_cents,
+             max_properties, max_units, max_users, max_storage_mb,
+             features, trial_days, is_active, is_publicly_visible, display_order)
+        VALUES
+            ('Free', 'free', 'Get started with basic property management.',
+             0, 0, 0, 0, 1, 5, 1, 100,
+             '{"analytics_basic":true,"analytics_advanced":false,"maintenance_workflows":false,
+               "document_storage":false,"tenant_messaging":false,"team_members":false,
+               "api_access":false,"custom_branding":false,"priority_support":false,
+               "dedicated_support":false,"sso":false,"audit_logs":false}',
+             0, true, true, 1),
 
-        # Pricing — stored as integers (smallest unit) to avoid float issues
-        # UGX has no sub-units so we store the full amount
-        sa.Column("monthly_price_ugx", sa.BigInteger, nullable=False, default=0),
-        sa.Column("annual_price_ugx", sa.BigInteger, nullable=False, default=0),
-        sa.Column("monthly_price_usd_cents", sa.Integer, nullable=False, default=0),
-        sa.Column("annual_price_usd_cents", sa.Integer, nullable=False, default=0),
+            ('Professional', 'professional', 'For growing landlords who need advanced tools.',
+             200000, 1920000, 4900, 47000, 10, 50, 3, 2048,
+             '{"analytics_basic":true,"analytics_advanced":true,"maintenance_workflows":true,
+               "document_storage":true,"tenant_messaging":true,"team_members":false,
+               "api_access":false,"custom_branding":false,"priority_support":false,
+               "dedicated_support":false,"sso":false,"audit_logs":false}',
+             14, true, true, 2),
 
-        # Limits (-1 = unlimited)
-        sa.Column("max_properties", sa.Integer, nullable=False, default=1),
-        sa.Column("max_units", sa.Integer, nullable=False, default=5),
-        sa.Column("max_users", sa.Integer, nullable=False, default=1),
-        sa.Column("max_storage_mb", sa.Integer, nullable=False, default=100),
+            ('Agency', 'agency', 'For property management agencies with multiple users.',
+             500000, 4800000, 12900, 123800, 50, 300, 15, 20480,
+             '{"analytics_basic":true,"analytics_advanced":true,"maintenance_workflows":true,
+               "document_storage":true,"tenant_messaging":true,"team_members":true,
+               "api_access":false,"custom_branding":true,"priority_support":true,
+               "dedicated_support":false,"sso":false,"audit_logs":true}',
+             14, true, true, 3),
 
-        # Feature flags blob
-        # e.g. {"analytics_advanced": true, "api_access": false, "custom_branding": false}
-        sa.Column("features", JSONB, nullable=False, server_default="{}"),
+            ('Enterprise', 'enterprise', 'Unlimited scale with dedicated infrastructure and support.',
+             1000000, 9600000, 25900, 248600, -1, -1, -1, -1,
+             '{"analytics_basic":true,"analytics_advanced":true,"maintenance_workflows":true,
+               "document_storage":true,"tenant_messaging":true,"team_members":true,
+               "api_access":true,"custom_branding":true,"priority_support":true,
+               "dedicated_support":true,"sso":true,"audit_logs":true}',
+             14, true, true, 4)
 
-        sa.Column("trial_days", sa.Integer, nullable=False, default=0),
-        sa.Column("is_active", sa.Boolean, nullable=False, default=True),
-        sa.Column("is_publicly_visible", sa.Boolean, nullable=False, default=True),
-        sa.Column("display_order", sa.Integer, nullable=False, default=0),
+        ON CONFLICT (slug) DO NOTHING
+    """
+    conn.execute(sa.text(plans_sql))
 
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-    )
-
-    # ── organisation_subscriptions ────────────────────────────────────────────
-    op.create_table(
-        "organisation_subscriptions",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("organisation_id", UUID(as_uuid=True), sa.ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False, unique=True, index=True),
-        sa.Column("plan_id", UUID(as_uuid=True), sa.ForeignKey("subscription_plans.id"), nullable=False),
-
-        sa.Column("status", sa.String(50), nullable=False, server_default="active"),
-        sa.Column("billing_cycle", sa.String(20), nullable=False, server_default="none"),
-        sa.Column("currency", sa.String(10), nullable=False, server_default="UGX"),
-
-        sa.Column("current_period_start", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("current_period_end", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("trial_ends_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("grace_period_until", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("next_invoice_date", sa.DateTime(timezone=True), nullable=True),
-
-        sa.Column("auto_renew", sa.Boolean, nullable=False, default=True),
-        sa.Column("cancelled_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("cancellation_reason", sa.Text, nullable=True),
-
-        # Snapshot of price paid (denormalised for history)
-        sa.Column("price_paid", sa.BigInteger, nullable=True),
-        sa.Column("price_currency", sa.String(3), nullable=True),
-
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-    )
-
-    # ── subscription_invoices ─────────────────────────────────────────────────
-    op.create_table(
-        "subscription_invoices",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("organisation_id", UUID(as_uuid=True), sa.ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("subscription_id", UUID(as_uuid=True), sa.ForeignKey("organisation_subscriptions.id"), nullable=False),
-
-        sa.Column("invoice_number", sa.String(30), unique=True, nullable=False, index=True),
-        sa.Column("subtotal", sa.BigInteger, nullable=False),
-        sa.Column("tax_amount", sa.BigInteger, nullable=False, default=0),
-        sa.Column("total", sa.BigInteger, nullable=False),
-        sa.Column("currency", sa.String(3), nullable=False, default="UGX"),
-
-        sa.Column("period_start", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("period_end", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("due_date", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("paid_at", sa.DateTime(timezone=True), nullable=True),
-
-        sa.Column("status", sa.String(20), nullable=False, server_default="draft"),
-        sa.Column("pdf_file_key", sa.String(500), nullable=True),
-        sa.Column("line_items", JSONB, nullable=False, server_default="[]"),
-        sa.Column("notes", sa.Text, nullable=True),
-
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-    )
-
-    # ── subscription_payments ─────────────────────────────────────────────────
-    op.create_table(
-        "subscription_payments",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("organisation_id", UUID(as_uuid=True), sa.ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("subscription_id", UUID(as_uuid=True), sa.ForeignKey("organisation_subscriptions.id"), nullable=False),
-        sa.Column("invoice_id", UUID(as_uuid=True), sa.ForeignKey("subscription_invoices.id"), nullable=True),
-
-        sa.Column("payment_method", sa.String(30), nullable=False),
-        sa.Column("amount", sa.BigInteger, nullable=False),
-        sa.Column("currency", sa.String(3), nullable=False, default="UGX"),
-
-        # Provider-supplied or user-entered reference
-        sa.Column("transaction_reference", sa.String(200), nullable=True),
-        sa.Column("phone_number", sa.String(20), nullable=True),     # for mobile money
-        sa.Column("account_name", sa.String(200), nullable=True),
-        sa.Column("bank_name", sa.String(200), nullable=True),
-        sa.Column("transfer_date", sa.Date, nullable=True),
-
-        # Uploaded proof (S3/MinIO key)
-        sa.Column("proof_file_key", sa.String(500), nullable=True),
-        sa.Column("proof_uploaded_at", sa.DateTime(timezone=True), nullable=True),
-
-        sa.Column("status", sa.String(30), nullable=False, server_default="pending"),
-        sa.Column("submitted_at", sa.DateTime(timezone=True), nullable=True),
-
-        # Admin verification fields
-        sa.Column("verified_by_id", UUID(as_uuid=True), sa.ForeignKey("profiles.id"), nullable=True),
-        sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("rejection_reason", sa.Text, nullable=True),
-        sa.Column("notes", sa.Text, nullable=True),
-
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-    )
-
-    # ── subscription_audit_log ────────────────────────────────────────────────
-    op.create_table(
-        "subscription_audit_log",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("organisation_id", UUID(as_uuid=True), sa.ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("subscription_id", UUID(as_uuid=True), sa.ForeignKey("organisation_subscriptions.id"), nullable=True),
-        sa.Column("event_type", sa.String(50), nullable=False),
-
-        # Who triggered the event (NULL = system/cron)
-        sa.Column("actor_id", UUID(as_uuid=True), sa.ForeignKey("profiles.id"), nullable=True),
-
-        # Plan change tracking
-        sa.Column("from_plan_id", UUID(as_uuid=True), sa.ForeignKey("subscription_plans.id"), nullable=True),
-        sa.Column("to_plan_id", UUID(as_uuid=True), sa.ForeignKey("subscription_plans.id"), nullable=True),
-
-        # Arbitrary context (payment ref, reason, etc.)
-        sa.Column("metadata", JSONB, nullable=False, server_default="{}"),
-
-        # Immutable — no updated_at
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-    )
-
-    # ── Cast string columns to their enum types ───────────────────────────────
-    # Must drop the string DEFAULT before casting, then re-add as a typed enum
-    # default. PostgreSQL cannot auto-cast a varchar DEFAULT to an enum type.
-    casts = [
-        # (table, column, enum_type, new_default or None)
-        ("organisation_subscriptions", "status",        SUBSCRIPTION_STATUS_ENUM,        "'active'"),
-        ("organisation_subscriptions", "billing_cycle", BILLING_CYCLE_ENUM,              "'none'"),
-        ("organisation_subscriptions", "currency",      BILLING_CURRENCY_ENUM,           "'UGX'"),
-        ("subscription_invoices",      "status",        INVOICE_STATUS_ENUM,             "'draft'"),
-        ("subscription_payments",      "payment_method",SUBSCRIPTION_PAYMENT_METHOD_ENUM, None),
-        ("subscription_payments",      "status",        SUBSCRIPTION_PAYMENT_STATUS_ENUM,"'pending'"),
-        ("subscription_audit_log",     "event_type",    SUBSCRIPTION_EVENT_ENUM,          None),
+    # ── 4. Seed billing system settings ───────────────────────────────────────
+    settings = [
+        ("billing.vat_rate_percent",    "18",                   "billing", "VAT Rate (%)"),
+        ("billing.trial_days",          "14",                   "billing", "Default Trial Period (days)"),
+        ("billing.grace_period_days",   "7",                    "billing", "Grace Period (days)"),
+        ("billing.invoice_prefix",      "CR-INV",               "billing", "Invoice Number Prefix"),
+        ("billing.bank.name",           "Stanbic Bank Uganda",  "billing", "Bank Name"),
+        ("billing.bank.account_name",   "Crib Properties Ltd",  "billing", "Account Name"),
+        ("billing.bank.account_number", "9030005812395",        "billing", "Account Number"),
+        ("billing.bank.branch",         "Garden City Branch",   "billing", "Branch"),
+        ("billing.bank.swift_code",     "SBICUGKX",             "billing", "SWIFT / BIC Code"),
+        ("billing.bank.sort_code",      "",                     "billing", "Sort Code"),
+        ("billing.mtn_momo.number",     "+256 77 000 0000",     "billing", "MTN MoMo Number"),
+        ("billing.mtn_momo.name",       "Crib Properties Ltd",  "billing", "MTN MoMo Account Name"),
+        ("billing.airtel.number",       "+256 75 000 0000",     "billing", "Airtel Money Number"),
+        ("billing.airtel.name",         "Crib Properties Ltd",  "billing", "Airtel Money Account Name"),
+        ("billing.cash.instructions",
+         "Pay at our Kampala office. Contact billing@crib.ug to arrange.",
+         "billing", "Cash Payment Instructions"),
     ]
-    for table, col, enum_type, default in casts:
-        op.execute(sa.text(f"ALTER TABLE {table} ALTER COLUMN {col} DROP DEFAULT"))
-        op.execute(sa.text(
-            f"ALTER TABLE {table} ALTER COLUMN {col} "
-            f"TYPE {enum_type} USING {col}::{enum_type}"
-        ))
-        if default:
-            op.execute(sa.text(
-                f"ALTER TABLE {table} ALTER COLUMN {col} "
-                f"SET DEFAULT {default}::{enum_type}"
-            ))
-
-    # ── Seed subscription plans ───────────────────────────────────────────────
-    now = datetime.now(timezone.utc).isoformat()
-
-    plans = [
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Free",
-            "slug": "free",
-            "description": "Get started with basic property management.",
-            "monthly_price_ugx": 0,
-            "annual_price_ugx": 0,
-            "monthly_price_usd_cents": 0,
-            "annual_price_usd_cents": 0,
-            "max_properties": 1,
-            "max_units": 5,
-            "max_users": 1,
-            "max_storage_mb": 100,
-            "features": {
-                "analytics_basic": True,
-                "analytics_advanced": False,
-                "maintenance_workflows": False,
-                "document_storage": False,
-                "tenant_messaging": False,
-                "team_members": False,
-                "api_access": False,
-                "custom_branding": False,
-                "priority_support": False,
-                "dedicated_support": False,
-                "sso": False,
-                "audit_logs": False,
-            },
-            "trial_days": 0,
-            "is_active": True,
-            "is_publicly_visible": True,
-            "display_order": 1,
-            "created_at": now,
-            "updated_at": now,
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Professional",
-            "slug": "professional",
-            "description": "For growing landlords who need advanced tools.",
-            "monthly_price_ugx": 200000,
-            "annual_price_ugx": 1920000,
-            "monthly_price_usd_cents": 4900,
-            "annual_price_usd_cents": 47000,
-            "max_properties": 10,
-            "max_units": 50,
-            "max_users": 3,
-            "max_storage_mb": 2048,
-            "features": {
-                "analytics_basic": True,
-                "analytics_advanced": True,
-                "maintenance_workflows": True,
-                "document_storage": True,
-                "tenant_messaging": True,
-                "team_members": False,
-                "api_access": False,
-                "custom_branding": False,
-                "priority_support": False,
-                "dedicated_support": False,
-                "sso": False,
-                "audit_logs": False,
-            },
-            "trial_days": 14,
-            "is_active": True,
-            "is_publicly_visible": True,
-            "display_order": 2,
-            "created_at": now,
-            "updated_at": now,
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Agency",
-            "slug": "agency",
-            "description": "For property management agencies with multiple users.",
-            "monthly_price_ugx": 500000,
-            "annual_price_ugx": 4800000,
-            "monthly_price_usd_cents": 12900,
-            "annual_price_usd_cents": 123800,
-            "max_properties": 50,
-            "max_units": 300,
-            "max_users": 15,
-            "max_storage_mb": 20480,
-            "features": {
-                "analytics_basic": True,
-                "analytics_advanced": True,
-                "maintenance_workflows": True,
-                "document_storage": True,
-                "tenant_messaging": True,
-                "team_members": True,
-                "api_access": False,
-                "custom_branding": True,
-                "priority_support": True,
-                "dedicated_support": False,
-                "sso": False,
-                "audit_logs": True,
-            },
-            "trial_days": 14,
-            "is_active": True,
-            "is_publicly_visible": True,
-            "display_order": 3,
-            "created_at": now,
-            "updated_at": now,
-        },
-        {
-            "id": str(uuid.uuid4()),
-            "name": "Enterprise",
-            "slug": "enterprise",
-            "description": "Unlimited scale with dedicated infrastructure and support.",
-            "monthly_price_ugx": 1000000,
-            "annual_price_ugx": 9600000,
-            "monthly_price_usd_cents": 25900,
-            "annual_price_usd_cents": 248600,
-            "max_properties": -1,
-            "max_units": -1,
-            "max_users": -1,
-            "max_storage_mb": -1,
-            "features": {
-                "analytics_basic": True,
-                "analytics_advanced": True,
-                "maintenance_workflows": True,
-                "document_storage": True,
-                "tenant_messaging": True,
-                "team_members": True,
-                "api_access": True,
-                "custom_branding": True,
-                "priority_support": True,
-                "dedicated_support": True,
-                "sso": True,
-                "audit_logs": True,
-            },
-            "trial_days": 14,
-            "is_active": True,
-            "is_publicly_visible": True,
-            "display_order": 4,
-            "created_at": now,
-            "updated_at": now,
-        },
-    ]
-
-    # Use raw INSERT so we can pass features as a JSON string.
-    # op.bulk_insert passes Python dicts to asyncpg which expects a string for JSONB.
-    import json as _json
-    for p in plans:
-        op.execute(sa.text(
-            "INSERT INTO subscription_plans "
-            "(id, name, slug, description, "
-            "monthly_price_ugx, annual_price_ugx, monthly_price_usd_cents, annual_price_usd_cents, "
-            "max_properties, max_units, max_users, max_storage_mb, "
-            "features, trial_days, is_active, is_publicly_visible, display_order, created_at, updated_at) "
-            "VALUES (:id, :name, :slug, :description, "
-            ":monthly_price_ugx, :annual_price_ugx, :monthly_price_usd_cents, :annual_price_usd_cents, "
-            ":max_properties, :max_units, :max_users, :max_storage_mb, "
-            ":features, :trial_days, :is_active, :is_publicly_visible, :display_order, :created_at, :updated_at) "
-            "ON CONFLICT (slug) DO NOTHING"
-        ).bindparams(
-            id=p["id"], name=p["name"], slug=p["slug"], description=p["description"],
-            monthly_price_ugx=p["monthly_price_ugx"], annual_price_ugx=p["annual_price_ugx"],
-            monthly_price_usd_cents=p["monthly_price_usd_cents"], annual_price_usd_cents=p["annual_price_usd_cents"],
-            max_properties=p["max_properties"], max_units=p["max_units"],
-            max_users=p["max_users"], max_storage_mb=p["max_storage_mb"],
-            features=_json.dumps(p["features"]),
-            trial_days=p["trial_days"], is_active=p["is_active"],
-            is_publicly_visible=p["is_publicly_visible"], display_order=p["display_order"],
-            created_at=p["created_at"], updated_at=p["updated_at"],
-        ))
-
-    # ── Seed billing system settings ──────────────────────────────────────────
-    billing_settings = [
-        ("billing.vat_rate_percent",    "18",                      "billing", "VAT Rate (%)",               "number",  False, True),
-        ("billing.trial_days",          "14",                      "billing", "Default Trial Period (days)", "number",  False, True),
-        ("billing.grace_period_days",   "7",                       "billing", "Grace Period (days)",         "number",  False, True),
-        ("billing.invoice_prefix",      "CR-INV",                  "billing", "Invoice Number Prefix",       "string",  False, True),
-        ("billing.bank.name",           "Stanbic Bank Uganda",     "billing", "Bank Name",                   "string",  False, False),
-        ("billing.bank.account_name",   "Crib Properties Ltd",     "billing", "Account Name",                "string",  False, False),
-        ("billing.bank.account_number", "9030005812395",           "billing", "Account Number",              "string",  False, False),
-        ("billing.bank.branch",         "Garden City Branch",      "billing", "Branch",                      "string",  False, False),
-        ("billing.bank.swift_code",     "SBICUGKX",                "billing", "SWIFT / BIC Code",            "string",  False, False),
-        ("billing.bank.sort_code",      "",                        "billing", "Sort Code",                   "string",  False, False),
-        ("billing.mtn_momo.number",     "+256 77 000 0000",        "billing", "MTN MoMo Number",             "string",  False, False),
-        ("billing.mtn_momo.name",       "Crib Properties Ltd",     "billing", "MTN MoMo Account Name",       "string",  False, False),
-        ("billing.airtel.number",       "+256 75 000 0000",        "billing", "Airtel Money Number",         "string",  False, False),
-        ("billing.airtel.name",         "Crib Properties Ltd",     "billing", "Airtel Money Account Name",   "string",  False, False),
-        ("billing.cash.instructions",   "Pay at our Kampala office. Contact billing@crib.ug to arrange.", "billing", "Cash Payment Instructions", "text", False, False),
-    ]
-
-    op.bulk_insert(
-        sa.table(
-            "system_settings",
-            sa.column("key"), sa.column("value"), sa.column("category"),
-            sa.column("label"), sa.column("value_type"), sa.column("is_secret"),
-            sa.column("is_required"),
-        ),
-        [
-            {
-                "key": k, "value": v, "category": cat,
-                "label": lbl, "value_type": vt,
-                "is_secret": secret, "is_required": required,
-            }
-            for k, v, cat, lbl, vt, secret, required in billing_settings
-        ],
-    )
+    for key, value, category, label in settings:
+        conn.execute(sa.text(
+            "INSERT INTO system_settings "
+            "(key, value, category, label, description, value_type, is_secret, is_required) "
+            "VALUES (:k, :v, :cat, :lbl, '', 'string', false, false) "
+            "ON CONFLICT (key) DO NOTHING"
+        ), {"k": key, "v": value, "cat": category, "lbl": label})
 
 
 def downgrade() -> None:
-    op.drop_table("subscription_audit_log")
-    op.drop_table("subscription_payments")
-    op.drop_table("subscription_invoices")
-    op.drop_table("organisation_subscriptions")
-    op.drop_table("subscription_plans")
-
-    # Remove seeded system settings
-    op.execute("DELETE FROM system_settings WHERE category = 'billing'")
-
-    # Drop enum types idempotently
-    for name in [
-        SUBSCRIPTION_EVENT_ENUM, BILLING_CURRENCY_ENUM, INVOICE_STATUS_ENUM,
-        SUBSCRIPTION_PAYMENT_STATUS_ENUM, SUBSCRIPTION_PAYMENT_METHOD_ENUM,
-        BILLING_CYCLE_ENUM, SUBSCRIPTION_STATUS_ENUM,
+    conn = op.get_bind()
+    conn.execute(sa.text("DROP TABLE IF EXISTS subscription_audit_log CASCADE"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS subscription_payments CASCADE"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS subscription_invoices CASCADE"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS organisation_subscriptions CASCADE"))
+    conn.execute(sa.text("DROP TABLE IF EXISTS subscription_plans CASCADE"))
+    conn.execute(sa.text("DELETE FROM system_settings WHERE category = 'billing'"))
+    for t in [
+        "subscription_event_enum", "billing_currency_enum", "invoice_status_enum",
+        "subscription_payment_status_enum", "subscription_payment_method_enum",
+        "billing_cycle_enum", "subscription_status_enum",
     ]:
-        op.execute(sa.text(f"DROP TYPE IF EXISTS {name}"))
+        conn.execute(sa.text(f"DROP TYPE IF EXISTS {t}"))
