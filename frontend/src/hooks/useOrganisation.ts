@@ -1,14 +1,25 @@
 "use client";
 
+import { isAxiosError } from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { organisationsApi, type UpdateOrganisationRequest } from "@/services/api/organisations";
+import { organisationsApi, type Organisation, type UpdateOrganisationRequest } from "@/services/api/organisations";
 
 const ORG_KEY = ["organisation", "me"] as const;
 
 export function useOrganisation() {
-  return useQuery({
+  return useQuery<Organisation | null>({
     queryKey: ORG_KEY,
-    queryFn: organisationsApi.getMe,
+    queryFn: async () => {
+      try {
+        return await organisationsApi.getMe();
+      } catch (err) {
+        // Superadmin (and any user with no org) legitimately has no organisation.
+        // Treat 404 as null so callers can check `org == null` rather than
+        // catching an unhandled query error.
+        if (isAxiosError(err) && err.response?.status === 404) return null;
+        throw err;
+      }
+    },
     staleTime: 5 * 60_000,
   });
 }

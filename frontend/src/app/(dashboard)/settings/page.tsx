@@ -310,6 +310,11 @@ export default function SettingsPage() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading…
                 </div>
+              ) : !org ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  No organisation configured for your account.
+                  {isSuperAdmin && " Use the Admin panel to invite agencies."}
+                </p>
               ) : (
                 <>
                   <div className="space-y-1.5">
@@ -383,7 +388,7 @@ export default function SettingsPage() {
                     They will have read-only access.
                   </CardDescription>
                 </div>
-                {canManageOrg && (
+                {canManageOrg && !!org && (
                   <Button size="sm" onClick={() => setShowInviteModal(true)}>
                     <Plus className="h-4 w-4" />
                     Invite landlord

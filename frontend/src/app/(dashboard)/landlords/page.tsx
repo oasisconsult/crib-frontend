@@ -178,7 +178,7 @@ function InviteRow({
 }
 
 export default function LandlordsPage() {
-  const { canManageOrg } = usePermissions();
+  const { canManageOrg, isSuperAdmin } = usePermissions();
 
   const { data: invites = [], isLoading } = useLandlordInvites();
   const { mutate: createInvite, isPending: creating } = useCreateLandlordInvite();
