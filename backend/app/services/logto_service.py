@@ -477,16 +477,17 @@ async def create_landlord_user(
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
 
-                # Set password via dedicated endpoint — POST /users body ignores it.
-                pwd_resp = await client.patch(
-                    f"{base}/users/{logto_user_id}/password",
-                    json={"password": temp_password},
-                    headers=headers,
-                )
-                if not pwd_resp.is_success:
-                    log.warning("logto.landlord_password_set_failed", user_id=logto_user_id, status=pwd_resp.status_code)
-                else:
-                    log.info("logto.landlord_password_set", user_id=logto_user_id)
+            # Always set the password (new and existing users) so emailed
+            # credentials are valid regardless of prior account state.
+            pwd_resp = await client.patch(
+                f"{base}/users/{logto_user_id}/password",
+                json={"password": temp_password},
+                headers=headers,
+            )
+            if not pwd_resp.is_success:
+                log.warning("logto.landlord_password_set_failed", user_id=logto_user_id, status=pwd_resp.status_code, response=pwd_resp.text)
+            else:
+                log.info("logto.landlord_password_set", user_id=logto_user_id)
 
             # Assign app-level 'landlord' role
             await _assign_app_role(client, base, logto_user_id, "landlord", headers)
@@ -1044,10 +1045,13 @@ async def remove_user_app_role(user_id: str, role_name: str) -> bool:
             ]
             if not role_ids:
                 return True  # User doesn't have the role — nothing to do
-            # DELETE endpoint accepts a list of role IDs
-            del_resp = await client.delete(
+            # DELETE endpoint accepts a list of role IDs.
+            # httpx DELETE does not support json= — send as raw content.
+            import json as _json
+            del_resp = await client.request(
+                "DELETE",
                 f"{base}/users/{user_id}/roles",
-                json={"roleIds": role_ids},
+                content=_json.dumps({"roleIds": role_ids}),
                 headers=headers,
             )
         if del_resp.status_code in (200, 201, 204):
