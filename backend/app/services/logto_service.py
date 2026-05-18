@@ -206,19 +206,18 @@ async def create_tenant_user(
 
         async with httpx.AsyncClient(timeout=10) as client:
             # ─ Step 1: Create the user, or resolve conflict if they already exist ──
+            temp_password = _generate_temp_password()
             create_resp = await client.post(
                 f"{base}/users",
                 json={
                     "primaryEmail": email,
                     "name": f"{first_name} {last_name}",
                     "username": email.split("@")[0].lower(),
-                    "password": _generate_temp_password(),  # Set password during creation
                 },
                 headers=headers,
             )
 
             if create_resp.status_code == 422:
-                # Conflict: the user already exists in Logto.
                 search_resp = await client.get(
                     f"{base}/users",
                     params={"search": email},
@@ -232,20 +231,24 @@ async def create_tenant_user(
                     return None
 
                 logto_user_id = existing_users[0]["id"]
-                log.info(
-                    "logto.user_found_existing",
-                    email=email,
-                    logto_user_id=logto_user_id,
-                )
-                temp_password = None  # Don't set password for existing users
+                log.info("logto.user_found_existing", email=email, logto_user_id=logto_user_id)
+                temp_password = None  # Don't overwrite existing user's password
             else:
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
-                log.info("logto.user_created_new", email=email, logto_user_id=logto_user_id)
                 is_new_user = True
-                temp_password = _generate_temp_password()  # Password was set during creation
+                log.info("logto.user_created_new", email=email, logto_user_id=logto_user_id)
 
-                log.info("logto.password_set_during_creation", user_id=logto_user_id)
+                # Set password via dedicated endpoint — POST /users body ignores it.
+                pwd_resp = await client.patch(
+                    f"{base}/users/{logto_user_id}/password",
+                    json={"password": temp_password},
+                    headers=headers,
+                )
+                if not pwd_resp.is_success:
+                    log.warning("logto.tenant_password_set_failed", user_id=logto_user_id, status=pwd_resp.status_code)
+                else:
+                    log.info("logto.tenant_password_set", user_id=logto_user_id)
 
             # ─ Step 3: Add user to organisation ──────────────────────────────
             add_resp = await client.post(
@@ -459,13 +462,11 @@ async def create_landlord_user(
                     "primaryEmail": email,
                     "name": f"{first_name} {last_name}",
                     "username": email.split("@")[0].lower(),
-                    "password": temp_password,
                 },
                 headers=headers,
             )
 
             if create_resp.status_code == 422:
-                # User already exists — look them up
                 search = await client.get(f"{base}/users", params={"search": email}, headers=headers)
                 search.raise_for_status()
                 users = search.json()
@@ -475,6 +476,17 @@ async def create_landlord_user(
             else:
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
+
+                # Set password via dedicated endpoint — POST /users body ignores it.
+                pwd_resp = await client.patch(
+                    f"{base}/users/{logto_user_id}/password",
+                    json={"password": temp_password},
+                    headers=headers,
+                )
+                if not pwd_resp.is_success:
+                    log.warning("logto.landlord_password_set_failed", user_id=logto_user_id, status=pwd_resp.status_code)
+                else:
+                    log.info("logto.landlord_password_set", user_id=logto_user_id)
 
             # Assign app-level 'landlord' role
             await _assign_app_role(client, base, logto_user_id, "landlord", headers)
@@ -598,7 +610,6 @@ async def create_agency_with_manager(
                     "primaryEmail": manager_email,
                     "name": f"{manager_first_name} {manager_last_name}",
                     "username": manager_email.split("@")[0].lower(),
-                    "password": temp_password,
                 },
                 headers=headers,
             )
@@ -616,6 +627,22 @@ async def create_agency_with_manager(
             if not logto_user_id:
                 log.warning("logto.agency_manager_not_created", email=manager_email)
                 return None
+
+            # 2b. Set password — must be a separate PATCH call; the POST /users
+            #     body does not accept a password field in Logto's Management API.
+            pwd_resp = await client.patch(
+                f"{base}/users/{logto_user_id}/password",
+                json={"password": temp_password},
+                headers=headers,
+            )
+            if not pwd_resp.is_success:
+                log.warning(
+                    "logto.agency_manager_password_set_failed",
+                    user_id=logto_user_id,
+                    status=pwd_resp.status_code,
+                )
+            else:
+                log.info("logto.agency_manager_password_set", user_id=logto_user_id)
 
             # 3. Add user to org
             add_resp = await client.post(
