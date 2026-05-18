@@ -219,7 +219,7 @@ class SubscriptionAuditLogOut(CamelModel):
     actor_id: uuid.UUID | None
     from_plan_id: uuid.UUID | None
     to_plan_id: uuid.UUID | None
-    metadata: dict[str, Any]
+    event_metadata: dict[str, Any]
     created_at: datetime
 
 

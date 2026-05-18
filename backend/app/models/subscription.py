@@ -16,7 +16,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     BigInteger, Boolean, Date, DateTime, Enum, ForeignKey,
-    Integer, String, Text,
+    Integer, String, Text, func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -170,16 +170,8 @@ class OrganisationSubscription(TimestampedBase):
     price_paid: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     price_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
 
-    # Relationships
-    plan: Mapped[SubscriptionPlan] = relationship("SubscriptionPlan", lazy="joined")
-    payments: Mapped[list[SubscriptionPayment]] = relationship(
-        "SubscriptionPayment", back_populates="subscription", lazy="dynamic",
-        order_by="SubscriptionPayment.created_at.desc()",
-    )
-    invoices: Mapped[list[SubscriptionInvoice]] = relationship(
-        "SubscriptionInvoice", back_populates="subscription", lazy="dynamic",
-        order_by="SubscriptionInvoice.created_at.desc()",
-    )
+    # Relationships — selectin loads eagerly in async context; avoids MissingGreenlet
+    plan: Mapped[SubscriptionPlan] = relationship("SubscriptionPlan", lazy="selectin")
 
     @property
     def is_free_plan(self) -> bool:
@@ -227,10 +219,6 @@ class SubscriptionInvoice(TimestampedBase):
     pdf_file_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     line_items: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-
-    subscription: Mapped[OrganisationSubscription] = relationship(
-        "OrganisationSubscription", back_populates="invoices",
-    )
 
     def __repr__(self) -> str:
         return f"<SubscriptionInvoice {self.invoice_number!r} {self.status}>"
@@ -280,10 +268,6 @@ class SubscriptionPayment(TimestampedBase):
     rejection_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    subscription: Mapped[OrganisationSubscription] = relationship(
-        "OrganisationSubscription", back_populates="payments",
-    )
-
     def __repr__(self) -> str:
         return f"<SubscriptionPayment {self.id} {self.status} {self.amount} {self.currency}>"
 
@@ -294,7 +278,7 @@ class SubscriptionAuditLog(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4,
-        server_default="gen_random_uuid()",
+        server_default=func.gen_random_uuid(),
     )
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("organisations.id", ondelete="CASCADE"),
@@ -316,9 +300,9 @@ class SubscriptionAuditLog(Base):
     to_plan_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("subscription_plans.id"), nullable=True,
     )
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    event_metadata: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default="now()", nullable=False,
+        DateTime(timezone=True), server_default=func.now(), nullable=False,
     )
 
     def __repr__(self) -> str:

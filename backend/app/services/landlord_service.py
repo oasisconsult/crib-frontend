@@ -263,7 +263,7 @@ async def complete_onboarding(
             logto_org_id=personal_logto_org_id or f"org_personal_{secrets.token_hex(6)}",
             name=base_name,
             slug=f"{base_slug}-{secrets.token_hex(4)}",
-            plan=Plan.starter,
+            plan=Plan.free,
             currency="UGX",
             settings={},
             payment_settings={},

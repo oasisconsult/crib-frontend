@@ -63,7 +63,15 @@ async def test_engine():
 
         # Create enum types idempotently (SQLAlchemy won't create them if they exist)
         for stmt in [
-            "DO $$ BEGIN CREATE TYPE plan_enum AS ENUM ('starter','growth','enterprise'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE plan_enum AS ENUM ('free','professional','agency','enterprise'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            # Subscription billing enums (migration 028)
+            "DO $$ BEGIN CREATE TYPE subscription_status_enum AS ENUM ('trialing','active','pending_payment','pending_verification','grace_period','past_due','suspended','cancelled','expired'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE billing_cycle_enum AS ENUM ('none','monthly','annual'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE billing_currency_enum AS ENUM ('UGX','USD'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE subscription_payment_method_enum AS ENUM ('mtn_momo','airtel_money','bank_transfer','cash'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE subscription_payment_status_enum AS ENUM ('pending','pending_verification','verified','rejected','refunded'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE invoice_status_enum AS ENUM ('draft','issued','paid','void','overdue'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE subscription_event_enum AS ENUM ('created','upgraded','downgraded','cancelled','reinstated','payment_submitted','payment_verified','payment_rejected','suspended','grace_period_started','expired','trial_started','plan_changed'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             # role_enum was removed in migration 011 — Profile.role is now VARCHAR(50)
             "DO $$ BEGIN CREATE TYPE property_type_enum AS ENUM ('flat','house','hostel','commercial','villa'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE property_status_enum AS ENUM ('active','inactive','maintenance'); EXCEPTION WHEN duplicate_object THEN null; END $$",
@@ -138,6 +146,67 @@ async def test_engine():
                 "VALUES (:name, :description, :priority) "
                 "ON CONFLICT (name) DO UPDATE SET priority = EXCLUDED.priority"
             ), {"name": name, "description": description, "priority": priority})
+
+        # Seed the dev organisation that JWT dev-users reference (org_id="org_dev").
+        # Without this, _upsert_profile cannot resolve org_dev → profile.organisation_id=None.
+        await conn.execute(sa.text(
+            "INSERT INTO organisations (logto_org_id, name, slug, plan, settings, payment_settings, currency, is_active) "
+            "VALUES ('org_dev', 'Dev Agency', 'dev-agency', 'free', '{}', '{}', 'UGX', true) "
+            "ON CONFLICT (logto_org_id) DO NOTHING"
+        ))
+
+        # Seed subscription plans (required for get_or_create_subscription).
+        import json as _json
+        _PLANS = [
+            ("free",         "Free",         "Get started with basic property management.", 0, 0, 0, 0, 1, 5, 1, 100,
+             _json.dumps({"analytics_basic": True, "analytics_advanced": False}), 0, 1),
+            ("professional", "Professional", "For growing landlords.", 200000, 1920000, 4900, 47000, 10, 50, 3, 2048,
+             _json.dumps({"analytics_basic": True, "analytics_advanced": True}), 14, 2),
+            ("agency",       "Agency",       "For property management agencies.", 500000, 4800000, 12900, 123800, 50, 300, 15, 20480,
+             _json.dumps({"analytics_basic": True, "analytics_advanced": True, "team_members": True}), 14, 3),
+            ("enterprise",   "Enterprise",   "Unlimited scale.", 1000000, 9600000, 25900, 248600, -1, -1, -1, -1,
+             _json.dumps({"analytics_basic": True, "analytics_advanced": True, "api_access": True}), 14, 4),
+        ]
+        for slug, name, desc, mugx, augx, musd, ausd, mp, mu, muser, ms, feats, trial, order in _PLANS:
+            await conn.execute(sa.text(
+                "INSERT INTO subscription_plans "
+                "(name, slug, description, monthly_price_ugx, annual_price_ugx, "
+                "monthly_price_usd_cents, annual_price_usd_cents, "
+                "max_properties, max_units, max_users, max_storage_mb, "
+                "features, trial_days, is_active, is_publicly_visible, display_order) "
+                "VALUES (:name,:slug,:desc,:mugx,:augx,:musd,:ausd,:mp,:mu,:muser,:ms,:feats,:trial,true,true,:order) "
+                "ON CONFLICT (slug) DO NOTHING"
+            ), {"name": name, "slug": slug, "desc": desc,
+                "mugx": mugx, "augx": augx, "musd": musd, "ausd": ausd,
+                "mp": mp, "mu": mu, "muser": muser, "ms": ms,
+                "feats": feats, "trial": trial, "order": order})
+
+        # Seed billing system settings for tests
+        _BILLING = [
+            ("billing.vat_rate_percent", "18", "billing", "VAT Rate (%)", "number", False, True),
+            ("billing.trial_days", "14", "billing", "Trial Period", "number", False, True),
+            ("billing.grace_period_days", "7", "billing", "Grace Period", "number", False, True),
+            ("billing.invoice_prefix", "CR-INV", "billing", "Invoice Prefix", "string", False, True),
+            ("billing.bank.name", "Test Bank", "billing", "Bank Name", "string", False, False),
+            ("billing.bank.account_name", "Test Account", "billing", "Account Name", "string", False, False),
+            ("billing.bank.account_number", "1234567890", "billing", "Account Number", "string", False, False),
+            ("billing.bank.branch", "Test Branch", "billing", "Branch", "string", False, False),
+            ("billing.bank.swift_code", "TESTUGKX", "billing", "SWIFT", "string", False, False),
+            ("billing.bank.sort_code", "", "billing", "Sort Code", "string", False, False),
+            ("billing.mtn_momo.number", "+256700000000", "billing", "MTN Number", "string", False, False),
+            ("billing.mtn_momo.name", "Test MTN", "billing", "MTN Name", "string", False, False),
+            ("billing.airtel.number", "+256750000000", "billing", "Airtel Number", "string", False, False),
+            ("billing.airtel.name", "Test Airtel", "billing", "Airtel Name", "string", False, False),
+            ("billing.cash.instructions", "Pay at office.", "billing", "Cash Instructions", "text", False, False),
+        ]
+        for key, value, category, label, value_type, is_secret, is_required in _BILLING:
+            await conn.execute(sa.text(
+                "INSERT INTO system_settings (key, value, category, label, description, value_type, is_secret, is_required) "
+                "VALUES (:key, :value, :category, :label, :description, :value_type, :is_secret, :is_required) "
+                "ON CONFLICT (key) DO NOTHING"
+            ), {"key": key, "value": value, "category": category, "label": label,
+                "description": "", "value_type": value_type,
+                "is_secret": is_secret, "is_required": is_required})
 
     yield engine
 

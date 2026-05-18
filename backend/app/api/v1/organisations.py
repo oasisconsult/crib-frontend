@@ -116,7 +116,7 @@ async def provision_organisation(
         logto_org_id=logto_org_id,
         name=body.name,
         slug=body.slug,
-        plan=Plan.starter,
+        plan=Plan.free,
         currency=body.currency,
         country=body.country,
         settings={},

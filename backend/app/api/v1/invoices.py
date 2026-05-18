@@ -27,7 +27,7 @@ async def list_invoices(
         current_user.profile.organisation_id, db, limit, offset
     )
     return {
-        "data": items,
+        "data": [SubscriptionInvoiceOut.model_validate(i) for i in items],
         "total": total,
         "page": offset // limit + 1,
         "pageSize": limit,

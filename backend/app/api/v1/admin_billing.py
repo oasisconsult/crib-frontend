@@ -141,7 +141,7 @@ async def list_pending_payments(
     )
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one() or 0
     items = list((await db.execute(q.order_by(SubscriptionPayment.submitted_at.asc()).limit(limit).offset(offset))).scalars().all())
-    return {"data": items, "total": total, "page": offset // limit + 1, "pageSize": limit, "hasNext": (offset + limit) < total}
+    return {"data": [SubscriptionPaymentOut.model_validate(p) for p in items], "total": total, "page": offset // limit + 1, "pageSize": limit, "hasNext": (offset + limit) < total}
 
 
 @router.post("/payments/{payment_id}/verify", response_model=SubscriptionPaymentOut)

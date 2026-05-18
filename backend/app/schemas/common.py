@@ -13,6 +13,7 @@ class CamelModel(BaseModel):
     """Base model that serialises to camelCase for the frontend."""
     model_config = ConfigDict(
         populate_by_name=True,
+        from_attributes=True,
         alias_generator=lambda s: "".join(
             word.capitalize() if i else word
             for i, word in enumerate(s.split("_"))

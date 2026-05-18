@@ -67,9 +67,10 @@ async def _append_audit(
         actor_id=actor_id,
         from_plan_id=from_plan_id,
         to_plan_id=to_plan_id,
-        metadata=metadata or {},
+        event_metadata=metadata or {},
     )
     db.add(entry)
+    await db.flush()  # make visible to subsequent SELECTs (autoflush=False in tests)
 
 
 async def _get_billing_setting(key: str, default: str, db: AsyncSession) -> str:
@@ -112,6 +113,7 @@ async def get_or_create_subscription(
     )
     db.add(sub)
     await db.flush()
+    await db.refresh(sub)
 
     await _append_audit(
         db, org_id=org_id, event_type=SubscriptionEventType.created,
@@ -171,6 +173,7 @@ async def initiate_plan_change(
         sub.price_paid = None
         sub.price_currency = None
         await db.flush()
+        await db.refresh(sub)
         event = SubscriptionEventType.downgraded if is_downgrade else SubscriptionEventType.plan_changed
         await _append_audit(
             db, org_id=org_id, subscription_id=sub.id, event_type=event,
@@ -188,6 +191,7 @@ async def initiate_plan_change(
     sub.price_paid = price
     sub.price_currency = currency.value
     await db.flush()
+    await db.refresh(sub)
 
     event = SubscriptionEventType.upgraded if is_upgrade else (
         SubscriptionEventType.downgraded if is_downgrade else SubscriptionEventType.plan_changed
@@ -231,6 +235,7 @@ async def activate_subscription(
     sub.next_invoice_date = period_end
     sub.grace_period_until = None
     await db.flush()
+    await db.refresh(sub)
 
     await _append_audit(
         db, org_id=sub.organisation_id, subscription_id=sub.id,
@@ -249,6 +254,7 @@ async def suspend_subscription(
 ) -> OrganisationSubscription:
     sub.status = SubscriptionStatus.suspended
     await db.flush()
+    await db.refresh(sub)
     await _append_audit(
         db, org_id=sub.organisation_id, subscription_id=sub.id,
         event_type=SubscriptionEventType.suspended,
@@ -268,6 +274,7 @@ async def cancel_subscription(
     sub.cancellation_reason = reason
     sub.auto_renew = False
     await db.flush()
+    await db.refresh(sub)
     await _append_audit(
         db, org_id=sub.organisation_id, subscription_id=sub.id,
         event_type=SubscriptionEventType.cancelled,
@@ -287,10 +294,12 @@ async def start_grace_period(
     sub.status = SubscriptionStatus.grace_period
     sub.grace_period_until = now + timedelta(days=grace_days)
     await db.flush()
+    await db.refresh(sub)
+    grace_iso = sub.grace_period_until.isoformat() if sub.grace_period_until else None  # type: ignore[union-attr]
     await _append_audit(
         db, org_id=sub.organisation_id, subscription_id=sub.id,
         event_type=SubscriptionEventType.grace_period_started,
-        metadata={"grace_until": sub.grace_period_until.isoformat()},
+        metadata={"grace_until": grace_iso},
     )
     return sub
 
@@ -306,6 +315,7 @@ async def expire_subscription(
     sub.status = SubscriptionStatus.expired
     sub.grace_period_until = None
     await db.flush()
+    await db.refresh(sub)
     await _append_audit(
         db, org_id=sub.organisation_id, subscription_id=sub.id,
         event_type=SubscriptionEventType.expired,
@@ -331,11 +341,13 @@ async def extend_subscription(
         sub.status = SubscriptionStatus.active
         sub.grace_period_until = None
     await db.flush()
+    await db.refresh(sub)
+    new_end_iso = sub.current_period_end.isoformat() if sub.current_period_end else None  # type: ignore[union-attr]
     await _append_audit(
         db, org_id=sub.organisation_id, subscription_id=sub.id,
         event_type=SubscriptionEventType.reinstated,
         actor_id=actor_id,
-        metadata={"days_extended": days, "new_end": sub.current_period_end.isoformat(), "reason": reason},
+        metadata={"days_extended": days, "new_end": new_end_iso, "reason": reason},
     )
     return sub
 
@@ -354,6 +366,7 @@ async def update_plan(
         if v is not None:
             setattr(plan, k, v)
     await db.flush()
+    await db.refresh(plan)
     return plan
 
 

@@ -258,7 +258,7 @@ async def complete_agency_onboarding(
         logto_org_id=logto_org_id,
         name=agency_name,
         slug=slug,
-        plan=Plan.starter,
+        plan=Plan.free,
         currency=body.agency_currency,
         country=body.agency_country,
         settings={

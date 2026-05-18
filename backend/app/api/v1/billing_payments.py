@@ -72,7 +72,7 @@ async def payment_history(
         current_user.profile.organisation_id, db, limit, offset
     )
     return {
-        "data": items,
+        "data": [SubscriptionPaymentOut.model_validate(p) for p in items],
         "total": total,
         "page": offset // limit + 1,
         "pageSize": limit,
