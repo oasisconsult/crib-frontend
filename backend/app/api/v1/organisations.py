@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user
+from app.api.deps import CurrentUser, get_current_user, require_role
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.models.organisation import Organisation, Plan
@@ -80,15 +80,20 @@ async def _create_logto_org(name: str, slug: str) -> str:
         return org_resp.json()["id"]
 
 
-@router.post("/provision", response_model=OrganisationOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/provision",
+    response_model=OrganisationOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(require_role("superadmin"))],
+)
 async def provision_organisation(
     body: ProvisionRequest,
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> OrganisationOut:
     """
-    Provision a new Organisation for an onboarding landlord.
-    The calling user becomes the owner of the new org.
+    Superadmin-only: provision the platform organisation.
+    Can only be called once — raises 409 if the caller already has an org.
     """
     if current_user.profile.organisation_id is not None:
         raise HTTPException(
