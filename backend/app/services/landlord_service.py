@@ -234,7 +234,7 @@ async def complete_onboarding(
     # ── INDEPENDENT landlord ────────────────────────────────────────────────────
     if invite.is_independent:
         # 1. Create Logto user (no org yet — will create personal org next)
-        logto_user_id = await logto_service.create_landlord_user(
+        logto_user_id, is_new_logto_user = await logto_service.create_landlord_user(
             email=invite.email,
             first_name=body.first_name,
             last_name=body.last_name,
@@ -305,13 +305,21 @@ async def complete_onboarding(
         invite.accepted_at = datetime.now(timezone.utc)
         await db.flush()
 
-        # 6. Welcome email — independent landlord variant
-        await logto_service.send_independent_landlord_welcome_email(
-            email=invite.email,
-            first_name=body.first_name,
-            temp_password=temp_password,
-            frontend_url=s.frontend_url,
-        )
+        # 6. Welcome email — send credentials only for new accounts;
+        #    existing users (e.g. GeoBox) keep their own password.
+        if is_new_logto_user:
+            await logto_service.send_independent_landlord_welcome_email(
+                email=invite.email,
+                first_name=body.first_name,
+                temp_password=temp_password,
+                frontend_url=s.frontend_url,
+            )
+        else:
+            await logto_service.send_existing_user_invite_email(
+                email=invite.email,
+                first_name=body.first_name,
+                frontend_url=s.frontend_url,
+            )
 
         log.info(
             "landlord.independent_onboarding_complete",
@@ -330,7 +338,7 @@ async def complete_onboarding(
     org = org_result.scalar_one_or_none()
     logto_org_id = org.logto_org_id if org else None
 
-    logto_user_id = await logto_service.create_landlord_user(
+    logto_user_id, is_new_logto_user = await logto_service.create_landlord_user(
         email=invite.email,
         first_name=body.first_name,
         last_name=body.last_name,
@@ -388,12 +396,19 @@ async def complete_onboarding(
     invite.accepted_at = datetime.now(timezone.utc)
     await db.flush()
 
-    await logto_service.send_landlord_welcome_email(
-        email=invite.email,
-        first_name=body.first_name,
-        temp_password=temp_password,
-        frontend_url=s.frontend_url,
-    )
+    if is_new_logto_user:
+        await logto_service.send_landlord_welcome_email(
+            email=invite.email,
+            first_name=body.first_name,
+            temp_password=temp_password,
+            frontend_url=s.frontend_url,
+        )
+    else:
+        await logto_service.send_existing_user_invite_email(
+            email=invite.email,
+            first_name=body.first_name,
+            frontend_url=s.frontend_url,
+        )
 
     log.info("landlord.onboarding_complete", email=invite.email, profile_id=str(profile.id))
     return CompleteLandlordOnboardingResponse(

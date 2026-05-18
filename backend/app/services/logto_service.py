@@ -437,25 +437,27 @@ async def create_landlord_user(
     last_name: str,
     temp_password: str,
     logto_org_id: str | None = None,
-) -> str | None:
+) -> tuple[str | None, bool]:
     """
-    Create a Logto user for an invited landlord.
-    Assigns the app-level `landlord` role.
-    If logto_org_id is provided, also adds the user to the agency's Logto org
-    and assigns the org-level `landlord` role so the JWT carries org context.
-    Returns the Logto user ID on success, None on failure.
+    Create or resolve a Logto user for an invited landlord.
+
+    Returns (logto_user_id, is_new_user).
+      is_new_user=True  → fresh account, temp_password was set, send credentials email
+      is_new_user=False → user already exists (e.g. GeoBox account), password
+                          NOT changed, caller should send a "you've been invited"
+                          email with a login link instead of credentials.
     """
     if not _is_configured():
         log.debug("logto.m2m_not_configured — skipping landlord user creation", email=email)
-        return None
+        return None, False
 
     try:
         token = await _get_m2m_token()
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         base = "http://logto:3001/api"
+        is_new_user = False
 
         async with httpx.AsyncClient(timeout=10) as client:
-            # Create user
             create_resp = await client.post(
                 f"{base}/users",
                 json={
@@ -467,27 +469,32 @@ async def create_landlord_user(
             )
 
             if create_resp.status_code == 422:
+                # User already exists in Logto (may be a GeoBox user or previous
+                # Crib account). Do NOT change their password — they have working
+                # credentials for their existing app. We only add them to the org.
                 search = await client.get(f"{base}/users", params={"search": email}, headers=headers)
                 search.raise_for_status()
                 users = search.json()
                 if not users:
-                    return None
+                    return None, False
                 logto_user_id = users[0]["id"]
+                log.info("logto.landlord_existing_user", email=email, user_id=logto_user_id)
             else:
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
+                is_new_user = True
 
-            # Always set the password (new and existing users) so emailed
-            # credentials are valid regardless of prior account state.
-            pwd_resp = await client.patch(
-                f"{base}/users/{logto_user_id}/password",
-                json={"password": temp_password},
-                headers=headers,
-            )
-            if not pwd_resp.is_success:
-                log.warning("logto.landlord_password_set_failed", user_id=logto_user_id, status=pwd_resp.status_code, response=pwd_resp.text)
-            else:
-                log.info("logto.landlord_password_set", user_id=logto_user_id)
+                # New user — set temp password via dedicated PATCH endpoint.
+                # POST /users body does not accept a password field in Logto.
+                pwd_resp = await client.patch(
+                    f"{base}/users/{logto_user_id}/password",
+                    json={"password": temp_password},
+                    headers=headers,
+                )
+                if not pwd_resp.is_success:
+                    log.warning("logto.landlord_password_set_failed", user_id=logto_user_id, status=pwd_resp.status_code, response=pwd_resp.text)
+                else:
+                    log.info("logto.landlord_password_set", user_id=logto_user_id)
 
             # Assign app-level 'landlord' role
             await _assign_app_role(client, base, logto_user_id, "landlord", headers)
@@ -516,12 +523,12 @@ async def create_landlord_user(
                         client, base, logto_org_id, logto_user_id, "landlord", headers
                     )
 
-        log.info("logto.landlord_user_provisioned", email=email, logto_user_id=logto_user_id)
-        return logto_user_id
+        log.info("logto.landlord_user_provisioned", email=email, logto_user_id=logto_user_id, is_new=is_new_user)
+        return logto_user_id, is_new_user
 
     except Exception as exc:  # noqa: BLE001
         log.warning("logto.create_landlord_user_failed", email=email, error=str(exc))
-        return None
+        return None, False
 
 
 async def _assign_app_role(
@@ -1090,6 +1097,47 @@ async def get_user_logto_org_ids(user_id: str) -> list[str]:
     except Exception as exc:  # noqa: BLE001
         log.warning("logto.get_user_orgs_exception", user_id=user_id, error=str(exc))
         return []
+
+
+# ── Invite email for users who already have a Logto account ──────────────────
+
+
+async def send_existing_user_invite_email(
+    *,
+    email: str,
+    first_name: str,
+    frontend_url: str,
+) -> None:
+    """
+    Sent when an invited user already has a Logto account (e.g. from GeoBox).
+    Does NOT include a password — they should use their existing credentials.
+    """
+    from app.integrations.notifications.email import get_email_provider
+
+    subject = "You've been invited to Crib"
+    body = (
+        f"Hi {first_name},\n\n"
+        "You have been granted access to Crib, the property management platform.\n\n"
+        "Since you already have an account, simply sign in using your existing "
+        "email and password:\n\n"
+        f"Dashboard:  {frontend_url}\n"
+        f"Email:      {email}\n\n"
+        "If you have forgotten your password, use the 'Forgot password' option "
+        "on the sign-in page.\n\n"
+        "— The Crib Team"
+    )
+    provider = get_email_provider()
+    result = await provider.send(
+        recipient_name=first_name,
+        recipient_email=email,
+        recipient_phone=None,
+        subject=subject,
+        body=body,
+    )
+    if result.success:
+        log.info("logto.existing_user_invite_sent", email=email)
+    else:
+        log.warning("logto.existing_user_invite_failed", email=email, reason=result.failure_reason)
 
 
 # ── Welcome email for independent landlords ───────────────────────────────────

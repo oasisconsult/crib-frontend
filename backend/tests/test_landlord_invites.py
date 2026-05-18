@@ -246,7 +246,7 @@ async def test_onboarding_complete(client: AsyncClient, db_session: AsyncSession
     with patch(
         "app.services.logto_service.create_landlord_user",
         new_callable=AsyncMock,
-        return_value="logto_user_abc",
+        return_value=("logto_user_abc", True),
     ), patch(
         "app.services.logto_service.send_landlord_welcome_email",
         new_callable=AsyncMock,
