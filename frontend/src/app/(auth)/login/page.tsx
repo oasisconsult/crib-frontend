@@ -76,9 +76,9 @@ const DEV_USERS = [
     email: "robert@crib.ug",
     initials: "RM",
     description: "3 properties · Kampala",
-    gradient: "from-[hsl(168,82%,35%)] to-[hsl(170,81%,25%)]",
+    gradient: "from-[#239487] to-[#16665D]",
     badge: "Owner",
-    badgeColor: "bg-[hsl(168,55%,92%)] text-[hsl(170,81%,28%)]",
+    badgeColor: "bg-[#F3FCFA] text-[#16665D]",
   },
   {
     id: "user-manager-1",
@@ -112,9 +112,9 @@ const DEV_USERS = [
     email: "owner.manager@crib.ug",
     initials: "OM",
     description: "Owns & manages properties",
-    gradient: "from-[hsl(168,82%,35%)] to-emerald-600",
+    gradient: "from-[#239487] to-emerald-600",
     badge: "Owner · Manager",
-    badgeColor: "bg-[hsl(168,55%,92%)] text-[hsl(170,81%,28%)]",
+    badgeColor: "bg-[#F3FCFA] text-[#16665D]",
   },
   {
     id: "tenant-1",
@@ -366,7 +366,7 @@ function LoginContent() {
                   (label) => (
                     <div
                       key={label}
-                      className="flex items-center justify-center rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-2.5 text-center"
+                      className="flex items-center justify-center rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-2 py-2.5 text-center"
                     >
                       <span className="text-[10px] font-medium text-[hsl(var(--muted-foreground))] leading-tight">
                         {label}
@@ -414,7 +414,7 @@ function LoginContent() {
         className="hidden md:flex flex-col justify-center flex-1 px-10 lg:px-14 py-12 relative overflow-hidden"
         style={{
           background:
-            "linear-gradient(135deg, hsl(168,82%,35%) 0%, hsl(170,81%,25%) 60%, hsl(230,28%,22%) 100%)",
+            "linear-gradient(135deg, #0B3B36 0%, #16665D 45%, #239487 100%)",
         }}
       >
         {/* Decorative circles */}

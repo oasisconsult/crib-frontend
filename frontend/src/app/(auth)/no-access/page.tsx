@@ -43,7 +43,7 @@ export default function NoAccessPage() {
           </div>
 
           {/* What to do */}
-          <div className="rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--muted))]/40 p-4 mb-8 space-y-3">
+          <div className="rounded-[var(--radius-lg)] border border-[hsl(var(--border))] bg-[hsl(var(--muted))]/40 p-4 mb-8 space-y-3">
             <p className="text-xs font-semibold text-[hsl(var(--foreground))] uppercase tracking-wide">
               What happens next?
             </p>
@@ -77,7 +77,7 @@ export default function NoAccessPage() {
         className="hidden md:flex flex-col justify-center flex-1 px-10 lg:px-14 py-12 relative overflow-hidden"
         style={{
           background:
-            "linear-gradient(135deg, hsl(168,82%,35%) 0%, hsl(170,81%,25%) 60%, hsl(230,28%,22%) 100%)",
+            "linear-gradient(135deg, #0B3B36 0%, #16665D 45%, #239487 100%)",
         }}
       >
         <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/5" />
