@@ -41,7 +41,7 @@
   --info: 239 84% 67%;                 /* #6366F1 — indigo for analytics */
   --info-foreground: 0 0% 100%;
   --border: 220 13% 91%;               /* #E5E7EB — neutral border */
-  --input: 220 13% 91%;                /* #E5E7EB — input border */
+  --input: 0 0% 100%;                  /* #FFFFFF — white input surface */
   --ring: 173 62% 36%;                 /* teal focus ring */
   --radius: 8px;
 

@@ -9,13 +9,13 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, error, ...props }, ref) => (
     <textarea
       className={cn(
-        "flex min-h-[88px] w-full",
-        "rounded-[8px]",
+        "flex min-h-[96px] w-full",
+        "rounded-[var(--radius-md)]",
         "border border-[hsl(var(--border))]",
         "bg-[hsl(var(--input))]",
-        "px-3 py-2",
+        "px-3 py-2.5",
         "text-sm text-[hsl(var(--foreground))]",
-        "placeholder:text-[hsl(var(--muted-foreground))]/60",
+        "placeholder:text-[hsl(var(--muted-foreground))]/50",
         "resize-y",
         "transition-[border-color,box-shadow] duration-150",
         // WCAG 2.4.7 — visible focus indicator

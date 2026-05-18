@@ -25,7 +25,7 @@ const buttonVariants = cva(
           "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-[hsl(var(--primary))]",
           "hover:bg-[hsl(var(--primary))]/90 hover:border-[hsl(var(--primary))]/90",
           "active:scale-[0.97]",
-          "shadow-[0_1px_3px_rgba(20,198,163,0.30)]",
+          "shadow-[0_1px_3px_rgba(35,148,135,0.25)]",
         ].join(" "),
 
         // ── Destructive ── filled red
@@ -78,12 +78,12 @@ const buttonVariants = cva(
       },
 
       size: {
-        sm:        "h-8 px-3 text-xs rounded-[6px]",
+        sm:        "h-8 px-3 text-xs rounded-[var(--radius-sm)]",
         default:   "h-9 px-4",
         lg:        "h-10 px-5 text-sm",
         xl:        "h-11 px-6 text-sm font-semibold",
         icon:      "h-9 w-9 p-0",
-        "icon-sm": "h-7 w-7 p-0 rounded-[6px]",
+        "icon-sm": "h-7 w-7 p-0 rounded-[var(--radius-sm)]",
         "icon-lg": "h-10 w-10 p-0",
       },
     },

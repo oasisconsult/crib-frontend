@@ -19,11 +19,11 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between gap-2",
-      "rounded-[8px] border border-[hsl(var(--border))] bg-[hsl(var(--input))]",
+      "flex h-10 w-full items-center justify-between gap-2",
+      "rounded-[var(--radius-md)] border border-[hsl(var(--border))] bg-[hsl(var(--input))]",
       "px-3 text-sm text-[hsl(var(--foreground))]",
       "transition-[border-color,box-shadow] duration-150",
-      "placeholder:text-[hsl(var(--muted-foreground))]/60",
+      "placeholder:text-[hsl(var(--muted-foreground))]/50",
       // WCAG 2.4.7 — visible focus indicator
       "focus:outline-none focus:border-[hsl(var(--primary))] focus:ring-2 focus:ring-[hsl(var(--ring))]/20",
       "disabled:cursor-not-allowed disabled:bg-[hsl(var(--muted))] disabled:text-[hsl(var(--muted-foreground))]",

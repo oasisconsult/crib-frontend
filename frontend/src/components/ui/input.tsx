@@ -9,18 +9,19 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 
 const inputBase = [
   "flex w-full",
-  "h-9",
-  "rounded-[8px]",
+  "h-10",
+  "rounded-[var(--radius-md)]",
   "border border-[hsl(var(--border))]",
   "bg-[hsl(var(--input))]",
   "px-3",
   "text-sm text-[hsl(var(--foreground))]",
-  "placeholder:text-[hsl(var(--muted-foreground))]/60",
+  "placeholder:text-[hsl(var(--muted-foreground))]/50",
   "transition-[border-color,box-shadow] duration-150",
   // WCAG 2.4.7 — visible focus indicator
   "focus-visible:outline-none",
   "focus-visible:border-[hsl(var(--primary))]",
   "focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]/20",
+  "focus-visible:bg-white",
   // Disabled state
   "disabled:cursor-not-allowed disabled:bg-[hsl(var(--muted))] disabled:text-[hsl(var(--muted-foreground))] disabled:border-[hsl(var(--border))]",
   "file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-[hsl(var(--foreground))]",

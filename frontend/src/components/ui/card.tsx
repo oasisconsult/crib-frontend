@@ -7,8 +7,8 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     <div
       ref={ref}
       className={cn(
-        "bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] rounded-[12px] border border-[hsl(var(--border))]",
-        "shadow-[0_1px_4px_rgba(0,62,255,0.07),0_1px_2px_rgba(15,23,42,0.04)]",
+        "bg-[hsl(var(--card))] text-[hsl(var(--card-foreground))] rounded-[var(--radius-lg)] border border-[hsl(var(--border))]",
+        "shadow-[var(--shadow-sm)]",
         className,
       )}
       {...props}
@@ -75,7 +75,7 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
       ref={ref}
       className={cn(
         "flex items-center gap-2 px-5 py-3",
-        "border-t border-border bg-muted/40 rounded-b-[12px]",
+        "border-t border-border bg-muted/40 rounded-b-[var(--radius-lg)]",
         className,
       )}
       {...props}
