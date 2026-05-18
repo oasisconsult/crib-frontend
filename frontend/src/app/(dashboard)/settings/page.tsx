@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, MailCheck, RefreshCw, Check, Link } from "lucide-react";
+import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, Mail, RefreshCw, Check, Link } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,7 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   // ── Permissions ─────────────────────────────────────────────────────────────
-  const { isSuperAdmin, canManageOrg, isLandlord } = usePermissions();
+  const { isSuperAdmin, isManager, canManageOrg, isLandlord } = usePermissions();
 
   // ── Agency / Organisation settings ────────────────────────────────────────
   const { data: org, isLoading: loadingOrg } = useOrganisation();
@@ -557,7 +557,7 @@ export default function SettingsPage() {
               <Card className="w-full max-w-md">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <MailCheck className="h-5 w-5" />
+                    <Mail className="h-5 w-5" />
                     Invite Landlord
                   </CardTitle>
                   <CardDescription>
