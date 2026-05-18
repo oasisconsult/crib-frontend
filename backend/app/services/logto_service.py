@@ -640,6 +640,7 @@ async def create_agency_with_manager(
                     "logto.agency_manager_password_set_failed",
                     user_id=logto_user_id,
                     status=pwd_resp.status_code,
+                    response=pwd_resp.text,
                 )
             else:
                 log.info("logto.agency_manager_password_set", user_id=logto_user_id)
