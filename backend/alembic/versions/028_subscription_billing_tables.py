@@ -395,19 +395,32 @@ def upgrade() -> None:
         },
     ]
 
-    op.bulk_insert(
-        sa.table(
-            "subscription_plans",
-            sa.column("id"), sa.column("name"), sa.column("slug"), sa.column("description"),
-            sa.column("monthly_price_ugx"), sa.column("annual_price_ugx"),
-            sa.column("monthly_price_usd_cents"), sa.column("annual_price_usd_cents"),
-            sa.column("max_properties"), sa.column("max_units"), sa.column("max_users"), sa.column("max_storage_mb"),
-            sa.column("features"), sa.column("trial_days"),
-            sa.column("is_active"), sa.column("is_publicly_visible"), sa.column("display_order"),
-            sa.column("created_at"), sa.column("updated_at"),
-        ),
-        plans,
-    )
+    # Use raw INSERT so we can pass features as a JSON string.
+    # op.bulk_insert passes Python dicts to asyncpg which expects a string for JSONB.
+    import json as _json
+    for p in plans:
+        op.execute(sa.text(
+            "INSERT INTO subscription_plans "
+            "(id, name, slug, description, "
+            "monthly_price_ugx, annual_price_ugx, monthly_price_usd_cents, annual_price_usd_cents, "
+            "max_properties, max_units, max_users, max_storage_mb, "
+            "features, trial_days, is_active, is_publicly_visible, display_order, created_at, updated_at) "
+            "VALUES (:id, :name, :slug, :description, "
+            ":monthly_price_ugx, :annual_price_ugx, :monthly_price_usd_cents, :annual_price_usd_cents, "
+            ":max_properties, :max_units, :max_users, :max_storage_mb, "
+            ":features, :trial_days, :is_active, :is_publicly_visible, :display_order, :created_at, :updated_at) "
+            "ON CONFLICT (slug) DO NOTHING"
+        ).bindparams(
+            id=p["id"], name=p["name"], slug=p["slug"], description=p["description"],
+            monthly_price_ugx=p["monthly_price_ugx"], annual_price_ugx=p["annual_price_ugx"],
+            monthly_price_usd_cents=p["monthly_price_usd_cents"], annual_price_usd_cents=p["annual_price_usd_cents"],
+            max_properties=p["max_properties"], max_units=p["max_units"],
+            max_users=p["max_users"], max_storage_mb=p["max_storage_mb"],
+            features=_json.dumps(p["features"]),
+            trial_days=p["trial_days"], is_active=p["is_active"],
+            is_publicly_visible=p["is_publicly_visible"], display_order=p["display_order"],
+            created_at=p["created_at"], updated_at=p["updated_at"],
+        ))
 
     # ── Seed billing system settings ──────────────────────────────────────────
     billing_settings = [
