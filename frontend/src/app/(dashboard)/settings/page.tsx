@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/useAppStore";
 import { useUIStore } from "@/store/useUIStore";
 import { toast } from "@/store/useUIStore";
-import { useOrganisation, useUpdateOrganisation } from "@/hooks/useOrganisation";
+import { useOrganisation, useUpdateOrganisation, useProvisionOrganisation } from "@/hooks/useOrganisation";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useLandlordInvites, useCreateLandlordInvite, useRevokeLandlordInvite, useResendLandlordInvite } from "@/hooks/useLandlordInvites";
 import { useAgencyInvites, useResendAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
@@ -35,6 +35,30 @@ export default function SettingsPage() {
   // ── Agency / Organisation settings ────────────────────────────────────────
   const { data: org, isLoading: loadingOrg } = useOrganisation();
   const { mutate: updateOrg, isPending: savingAgency } = useUpdateOrganisation();
+  const { mutate: provisionOrg, isPending: provisioning } = useProvisionOrganisation();
+
+  const [provisionName, setProvisionName] = useState("");
+  const [provisionSlug, setProvisionSlug] = useState("");
+  const [provisionCountry, setProvisionCountry] = useState("UG");
+  const [provisionCurrency, setProvisionCurrency] = useState("UGX");
+
+  function slugify(s: string) {
+    return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  }
+
+  function handleProvision() {
+    if (!provisionName.trim() || !provisionSlug.trim()) {
+      toast.error("Missing fields", "Organisation name and slug are required");
+      return;
+    }
+    provisionOrg(
+      { name: provisionName.trim(), slug: provisionSlug.trim(), country: provisionCountry, currency: provisionCurrency },
+      {
+        onSuccess: () => toast.success("Organisation created", "Your platform organisation is ready"),
+        onError: (err: any) => toast.error("Failed to create organisation", err?.response?.data?.detail ?? "Please try again"),
+      },
+    );
+  }
 
   const [agencyName,  setAgencyName]  = useState("");
   const [agencyPhone, setAgencyPhone] = useState("");
@@ -311,10 +335,55 @@ export default function SettingsPage() {
                   Loading…
                 </div>
               ) : !org ? (
-                <p className="text-sm text-muted-foreground py-2">
-                  No organisation configured for your account.
-                  {isSuperAdmin && " Use the Admin panel to invite agencies."}
-                </p>
+                isSuperAdmin ? (
+                  <div className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      Create the platform organisation to unlock org-scoped features.
+                    </p>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="provisionName">Organisation Name</Label>
+                      <Input
+                        id="provisionName"
+                        value={provisionName}
+                        onChange={(e) => {
+                          setProvisionName(e.target.value);
+                          setProvisionSlug(slugify(e.target.value));
+                        }}
+                        placeholder="e.g. Crib Platform"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="provisionSlug">Slug</Label>
+                      <Input
+                        id="provisionSlug"
+                        value={provisionSlug}
+                        onChange={(e) => setProvisionSlug(slugify(e.target.value))}
+                        placeholder="e.g. crib-platform"
+                      />
+                      <p className="text-xs text-muted-foreground">Unique identifier — lowercase letters, numbers and hyphens only.</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="provisionCountry">Country</Label>
+                        <Input id="provisionCountry" value={provisionCountry} onChange={(e) => setProvisionCountry(e.target.value)} placeholder="UG" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="provisionCurrency">Currency</Label>
+                        <Input id="provisionCurrency" value={provisionCurrency} onChange={(e) => setProvisionCurrency(e.target.value)} placeholder="UGX" />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={handleProvision} disabled={provisioning}>
+                        {provisioning && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {provisioning ? "Creating…" : "Create Organisation"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground py-2">
+                    No organisation configured for your account.
+                  </p>
+                )
               ) : (
                 <>
                   <div className="space-y-1.5">

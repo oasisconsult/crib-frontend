@@ -18,8 +18,17 @@ export interface UpdateOrganisationRequest {
   contactEmail?: string;
 }
 
+export interface ProvisionOrganisationRequest {
+  name: string;
+  slug: string;
+  country?: string;
+  currency?: string;
+}
+
 export const organisationsApi = {
   getMe: () => apiGet<Organisation>("/organisations/me"),
   updateMe: (body: UpdateOrganisationRequest) =>
     apiPatch<Organisation>("/organisations/me", body),
+  provision: (body: ProvisionOrganisationRequest) =>
+    apiPost<Organisation>("/organisations/provision", body),
 };
