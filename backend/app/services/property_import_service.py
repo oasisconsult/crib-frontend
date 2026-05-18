@@ -382,7 +382,7 @@ async def _ensure_org(profile: Profile, db: AsyncSession) -> Organisation:
         logto_org_id=f"org_personal_{secrets.token_hex(6)}",
         name=org_name,
         slug=slug,
-        plan=Plan.starter,
+        plan=Plan.free,
         currency="UGX",
         settings={},
         payment_settings={},

@@ -291,7 +291,7 @@ async def migrate_landlord_to_personal_org(
         logto_org_id=f"org_personal_{_secrets.token_hex(6)}",  # temp; replaced below
         name=f"{raw}'s Properties",
         slug=slug,
-        plan=Plan.starter,
+        plan=Plan.free,
         currency="UGX",
         settings={},
         payment_settings={},
