@@ -52,10 +52,7 @@ class OrganisationUpdateRequest(CamelModel):
 
 
 async def _create_logto_org(name: str, slug: str) -> str:
-    """
-    Create an organization in Logto via the Management API.
-    Returns the new Logto organization ID.
-    """
+    """Create an organization in Logto. Returns the new Logto org ID."""
     mgmt_token = await _get_m2m_token()
     async with httpx.AsyncClient(timeout=15) as client:
         org_resp = await client.post(
@@ -65,6 +62,18 @@ async def _create_logto_org(name: str, slug: str) -> str:
         )
         org_resp.raise_for_status()
         return org_resp.json()["id"]
+
+
+async def _add_user_to_logto_org(logto_org_id: str, user_sub: str) -> None:
+    """Add a user to a Logto organization by their Logto user ID (sub)."""
+    mgmt_token = await _get_m2m_token()
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(
+            f"{settings.logto_management_api_base}/organizations/{logto_org_id}/users",
+            json={"userIds": [user_sub]},
+            headers={"Authorization": f"Bearer {mgmt_token}"},
+        )
+        resp.raise_for_status()
 
 
 @router.post(
@@ -88,13 +97,14 @@ async def provision_organisation(
             detail="User already belongs to an organisation",
         )
 
-    # Step 1: Create Logto org (skip in dev if M2M not configured)
+    # Step 1: Create Logto org and add the caller as a member
     logto_org_id: str
     if settings.is_dev and not settings.logto_m2m_app_id:
         logto_org_id = f"org_dev_{body.slug}"
     else:
         try:
             logto_org_id = await _create_logto_org(body.name, body.slug)
+            await _add_user_to_logto_org(logto_org_id, current_user.claims.sub)
         except httpx.HTTPError as exc:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
