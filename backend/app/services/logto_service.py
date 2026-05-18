@@ -57,8 +57,11 @@ async def _get_m2m_token() -> str:
     from app.core.config import get_settings
     s = get_settings()
 
-    resource = str(s.logto_admin_api_resource)
-    url = f"{str(s.logto_endpoint).rstrip('/')}/oidc/token"
+    # For self-hosted Logto the Management API resource identifier is always
+    # <public-logto-url>/api — NOT the Crib API resource (logto_api_resource).
+    logto_base = str(s.logto_endpoint).rstrip("/")
+    resource = f"{logto_base}/api"
+    url = f"{logto_base}/oidc/token"
 
     log.info("logto.m2m_request", url=url, resource=resource)
 
