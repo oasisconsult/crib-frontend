@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, Mail, RefreshCw, Copy, Check, Link } from "lucide-react";
+import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, MailCheck, RefreshCw, Check, Link } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -214,7 +214,7 @@ export default function SettingsPage() {
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Agency</span>
           </TabsTrigger>
-          {!isLandlord && (
+          {(isManager || isSuperAdmin) && (
             <TabsTrigger value="landlords" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Landlords</span>
@@ -699,7 +699,7 @@ export default function SettingsPage() {
                       variant="outline"
                       onClick={() => {
                         setShowInviteModal(false);
-                        setInviteForm({ firstName: "", lastName: "", email: "", phone: "", propertyIds: [], message: "" });
+                        setInviteForm({ firstName: "", lastName: "", email: "", phone: "", propertyIds: [], message: "", isIndependent: false });
                       }}
                     >
                       Cancel
