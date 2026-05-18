@@ -22,6 +22,7 @@ celery_app = Celery(
     include=[
         "app.worker.tasks.notifications",
         "app.worker.tasks.payments",
+        "app.worker.tasks.subscriptions",
     ],
 )
 
@@ -46,6 +47,20 @@ celery_app.conf.update(
     task_max_retries=3,
 
     beat_schedule={
+        # ── Subscription lifecycle ────────────────────────────────────────────
+        "check-subscription-expiry-daily": {
+            "task": "app.worker.tasks.subscriptions.check_subscription_expiry",
+            "schedule": 86400,
+        },
+        "check-grace-period-expiry-daily": {
+            "task": "app.worker.tasks.subscriptions.check_grace_period_expiry",
+            "schedule": 86400,
+        },
+        "send-renewal-reminders-daily": {
+            "task": "app.worker.tasks.subscriptions.send_renewal_reminders",
+            "schedule": 86400,
+        },
+        # ── Rent payment lifecycle ────────────────────────────────────────────
         "mark-overdue-schedules-daily": {
             "task": "app.worker.tasks.payments.mark_overdue_schedules",
             "schedule": 86400,  # every 24 hours

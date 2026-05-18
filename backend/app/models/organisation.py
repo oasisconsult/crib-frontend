@@ -17,9 +17,10 @@ from app.models.base import TimestampedBase
 
 
 class Plan(str, enum.Enum):
-    starter = "starter"
-    growth = "growth"
-    enterprise = "enterprise"
+    free         = "free"
+    professional = "professional"
+    agency       = "agency"
+    enterprise   = "enterprise"
 
 
 class Organisation(TimestampedBase):
@@ -34,7 +35,7 @@ class Organisation(TimestampedBase):
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
 
     plan: Mapped[Plan] = mapped_column(
-        Enum(Plan, name="plan_enum"), nullable=False, default=Plan.starter
+        Enum(Plan, name="plan_enum"), nullable=False, default=Plan.free
     )
 
     # Flexible settings blob: feature flags, notification prefs, branding, etc.

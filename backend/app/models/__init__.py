@@ -12,6 +12,7 @@ from app.models import (  # noqa: F401
     profile,
     property,
     rbac,
+    subscription,
     system_setting,
     tenancy_agreement,
     tenant,

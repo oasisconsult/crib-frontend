@@ -159,6 +159,13 @@ def create_app() -> FastAPI:
     application.include_router(admin.router, prefix=settings.api_prefix)
     application.include_router(webhooks.router, prefix=settings.api_prefix)
 
+    # ── Subscription & Billing ────────────────────────────────────────────────
+    from app.api.v1 import subscriptions, billing_payments, invoices, admin_billing
+    application.include_router(subscriptions.router, prefix=settings.api_prefix)
+    application.include_router(billing_payments.router, prefix=settings.api_prefix)
+    application.include_router(invoices.router, prefix=settings.api_prefix)
+    application.include_router(admin_billing.router, prefix=settings.api_prefix)
+
     # ── Prometheus metrics ────────────────────────────────────────────────────
     # Exposes GET /metrics for the shared Prometheus instance on geobox-network.
     # Scrape target is added in GeoBox core/config/prometheus/prometheus.yml.

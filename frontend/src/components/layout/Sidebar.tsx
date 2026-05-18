@@ -19,6 +19,7 @@ import {
   Shield,
   LogOut,
   KeyRound,
+  BadgeCheck,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -109,6 +110,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: Shield,
     roles: ["superadmin"],
     section: "SYSTEM",
+  },
+  {
+    href: "/subscription",
+    label: "Subscription",
+    icon: BadgeCheck,
+    roles: ["owner", "manager", "superadmin", "landlord"],
+    section: "ACCOUNT",
   },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
