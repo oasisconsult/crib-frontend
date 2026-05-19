@@ -112,10 +112,14 @@ async def list_properties(
     search: str | None = None,
     landlord_profile_id: uuid.UUID | None = None,
 ) -> dict:
-    q = select(Property).where(
-        Property.organisation_id == org_id,
-        Property.deleted_at.is_(None),      # exclude archived properties
-    )
+    # org_id=None means superadmin with platform-wide access — no org filter
+    if org_id is not None:
+        q = select(Property).where(
+            Property.organisation_id == org_id,
+            Property.deleted_at.is_(None),
+        )
+    else:
+        q = select(Property).where(Property.deleted_at.is_(None))
     if landlord_profile_id is not None:
         # Restrict to only properties this landlord has been granted access to
         allowed = select(LandlordPropertyAccess.property_id).where(
@@ -146,17 +150,15 @@ async def list_properties(
 
 async def get_property(
     prop_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     landlord_profile_id: uuid.UUID | None = None,
 ) -> Property:
-    result = await db.execute(
-        select(Property).where(
-            Property.id == prop_id,
-            Property.organisation_id == org_id,
-            Property.deleted_at.is_(None),  # archived properties are not visible
-        )
-    )
+    # org_id=None → superadmin, fetch by id only (no org boundary)
+    filters = [Property.id == prop_id, Property.deleted_at.is_(None)]
+    if org_id is not None:
+        filters.append(Property.organisation_id == org_id)
+    result = await db.execute(select(Property).where(*filters))
     prop = result.scalar_one_or_none()
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
