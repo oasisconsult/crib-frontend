@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 log = structlog.get_logger(__name__)
 
 from app.models.landlord_invite import LandlordPropertyAccess
+from app.utils.db_filters import org_scope
 from app.models.lease import Lease, LeaseStatus
 from app.models.property import Property, Unit, UnitStatus
 from app.models.tenant import OnboardingState, Tenant, TenantStatus
@@ -266,7 +267,7 @@ async def get_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) ->
 
 
 async def list_leases(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     status_filters: list[str] | None = None,
     search: str | None = None,
@@ -279,7 +280,7 @@ async def list_leases(
 ) -> dict:
     from sqlalchemy import func
 
-    q = select(Lease).where(Lease.organisation_id == org_id)
+    q = org_scope(select(Lease), Lease.organisation_id, org_id)
     if landlord_profile_id is not None:
         allowed = select(LandlordPropertyAccess.property_id).where(
             LandlordPropertyAccess.landlord_profile_id == landlord_profile_id

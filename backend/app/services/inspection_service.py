@@ -31,6 +31,7 @@ from app.models.inspection import (
 from app.models.landlord_invite import LandlordPropertyAccess
 from app.models.property import Property, Unit
 from app.utils.references import build_ref, next_seq
+from app.utils.db_filters import org_scope
 from app.schemas.inspection import (
     InspectionCreate,
     InspectionOut,
@@ -182,7 +183,7 @@ _MAINTENANCE_EVENT_TO_STATE: dict[str, str] = {
 # ── Inspections CRUD ───────────────────────────────────────────────────────────
 
 async def list_inspections(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     property_id: str | None = None,
     unit_id: str | None = None,
@@ -193,9 +194,7 @@ async def list_inspections(
     page_size: int = 20,
     landlord_profile_id: uuid.UUID | None = None,
 ) -> dict:
-    q = select(Inspection).where(
-        Inspection.organisation_id == org_id,
-    )
+    q = org_scope(select(Inspection), Inspection.organisation_id, org_id)
     if landlord_profile_id is not None:
         allowed = select(LandlordPropertyAccess.property_id).where(
             LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
@@ -356,7 +355,7 @@ async def add_inspection_photos(
 # ── Maintenance CRUD ───────────────────────────────────────────────────────────
 
 async def list_maintenance(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     property_id: str | None = None,
     states: list[str] | None = None,
@@ -368,9 +367,7 @@ async def list_maintenance(
     page_size: int = 20,
     landlord_profile_id: uuid.UUID | None = None,
 ) -> dict:
-    q = select(MaintenanceIssue).where(
-        MaintenanceIssue.organisation_id == org_id,
-    )
+    q = org_scope(select(MaintenanceIssue), MaintenanceIssue.organisation_id, org_id)
     if landlord_profile_id is not None:
         allowed = select(LandlordPropertyAccess.property_id).where(
             LandlordPropertyAccess.landlord_profile_id == landlord_profile_id

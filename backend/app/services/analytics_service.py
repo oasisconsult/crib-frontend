@@ -14,7 +14,7 @@ import uuid
 from calendar import month_abbr, monthrange
 from datetime import date, datetime, timezone  # date used in occupancy/revenue helpers
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true as sql_true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.inspection import Inspection, InspectionState, MaintenanceIssue, MaintenanceState
@@ -76,7 +76,7 @@ async def get_dashboard_stats(
             func.count(Unit.id).filter(Unit.status == UnitStatus.occupied).label("occupied"),
             func.count(Unit.id).filter(Unit.status == UnitStatus.available).label("available"),
         ).join(Unit.property).where(
-            Unit.property.has(organisation_id=org_id),
+            Unit.property.has(organisation_id=org_id) if org_id is not None else sql_true(),
         )
     )
     if prop_ids is not None:
@@ -87,7 +87,7 @@ async def get_dashboard_stats(
     occupancy_rate = round(occupied_units / total_units * 100, 1) if total_units > 0 else 0.0
 
     # Count distinct properties
-    prop_q = select(Unit.property_id).where(Unit.property.has(organisation_id=org_id)).distinct()
+    prop_q = select(Unit.property_id).where(Unit.property.has(organisation_id=org_id) if org_id is not None else sql_true()).distinct()
     if prop_ids is not None:
         prop_q = prop_q.where(Unit.property_id.in_(prop_ids))
     prop_count = await db.scalar(
@@ -105,7 +105,7 @@ async def get_dashboard_stats(
                 OnboardingState.submitted,
             ])
         ).label("pending"),
-    ).where(Tenant.organisation_id == org_id)
+    ).where(Tenant.organisation_id == org_id if org_id is not None else sql_true())
     if prop_ids is not None:
         tenant_q = tenant_q.where(
             Tenant.id.in_(
@@ -120,7 +120,7 @@ async def get_dashboard_stats(
     # Monthly revenue (confirmed/completed payments this calendar month)
     _success_statuses = [PaymentStatus.confirmed, PaymentStatus.completed]
     rev_q = select(func.sum(Payment.amount)).where(
-        Payment.organisation_id == org_id,
+        Payment.organisation_id == org_id if org_id is not None else sql_true(),
         Payment.status.in_(_success_statuses),
         func.date_trunc("month", Payment.paid_at) == func.date_trunc("month", func.now()),
     )
@@ -139,7 +139,7 @@ async def get_dashboard_stats(
             RentSchedule.amount_due + RentSchedule.late_fee_applied - RentSchedule.amount_paid
         ), 0).label("overdue_amount"),
     ).where(
-        RentSchedule.organisation_id == org_id,
+        RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
         RentSchedule.status == RentScheduleStatus.overdue,
     )
     if prop_ids is not None:
@@ -169,7 +169,7 @@ async def get_dashboard_stats(
         PaymentStatus.retry_scheduled,
     ]
     pending_q = select(func.count(Payment.id)).where(
-        Payment.organisation_id == org_id,
+        Payment.organisation_id == org_id if org_id is not None else sql_true(),
         Payment.status.in_(_in_progress_statuses),
     )
     if prop_ids is not None:
@@ -182,7 +182,7 @@ async def get_dashboard_stats(
 
     # Open maintenance
     maint_q = select(func.count(MaintenanceIssue.id)).where(
-        MaintenanceIssue.organisation_id == org_id,
+        MaintenanceIssue.organisation_id == org_id if org_id is not None else sql_true(),
         MaintenanceIssue.state.in_([
             MaintenanceState.reported,
             MaintenanceState.assigned,
@@ -195,7 +195,7 @@ async def get_dashboard_stats(
 
     # Scheduled inspections
     insp_q = select(func.count(Inspection.id)).where(
-        Inspection.organisation_id == org_id,
+        Inspection.organisation_id == org_id if org_id is not None else sql_true(),
         Inspection.state == InspectionState.scheduled,
     )
     if prop_ids is not None:
@@ -231,7 +231,7 @@ async def get_occupancy_series(
     """
     total_units = await db.scalar(
         select(func.count(Unit.id)).where(
-            Unit.property.has(organisation_id=org_id),
+            Unit.property.has(organisation_id=org_id) if org_id is not None else sql_true(),
         )
     ) or 1  # avoid div by zero
 
@@ -242,7 +242,7 @@ async def get_occupancy_series(
 
         occupied = await db.scalar(
             select(func.count(Lease.id)).where(
-                Lease.organisation_id == org_id,
+                Lease.organisation_id == org_id if org_id is not None else sql_true(),
                 Lease.status == LeaseStatus.active,
                 Lease.start_date <= month_end,
                 (Lease.end_date >= month_start) | (Lease.end_date.is_(None)),
@@ -273,7 +273,7 @@ async def get_revenue_series(
         # Expected = all scheduled rent amounts for that month
         expected = await db.scalar(
             select(func.coalesce(func.sum(RentSchedule.amount_due), 0)).where(
-                RentSchedule.organisation_id == org_id,
+                RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
                 func.extract("year", RentSchedule.due_date) == year,
                 func.extract("month", RentSchedule.due_date) == month,
             )
@@ -282,7 +282,7 @@ async def get_revenue_series(
         # Collected = confirmed/completed payments in that month
         collected = await db.scalar(
             select(func.coalesce(func.sum(Payment.amount), 0)).where(
-                Payment.organisation_id == org_id,
+                Payment.organisation_id == org_id if org_id is not None else sql_true(),
                 Payment.status.in_([PaymentStatus.confirmed, PaymentStatus.completed]),
                 func.extract("year", Payment.paid_at) == year,
                 func.extract("month", Payment.paid_at) == month,
@@ -292,7 +292,7 @@ async def get_revenue_series(
         # Late fees applied that month
         late_fees = await db.scalar(
             select(func.coalesce(func.sum(RentSchedule.late_fee_applied), 0)).where(
-                RentSchedule.organisation_id == org_id,
+                RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
                 func.extract("year", RentSchedule.due_date) == year,
                 func.extract("month", RentSchedule.due_date) == month,
                 RentSchedule.late_fee_applied > 0,
@@ -322,7 +322,7 @@ async def get_cashflow_series(
     for year, month in _months_back(months):
         inflow = await db.scalar(
             select(func.coalesce(func.sum(Payment.amount), 0)).where(
-                Payment.organisation_id == org_id,
+                Payment.organisation_id == org_id if org_id is not None else sql_true(),
                 Payment.status.in_([PaymentStatus.confirmed, PaymentStatus.completed]),
                 func.extract("year", Payment.paid_at) == year,
                 func.extract("month", Payment.paid_at) == month,
@@ -331,7 +331,7 @@ async def get_cashflow_series(
 
         outflow = await db.scalar(
             select(func.coalesce(func.sum(MaintenanceIssue.actual_cost), 0)).where(
-                MaintenanceIssue.organisation_id == org_id,
+                MaintenanceIssue.organisation_id == org_id if org_id is not None else sql_true(),
                 MaintenanceIssue.actual_cost.isnot(None),
                 func.extract("year", MaintenanceIssue.resolved_at) == year,
                 func.extract("month", MaintenanceIssue.resolved_at) == month,

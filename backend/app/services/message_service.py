@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser
 from app.models.message import Message
 from app.schemas.message import MessageCreate, MessageOut, MessageWithLeaseOut
+from app.utils.db_filters import org_scope
 
 
 def _s(v) -> str | None:
@@ -57,9 +58,9 @@ async def list_messages(
     page: int = 1,
     page_size: int = 50,
 ) -> dict:
-    q = select(Message).where(
-        Message.organisation_id == org_id,
-        Message.lease_id == lease_id,
+    q = org_scope(
+        select(Message).where(Message.lease_id == lease_id),
+        Message.organisation_id, org_id,
     )
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(Message.created_at.asc()).offset((page - 1) * page_size).limit(page_size)
@@ -105,10 +106,12 @@ async def unread_count(
     db: AsyncSession,
 ) -> int:
     """Count unread messages in the org not sent by the current user."""
-    q = select(func.count()).select_from(Message).where(
-        Message.organisation_id == org_id,
-        Message.read_at.is_(None),
-        Message.sender_id != profile_id,
+    q = org_scope(
+        select(func.count()).select_from(Message).where(
+            Message.read_at.is_(None),
+            Message.sender_id != profile_id,
+        ),
+        Message.organisation_id, org_id,
     )
     return await db.scalar(q) or 0
 
@@ -124,7 +127,7 @@ async def list_messages_flat(
     """List all messages across all leases in the org, newest first.
     Managers see all; pass profile_id to filter to unread-by-user only.
     """
-    q = select(Message).where(Message.organisation_id == org_id)
+    q = org_scope(select(Message), Message.organisation_id, org_id)
     if unread_only and profile_id:
         q = q.where(Message.read_at.is_(None), Message.sender_id != profile_id)
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0

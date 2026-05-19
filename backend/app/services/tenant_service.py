@@ -27,6 +27,7 @@ log = structlog.get_logger(__name__)
 
 from app.core.state_machine import onboarding_sm
 from app.utils.references import build_ref, next_seq
+from app.utils.db_filters import org_scope
 from app.models.property import Property, Unit
 from app.models.tenant import (
     IdDocumentType,
@@ -152,7 +153,7 @@ async def _get_tenant(
 # ── Tenant CRUD ───────────────────────────────────────────────────────────────
 
 async def list_tenants(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     page: int = 1,
     page_size: int = 20,
@@ -161,10 +162,9 @@ async def list_tenants(
     tenant_status: str | None = None,
     include_anonymised: bool = False,
 ) -> dict:
-    q = (
-        select(Tenant)
-        .options(selectinload(Tenant.documents))
-        .where(Tenant.organisation_id == org_id)
+    q = org_scope(
+        select(Tenant).options(selectinload(Tenant.documents)),
+        Tenant.organisation_id, org_id,
     )
     # By default exclude GDPR-anonymised tenants from dashboard lists.
     # Admins can pass include_anonymised=True to see the anonymised stubs.

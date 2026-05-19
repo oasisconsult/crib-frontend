@@ -30,6 +30,7 @@ from app.models.lease import Lease
 from app.models.property import Property, Unit
 from app.models.tenant import Tenant as TenantModel
 from app.utils.references import build_ref, next_rs_seq
+from app.utils.db_filters import org_scope
 from app.models.payment import (
     Deposit,
     DepositStatus,
@@ -1031,7 +1032,7 @@ async def list_payments_org(
 ) -> dict:
     from app.models.landlord_invite import LandlordPropertyAccess
     from app.models.lease import Lease
-    q = select(Payment).where(Payment.organisation_id == org_id)
+    q = org_scope(select(Payment), Payment.organisation_id, org_id)
 
     # For agency-managed landlords: restrict to payments on their
     # accessible properties only — prevents seeing the whole org's data.
