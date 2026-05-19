@@ -300,7 +300,7 @@ class SubscriptionAuditLog(Base):
     to_plan_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("subscription_plans.id"), nullable=True,
     )
-    event_metadata: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
+    event_data: Mapped[dict] = mapped_column("event_data", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False,
     )

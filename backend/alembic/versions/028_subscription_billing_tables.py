@@ -340,7 +340,7 @@ def upgrade() -> None:
             to_plan_id UUID
                 REFERENCES subscription_plans(id),
 
-            metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+            event_data JSONB NOT NULL DEFAULT '{}'::jsonb,
 
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );

@@ -67,7 +67,7 @@ async def _append_audit(
         actor_id=actor_id,
         from_plan_id=from_plan_id,
         to_plan_id=to_plan_id,
-        event_metadata=metadata or {},
+        event_data=metadata or {},
     )
     db.add(entry)
     await db.flush()  # make visible to subsequent SELECTs (autoflush=False in tests)
