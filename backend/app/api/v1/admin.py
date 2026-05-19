@@ -7,6 +7,7 @@ POST /admin/organisations/{id}/transfer-properties — reassign properties to ne
 
 POST /admin/profiles/{id}/deactivate            — soft-delete a system user
 POST /admin/profiles/{id}/restore               — restore a deactivated profile
+POST /admin/profiles/{sub}/invalidate-session   — force JWT refresh on next request
 
 POST /admin/landlords/{id}/migrate-to-personal-org — move landlord to own personal org
 POST /admin/landlords/{id}/assign-to-agency        — transfer landlord to agency management
@@ -415,3 +416,40 @@ async def repair_landlord_org(
     result = await admin_service.repair_landlord_org(profile_id, body.target_org_id, db)
     await db.commit()
     return RepairOrgResponse(**result)
+
+
+# ── Session invalidation ───────────────────────────────────────────────────────
+
+
+class InvalidateSessionResponse(BaseModel):
+    logto_sub: str
+    message: str
+
+
+@router.post(
+    "/profiles/{logto_sub}/invalidate-session",
+    response_model=InvalidateSessionResponse,
+    dependencies=[Depends(require_superadmin())],
+)
+async def invalidate_user_session(
+    logto_sub: str,
+) -> InvalidateSessionResponse:
+    """
+    Force the user's next API request to trigger a silent token refresh.
+
+    Use after:
+    - Changing a user's role in Logto admin
+    - Updating a user's org membership
+    - Any permission change that should take effect immediately rather than
+      waiting for the user's JWT to expire naturally
+
+    The user is NOT logged out — the next request returns 401 with
+    X-Crib-Auth-Refresh: true, the frontend silently refreshes the token,
+    and the retry succeeds with updated claims.
+    """
+    from app.core.session_cache import invalidate_session
+    await invalidate_session(logto_sub)
+    return InvalidateSessionResponse(
+        logto_sub=logto_sub,
+        message=f"Session for {logto_sub} will refresh on next request.",
+    )

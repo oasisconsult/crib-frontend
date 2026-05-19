@@ -123,7 +123,24 @@ function createApiClient(): AxiosInstance {
 
           // Retry — the BFF will pick up the refreshed cookie automatically
           notifyRefreshSubscribers("ok");
-          return client(originalRequest);
+          const retryResponse = await client(originalRequest);
+
+          // If the 401 was due to a role change (X-Crib-Auth-Refresh header),
+          // re-fetch permissions so the UI immediately reflects the new role.
+          if (error.response?.headers?.["x-crib-auth-refresh"] === "true") {
+            client.get("/me/permissions")
+              .then(({ data }: { data: { permissions: string[] } }) => {
+                // Dynamic import avoids circular dependency with the store
+                import("@/store/useAppStore")
+                  .then(({ useAppStore }) => {
+                    useAppStore.getState().setPermissions(data.permissions);
+                  })
+                  .catch(() => {});
+              })
+              .catch(() => {});
+          }
+
+          return retryResponse;
         } catch {
           notifyRefreshSubscribers("");
           window.location.replace("/login");

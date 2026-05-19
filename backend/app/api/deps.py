@@ -222,12 +222,30 @@ async def get_current_user(
     """
     Resolve the current user from a user JWT.
     Rejects M2M tokens — use get_m2m_context for M2M-only endpoints.
+
+    Session invalidation: if an admin has changed this user's role since
+    the JWT was issued, a 401 with X-Crib-Auth-Refresh: true is returned.
+    The frontend's silent-refresh interceptor picks this up and obtains a
+    fresh JWT from Logto carrying the updated role claims.
     """
     if claims.is_m2m:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User token required; M2M token not accepted on this endpoint",
         )
+
+    # ── Session staleness check ───────────────────────────────────────────────
+    # If an admin invalidated this user's session (role/org change), force
+    # the frontend to silently refresh the token before continuing.
+    from app.core.session_cache import is_session_stale, clear_stale_marker
+    if await is_session_stale(claims.sub):
+        await clear_stale_marker(claims.sub)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session refresh required — role or permissions have changed",
+            headers={"X-Crib-Auth-Refresh": "true"},
+        )
+
     profile = await _upsert_profile(claims, db)
     raw_roles = _roles_from_claims(claims)
     return CurrentUser(profile=profile, claims=claims, roles=raw_roles)
