@@ -196,7 +196,7 @@ async def create_property(body: PropertyCreate, org_id: uuid.UUID | None, db: As
 
 
 async def update_property(
-    prop_id: uuid.UUID, body: PropertyUpdate, org_id: uuid.UUID, db: AsyncSession
+    prop_id: uuid.UUID, body: PropertyUpdate, org_id: uuid.UUID | None, db: AsyncSession
 ) -> PropertyOut:
     prop = await get_property(prop_id, org_id, db)
 
@@ -217,7 +217,7 @@ async def update_property(
 
 
 async def update_property_rules(
-    prop_id: uuid.UUID, rules: dict, org_id: uuid.UUID, db: AsyncSession
+    prop_id: uuid.UUID, rules: dict, org_id: uuid.UUID | None, db: AsyncSession
 ) -> PropertyOut:
     prop = await get_property(prop_id, org_id, db)
     prop.rules = {**prop.rules, **rules}
@@ -226,7 +226,7 @@ async def update_property_rules(
     return await _property_out(prop, db)
 
 
-async def delete_property(prop_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> None:
+async def delete_property(prop_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession) -> None:
     """
     Soft-delete (archive) a property. Blocked if any unit is occupied or has
     an active lease — you cannot archive a building with active tenants.
@@ -274,14 +274,14 @@ async def delete_property(prop_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSessio
     await db.flush()
 
 
-async def restore_property(prop_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> PropertyOut:
+async def restore_property(prop_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession) -> PropertyOut:
     """Restore a soft-deleted property and all its (also soft-deleted) units."""
-    result = await db.execute(
-        select(Property).where(
-            Property.id == prop_id,
-            Property.organisation_id == org_id,
-        )
+    from app.utils.db_filters import org_scope
+    q = org_scope(
+        select(Property).where(Property.id == prop_id),
+        Property.organisation_id, org_id,
     )
+    result = await db.execute(q)
     prop = result.scalar_one_or_none()
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
@@ -304,7 +304,7 @@ async def restore_property(prop_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSessi
 # ── Unit CRUD ─────────────────────────────────────────────────────────────────
 
 async def _get_unit(
-    prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> Unit:
     """Load a unit, verifying it belongs to a property in this org."""
     result = await db.execute(
@@ -324,7 +324,7 @@ async def _get_unit(
 
 
 async def list_units(
-    prop_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession,
+    prop_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession,
     page: int = 1, page_size: int = 50,
     status_filter: str | None = None,
 ) -> dict:
@@ -353,14 +353,14 @@ async def list_units(
 
 
 async def get_unit(
-    prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> UnitOut:
     unit = await _get_unit(prop_id, unit_id, org_id, db)
     return _unit_out(unit)
 
 
 async def create_unit(
-    prop_id: uuid.UUID, body: UnitCreate, org_id: uuid.UUID, db: AsyncSession
+    prop_id: uuid.UUID, body: UnitCreate, org_id: uuid.UUID | None, db: AsyncSession
 ) -> UnitOut:
     await get_property(prop_id, org_id, db)  # ownership check
 
@@ -391,7 +391,7 @@ async def create_unit(
 
 
 async def batch_create_units(
-    prop_id: uuid.UUID, body: BatchUnitCreate, org_id: uuid.UUID, db: AsyncSession
+    prop_id: uuid.UUID, body: BatchUnitCreate, org_id: uuid.UUID | None, db: AsyncSession
 ) -> list[UnitOut]:
     await get_property(prop_id, org_id, db)
 
@@ -425,7 +425,7 @@ async def batch_create_units(
 
 async def update_unit(
     prop_id: uuid.UUID, unit_id: uuid.UUID, body: UnitUpdate,
-    org_id: uuid.UUID, db: AsyncSession
+    org_id: uuid.UUID | None, db: AsyncSession
 ) -> UnitOut:
     unit = await _get_unit(prop_id, unit_id, org_id, db)
 
@@ -439,7 +439,7 @@ async def update_unit(
 
 async def update_unit_rules(
     prop_id: uuid.UUID, unit_id: uuid.UUID, body: UnitRulesUpdate,
-    org_id: uuid.UUID, db: AsyncSession
+    org_id: uuid.UUID | None, db: AsyncSession
 ) -> UnitOut:
     unit = await _get_unit(prop_id, unit_id, org_id, db)
     # rules=None means reset to property inheritance
@@ -450,7 +450,7 @@ async def update_unit_rules(
 
 
 async def bulk_update_units(
-    prop_id: uuid.UUID, body: BulkUnitUpdate, org_id: uuid.UUID, db: AsyncSession
+    prop_id: uuid.UUID, body: BulkUnitUpdate, org_id: uuid.UUID | None, db: AsyncSession
 ) -> list[UnitOut]:
     await get_property(prop_id, org_id, db)
 
@@ -480,7 +480,7 @@ async def bulk_update_units(
 
 
 async def delete_unit(
-    prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> None:
     """Soft-delete (archive) a unit. Blocked if the unit is currently occupied."""
     unit = await _get_unit(prop_id, unit_id, org_id, db)
@@ -497,7 +497,7 @@ async def delete_unit(
 
 
 async def restore_unit(
-    prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> UnitOut:
     """Restore a soft-deleted unit (superadmin only)."""
     result = await db.execute(

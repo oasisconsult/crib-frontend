@@ -87,7 +87,7 @@ async def get_property(
     db: AsyncSession = Depends(get_db),
 ):
     landlord_id = current_user.id if current_user.profile.is_read_only else None
-    prop = await svc.get_property(property_id, current_user.org_id, db, landlord_profile_id=landlord_id)
+    prop = await svc.get_property(property_id, get_org_id(current_user), db, landlord_profile_id=landlord_id)
     return await svc._property_out(prop, db)
 
 
@@ -98,7 +98,7 @@ async def update_property(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.update_property(property_id, body, current_user.org_id, db)
+    return await svc.update_property(property_id, body, get_org_id(current_user), db)
 
 
 @router.patch("/{property_id}/rules", response_model=PropertyOut)
@@ -109,7 +109,7 @@ async def update_property_rules(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.update_property_rules(
-        property_id, body.model_dump(by_alias=True, exclude_none=True), current_user.org_id, db
+        property_id, body.model_dump(by_alias=True, exclude_none=True), get_org_id(current_user), db
     )
 
 
@@ -120,8 +120,7 @@ async def delete_property(
     db: AsyncSession = Depends(get_db),
 ):
     """Soft-archive a property. Blocked if any unit is occupied or has an active lease."""
-    assert current_user.org_id is not None
-    await svc.delete_property(property_id, current_user.org_id, db)
+    await svc.delete_property(property_id, get_org_id(current_user), db)
 
 
 @router.post("/{property_id}/restore", response_model=PropertyOut)
@@ -131,8 +130,7 @@ async def restore_property(
     db: AsyncSession = Depends(get_db),
 ):
     """Restore a soft-archived property and all its units (superadmin only)."""
-    assert current_user.org_id is not None
-    return await svc.restore_property(property_id, current_user.org_id, db)
+    return await svc.restore_property(property_id, get_org_id(current_user), db)
 
 
 # ── Units ─────────────────────────────────────────────────────────────────────
@@ -146,7 +144,7 @@ async def list_units(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.list_units(property_id, current_user.org_id, db, page, page_size, status)
+    return await svc.list_units(property_id, get_org_id(current_user), db, page, page_size, status)
 
 
 # NOTE: /batch must be registered BEFORE /{unit_id} so FastAPI doesn't treat
@@ -158,7 +156,7 @@ async def batch_create_units(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.batch_create_units(property_id, body, current_user.org_id, db)
+    return await svc.batch_create_units(property_id, body, get_org_id(current_user), db)
 
 
 @router.patch("/{property_id}/units/bulk", response_model=list[UnitOut])
@@ -168,7 +166,7 @@ async def bulk_update_units(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.bulk_update_units(property_id, body, current_user.org_id, db)
+    return await svc.bulk_update_units(property_id, body, get_org_id(current_user), db)
 
 
 @router.post("/{property_id}/units", response_model=UnitOut, status_code=status.HTTP_201_CREATED)
@@ -178,7 +176,7 @@ async def create_unit(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.create_unit(property_id, body, current_user.org_id, db)
+    return await svc.create_unit(property_id, body, get_org_id(current_user), db)
 
 
 @router.get("/{property_id}/units/{unit_id}", response_model=UnitOut)
@@ -188,7 +186,7 @@ async def get_unit(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.get_unit(property_id, unit_id, current_user.org_id, db)
+    return await svc.get_unit(property_id, unit_id, get_org_id(current_user), db)
 
 
 @router.put("/{property_id}/units/{unit_id}", response_model=UnitOut)
@@ -199,7 +197,7 @@ async def update_unit(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.update_unit(property_id, unit_id, body, current_user.org_id, db)
+    return await svc.update_unit(property_id, unit_id, body, get_org_id(current_user), db)
 
 
 @router.patch("/{property_id}/units/{unit_id}/rules", response_model=UnitOut)
@@ -210,7 +208,7 @@ async def update_unit_rules(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.update_unit_rules(property_id, unit_id, body, current_user.org_id, db)
+    return await svc.update_unit_rules(property_id, unit_id, body, get_org_id(current_user), db)
 
 
 @router.delete("/{property_id}/units/{unit_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -221,8 +219,8 @@ async def delete_unit(
     db: AsyncSession = Depends(get_db),
 ):
     """Soft-archive a unit. Blocked if the unit is currently occupied."""
-    assert current_user.org_id is not None
-    await svc.delete_unit(property_id, unit_id, current_user.org_id, db)
+    assert get_org_id(current_user) is not None
+    await svc.delete_unit(property_id, unit_id, get_org_id(current_user), db)
 
 
 @router.post("/{property_id}/units/{unit_id}/restore", response_model=UnitOut)
@@ -233,5 +231,5 @@ async def restore_unit(
     db: AsyncSession = Depends(get_db),
 ):
     """Restore a soft-archived unit (superadmin only)."""
-    assert current_user.org_id is not None
-    return await svc.restore_unit(property_id, unit_id, current_user.org_id, db)
+    assert get_org_id(current_user) is not None
+    return await svc.restore_unit(property_id, unit_id, get_org_id(current_user), db)
