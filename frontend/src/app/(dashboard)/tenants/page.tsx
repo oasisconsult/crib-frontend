@@ -10,7 +10,8 @@ import { TenantImportModal } from "./components/TenantImportModal";
 import { CreateTenantModal } from "./components/CreateTenantModal";
 
 export default function TenantsPage() {
-  const { canWrite } = usePermissions();
+  const { canWrite, canDo } = usePermissions();
+  const canInviteTenant = canDo("create", "tenant");
   const [showImport, setShowImport] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -20,12 +21,14 @@ export default function TenantsPage() {
         title="Tenants"
         description="Manage tenants, onboarding, and documents"
         actions={
-          canWrite ? (
+          canInviteTenant ? (
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => setShowImport(true)}>
-                <Upload className="h-4 w-4" />
-                Import CSV
-              </Button>
+              {canWrite && (
+                <Button variant="outline" onClick={() => setShowImport(true)}>
+                  <Upload className="h-4 w-4" />
+                  Import CSV
+                </Button>
+              )}
               <Button onClick={() => setShowCreate(true)}>
                 <Plus className="h-4 w-4" />
                 New Tenant

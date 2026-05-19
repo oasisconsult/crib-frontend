@@ -44,6 +44,7 @@ export function useAuth() {
   const resolveAuth = useAppStore((s) => s.resolveAuth);
   const isAuthInitialized = useAppStore((s) => s.isAuthInitialized);
   const setActiveOrg = useAppStore((s) => s.setActiveOrg);
+  const setPermissions = useAppStore((s) => s.setPermissions);
 
   const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -132,8 +133,13 @@ export function useAuth() {
         const expiresAt = Math.floor(Date.now() / 1000) + expiresIn;
         tokenStore.setExpiry(expiresAt);
         scheduleRefreshAt(expiresAt);
-        if (user && (user.role !== role || roles))
+        if (user && (user.role !== role || roles)) {
           setUser({ ...user, role: role as User["role"], roles: (roles ?? [role]) as User["roles"] });
+          // Re-fetch permissions when role changes
+          apiClient.get<{ permissions: string[] }>("/me/permissions")
+            .then(({ data }) => setPermissions(data.permissions))
+            .catch(() => {});
+        }
         if (orgId) setActiveOrg(orgId);
         emitAudit({ action: "auth.token_refresh", userId: user?.id, orgId });
         return accessToken;
@@ -207,6 +213,10 @@ export function useAuth() {
         const { data: userData } = await apiClient.get<User>("/me");
         resolveAuth(userData);
         emitAudit({ action: "auth.login", userId: userData.id });
+        // Fetch DB-driven permissions asynchronously — non-blocking
+        apiClient.get<{ permissions: string[] }>("/me/permissions")
+          .then(({ data }) => setPermissions(data.permissions))
+          .catch(() => { /* permissions fetch failure is non-fatal */ });
       } catch (err: unknown) {
         const status = (err as { response?: { status?: number } })?.response
           ?.status;

@@ -1,5 +1,25 @@
 "use client";
 
+/**
+ * usePermissions — single source of truth for UI access control.
+ *
+ * Two permission check functions:
+ *
+ *   can(permission)           — legacy static check against ROLE_PERMISSIONS
+ *                               (backwards compat, used throughout the codebase)
+ *
+ *   canDo(action, resource)   — DB-driven check against permissions fetched from
+ *                               GET /api/v1/me/permissions. This is what the
+ *                               Access Control admin page actually configures.
+ *
+ * Access rules:
+ *   superadmin     → canDo() always returns true (wildcard ["*"])
+ *   isReadOnly     → canDo() only allows "read" action regardless of DB config
+ *   everyone else  → DB-driven from their assigned roles
+ *
+ * While permissions are still loading (null), canDo() falls back to the static map.
+ */
+
 import { useAppStore } from "@/store/useAppStore";
 import {
   hasRoleSetPermission,
@@ -9,6 +29,7 @@ import type { UserRole } from "@/types";
 
 export function usePermissions() {
   const user = useAppStore((s) => s.user);
+  const dbPermissions = useAppStore((s) => s.permissions);
 
   // Prefer full roles list; fall back to primary role for backwards compat
   const roles: UserRole[] =
@@ -20,31 +41,76 @@ export function usePermissions() {
 
   const role = roles[0]; // primary role (highest priority)
 
-  const hasHigherRole = roles.some((r) => ["owner", "manager", "superadmin"].includes(r));
-  // A user is a read-only agency-managed landlord only if they have the
-  // 'landlord' role AND no higher role. If 'owner' or 'manager' is also
-  // present (e.g. from a failed role-cleanup leaving both in the JWT),
-  // the higher role takes precedence — matching backend _primary_role logic.
+  const isSuperAdmin = roles.includes("superadmin");
+
+  const hasHigherRole = roles.some((r) =>
+    ["owner", "manager", "superadmin"].includes(r)
+  );
   const isLandlord = roles.includes("landlord") && !hasHigherRole;
-  const isReadOnly = isLandlord;
+  // Agency-managed landlords have is_read_only=true on their profile.
+  // Self-managing landlords (owner role) are not read-only.
+  const isReadOnly = Boolean(user?.isReadOnly) || isLandlord;
+
+  /**
+   * DB-driven permission check (driven by the Access Control admin page).
+   *
+   * Usage:  canDo("delete", "property")  canDo("create", "tenant")
+   *
+   * - superadmin: always true
+   * - isReadOnly: only "read" action allowed
+   * - others: checks the DB permission set fetched on login
+   * - loading: falls back to static ROLE_PERMISSIONS map
+   */
+  function canDo(action: string, resource: string): boolean {
+    if (isSuperAdmin) return true;
+    if (isReadOnly && action !== "read") return false;
+
+    if (dbPermissions === null) {
+      // Permissions not yet loaded — fall back to static map
+      // Use the closest matching key from ROLE_PERMISSIONS
+      const staticKey = `${resource}s:${action}` as Parameters<typeof hasRoleSetPermission>[1];
+      const altKey = `${resource}:${action}` as Parameters<typeof hasRoleSetPermission>[1];
+      return (
+        hasRoleSetPermission(roles, staticKey) ||
+        hasRoleSetPermission(roles, altKey)
+      );
+    }
+
+    // Wildcard — superadmin already handled above but guard for edge cases
+    if (dbPermissions.includes("*")) return true;
+
+    return dbPermissions.includes(`${resource}:${action}`);
+  }
 
   return {
     role,
     roles,
+
+    // ── DB-driven (Access Control page) ──────────────────────────────────────
+    canDo,
+
+    // ── Legacy static checks (backwards compat) ───────────────────────────────
     can: (permission: Parameters<typeof hasRoleSetPermission>[1]) =>
-      hasRoleSetPermission(roles, permission),
+      isSuperAdmin || hasRoleSetPermission(roles, permission),
     canAny: (permissions: Parameters<typeof hasRoleSetAnyPermission>[1]) =>
-      hasRoleSetAnyPermission(roles, permissions),
+      isSuperAdmin || hasRoleSetAnyPermission(roles, permissions),
+
+    // ── Role flags ────────────────────────────────────────────────────────────
+    isSuperAdmin,
     isOwnerOrAbove: roles.some((r) => r === "owner" || r === "superadmin"),
     isManager: roles.includes("manager"),
-    isSuperAdmin: roles.includes("superadmin"),
     isLandlord,
     isTenant: roles.includes("tenant"),
     isMaintenance: roles.includes("maintenance"),
-    canManageOrg: roles.some((r) => ["owner", "manager", "superadmin"].includes(r)),
-    /** True for landlords — they have view-only access to agency-managed properties. */
+    canManageOrg: roles.some((r) =>
+      ["owner", "manager", "superadmin"].includes(r)
+    ),
+
+    /**
+     * True for agency-managed landlords (is_read_only=true on their profile).
+     * They have view-only access — no create/edit/delete operations.
+     */
     isReadOnly,
-    /** True when the user can perform write operations. */
     canWrite: !isReadOnly,
   };
 }

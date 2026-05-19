@@ -41,7 +41,10 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Role-based gate (first line of defence, fast) */
   roles?: UserRole[];
+  /** DB-driven permission gate — checked against Access Control config */
+  permission?: { action: string; resource: string };
   badge?: number;
   section?: string;
 }
@@ -53,12 +56,14 @@ const NAV_ITEMS: NavItem[] = [
     label: "Properties",
     icon: Building2,
     roles: ["owner", "manager", "superadmin", "landlord"],
+    permission: { action: "read", resource: "property" },
   },
   {
     href: "/tenants",
     label: "Tenants",
     icon: Users,
     roles: ["owner", "manager", "superadmin"],
+    permission: { action: "read", resource: "tenant" },
   },
   {
     href: "/landlords",
@@ -71,12 +76,14 @@ const NAV_ITEMS: NavItem[] = [
     label: "Leases",
     icon: FileText,
     roles: ["owner", "manager", "superadmin", "landlord"],
+    permission: { action: "read", resource: "lease" },
   },
   {
     href: "/payments",
     label: "Payments",
     icon: CreditCard,
     roles: ["owner", "manager", "superadmin", "landlord"],
+    permission: { action: "read", resource: "payment" },
     section: "FINANCE",
   },
   {
@@ -84,12 +91,14 @@ const NAV_ITEMS: NavItem[] = [
     label: "Analytics",
     icon: BarChart3,
     roles: ["owner", "manager", "superadmin", "landlord"],
+    permission: { action: "read", resource: "analytics" },
   },
   {
     href: "/inspections",
     label: "Inspections",
     icon: ClipboardList,
     roles: ["owner", "manager", "superadmin", "maintenance", "landlord"],
+    permission: { action: "read", resource: "inspection" },
     section: "OPERATIONS",
   },
   {
@@ -97,6 +106,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Maintenance",
     icon: Wrench,
     roles: ["owner", "manager", "superadmin", "maintenance", "landlord"],
+    permission: { action: "read", resource: "maintenance_request" },
   },
   {
     href: "/notifications",
@@ -108,7 +118,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/admin",
     label: "Admin",
     icon: Shield,
-    roles: ["superadmin"],
+    roles: ["superadmin"],    // Security boundary — always role-gated
     section: "SYSTEM",
   },
   {
@@ -126,13 +136,21 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { sidebarCollapsed, toggleSidebar } = useUIStore();
-  const { roles } = usePermissions();
+  const { roles, canDo, isSuperAdmin } = usePermissions();
   const user = useAppStore((s) => s.user);
   const { logout } = useAuth();
 
-  const visibleItems = NAV_ITEMS.filter(
-    (item) => !item.roles || item.roles.some((r) => roles.includes(r)),
-  );
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    // 1. Role gate (fast, no DB) — superadmin bypasses
+    if (item.roles && !isSuperAdmin && !item.roles.some((r) => roles.includes(r))) {
+      return false;
+    }
+    // 2. DB-driven permission gate — Access Control page controls this
+    if (item.permission && !canDo(item.permission.action, item.permission.resource)) {
+      return false;
+    }
+    return true;
+  });
 
   let lastSection = "";
 

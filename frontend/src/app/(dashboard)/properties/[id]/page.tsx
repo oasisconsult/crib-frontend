@@ -418,8 +418,10 @@ export default function PropertyDetailPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
   const { data: property, isLoading } = useProperty(id);
-  const { can } = usePermissions();
+  const { can, canDo } = usePermissions();
   const canEdit = can("properties:write");
+  // Delete/archive is a separate, higher-privilege action controlled by Access Control
+  const canDelete = canDo("delete", "property");
   const [editing, setEditing] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
   const { mutate: archiveProperty, isPending: archiving } = useDeleteProperty();
@@ -452,7 +454,7 @@ export default function PropertyDetailPage({ params }: Props) {
               Edit
             </Button>
           )}
-          {canEdit && (
+          {canDelete && (
             <Button
               variant="outline"
               size="sm"

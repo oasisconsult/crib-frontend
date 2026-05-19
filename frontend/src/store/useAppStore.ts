@@ -9,6 +9,10 @@ interface AppState {
   isAuthenticated: boolean;
   isAuthInitialized: boolean;
 
+  /** DB-driven permission set. null = not yet fetched. ["*"] = superadmin wildcard. */
+  permissions: string[] | null;
+  setPermissions: (permissions: string[]) => void;
+
   setUser: (user: User | null) => void;
 
   /**
@@ -39,6 +43,9 @@ export const useAppStore = create<AppState>()((set) => ({
   isAuthenticated: false,
   isAuthInitialized: false,
   activeOrgId: null,
+
+  permissions: null,
+  setPermissions: (permissions) => set({ permissions }),
 
   setUser: (user) => set({ user, isAuthenticated: !!user }),
 
