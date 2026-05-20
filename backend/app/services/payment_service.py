@@ -212,12 +212,13 @@ def _build_schedules(lease: Lease) -> list[RentSchedule]:
 
 
 async def _get_lease_checked(
-    lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    lease_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> Lease:
     from app.models.lease import Lease as L
-    result = await db.execute(
-        select(L).where(L.id == lease_id, L.organisation_id == org_id)
-    )
+    _filters = [L.id == lease_id]
+    if org_id is not None:
+        _filters.append(L.organisation_id == org_id)
+    result = await db.execute(select(L).where(*_filters))
     lease = result.scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
@@ -320,7 +321,7 @@ async def create_deposit_record(lease: Lease, db: AsyncSession) -> None:
 
 async def list_schedules(
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     status_filter: str | None = None,
     page: int = 1,
@@ -349,7 +350,7 @@ async def list_schedules(
 async def get_schedule(
     schedule_id: uuid.UUID,
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> RentScheduleOut:
     await _get_lease_checked(lease_id, org_id, db)
@@ -360,7 +361,7 @@ async def get_schedule(
 async def waive_schedule(
     schedule_id: uuid.UUID,
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> RentScheduleOut:
     await _get_lease_checked(lease_id, org_id, db)
@@ -469,7 +470,7 @@ async def create_payment(
 
 async def list_payments(
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     status_filter: str | None = None,
     category: str | None = None,
@@ -501,7 +502,7 @@ async def list_payments(
 async def get_payment(
     payment_id: uuid.UUID,
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> PaymentOut:
     await _get_lease_checked(lease_id, org_id, db)
@@ -739,7 +740,7 @@ async def refund_payment(
 
 async def list_late_fees(
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> list[LateFeeOut]:
     await _get_lease_checked(lease_id, org_id, db)
@@ -837,7 +838,7 @@ async def waive_late_fee(
 
 async def get_deposit(
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> DepositOut:
     await _get_lease_checked(lease_id, org_id, db)
@@ -900,7 +901,7 @@ async def return_deposit(
 
 async def get_ledger(
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> LedgerOut:
     lease = await _get_lease_checked(lease_id, org_id, db)
@@ -965,7 +966,7 @@ async def get_ledger(
 
 async def export_payments_csv(
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> str:
     """Return a CSV string of all confirmed payments for a lease.
@@ -976,7 +977,10 @@ async def export_payments_csv(
     from app.models.organisation import Organisation
     lease = await _get_lease_checked(lease_id, org_id, db)
 
-    org = await db.scalar(select(Organisation).where(Organisation.id == org_id))
+    org = (
+        await db.scalar(select(Organisation).where(Organisation.id == org_id))
+        if org_id is not None else None
+    )
     payment_settings = (org.settings or {}).get("payments", {}) if org else {}
     default_cols = ["period", "due_date", "amount_due", "amount_paid", "late_fee",
                     "balance", "schedule_status", "payment_id", "payment_amount",
@@ -1108,12 +1112,13 @@ async def list_payments_org(
 
 async def get_payment_by_org(
     payment_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> PaymentOut:
-    p = await db.scalar(
-        select(Payment).where(Payment.id == payment_id, Payment.organisation_id == org_id)
-    )
+    _filters = [Payment.id == payment_id]
+    if org_id is not None:
+        _filters.append(Payment.organisation_id == org_id)
+    p = await db.scalar(select(Payment).where(*_filters))
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
     tenant_name: str | None = None
@@ -1227,14 +1232,14 @@ async def refund_payment_by_org(
 
 
 async def list_schedules_org(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     status_filter: str | None = None,
     lease_id_filter: uuid.UUID | None = None,
     page: int = 1,
     page_size: int = 24,
 ) -> dict:
-    q = select(RentSchedule).where(RentSchedule.organisation_id == org_id)
+    q = org_scope(select(RentSchedule), RentSchedule.organisation_id, org_id)
     if status_filter:
         q = q.where(RentSchedule.status == status_filter)
     if lease_id_filter:
@@ -1255,13 +1260,13 @@ async def list_schedules_org(
 
 
 async def list_late_fees_org(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     lease_id_filter: uuid.UUID | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
-    q = select(LateFee).where(LateFee.organisation_id == org_id)
+    q = org_scope(select(LateFee), LateFee.organisation_id, org_id)
     if lease_id_filter:
         q = q.where(LateFee.lease_id == lease_id_filter)
 

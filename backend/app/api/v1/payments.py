@@ -112,7 +112,7 @@ async def list_schedules(
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.list_schedules(lease_id, current_user.org_id, db, schedule_status, page, page_size)
+    return await svc.list_schedules(lease_id, get_org_id(current_user), db, schedule_status, page, page_size)
 
 
 @router.get("/{lease_id}/schedules/{schedule_id}", response_model=RentScheduleOut)
@@ -122,7 +122,7 @@ async def get_schedule(
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.get_schedule(schedule_id, lease_id, current_user.org_id, db)
+    return await svc.get_schedule(schedule_id, lease_id, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/schedules/{schedule_id}/waive", response_model=RentScheduleOut)
@@ -146,7 +146,7 @@ async def export_payments(
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    csv_data = await svc.export_payments_csv(lease_id, current_user.org_id, db)
+    csv_data = await svc.export_payments_csv(lease_id, get_org_id(current_user), db)
     return Response(
         content=csv_data,
         media_type="text/csv",
@@ -178,7 +178,7 @@ async def list_payments(
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.list_payments(lease_id, current_user.org_id, db, payment_status, category, page, page_size)
+    return await svc.list_payments(lease_id, get_org_id(current_user), db, payment_status, category, page, page_size)
 
 
 @router.get("/{lease_id}/payments/{payment_id}", response_model=PaymentOut)
@@ -188,7 +188,7 @@ async def get_payment(
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.get_payment(payment_id, lease_id, current_user.org_id, db)
+    return await svc.get_payment(payment_id, lease_id, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/payments/{payment_id}/confirm", response_model=PaymentOut)
@@ -223,7 +223,7 @@ async def list_payment_allocations(
 ):
     """Return all allocation rows showing how a payment was distributed across schedules."""
     # Verify the payment belongs to this lease / org before exposing allocations.
-    await svc.get_payment(payment_id, lease_id, current_user.org_id, db)
+    await svc.get_payment(payment_id, lease_id, get_org_id(current_user), db)
     allocations = await get_allocations_for_payment(db, payment_id)
     return [
         PaymentAllocationOut(
@@ -311,7 +311,7 @@ async def list_late_fees(
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.list_late_fees(lease_id, current_user.org_id, db)
+    return await svc.list_late_fees(lease_id, get_org_id(current_user), db)
 
 
 @router.post(
@@ -347,7 +347,7 @@ async def get_deposit(
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.get_deposit(lease_id, current_user.org_id, db)
+    return await svc.get_deposit(lease_id, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/deposit/return", response_model=DepositOut)
@@ -369,7 +369,7 @@ async def get_ledger(
     db: AsyncSession = Depends(get_db),
 ):
     """Computed ledger summary (totals). Use /ledger/entries for the full audit trail."""
-    return await svc.get_ledger(lease_id, current_user.org_id, db)
+    return await svc.get_ledger(lease_id, get_org_id(current_user), db)
 
 
 @router.get("/{lease_id}/ledger/entries", response_model=LedgerPageOut)
@@ -382,7 +382,7 @@ async def list_ledger_entries(
 ):
     """Paginated immutable audit trail for this lease, newest-first."""
     # Verify lease belongs to this org.
-    await svc._get_lease_checked(lease_id, current_user.org_id, db)
+    await svc._get_lease_checked(lease_id, get_org_id(current_user), db)
     raw = await get_ledger_entries(db, lease_id, page=page, page_size=page_size)
     return LedgerPageOut(
         data=[

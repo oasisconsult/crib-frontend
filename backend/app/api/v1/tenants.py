@@ -29,7 +29,7 @@ from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user, require_org_access
+from app.api.deps import CurrentUser, get_current_user, get_org_id, require_org_access
 from app.core.database import get_db
 from app.schemas.tenant import (
     OnboardingDraftSave,
@@ -119,7 +119,7 @@ async def list_tenants(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.list_tenants(
-        current_user.org_id, db, page, page_size, search, onboarding_state, tenant_status
+        get_org_id(current_user), db, page, page_size, search, onboarding_state, tenant_status
     )
 
 
@@ -129,7 +129,7 @@ async def get_tenant(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.get_tenant(tenant_id, current_user.org_id, db)
+    return await svc.get_tenant(tenant_id, get_org_id(current_user), db)
 
 
 @router.put("/{tenant_id}", response_model=TenantOut)
@@ -237,7 +237,7 @@ async def list_documents(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.list_documents(tenant_id, current_user.org_id, db)
+    return await svc.list_documents(tenant_id, get_org_id(current_user), db)
 
 
 @router.post(

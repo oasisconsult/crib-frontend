@@ -137,12 +137,15 @@ def _tenant_out(tenant: Tenant) -> TenantOut:
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 async def _get_tenant(
-    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> Tenant:
+    _filters = [Tenant.id == tenant_id]
+    if org_id is not None:
+        _filters.append(Tenant.organisation_id == org_id)
     result = await db.execute(
         select(Tenant)
         .options(selectinload(Tenant.documents))
-        .where(Tenant.id == tenant_id, Tenant.organisation_id == org_id)
+        .where(*_filters)
     )
     tenant = result.scalar_one_or_none()
     if not tenant:
@@ -197,7 +200,7 @@ async def list_tenants(
 
 
 async def get_tenant(
-    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> TenantOut:
     tenant = await _get_tenant(tenant_id, org_id, db)
     return _tenant_out(tenant)
@@ -1102,7 +1105,7 @@ async def reject_tenant(
 # ── Documents ─────────────────────────────────────────────────────────────────
 
 async def list_documents(
-    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> list[TenantDocumentOut]:
     await _get_tenant(tenant_id, org_id, db)  # ownership check
     result = await db.execute(

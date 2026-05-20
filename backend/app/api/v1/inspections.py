@@ -18,7 +18,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user
+from app.api.deps import CurrentUser, get_current_user, get_org_id
 from app.core.database import get_db
 from app.schemas.inspection import (
     InspectionCreate,
@@ -54,7 +54,7 @@ async def list_inspections(
     state_list = [s.strip() for s in states.split(",")] if states else ([state] if state else None)
     landlord_id = current_user.id if current_user.profile.is_read_only else None
     return await inspection_service.list_inspections(
-        org_id=current_user.org_id,
+        org_id=get_org_id(current_user),
         db=db,
         property_id=property_id,
         unit_id=unit_id,
@@ -82,7 +82,7 @@ async def get_inspection(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await inspection_service.get_inspection(inspection_id, current_user.org_id, db)
+    return await inspection_service.get_inspection(inspection_id, get_org_id(current_user), db)
 
 
 @router.put("/inspections/{inspection_id}", response_model=InspectionOut)
@@ -92,7 +92,7 @@ async def update_inspection(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await inspection_service.update_inspection(inspection_id, body, current_user.org_id, db)
+    return await inspection_service.update_inspection(inspection_id, body, get_org_id(current_user), db)
 
 
 @router.post("/inspections/{inspection_id}/transition", response_model=InspectionOut)
@@ -103,7 +103,7 @@ async def transition_inspection(
     db: AsyncSession = Depends(get_db),
 ):
     return await inspection_service.transition_inspection(
-        inspection_id, body.event, current_user.org_id, db
+        inspection_id, body.event, get_org_id(current_user), db
     )
 
 
@@ -115,7 +115,7 @@ async def add_inspection_photos(
     db: AsyncSession = Depends(get_db),
 ):
     return await inspection_service.add_inspection_photos(
-        inspection_id, body.urls, current_user.org_id, db
+        inspection_id, body.urls, get_org_id(current_user), db
     )
 
 
@@ -138,7 +138,7 @@ async def list_maintenance(
     state_list = [s.strip() for s in states.split(",")] if states else ([state] if state else None)
     landlord_id = current_user.id if current_user.profile.is_read_only else None
     return await inspection_service.list_maintenance(
-        org_id=current_user.org_id,
+        org_id=get_org_id(current_user),
         db=db,
         property_id=property_id,
         states=state_list,
@@ -167,7 +167,7 @@ async def get_maintenance(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await inspection_service.get_maintenance_issue(issue_id, current_user.org_id, db)
+    return await inspection_service.get_maintenance_issue(issue_id, get_org_id(current_user), db)
 
 
 @router.put("/maintenance/{issue_id}", response_model=MaintenanceOut)
@@ -177,7 +177,7 @@ async def update_maintenance(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await inspection_service.update_maintenance_issue(issue_id, body, current_user.org_id, db)
+    return await inspection_service.update_maintenance_issue(issue_id, body, get_org_id(current_user), db)
 
 
 @router.post("/maintenance/{issue_id}/transition", response_model=MaintenanceOut)
@@ -187,4 +187,4 @@ async def transition_maintenance(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await inspection_service.transition_maintenance(issue_id, body, current_user.org_id, db)
+    return await inspection_service.transition_maintenance(issue_id, body, get_org_id(current_user), db)

@@ -130,14 +130,12 @@ def _maint_out(
 # ── Internal helpers ───────────────────────────────────────────────────────────
 
 async def _get_inspection(
-    inspection_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    inspection_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> Inspection:
-    result = await db.execute(
-        select(Inspection).where(
-            Inspection.id == inspection_id,
-            Inspection.organisation_id == org_id,
-        )
-    )
+    _filters = [Inspection.id == inspection_id]
+    if org_id is not None:
+        _filters.append(Inspection.organisation_id == org_id)
+    result = await db.execute(select(Inspection).where(*_filters))
     i = result.scalar_one_or_none()
     if not i:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inspection not found")
@@ -145,14 +143,12 @@ async def _get_inspection(
 
 
 async def _get_maintenance(
-    issue_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    issue_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> MaintenanceIssue:
-    result = await db.execute(
-        select(MaintenanceIssue).where(
-            MaintenanceIssue.id == issue_id,
-            MaintenanceIssue.organisation_id == org_id,
-        )
-    )
+    _filters = [MaintenanceIssue.id == issue_id]
+    if org_id is not None:
+        _filters.append(MaintenanceIssue.organisation_id == org_id)
+    result = await db.execute(select(MaintenanceIssue).where(*_filters))
     m = result.scalar_one_or_none()
     if not m:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Maintenance issue not found")
@@ -249,7 +245,7 @@ async def list_inspections(
 
 
 async def get_inspection(
-    inspection_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    inspection_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> InspectionOut:
     return _insp_out(await _get_inspection(inspection_id, org_id, db))
 
@@ -288,7 +284,7 @@ async def create_inspection(
 async def update_inspection(
     inspection_id: uuid.UUID,
     body: InspectionUpdate,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> InspectionOut:
     i = await _get_inspection(inspection_id, org_id, db)
@@ -302,7 +298,7 @@ async def update_inspection(
 async def transition_inspection(
     inspection_id: uuid.UUID,
     event: str,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> InspectionOut:
     i = await _get_inspection(inspection_id, org_id, db)
@@ -340,7 +336,7 @@ async def transition_inspection(
 async def add_inspection_photos(
     inspection_id: uuid.UUID,
     urls: list[str],
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> InspectionOut:
     i = await _get_inspection(inspection_id, org_id, db)
@@ -437,7 +433,7 @@ async def _maint_names(m: MaintenanceIssue, db: AsyncSession) -> tuple[str | Non
 
 
 async def get_maintenance_issue(
-    issue_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    issue_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> MaintenanceOut:
     m = await _get_maintenance(issue_id, org_id, db)
     pname, uname = await _maint_names(m, db)
@@ -482,7 +478,7 @@ async def create_maintenance_issue(
 async def update_maintenance_issue(
     issue_id: uuid.UUID,
     body: MaintenanceUpdate,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> MaintenanceOut:
     m = await _get_maintenance(issue_id, org_id, db)
@@ -497,7 +493,7 @@ async def update_maintenance_issue(
 async def transition_maintenance(
     issue_id: uuid.UUID,
     body: MaintenanceTransition,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> MaintenanceOut:
     m = await _get_maintenance(issue_id, org_id, db)

@@ -81,10 +81,10 @@ async def create_payment(
 @payments_router.get("/{payment_id}", response_model=PaymentOut)
 async def get_payment(
     payment_id: uuid.UUID,
-    current_user=_read,
+    current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.get_payment_by_org(payment_id, current_user.org_id, db)
+    return await svc.get_payment_by_org(payment_id, get_org_id(current_user), db)
 
 
 @payments_router.patch("/{payment_id}/confirm", response_model=PaymentOut)
@@ -116,12 +116,12 @@ async def list_rent_schedules(
     schedule_status: str | None = Query(None, alias="status"),
     page: int = Query(1, ge=1),
     page_size: int = Query(24, ge=1, le=100, alias="pageSize"),
-    current_user=_read,
+    current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
     """List all rent schedules for the organisation, optionally filtered by lease."""
     return await svc.list_schedules_org(
-        current_user.org_id,
+        get_org_id(current_user),
         db,
         status_filter=schedule_status,
         lease_id_filter=lease_id,
@@ -140,12 +140,12 @@ async def list_late_fees(
     lease_id: uuid.UUID | None = Query(None, alias="leaseId"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
-    current_user=_read,
+    current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
     """List all late fees for the organisation, optionally filtered by lease."""
     return await svc.list_late_fees_org(
-        current_user.org_id,
+        get_org_id(current_user),
         db,
         lease_id_filter=lease_id,
         page=page,

@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_org_access
+from app.api.deps import CurrentUser, get_org_id, require_org_access
 from app.core.database import get_db
 from app.models.mobile_money import MobileMoneyTransaction
 from app.schemas.payment import MobileMoneyPageOut, MobileMoneyTransactionOut
@@ -48,15 +48,16 @@ async def list_mobile_money_transactions(
     provider: str | None = Query(None),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200, alias="pageSize"),
-    current_user=_read,
+    current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
     """List mobile money transactions for the organisation."""
     from sqlalchemy import func
 
-    q = select(MobileMoneyTransaction).where(
-        MobileMoneyTransaction.organisation_id == current_user.org_id
-    )
+    org_id = get_org_id(current_user)
+    q = select(MobileMoneyTransaction)
+    if org_id is not None:
+        q = q.where(MobileMoneyTransaction.organisation_id == org_id)
     if status_filter:
         q = q.where(MobileMoneyTransaction.status == status_filter)
     if provider:
@@ -83,15 +84,14 @@ async def list_mobile_money_transactions(
 @router.get("/{transaction_id}", response_model=MobileMoneyTransactionOut)
 async def get_mobile_money_transaction(
     transaction_id: uuid.UUID,
-    current_user=_read,
+    current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(MobileMoneyTransaction).where(
-            MobileMoneyTransaction.id == transaction_id,
-            MobileMoneyTransaction.organisation_id == current_user.org_id,
-        )
-    )
+    org_id = get_org_id(current_user)
+    _filters = [MobileMoneyTransaction.id == transaction_id]
+    if org_id is not None:
+        _filters.append(MobileMoneyTransaction.organisation_id == org_id)
+    result = await db.execute(select(MobileMoneyTransaction).where(*_filters))
     txn = result.scalar_one_or_none()
     if not txn:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
@@ -101,7 +101,7 @@ async def get_mobile_money_transaction(
 @router.patch("/{transaction_id}/match", response_model=MobileMoneyTransactionOut)
 async def manually_match_transaction(
     transaction_id: uuid.UUID,
-    current_user=_write,
+    current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -110,12 +110,11 @@ async def manually_match_transaction(
     """
     from app.services.matching_service import match_transaction
 
-    result = await db.execute(
-        select(MobileMoneyTransaction).where(
-            MobileMoneyTransaction.id == transaction_id,
-            MobileMoneyTransaction.organisation_id == current_user.org_id,
-        )
-    )
+    org_id = get_org_id(current_user)
+    _filters = [MobileMoneyTransaction.id == transaction_id]
+    if org_id is not None:
+        _filters.append(MobileMoneyTransaction.organisation_id == org_id)
+    result = await db.execute(select(MobileMoneyTransaction).where(*_filters))
     txn = result.scalar_one_or_none()
     if not txn:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Transaction not found")
