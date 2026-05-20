@@ -767,7 +767,7 @@ async def admin_list_leases(
     stmt = (
         select(
             Lease,
-            TenantModel.display_name.label("tenant_name"),
+            func.concat(TenantModel.first_name, " ", TenantModel.last_name).label("tenant_name"),
             Unit.name.label("unit_name"),
             Property.name.label("property_name"),
             Organisation.name.label("organisation_name"),
@@ -794,11 +794,11 @@ async def admin_list_leases(
 
     items = [
         _admin_lease_out(
-            row.Lease,
-            tenant_name=row.tenant_name,
-            unit_name=row.unit_name,
-            property_name=row.property_name,
-            organisation_name=row.organisation_name,
+            row[0],                          # Lease ORM object (first selected entity)
+            tenant_name=row.tenant_name or None,
+            unit_name=row.unit_name or None,
+            property_name=row.property_name or None,
+            organisation_name=row.organisation_name or None,
         )
         for row in rows
     ]
@@ -861,7 +861,7 @@ async def admin_patch_lease_billing_rules(
     if lease.tenant_id:
         t = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
         if t:
-            tenant_name = t.display_name
+            tenant_name = f"{t.first_name} {t.last_name}".strip()
     if lease.unit_id:
         u = await db.scalar(select(Unit).where(Unit.id == lease.unit_id))
         if u:
