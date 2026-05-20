@@ -20,13 +20,20 @@ import type { BillingCycle, BillingCurrency, SubscriptionPlan } from "@/services
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
+function compactNum(n: number): string {
+  if (n >= 1_000_000) return `${n % 1_000_000 === 0 ? n / 1_000_000 : (n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `${n % 1_000 === 0 ? n / 1_000 : (n / 1_000).toFixed(1)}k`;
+  return n.toLocaleString();
+}
+
 function formatUGX(n: number) {
-  return n === 0 ? "Free" : `UGX ${n.toLocaleString()}`;
+  return n === 0 ? "Free" : `UGX ${compactNum(n)}`;
 }
 
 function formatUSD(cents: number) {
   if (cents === 0) return "Free";
-  return `$${(cents / 100).toFixed(0)}`;
+  const dollars = cents / 100;
+  return `$${compactNum(dollars)}`;
 }
 
 function annualSavings(monthly: number, annual: number) {
@@ -125,7 +132,7 @@ function PlanCard({
       {/* Popular badge */}
       {isRecommended && (
         <div className="absolute -top-3.5 inset-x-0 flex justify-center">
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary-foreground shadow">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary shadow-sm">
             <Zap className="h-3 w-3" />
             Most Popular
           </span>
@@ -153,7 +160,7 @@ function PlanCard({
         <div className="flex items-end gap-1.5 mb-1">
           <span className={cn(
             "font-bold tracking-tight leading-none",
-            isFree ? "text-3xl" : "text-4xl",
+            isFree ? "text-2xl" : "text-3xl",
           )}>
             {displayPrice}
           </span>
@@ -424,21 +431,21 @@ export default function PlansPage() {
       {/* ── Billing cycle + currency toggles ── */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Cycle toggle */}
-        <div className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-1 gap-0.5">
+        <div className="inline-flex items-center rounded-lg border border-border bg-background p-1 gap-0.5">
           {(["monthly", "annual"] as BillingCycle[]).map(c => (
             <button
               key={c}
               onClick={() => setCycle(c)}
               className={cn(
-                "px-3.5 py-1.5 text-sm font-medium rounded-md transition-all",
+                "px-3.5 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer",
                 cycle === c
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-white dark:bg-slate-700 shadow-sm text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/60 dark:hover:bg-slate-700/60",
               )}
             >
               {c === "monthly" ? "Monthly" : "Annual"}
               {c === "annual" && (
-                <span className="ml-1.5 inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                <span className="ml-1.5 inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600">
                   Save 20%
                 </span>
               )}
@@ -447,16 +454,16 @@ export default function PlansPage() {
         </div>
 
         {/* Currency toggle */}
-        <div className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-1 gap-0.5">
+        <div className="inline-flex items-center rounded-lg border border-border bg-background p-1 gap-0.5">
           {(["UGX", "USD"] as BillingCurrency[]).map(cur => (
             <button
               key={cur}
               onClick={() => setCurrency(cur)}
               className={cn(
-                "px-3.5 py-1.5 text-sm font-medium rounded-md transition-all",
+                "px-3.5 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer",
                 currency === cur
-                  ? "bg-card shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-white dark:bg-slate-700 shadow-sm text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/60 dark:hover:bg-slate-700/60",
               )}
             >
               {cur}
