@@ -33,6 +33,8 @@ from app.models.property import Property, Unit, UnitStatus
 from app.models.tenant import OnboardingState, Tenant, TenantStatus
 from app.models.tenancy_agreement import TenancyAgreement
 from app.schemas.lease import (
+    AdminLeaseOut,
+    LeaseBillingRulesPatch,
     LeaseActivate,
     LeaseCreate,
     LeaseNotice,
@@ -704,6 +706,178 @@ async def _clear_unit_and_tenant(lease: Lease, db: AsyncSession) -> None:
             tenant.current_lease_id = None
             tenant.current_unit_id = None
             tenant.current_property_id = None
+
+
+# ── Superadmin helpers ────────────────────────────────────────────────────────
+
+def _admin_lease_out(
+    lease: Lease,
+    tenant_name: str | None = None,
+    unit_name: str | None = None,
+    property_name: str | None = None,
+    organisation_name: str | None = None,
+) -> AdminLeaseOut:
+    return AdminLeaseOut(
+        id=str(lease.id),
+        organisation_id=str(lease.organisation_id),
+        property_id=str(lease.property_id),
+        unit_id=str(lease.unit_id) if lease.unit_id else None,
+        tenant_id=str(lease.tenant_id) if lease.tenant_id else None,
+        status=lease.status.value,
+        start_date=str(lease.start_date),
+        end_date=str(lease.end_date) if lease.end_date else None,
+        monthly_rent=float(lease.monthly_rent),
+        currency=lease.currency,
+        rent_day_of_month=lease.rent_day_of_month,
+        grace_period_days=lease.grace_period_days,
+        late_fee_type=lease.late_fee_type,
+        late_fee_value=float(lease.late_fee_value),
+        notice_period_days=lease.notice_period_days,
+        tenant_name=tenant_name,
+        unit_name=unit_name,
+        property_name=property_name,
+        organisation_name=organisation_name,
+        created_at=lease.created_at.isoformat(),
+        updated_at=lease.updated_at.isoformat(),
+    )
+
+
+async def admin_list_leases(
+    db: AsyncSession,
+    *,
+    org_id: uuid.UUID | None = None,
+    lease_status: str | None = None,
+    zero_late_fee_only: bool = False,
+    page: int = 1,
+    page_size: int = 50,
+) -> dict:
+    """
+    Superadmin: list leases across all orgs with optional filters.
+
+    Parameters
+    ----------
+    org_id            : restrict to a single organisation
+    lease_status      : filter by status value (e.g. "active")
+    zero_late_fee_only: when True, only return leases where late_fee_value = 0
+    """
+    from sqlalchemy import func
+    from app.models.organisation import Organisation
+    from app.models.tenant import Tenant as TenantModel
+
+    stmt = (
+        select(
+            Lease,
+            TenantModel.display_name.label("tenant_name"),
+            Unit.name.label("unit_name"),
+            Property.name.label("property_name"),
+            Organisation.name.label("organisation_name"),
+        )
+        .outerjoin(TenantModel, Lease.tenant_id == TenantModel.id)
+        .outerjoin(Unit, Lease.unit_id == Unit.id)
+        .join(Property, Lease.property_id == Property.id)
+        .join(Organisation, Lease.organisation_id == Organisation.id)
+    )
+
+    if org_id is not None:
+        stmt = stmt.where(Lease.organisation_id == org_id)
+    if lease_status:
+        stmt = stmt.where(Lease.status == lease_status)
+    if zero_late_fee_only:
+        stmt = stmt.where(Lease.late_fee_value == 0)
+
+    # Count total
+    count_stmt = select(func.count()).select_from(stmt.subquery())
+    total: int = (await db.execute(count_stmt)).scalar_one()
+
+    offset = (page - 1) * page_size
+    rows = (await db.execute(stmt.order_by(Lease.created_at.desc()).offset(offset).limit(page_size))).all()
+
+    items = [
+        _admin_lease_out(
+            row.Lease,
+            tenant_name=row.tenant_name,
+            unit_name=row.unit_name,
+            property_name=row.property_name,
+            organisation_name=row.organisation_name,
+        )
+        for row in rows
+    ]
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "hasNext": (page * page_size) < total,
+    }
+
+
+async def admin_patch_lease_billing_rules(
+    lease_id: uuid.UUID,
+    body: LeaseBillingRulesPatch,
+    db: AsyncSession,
+) -> AdminLeaseOut:
+    """
+    Superadmin: overwrite billing rule fields on *any* lease regardless of status.
+
+    When ``body.sync_from_property`` is True every billing field is re-derived
+    from the unit/property rules (unit rules override property rules), and the
+    explicit field values in ``body`` are ignored.
+
+    Changes are immediately committed so re-generated PDF documents reflect the
+    corrected values.
+    """
+    lease = await db.scalar(select(Lease).where(Lease.id == lease_id))
+    if not lease:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
+
+    if body.sync_from_property:
+        # Derive effective rules: unit first, fall back to property
+        unit = await db.scalar(select(Unit).where(Unit.id == lease.unit_id)) if lease.unit_id else None
+        prop = await db.scalar(select(Property).where(Property.id == lease.property_id))
+        effective: dict = {}
+        if unit and unit.rules:
+            effective = unit.rules
+        elif prop and prop.rules:
+            effective = prop.rules
+
+        lease.rent_day_of_month  = effective.get("rentDayOfMonth", lease.rent_day_of_month)
+        lease.grace_period_days  = effective.get("gracePeriodDays", lease.grace_period_days)
+        lease.late_fee_type      = effective.get("lateFeeType", lease.late_fee_type)
+        lease.late_fee_value     = effective.get("lateFeeValue", lease.late_fee_value)
+        lease.notice_period_days = effective.get("noticePeriodDays", lease.notice_period_days)
+    else:
+        if body.rent_day_of_month  is not None: lease.rent_day_of_month  = body.rent_day_of_month
+        if body.grace_period_days  is not None: lease.grace_period_days  = body.grace_period_days
+        if body.late_fee_type      is not None: lease.late_fee_type      = body.late_fee_type
+        if body.late_fee_value     is not None: lease.late_fee_value     = body.late_fee_value
+        if body.notice_period_days is not None: lease.notice_period_days = body.notice_period_days
+
+    await db.flush()
+    await db.refresh(lease, attribute_names=["updated_at"])
+
+    # Load display names for the response
+    tenant_name = prop_name = unit_name = org_name = None
+    if lease.tenant_id:
+        t = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
+        if t:
+            tenant_name = t.display_name
+    if lease.unit_id:
+        u = await db.scalar(select(Unit).where(Unit.id == lease.unit_id))
+        if u:
+            unit_name = u.name
+    if lease.property_id:
+        p = await db.scalar(select(Property).where(Property.id == lease.property_id))
+        if p:
+            prop_name = p.name
+
+    log.info(
+        "admin.lease.billing_rules_patched",
+        lease_id=str(lease_id),
+        sync_from_property=body.sync_from_property,
+    )
+    return _admin_lease_out(lease, tenant_name=tenant_name, unit_name=unit_name,
+                            property_name=prop_name, organisation_name=org_name)
 
 
 # ── Document generation ────────────────────────────────────────────────────────

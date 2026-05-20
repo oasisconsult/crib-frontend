@@ -11,6 +11,9 @@ POST /admin/profiles/{sub}/invalidate-session   — force JWT refresh on next re
 
 POST /admin/landlords/{id}/migrate-to-personal-org — move landlord to own personal org
 POST /admin/landlords/{id}/assign-to-agency        — transfer landlord to agency management
+
+GET  /admin/leases                              — list all leases across orgs (filterable)
+PATCH /admin/leases/{id}/billing-rules          — overwrite billing fields on any lease
 """
 from __future__ import annotations
 
@@ -25,7 +28,9 @@ from app.api.deps import CurrentUser, get_current_user, require_superadmin
 from app.core.database import get_db
 from app.models.organisation import Organisation
 from app.models.profile import Profile
+from app.schemas.lease import AdminLeaseOut, LeaseBillingRulesPatch
 from app.services import admin_service
+from app.services import lease_service as lease_svc
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -453,3 +458,64 @@ async def invalidate_user_session(
         logto_sub=logto_sub,
         message=f"Session for {logto_sub} will refresh on next request.",
     )
+
+
+# ── Lease data-correction tools ───────────────────────────────────────────────
+
+@router.get(
+    "/leases",
+    response_model=dict,
+    dependencies=[Depends(require_superadmin())],
+)
+async def admin_list_leases(
+    org_id: uuid.UUID | None = Query(None, alias="orgId", description="Filter by organisation"),
+    lease_status: str | None = Query(None, alias="status", description="Filter by lease status"),
+    zero_late_fee_only: bool = Query(
+        False, alias="zeroLateFeeOnly",
+        description="Only return leases whose late_fee_value is 0"
+    ),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200, alias="pageSize"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    List leases across all organisations.
+
+    Use ``zeroLateFeeOnly=true`` to surface CSV-imported leases that were
+    created before the late-fee inheritance fix was applied.
+    """
+    return await lease_svc.admin_list_leases(
+        db,
+        org_id=org_id,
+        lease_status=lease_status,
+        zero_late_fee_only=zero_late_fee_only,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.patch(
+    "/leases/{lease_id}/billing-rules",
+    response_model=AdminLeaseOut,
+    dependencies=[Depends(require_superadmin())],
+)
+async def admin_patch_lease_billing_rules(
+    lease_id: uuid.UUID,
+    body: LeaseBillingRulesPatch,
+    db: AsyncSession = Depends(get_db),
+) -> AdminLeaseOut:
+    """
+    Overwrite billing rules on any lease regardless of its current status.
+
+    Pass ``syncFromProperty: true`` to automatically pull all rules from the
+    unit/property configuration — useful for bulk-correcting CSV-imported
+    leases that were created with the wrong (hard-coded) billing values.
+
+    Or supply individual fields to set them explicitly.
+
+    This does NOT affect the lease agreement PDF until the agreement is
+    regenerated — use ``POST /leases/{id}/generate-document`` after patching.
+    """
+    result = await lease_svc.admin_patch_lease_billing_rules(lease_id, body, db)
+    await db.commit()
+    return result

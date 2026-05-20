@@ -77,6 +77,48 @@ class LeaseNotice(CamelModel):
     )
 
 
+class LeaseBillingRulesPatch(CamelModel):
+    """
+    Superadmin-only: update billing rules on any lease regardless of status.
+
+    All fields are optional.  Pass ``sync_from_property=True`` to automatically
+    pull every rule from the unit/property configuration (ignoring any other
+    field in this request body).
+    """
+    sync_from_property: bool = False
+    rent_day_of_month: int | None = Field(default=None, ge=1, le=28)
+    grace_period_days: int | None = Field(default=None, ge=0)
+    late_fee_type: str | None = None          # "flat" | "percent"
+    late_fee_value: float | None = Field(default=None, ge=0)
+    notice_period_days: int | None = Field(default=None, ge=0)
+
+
+class AdminLeaseOut(CamelModel):
+    """Slimmer lease representation used in admin list views."""
+    id: str
+    organisation_id: str
+    property_id: str
+    unit_id: str | None
+    tenant_id: str | None
+    status: str
+    start_date: str
+    end_date: str | None
+    monthly_rent: float
+    currency: str
+    rent_day_of_month: int
+    grace_period_days: int
+    late_fee_type: str
+    late_fee_value: float
+    notice_period_days: int
+    # denormalised names for quick scan
+    tenant_name: str | None = None
+    unit_name: str | None = None
+    property_name: str | None = None
+    organisation_name: str | None = None
+    created_at: str
+    updated_at: str
+
+
 class LeaseRenewRequest(CamelModel):
     """Override terms for the renewal draft. Omitted fields are copied from the original."""
     start_date: date
