@@ -22,6 +22,7 @@ import {
   Plus,
   MailCheck,
   Loader2,
+  ScrollText,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import { Separator } from "@/components/ui/separator";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { RbacPanel } from "@/components/admin/RbacPanel";
+import { LeaseBillingTab } from "@/components/admin/LeaseBillingTab";
 import { useAgencyInvites, useCreateAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
 import { useMigrateToPersonalOrg, useAssignToAgency, useRepairLandlordOrg, useRemoveFromLogtoOrg } from "@/hooks/useAdminLandlords";
 import { AdminSearchCombobox, type ComboboxOption } from "@/components/admin/AdminSearchCombobox";
@@ -342,6 +344,10 @@ export default function AdminPage() {
             <TabsTrigger value="gdpr">
               <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
               Compliance
+            </TabsTrigger>
+            <TabsTrigger value="lease-billing">
+              <ScrollText className="h-3.5 w-3.5 mr-1.5" />
+              Lease Billing
             </TabsTrigger>
           </TabsList>
 
@@ -1089,6 +1095,11 @@ export default function AdminPage() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ─── Lease Billing tab ──────────────────────────────── */}
+          <TabsContent value="lease-billing" className="mt-4">
+            <LeaseBillingTab />
           </TabsContent>
         </Tabs>
       </div>
