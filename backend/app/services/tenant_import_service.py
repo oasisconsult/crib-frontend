@@ -753,6 +753,16 @@ async def commit_import(
             lease_start  = date.fromisoformat(r.lease_start_date) if r.lease_start_date else date.today()
             lease_end    = date.fromisoformat(r.lease_end_date) if r.lease_end_date else None
 
+            # Load property so we can derive the effective billing rules
+            # (unit rules override property rules, same logic as lease_service.create_lease)
+            prop_result = await db.execute(
+                select(Property).where(Property.id == resolved_unit.property_id)  # type: ignore[union-attr]
+            )
+            prop_for_rules = prop_result.scalar_one_or_none()
+            effective = (resolved_unit.rules or {}) if resolved_unit.rules else (  # type: ignore[union-attr]
+                prop_for_rules.rules if prop_for_rules else {}
+            ) or {}
+
             # Map mode to LeaseStatus
             lease_status_map = {
                 "active":   LeaseStatus.active,
@@ -774,11 +784,11 @@ async def commit_import(
                 deposit_amount=r.deposit_amount,
                 deposit_paid=False,
                 signed_at=now if lease_mode in ("active", "rolling") else None,
-                rent_day_of_month=1,
-                grace_period_days=5,
-                late_fee_type="flat",
-                late_fee_value=0,
-                notice_period_days=30,
+                rent_day_of_month=effective.get("rentDayOfMonth", 1),
+                grace_period_days=effective.get("gracePeriodDays", 5),
+                late_fee_type=effective.get("lateFeeType", "flat"),
+                late_fee_value=effective.get("lateFeeValue", 0),
+                notice_period_days=effective.get("noticePeriodDays", 30),
             )
             db.add(lease)
             await db.flush()
