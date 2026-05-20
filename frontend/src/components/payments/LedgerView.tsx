@@ -1,7 +1,6 @@
 "use client";
 
 import { Download, TrendingUp, TrendingDown } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable, type Column } from "@/components/common/DataTable";
 import { Badge } from "@/components/ui/badge";
@@ -130,28 +129,24 @@ export function LedgerView({ leaseId, tenantName }: LedgerViewProps) {
       </div>
 
       {/* Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">
-              Ledger {tenantName ? `— ${tenantName}` : ""}
-            </CardTitle>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4" />
-              Export CSV
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-0">
-          <DataTable
-            data={entries ?? []}
-            columns={COLUMNS}
-            loading={isLoading}
-            rowKey={(e) => e.id}
-            emptyTitle="No ledger entries"
-          />
-        </CardContent>
-      </Card>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-base font-semibold">
+            Ledger {tenantName ? `— ${tenantName}` : ""}
+          </h3>
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
+        <DataTable
+          data={entries ?? []}
+          columns={COLUMNS}
+          loading={isLoading}
+          rowKey={(e) => e.id}
+          emptyTitle="No ledger entries"
+        />
+      </div>
     </div>
   );
 }

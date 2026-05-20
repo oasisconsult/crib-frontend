@@ -12,12 +12,15 @@ import {
   SlidersHorizontal,
   Download,
   FileText,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +39,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useAdminLeases, usePatchLeaseBillingRules } from "@/hooks/useAdminLeases";
 import { adminLeasesApi, type AdminLease, type LeaseBillingRulesPatch } from "@/services/api/adminLeases";
+import { EmptyState } from "@/components/common/EmptyState";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 
@@ -212,6 +216,9 @@ function EditDialog({ lease, open, onClose }: EditDialogProps) {
 
 // ── Inline table ──────────────────────────────────────────────────────────────
 
+// Header cell — shared style matching DataTable
+const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] whitespace-nowrap select-none";
+
 function LeaseTable({
   items,
   loading,
@@ -220,6 +227,10 @@ function LeaseTable({
   onSync,
   onEdit,
   isSyncing,
+  page,
+  total,
+  pageSize,
+  onPageChange,
 }: {
   items: AdminLease[];
   loading: boolean;
@@ -228,7 +239,16 @@ function LeaseTable({
   onSync: (id: string) => void;
   onEdit: (lease: AdminLease) => void;
   isSyncing: boolean;
+  page: number;
+  total: number;
+  pageSize: number;
+  onPageChange: (p: number) => void;
 }) {
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const showPagination = !loading && totalPages > 1;
+  const startItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endItem = Math.min(page * pageSize, total);
+
   function toggleAll() {
     const allKeys = items.map(l => l.id);
     const allSelected = allKeys.every(k => selectedKeys.has(k));
@@ -246,64 +266,79 @@ function LeaseTable({
 
   if (!loading && items.length === 0) {
     return (
-      <div className="py-16 text-center text-sm text-muted-foreground border rounded-lg">
-        No leases found — try adjusting the filters.
+      <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)]">
+        <EmptyState title="No leases found" description="Try adjusting the filters." />
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border overflow-hidden">
+    <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)] transition-shadow duration-200 hover:shadow-[var(--shadow-md)]">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[700px]">
+        <table className="w-full text-sm min-w-[740px]" role="table">
+
+          {/* ── Header ─────────────────────────────────────────── */}
           <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="w-10 px-3 py-2.5">
+            <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+              <th className="w-12 px-4 py-3">
                 <input
                   type="checkbox"
-                  className="rounded accent-primary"
+                  className="rounded border-[hsl(var(--border))] accent-[hsl(var(--primary))]"
                   checked={items.length > 0 && items.every(l => selectedKeys.has(l.id))}
                   onChange={toggleAll}
                   aria-label="Select all"
                 />
               </th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Tenant</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Unit / Property</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Status</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Late Fee</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Grace / Due Day</th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Notice</th>
-              <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">Actions</th>
+              <th className={TH}>Tenant</th>
+              <th className={TH}>Unit / Property</th>
+              <th className={TH}>Status</th>
+              <th className={TH}>Late Fee</th>
+              <th className={TH}>Grace / Due Day</th>
+              <th className={TH}>Notice</th>
+              <th className={cn(TH, "text-right")}>Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
+
+          {/* ── Body ───────────────────────────────────────────── */}
+          <tbody className="divide-y divide-[hsl(var(--border))]">
             {loading
               ? Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    {Array.from({ length: 8 }).map((_, j) => (
-                      <td key={j} className="px-3 py-3">
-                        <div className="h-4 bg-muted rounded w-full max-w-[120px]" />
+                  <tr key={i}>
+                    <td className="w-12 px-4 py-3.5">
+                      <Skeleton className="h-4 w-4" />
+                    </td>
+                    {Array.from({ length: 7 }).map((_, j) => (
+                      <td key={j} className="px-4 py-3.5">
+                        <Skeleton className="h-4 w-full max-w-[120px]" />
                       </td>
                     ))}
                   </tr>
                 ))
-              : items.map(lease => {
+              : items.map((lease, rowIdx) => {
                   const isZero = lease.lateFeeValue === 0;
                   const isSelected = selectedKeys.has(lease.id);
                   return (
-                    <tr key={lease.id} className={cn("transition-colors hover:bg-muted/30", isSelected && "bg-primary/5")}>
+                    <tr
+                      key={lease.id}
+                      className={cn(
+                        "transition-colors",
+                        rowIdx % 2 === 1 && !isSelected && "bg-[hsl(var(--muted))]/30",
+                        "hover:bg-[hsl(var(--accent))]",
+                        isSelected && "bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]",
+                      )}
+                    >
                       {/* Checkbox */}
-                      <td className="w-10 px-3 py-3" onClick={e => e.stopPropagation()}>
+                      <td className="w-12 px-4 py-3.5" onClick={e => e.stopPropagation()}>
                         <input
                           type="checkbox"
-                          className="rounded accent-primary"
+                          className="rounded border-[hsl(var(--border))] accent-[hsl(var(--primary))]"
                           checked={isSelected}
                           onChange={() => toggleRow(lease.id)}
                         />
                       </td>
 
                       {/* Tenant */}
-                      <td className="px-3 py-3 max-w-[160px]">
+                      <td className="px-4 py-3.5 max-w-[160px] text-[hsl(var(--foreground))]">
                         <p className="font-medium text-sm truncate">
                           {lease.tenantName || <span className="text-muted-foreground italic text-xs">No tenant</span>}
                         </p>
@@ -313,13 +348,13 @@ function LeaseTable({
                       </td>
 
                       {/* Unit / Property */}
-                      <td className="px-3 py-3 max-w-[160px]">
+                      <td className="px-4 py-3.5 max-w-[160px] text-[hsl(var(--foreground))]">
                         <p className="text-sm truncate">{lease.unitName || "—"}</p>
                         <p className="text-xs text-muted-foreground truncate mt-0.5">{lease.propertyName || "—"}</p>
                       </td>
 
                       {/* Status */}
-                      <td className="px-3 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-[hsl(var(--foreground))]">
                         <Badge
                           variant="outline"
                           className={cn("capitalize text-xs px-1.5 py-0", STATUS_STYLES[lease.status] ?? "")}
@@ -329,7 +364,7 @@ function LeaseTable({
                       </td>
 
                       {/* Late fee */}
-                      <td className="px-3 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-[hsl(var(--foreground))]">
                         {isZero ? (
                           <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium text-xs">
                             <AlertTriangle className="h-3 w-3 shrink-0" />
@@ -345,17 +380,17 @@ function LeaseTable({
                       </td>
 
                       {/* Grace / Due day */}
-                      <td className="px-3 py-3 whitespace-nowrap text-sm text-muted-foreground">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-sm text-muted-foreground">
                         {lease.gracePeriodDays}d grace · day {lease.rentDayOfMonth}
                       </td>
 
                       {/* Notice */}
-                      <td className="px-3 py-3 whitespace-nowrap text-sm text-muted-foreground">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-sm text-muted-foreground">
                         {lease.noticePeriodDays}d
                       </td>
 
                       {/* Actions */}
-                      <td className="px-3 py-3 text-right whitespace-nowrap">
+                      <td className="px-4 py-3.5 text-right whitespace-nowrap text-[hsl(var(--foreground))]">
                         <div className="inline-flex items-center gap-1">
                           <Button
                             size="sm"
@@ -384,27 +419,66 @@ function LeaseTable({
           </tbody>
         </table>
       </div>
-    </div>
-  );
-}
 
-// ── Pagination ────────────────────────────────────────────────────────────────
-
-function Pagination({ page, total, pageSize, onChange }: {
-  page: number; total: number; pageSize: number; onChange: (p: number) => void;
-}) {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  if (totalPages <= 1) return null;
-  const start = (page - 1) * pageSize + 1;
-  const end = Math.min(page * pageSize, total);
-  return (
-    <div className="flex items-center justify-between pt-3 text-xs text-muted-foreground">
-      <span>Showing {start}–{end} of {total.toLocaleString()} leases</span>
-      <div className="flex items-center gap-1">
-        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={page === 1} onClick={() => onChange(page - 1)}>‹ Prev</Button>
-        <span className="px-2 font-medium text-foreground">{page} / {totalPages}</span>
-        <Button size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={page === totalPages} onClick={() => onChange(page + 1)}>Next ›</Button>
-      </div>
+      {/* ── Pagination footer (matches DataTable's footer) ─────── */}
+      {showPagination && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-[hsl(var(--border))] bg-[hsl(var(--muted))]/50">
+          <p className="text-xs text-[hsl(var(--muted-foreground))]">
+            {total === 0 ? "No results" : (
+              <>
+                Showing{" "}
+                <span className="font-medium text-[hsl(var(--foreground))]">{startItem}–{endItem}</span>
+                {" "}of{" "}
+                <span className="font-medium text-[hsl(var(--foreground))]">{total.toLocaleString()}</span>
+                {" "}results
+              </>
+            )}
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => onPageChange(page - 1)}
+              disabled={page === 1}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <div className="flex items-center gap-0.5">
+              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5)          pageNum = i + 1;
+                else if (page <= 3)           pageNum = i + 1;
+                else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+                else                          pageNum = page - 2 + i;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => onPageChange(pageNum)}
+                    className={cn(
+                      "h-7 min-w-[28px] px-1.5 rounded-[6px] text-xs font-medium transition-colors",
+                      page === pageNum
+                        ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]"
+                        : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]",
+                    )}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="icon-sm"
+              onClick={() => onPageChange(page + 1)}
+              disabled={page === totalPages}
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -572,7 +646,7 @@ export function LeaseBillingTab() {
           </div>
         )}
 
-        {/* ── Table ──────────────────────────────────────────────────────── */}
+        {/* ── Table (with pagination built in) ───────────────────────────── */}
         <LeaseTable
           items={displayItems}
           loading={isLoading}
@@ -581,14 +655,10 @@ export function LeaseBillingTab() {
           onSync={syncOne}
           onEdit={setEditLease}
           isSyncing={patching}
-        />
-
-        {/* ── Pagination ─────────────────────────────────────────────────── */}
-        <Pagination
           page={page}
           total={data?.total ?? 0}
           pageSize={50}
-          onChange={setPage}
+          onPageChange={setPage}
         />
       </div>
 

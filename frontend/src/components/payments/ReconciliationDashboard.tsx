@@ -10,7 +10,7 @@ import {
   Phone,
   Banknote,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -298,41 +298,37 @@ export function ReconciliationDashboard() {
       </div>
 
       {/* Tabs + table */}
-      <Card>
-        <CardHeader className="pb-0">
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="h-9">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="unmatched">
-                Unmatched
-                {(page?.data?.filter((t) => t.status === "unmatched").length ?? 0) > 0 && (
-                  <span className="ml-1.5 rounded-full bg-orange-500 px-1.5 py-0.5 text-xs text-white">
-                    {page?.data?.filter((t) => t.status === "unmatched").length}
-                  </span>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="pending">Pending</TabsTrigger>
-              <TabsTrigger value="matched">Matched</TabsTrigger>
-              <TabsTrigger value="failed">Failed</TabsTrigger>
-            </TabsList>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="h-9">
+          <TabsTrigger value="all">All</TabsTrigger>
+          <TabsTrigger value="unmatched">
+            Unmatched
+            {(page?.data?.filter((t) => t.status === "unmatched").length ?? 0) > 0 && (
+              <span className="ml-1.5 rounded-full bg-orange-500 px-1.5 py-0.5 text-xs text-white">
+                {page?.data?.filter((t) => t.status === "unmatched").length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="pending">Pending</TabsTrigger>
+          <TabsTrigger value="matched">Matched</TabsTrigger>
+          <TabsTrigger value="failed">Failed</TabsTrigger>
+        </TabsList>
 
-            <TabsContent value={tab} className="mt-0">
-              <DataTable
-                data={txns}
-                columns={COLUMNS}
-                loading={isLoading}
-                rowKey={(t) => t.id}
-                emptyTitle="No transactions"
-                emptyDescription={
-                  tab === "unmatched"
-                    ? "All mobile money transactions have been matched."
-                    : "No transactions in this category."
-                }
-              />
-            </TabsContent>
-          </Tabs>
-        </CardHeader>
-      </Card>
+        <TabsContent value={tab} className="mt-3">
+          <DataTable
+            data={txns}
+            columns={COLUMNS}
+            loading={isLoading}
+            rowKey={(t) => t.id}
+            emptyTitle="No transactions"
+            emptyDescription={
+              tab === "unmatched"
+                ? "All mobile money transactions have been matched."
+                : "No transactions in this category."
+            }
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Pagination info */}
       {page && page.total > 0 && (
