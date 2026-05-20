@@ -268,6 +268,54 @@ function PlanCard({
 
 // ── Comparison Table ───────────────────────────────────────────────────────
 
+type FeatureRow = { label: string; feature: string };
+type LimitRow   = { label: string; render: (p: SubscriptionPlan) => string };
+type AnyRow     = FeatureRow | LimitRow;
+
+const COMPARISON_CATEGORIES: { label: string; rows: AnyRow[] }[] = [
+  {
+    label: "Usage Limits",
+    rows: [
+      { label: "Properties",   render: (p) => p.maxProperties === -1 ? "Unlimited" : String(p.maxProperties) },
+      { label: "Units",        render: (p) => p.maxUnits === -1 ? "Unlimited" : String(p.maxUnits) },
+      { label: "Team Members", render: (p) => p.maxUsers === -1 ? "Unlimited" : String(p.maxUsers) },
+      { label: "Storage",      render: (p) => storageLabel(p.maxStorageMb).replace(" storage", "") },
+    ] as LimitRow[],
+  },
+  {
+    label: "Analytics",
+    rows: [
+      { label: "Basic Analytics",    feature: "analytics_basic" },
+      { label: "Advanced Analytics", feature: "analytics_advanced" },
+    ] as FeatureRow[],
+  },
+  {
+    label: "Operations",
+    rows: [
+      { label: "Maintenance Workflows", feature: "maintenance_workflows" },
+      { label: "Document Storage",      feature: "document_storage" },
+      { label: "Tenant Messaging",      feature: "tenant_messaging" },
+    ] as FeatureRow[],
+  },
+  {
+    label: "Team & Customisation",
+    rows: [
+      { label: "Team Members",    feature: "team_members" },
+      { label: "Custom Branding", feature: "custom_branding" },
+    ] as FeatureRow[],
+  },
+  {
+    label: "Support & Compliance",
+    rows: [
+      { label: "Priority Support",  feature: "priority_support" },
+      { label: "Dedicated Support", feature: "dedicated_support" },
+      { label: "API Access",        feature: "api_access" },
+      { label: "SSO / SAML",        feature: "sso" },
+      { label: "Audit Logs",        feature: "audit_logs" },
+    ] as FeatureRow[],
+  },
+];
+
 function ComparisonTable({
   plans,
   sub,
@@ -275,121 +323,98 @@ function ComparisonTable({
   plans: SubscriptionPlan[];
   sub: { plan: { id: string } } | undefined;
 }) {
-  const categories = [
-    {
-      label: "Usage Limits",
-      rows: [
-        { label: "Properties",  render: (p: SubscriptionPlan) => p.maxProperties === -1 ? "Unlimited" : p.maxProperties.toString() },
-        { label: "Units",       render: (p: SubscriptionPlan) => p.maxUnits === -1 ? "Unlimited" : p.maxUnits.toString() },
-        { label: "Team Members",render: (p: SubscriptionPlan) => p.maxUsers === -1 ? "Unlimited" : p.maxUsers.toString() },
-        { label: "Storage",     render: (p: SubscriptionPlan) => storageLabel(p.maxStorageMb).replace(" storage", "") },
-      ],
-    },
-    {
-      label: "Analytics",
-      rows: [
-        { label: "Basic Analytics",    feature: "analytics_basic" },
-        { label: "Advanced Analytics", feature: "analytics_advanced" },
-      ],
-    },
-    {
-      label: "Operations",
-      rows: [
-        { label: "Maintenance Workflows", feature: "maintenance_workflows" },
-        { label: "Document Storage",      feature: "document_storage" },
-        { label: "Tenant Messaging",      feature: "tenant_messaging" },
-      ],
-    },
-    {
-      label: "Team & Customisation",
-      rows: [
-        { label: "Team Members",    feature: "team_members" },
-        { label: "Custom Branding", feature: "custom_branding" },
-      ],
-    },
-    {
-      label: "Support & Compliance",
-      rows: [
-        { label: "Priority Support",   feature: "priority_support" },
-        { label: "Dedicated Support",  feature: "dedicated_support" },
-        { label: "API Access",         feature: "api_access" },
-        { label: "SSO / SAML",         feature: "sso" },
-        { label: "Audit Logs",         feature: "audit_logs" },
-      ],
-    },
-  ];
-
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-      {/* Table header */}
-      <div className="grid border-b border-border bg-muted/30" style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
-        <div className="p-4" />
-        {plans.map(plan => (
-          <div key={plan.id} className={cn(
-            "p-4 text-center",
-            plan.slug === "professional" && "bg-primary/5",
-          )}>
-            <p className="text-sm font-bold text-foreground">{plan.name}</p>
-            {sub?.plan.id === plan.id && (
-              <Badge variant="outline" className="text-[10px] border-primary/40 text-primary mt-1">
-                Current
-              </Badge>
-            )}
-          </div>
-        ))}
+    <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)]">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm" role="table">
+
+          {/* ── Column headers ── */}
+          <thead>
+            <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+              <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] w-[38%]">
+                Feature
+              </th>
+              {plans.map(plan => (
+                <th
+                  key={plan.id}
+                  className={cn(
+                    "px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]",
+                    plan.slug === "professional" && "bg-[hsl(var(--accent))]",
+                  )}
+                >
+                  <span className="block text-[hsl(var(--foreground))]">{plan.name}</span>
+                  {sub?.plan.id === plan.id && (
+                    <span className="mt-1 inline-block rounded-full border border-[hsl(var(--primary))]/40 px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--primary))]">
+                      Current
+                    </span>
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          {/* ── Body ── */}
+          <tbody className="divide-y divide-[hsl(var(--border))]">
+            {COMPARISON_CATEGORIES.map((cat) => (
+              <>
+                {/* Category group header */}
+                <tr
+                  key={cat.label}
+                  className="bg-[hsl(var(--muted))]/50"
+                >
+                  <td
+                    colSpan={plans.length + 1}
+                    className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))]"
+                  >
+                    {cat.label}
+                  </td>
+                </tr>
+
+                {/* Category rows */}
+                {cat.rows.map((row, ri) => (
+                  <tr
+                    key={ri}
+                    className="transition-colors hover:bg-[hsl(var(--accent))]"
+                  >
+                    {/* Feature label */}
+                    <td className="px-4 py-3.5 text-[hsl(var(--foreground))]">
+                      {row.label}
+                    </td>
+
+                    {/* Plan cells */}
+                    {plans.map((plan) => {
+                      const isPopular = plan.slug === "professional";
+                      const cellBase = cn(
+                        "px-4 py-3.5 text-center",
+                        isPopular && "bg-[hsl(var(--accent))]/60",
+                      );
+
+                      if ("feature" in row) {
+                        const enabled = plan.features[(row as FeatureRow).feature];
+                        return (
+                          <td key={plan.id} className={cellBase}>
+                            <span className="inline-flex items-center justify-center">
+                              {enabled
+                                ? <Check className="h-4 w-4 text-[hsl(var(--primary))]" />
+                                : <X    className="h-4 w-4 text-[hsl(var(--muted-foreground))]/30" />}
+                            </span>
+                          </td>
+                        );
+                      }
+
+                      return (
+                        <td key={plan.id} className={cn(cellBase, "font-medium text-[hsl(var(--foreground))]")}>
+                          {(row as LimitRow).render(plan)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </>
+            ))}
+          </tbody>
+        </table>
       </div>
-
-      {/* Categories */}
-      {categories.map((cat) => (
-        <div key={cat.label}>
-          {/* Category header */}
-          <div className="grid bg-muted/20 border-b border-border" style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}>
-            <div className="px-4 py-2.5 col-span-full">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{cat.label}</p>
-            </div>
-          </div>
-
-          {/* Rows */}
-          {cat.rows.map((row, ri) => (
-            <div
-              key={ri}
-              className={cn(
-                "grid border-b border-border last:border-0 hover:bg-muted/20 transition-colors",
-              )}
-              style={{ gridTemplateColumns: `1fr repeat(${plans.length}, 1fr)` }}
-            >
-              <div className="px-4 py-3 text-sm text-muted-foreground flex items-center">
-                {row.label}
-              </div>
-              {plans.map(plan => {
-                const isPopular = plan.slug === "professional";
-                if ("feature" in row) {
-                  const enabled = plan.features[row.feature!];
-                  return (
-                    <div key={plan.id} className={cn(
-                      "px-4 py-3 flex items-center justify-center",
-                      isPopular && "bg-primary/5",
-                    )}>
-                      {enabled
-                        ? <Check className="h-4 w-4 text-primary" />
-                        : <X className="h-4 w-4 text-muted-foreground/30" />}
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div key={plan.id} className={cn(
-                      "px-4 py-3 text-sm font-medium text-center text-foreground",
-                      isPopular && "bg-primary/5",
-                    )}>
-                      {row.render(plan)}
-                    </div>
-                  );
-                }
-              })}
-            </div>
-          ))}
-        </div>
-      ))}
     </div>
   );
 }
