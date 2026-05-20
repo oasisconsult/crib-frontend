@@ -316,40 +316,42 @@ export default function AdminPage() {
 
         {/* ── Tabs ──────────────────────────────────────────────── */}
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
-            <TabsTrigger value="users">
-              <Users className="h-3.5 w-3.5 mr-1.5" />
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="agencies">
-              <Building2 className="h-3.5 w-3.5 mr-1.5" />
-              Agencies
-            </TabsTrigger>
-            <TabsTrigger value="landlords">
-              <UserCheck className="h-3.5 w-3.5 mr-1.5" />
-              Landlords
-            </TabsTrigger>
-            <TabsTrigger value="system">
-              <Server className="h-3.5 w-3.5 mr-1.5" />
-              System
-            </TabsTrigger>
-            <TabsTrigger value="settings">
-              <Database className="h-3.5 w-3.5 mr-1.5" />
-              Settings
-            </TabsTrigger>
-            <TabsTrigger value="access">
-              <Shield className="h-3.5 w-3.5 mr-1.5" />
-              Access Control
-            </TabsTrigger>
-            <TabsTrigger value="gdpr">
-              <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
-              Compliance
-            </TabsTrigger>
-            <TabsTrigger value="lease-billing">
-              <ScrollText className="h-3.5 w-3.5 mr-1.5" />
-              Lease Billing
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-px">
+            <TabsList className="flex w-max min-w-full h-auto gap-0.5 p-1">
+              <TabsTrigger value="users" className="shrink-0">
+                <Users className="h-3.5 w-3.5 mr-1.5" />
+                Users
+              </TabsTrigger>
+              <TabsTrigger value="agencies" className="shrink-0">
+                <Building2 className="h-3.5 w-3.5 mr-1.5" />
+                Agencies
+              </TabsTrigger>
+              <TabsTrigger value="landlords" className="shrink-0">
+                <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+                Landlords
+              </TabsTrigger>
+              <TabsTrigger value="system" className="shrink-0">
+                <Server className="h-3.5 w-3.5 mr-1.5" />
+                System
+              </TabsTrigger>
+              <TabsTrigger value="settings" className="shrink-0">
+                <Database className="h-3.5 w-3.5 mr-1.5" />
+                Settings
+              </TabsTrigger>
+              <TabsTrigger value="access" className="shrink-0">
+                <Shield className="h-3.5 w-3.5 mr-1.5" />
+                Access
+              </TabsTrigger>
+              <TabsTrigger value="gdpr" className="shrink-0">
+                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                Compliance
+              </TabsTrigger>
+              <TabsTrigger value="lease-billing" className="shrink-0">
+                <ScrollText className="h-3.5 w-3.5 mr-1.5" />
+                Lease Billing
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* ─── Users tab ───────────────────────────────────── */}
           <TabsContent value="users" className="mt-4 space-y-4">
