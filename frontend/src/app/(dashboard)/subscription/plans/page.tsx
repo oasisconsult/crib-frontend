@@ -100,18 +100,26 @@ function PlanCard({
   const monthlyUSD = plan.monthlyPriceUsdCents;
   const annualUSD  = plan.annualPriceUsdCents;
 
-  const displayPrice =
+  // Split currency label from number so "UGX" never sits on the same line as the amount
+  const isFreePrice = plan.slug === "free";
+  const rawAmount =
     currency === "UGX"
-      ? cycle === "annual" ? formatUGX(Math.round(annualUGX / 12)) : formatUGX(monthlyUGX)
-      : cycle === "annual" ? formatUSD(Math.round(annualUSD / 12)) : formatUSD(monthlyUSD);
+      ? (cycle === "annual" ? Math.round(annualUGX / 12) : monthlyUGX)
+      : (cycle === "annual" ? Math.round(annualUSD / 12) : monthlyUSD);
+
+  const priceCurrencyLabel = currency === "UGX" ? "UGX" : "USD";
+  const priceSymbol        = currency === "USD" ? "$" : "";
+  const priceAmount        = isFreePrice
+    ? "Free"
+    : `${priceSymbol}${currency === "USD" ? compactNum(rawAmount / 100) : compactNum(rawAmount)}`;
 
   const savings =
     currency === "UGX"
       ? annualSavings(monthlyUGX, annualUGX)
       : annualSavings(monthlyUSD, annualUSD);
 
-  const isFree       = plan.slug === "free";
-  const highlights   = PLAN_HIGHLIGHTS[plan.slug] ?? FEATURES.slice(0, 4).map(f => f.key);
+  const isFree      = isFreePrice;
+  const highlights  = PLAN_HIGHLIGHTS[plan.slug] ?? FEATURES.slice(0, 4).map(f => f.key);
   const limitItems   = [
     { icon: Building2, label: limitLabel(plan.maxProperties, "properties") },
     { icon: Building2, label: limitLabel(plan.maxUnits, "units") },
@@ -157,15 +165,21 @@ function PlanCard({
           </div>
         </div>
 
-        <div className="flex items-end gap-1.5 mb-1">
+        {/* Currency label sits above the number so "UGX 160k" never wraps mid-string */}
+        {!isFree && (
+          <p className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground mb-0.5">
+            {priceCurrencyLabel}
+          </p>
+        )}
+        <div className="flex items-baseline gap-1.5 mb-1">
           <span className={cn(
             "font-bold tracking-tight leading-none",
             isFree ? "text-2xl" : "text-3xl",
           )}>
-            {displayPrice}
+            {priceAmount}
           </span>
           {!isFree && (
-            <span className="text-sm text-muted-foreground mb-0.5">/ mo</span>
+            <span className="text-sm text-muted-foreground">/mo</span>
           )}
         </div>
 
