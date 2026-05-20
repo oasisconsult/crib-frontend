@@ -140,7 +140,7 @@ function PlanCard({
       {/* Popular badge */}
       {isRecommended && (
         <div className="absolute -top-3.5 inset-x-0 flex justify-center">
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/30 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary shadow-sm">
+          <span className="inline-flex items-center gap-1 rounded-full bg-white dark:bg-card border border-primary/40 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-primary shadow-sm">
             <Zap className="h-3 w-3" />
             Most Popular
           </span>
