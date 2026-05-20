@@ -63,3 +63,10 @@ mailhog:
 pull:
 	git checkout -- . 2>/dev/null || true
 	git pull origin main
+
+# ─── Production passthrough targets ──────────────────────────────────────────
+# Delegate to Makefile.prod so plain 'make deploy' works on the production VPS
+# without needing to remember '-f Makefile.prod'.
+
+deploy migrate rollback status restart logs-backend logs-frontend logs-worker shell-backend:
+	$(MAKE) -f Makefile.prod $@
