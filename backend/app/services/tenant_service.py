@@ -734,7 +734,7 @@ async def resend_login_credentials(
 # ── Send onboarding link (with lease linked) ─────────────────────────────────
 
 async def send_onboarding_link(
-    lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    lease_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> TenantInviteOut:
     """
     Link a draft lease to the approved tenant's invite and issue a fresh token.
@@ -751,9 +751,10 @@ async def send_onboarding_link(
     """
     from app.models.lease import Lease, LeaseStatus
 
-    result = await db.execute(
-        select(Lease).where(Lease.id == lease_id, Lease.organisation_id == org_id)
-    )
+    _filters = [Lease.id == lease_id]
+    if org_id is not None:
+        _filters.append(Lease.organisation_id == org_id)
+    result = await db.execute(select(Lease).where(*_filters))
     lease = result.scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found.")

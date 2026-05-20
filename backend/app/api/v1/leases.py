@@ -162,7 +162,7 @@ async def generate_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate an HTML lease agreement document and return a URL to access it."""
-    url = await svc.generate_lease_document(lease_id, current_user.org_id, db)
+    url = await svc.generate_lease_document(lease_id, get_org_id(current_user), db)
     return {"url": url}
 
 
@@ -192,10 +192,9 @@ async def send_onboarding_link(
     or it expired).  On lease creation the link is issued automatically — this
     endpoint is the manual resend / refresh path.
     """
-    assert current_user.org_id is not None  # guaranteed by require_org_access
     return await tenant_svc.send_onboarding_link(
         lease_id=lease_id,
-        org_id=current_user.org_id,
+        org_id=get_org_id(current_user),
         db=db,
     )
 
@@ -210,10 +209,9 @@ async def confirm_onboarding_payments(
     Manager confirms all pending onboarding payments for this lease.
     Advances the lease from payment_pending → payment_secured when all are confirmed.
     """
-    assert current_user.org_id is not None
     return await onb_svc.confirm_all_onboarding_payments(
         lease_id=lease_id,
-        org_id=current_user.org_id,
+        org_id=get_org_id(current_user),
         db=db,
     )
 
@@ -275,8 +273,7 @@ async def acknowledge_lease(
     Sets paper_agreement_acknowledged=True. Clears the 'pending confirmation'
     banner for this lease in the dashboard and detail panel.
     """
-    assert current_user.org_id is not None
-    return await svc.acknowledge_lease(lease_id, current_user.org_id, db)
+    return await svc.acknowledge_lease(lease_id, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/confirm-terms", response_model=LeaseOut)

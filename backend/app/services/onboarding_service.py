@@ -768,7 +768,7 @@ async def confirm_onboarding_payment(
 
 
 async def confirm_all_onboarding_payments(
-    lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    lease_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> OnboardingPaymentOut:
     """
     Manager action: confirm all pending onboarding payments for a lease and
@@ -777,11 +777,10 @@ async def confirm_all_onboarding_payments(
     """
     from app.models.lease import Lease as LeaseModel
 
-    result = await db.execute(
-        select(LeaseModel).where(
-            LeaseModel.id == lease_id, LeaseModel.organisation_id == org_id
-        )
-    )
+    _filters = [LeaseModel.id == lease_id]
+    if org_id is not None:
+        _filters.append(LeaseModel.organisation_id == org_id)
+    result = await db.execute(select(LeaseModel).where(*_filters))
     lease = result.scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found.")

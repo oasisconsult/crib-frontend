@@ -375,7 +375,7 @@ async def delete_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession)
 
 
 async def acknowledge_lease(
-    lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    lease_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> LeaseOut:
     """
     Manager confirms that a signed paper agreement is on file for this lease.
@@ -885,7 +885,7 @@ async def admin_patch_lease_billing_rules(
 
 async def generate_lease_document(
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> str:
     """
