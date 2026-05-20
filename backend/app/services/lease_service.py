@@ -122,10 +122,11 @@ def _lease_out(
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
 
-async def _get_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> Lease:
-    result = await db.execute(
-        select(Lease).where(Lease.id == lease_id, Lease.organisation_id == org_id)
-    )
+async def _get_lease(lease_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession) -> Lease:
+    filters = [Lease.id == lease_id]
+    if org_id is not None:
+        filters.append(Lease.organisation_id == org_id)
+    result = await db.execute(select(Lease).where(*filters))
     lease = result.scalar_one_or_none()
     if not lease:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
@@ -219,7 +220,7 @@ async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -
     return _lease_out(lease)
 
 
-async def get_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> LeaseOut:
+async def get_lease(lease_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession) -> LeaseOut:
     lease = await _get_lease(lease_id, org_id, db)
 
     # Fetch TenancyAgreement (exists only after tenant signs)

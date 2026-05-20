@@ -18,7 +18,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_tenant_record, require_org_access
+from app.api.deps import CurrentUser, get_org_id, get_tenant_record, require_org_access
 from app.core.database import get_db
 from app.schemas.lease import (
     LeaseActivate,
@@ -73,7 +73,7 @@ async def list_leases(
     state_list = [s.strip() for s in states.split(",")] if states else ([status_filter] if status_filter else None)
     landlord_id = current_user.id if current_user.profile.is_read_only else None
     return await svc.list_leases(
-        current_user.org_id,
+        get_org_id(current_user),
         db,
         status_filters=state_list,
         search=search,
@@ -92,7 +92,7 @@ async def get_lease(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.get_lease(lease_id, current_user.org_id, db)
+    return await svc.get_lease(lease_id, get_org_id(current_user), db)
 
 
 @router.put("/{lease_id}", response_model=LeaseOut)
