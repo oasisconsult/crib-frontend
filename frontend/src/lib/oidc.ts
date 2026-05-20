@@ -226,6 +226,11 @@ export async function resolveSessionTokens(
     try {
       const orgTokens = await getOrgScopedToken(newRefreshToken, activeOrgId);
       accessToken = orgTokens.access_token;
+      // Logto rotates the refresh token on every use — capture the new one.
+      // Without this, the next refresh call will fail (consumed token).
+      if (orgTokens.refresh_token) {
+        newRefreshToken = orgTokens.refresh_token;
+      }
     } catch {
       // Fall back to base access token — org scope is best-effort
     }
