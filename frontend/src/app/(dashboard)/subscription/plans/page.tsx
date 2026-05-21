@@ -7,13 +7,14 @@ import {
   Loader2, ArrowLeft, ChevronDown, ChevronUp,
   BarChart3, Wrench, FileText, MessageSquare,
   UserCheck, Palette, Headphones, Phone,
-  Key, Shield, ClipboardList,
+  Key, Shield, ClipboardList, Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/PageHeader";
 import { usePlans, useCurrentSubscription, useSelectPlan } from "@/hooks/useSubscription";
+import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 import type { BillingCycle, BillingCurrency, SubscriptionPlan } from "@/services/api/subscriptions";
@@ -426,6 +427,7 @@ export default function PlansPage() {
   const { data: plans = [], isLoading: loadingPlans } = usePlans();
   const { data: sub } = useCurrentSubscription();
   const { mutate: selectPlan, isPending: selecting } = useSelectPlan();
+  const { isSuperAdmin } = usePermissions();
 
   const [cycle,       setCycle]       = useState<BillingCycle>("monthly");
   const [currency,    setCurrency]    = useState<BillingCurrency>("UGX");
@@ -458,12 +460,22 @@ export default function PlansPage() {
         title="Plans & Pricing"
         description="Choose the plan that fits your portfolio."
         actions={
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/subscription">
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Back
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {isSuperAdmin && (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/subscription/settings">
+                  <Settings className="h-3.5 w-3.5" />
+                  Edit Plans &amp; Settings
+                </Link>
+              </Button>
+            )}
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/subscription">
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Back
+              </Link>
+            </Button>
+          </div>
         }
       />
 

@@ -4,13 +4,14 @@ import Link from "next/link";
 import {
   BadgeCheck, CreditCard, TrendingUp, AlertTriangle,
   Clock, Zap, Building2, Users, HardDrive, ArrowRight,
-  CheckCircle2, XCircle, Loader2,
+  CheckCircle2, XCircle, Loader2, Settings,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/PageHeader";
 import { useCurrentSubscription, useSubscriptionUsage } from "@/hooks/useSubscription";
+import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
 import type { SubscriptionStatus } from "@/services/api/subscriptions";
 
@@ -80,6 +81,7 @@ function UsageBar({ used, limit, percent, label, icon: Icon }: {
 export default function SubscriptionPage() {
   const { data: sub, isLoading: loadingSub } = useCurrentSubscription();
   const { data: usage, isLoading: loadingUsage } = useSubscriptionUsage();
+  const { isSuperAdmin } = usePermissions();
 
   if (loadingSub) {
     return (
@@ -103,6 +105,15 @@ export default function SubscriptionPage() {
         description="Manage your plan, billing, and feature access."
         actions={
           <div className="flex gap-2">
+            {/* Superadmin: direct link to configure plans + payment settings */}
+            {isSuperAdmin && (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/subscription/settings">
+                  <Settings className="h-3.5 w-3.5" />
+                  Billing Settings
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="outline" size="sm">
               <Link href="/subscription/billing">Billing History</Link>
             </Button>
