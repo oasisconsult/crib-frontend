@@ -12,7 +12,7 @@ const NAV_LINKS = [
   { label: "How it Works",href: "#how-it-works" },
   { label: "Pricing",     href: "#pricing" },
   { label: "About",       href: "#about" },
-  { label: "Contact",     href: "#contact" },
+  { label: "Contact",     href: "#booking" },
 ];
 
 export function MarketingNav() {
@@ -75,7 +75,7 @@ export function MarketingNav() {
               <Link href="/login">Login</Link>
             </Button>
             <Button asChild size="sm">
-              <Link href="/login?action=register">Get Started Free</Link>
+              <a href="#booking">Get Started Free</a>
             </Button>
           </div>
 
@@ -124,9 +124,9 @@ export function MarketingNav() {
                 <Link href="/login" onClick={() => setMenuOpen(false)}>Login</Link>
               </Button>
               <Button asChild className="w-full">
-                <Link href="/login?action=register" onClick={() => setMenuOpen(false)}>
+                <a href="#booking" onClick={() => setMenuOpen(false)}>
                   Get Started Free
-                </Link>
+                </a>
               </Button>
             </div>
           </div>

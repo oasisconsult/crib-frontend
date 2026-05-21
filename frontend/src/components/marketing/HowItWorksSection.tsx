@@ -101,10 +101,10 @@ export function HowItWorksSection() {
         {/* CTA */}
         <div className="mt-14 text-center">
           <Button asChild size="xl">
-            <Link href="/login?action=register">
+            <a href="#booking">
               Start for free — no card required
               <ArrowRight className="h-4 w-4" />
-            </Link>
+            </a>
           </Button>
         </div>
       </div>
