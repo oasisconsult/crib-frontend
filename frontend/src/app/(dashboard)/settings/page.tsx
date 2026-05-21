@@ -358,8 +358,16 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="profile">
+        {/* Tab count per role:
+            landlord    → 4  (Profile, Agency, Appearance, Security)
+            superadmin  → 8  (+ Landlords, Agencies, Notifications, Caretakers)
+            manager     → 7  (+ Landlords, Notifications, Caretakers)
+            owner       → 6  (+ Notifications, Caretakers)                   */}
         <TabsList className={`grid w-full ${
-          isLandlord ? "grid-cols-4" : isSuperAdmin ? "grid-cols-7" : "grid-cols-6"
+          isLandlord    ? "grid-cols-4"
+          : isSuperAdmin ? "grid-cols-8"
+          : isManager    ? "grid-cols-7"
+          :                "grid-cols-6"
         }`}>
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
