@@ -72,10 +72,11 @@ export function PresignAgreementModal({
         </DialogHeader>
 
         {canvasReady && (
-          <ESignatureCanvas
-            onSave={setSignatureDataUrl}
-            className="mt-2"
-          />
+          <div className="px-6 pt-4 pb-2">
+            <ESignatureCanvas
+              onSave={setSignatureDataUrl}
+            />
+          </div>
         )}
 
         <DialogFooter className="mt-4">

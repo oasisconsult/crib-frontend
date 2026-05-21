@@ -167,7 +167,7 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+    <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-6 pt-4">
       <div className="space-y-1.5">
         <Label htmlFor="n-property">Property *</Label>
         <Select value={propertyId} onValueChange={setPropertyId} required>

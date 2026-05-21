@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { UserPlus, Loader2, Check, Building2, X } from "lucide-react";
+import { UserPlus, Loader2, Check, Building2 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -113,7 +113,7 @@ export function CaretakerInviteModal({ onClose }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 mt-2">
+        <div className="space-y-5 px-6 pb-6 pt-4">
 
           {/* Personal details */}
           <div className="space-y-3">

@@ -4,7 +4,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  DialogBody, DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -63,29 +64,31 @@ export function TerminateModal({ open, onOpenChange, leaseId }: TerminateModalPr
           </div>
         </DialogHeader>
 
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Terminating a lease may have legal and financial implications. Ensure proper notice has been served.
-          </AlertDescription>
-        </Alert>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <DialogBody className="space-y-4">
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Terminating a lease may have legal and financial implications. Ensure proper notice has been served.
+              </AlertDescription>
+            </Alert>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="reason">
-              Reason for termination <span className="text-destructive">*</span>
-            </Label>
-            <Textarea
-              id="reason"
-              placeholder="Describe the reason for termination..."
-              rows={4}
-              error={!!errors.reason}
-              {...register("reason")}
-            />
-            {errors.reason && (
-              <p className="text-xs text-destructive">{errors.reason.message}</p>
-            )}
-          </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reason">
+                Reason for termination <span className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="reason"
+                placeholder="Describe the reason for termination..."
+                rows={4}
+                error={!!errors.reason}
+                {...register("reason")}
+              />
+              {errors.reason && (
+                <p className="text-xs text-destructive">{errors.reason.message}</p>
+              )}
+            </div>
+          </DialogBody>
 
           <DialogFooter>
             <Button

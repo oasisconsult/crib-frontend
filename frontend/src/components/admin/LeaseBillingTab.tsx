@@ -132,6 +132,7 @@ function EditDialog({ lease, open, onClose }: EditDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
+        <div className="px-6 py-5 space-y-4">
         {/* Sync shortcut toggle */}
         <button
           type="button"
@@ -201,6 +202,7 @@ function EditDialog({ lease, open, onClose }: EditDialogProps) {
             </div>
           </div>
         </div>
+        </div>{/* end px-6 padding wrapper */}
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
