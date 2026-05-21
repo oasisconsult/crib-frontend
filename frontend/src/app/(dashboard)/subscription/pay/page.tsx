@@ -42,9 +42,12 @@ function Steps({ current }: { current: number }) {
         <div key={s} className="flex items-center gap-2 flex-1 last:flex-none">
           <div className={cn(
             "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all",
-            i < current && "bg-primary text-primary-foreground",
-            i === current && "bg-primary text-primary-foreground ring-4 ring-primary/20",
-            i > current && "bg-muted text-muted-foreground",
+            // Done — light green tint, matches WorkflowStepper pattern
+            i < current && "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+            // Active — light teal tint with brand border (not solid fill)
+            i === current && "bg-[hsl(var(--accent))] text-[hsl(var(--primary))] border-2 border-[hsl(var(--primary))] ring-4 ring-[hsl(var(--primary))]/15",
+            // Upcoming — outlined only, no dark fill
+            i > current && "border-2 border-border bg-background dark:bg-card text-foreground/50",
           )}>
             {i < current ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
           </div>
@@ -168,7 +171,7 @@ function PayPageContent() {
       <Steps current={step} />
 
       {/* Amount summary */}
-      <div className="rounded-[var(--radius-lg)] border border-border bg-muted/40 px-4 py-3 flex items-center justify-between mb-6">
+      <div className="rounded-[var(--radius-lg)] border border-[hsl(var(--primary))]/20 bg-[hsl(var(--accent))] px-4 py-3 flex items-center justify-between mb-6">
         <div>
           <p className="text-sm font-semibold text-foreground">{plan.name} — {cycle === "annual" ? "Annual" : "Monthly"}</p>
           <p className="text-xs text-muted-foreground">18% VAT included</p>
@@ -189,7 +192,7 @@ function PayPageContent() {
                 method === m.id ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-border bg-card hover:border-primary/30",
               )}
             >
-              <div className={cn("flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)]", method === m.id ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)]", method === m.id ? "bg-primary/10 text-primary" : "bg-[hsl(var(--accent))] text-[hsl(var(--primary))]")}>
                 <m.icon className="h-5 w-5" />
               </div>
               <div className="flex-1">
@@ -209,7 +212,7 @@ function PayPageContent() {
       {step === 1 && method && (
         <div className="space-y-5">
           {/* Instructions */}
-          <div className="rounded-[var(--radius-lg)] border border-border bg-muted/40 p-4 text-sm space-y-2">
+          <div className="rounded-[var(--radius-lg)] border border-[hsl(var(--primary))]/20 bg-[hsl(var(--accent))] p-4 text-sm space-y-2">
             <p className="font-semibold text-foreground">Payment Instructions</p>
             {(method === "mtn_momo") && billingSettings && (
               <div className="space-y-1 text-muted-foreground">
