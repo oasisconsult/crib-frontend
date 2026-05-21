@@ -387,8 +387,8 @@ export default function SettingsPage() {
               <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
           )}
-          {/* Caretakers tab — only owners who manage their own properties */}
-          {!isLandlord && !isSuperAdmin && (
+          {/* Caretakers tab — owners + superadmins; hidden from read-only landlords */}
+          {!isLandlord && (
             <TabsTrigger value="caretakers" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Caretakers</span>
