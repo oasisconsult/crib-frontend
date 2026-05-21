@@ -14,9 +14,9 @@ function DashboardMockup() {
   ];
 
   const stats = [
-    { label: "Properties", value: "12",      color: "bg-[#239487]" },
-    { label: "Tenants",    value: "84",      color: "bg-indigo-500" },
-    { label: "Revenue",    value: "UGX 8.4M", color: "bg-emerald-500" },
+    { label: "Properties", value: "12",       dot: "bg-[#239487]" },
+    { label: "Tenants",    value: "84",       dot: "bg-indigo-400" },
+    { label: "Revenue",    value: "UGX 8.4M", dot: "bg-emerald-400" },
   ];
 
   const tenantRows = [
@@ -32,34 +32,28 @@ function DashboardMockup() {
       className="relative w-full max-w-2xl mx-auto select-none"
       role="img"
     >
-      {/* Browser chrome */}
-      <div className="relative rounded-xl overflow-hidden border border-[#334155] shadow-[0_24px_48px_rgba(0,0,0,0.22)]">
+      {/* Browser chrome — light macOS style */}
+      <div className="relative rounded-xl overflow-hidden border border-gray-200 shadow-[0_20px_48px_rgba(0,0,0,0.12)]">
         {/* Title bar */}
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#1e2a3a] border-b border-white/10">
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-[#ececec] border-b border-gray-300">
           <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
           <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
           <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-          <div className="mx-auto flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-1">
+          <div className="mx-auto flex items-center gap-1.5 rounded-md bg-white/80 border border-gray-300 px-3 py-1">
             <div className="h-2 w-2 rounded-full bg-[#239487]" />
-            <span className="text-[11px] text-white/50 font-mono">app.crib.ug/dashboard</span>
+            <span className="text-[11px] text-gray-500 font-mono">app.crib.ug/dashboard</span>
           </div>
         </div>
 
-        {/* App frame */}
-        <div className="flex h-[340px] bg-[#0f172a]">
+        {/* App frame — light mode */}
+        <div className="flex h-[340px] bg-[#f9fafb]">
 
           {/* Sidebar */}
-          <div className="w-40 shrink-0 bg-[#1a2535] border-r border-white/[0.07] flex flex-col">
-            <div className="p-3 border-b border-white/[0.07]">
-              <div className="flex items-center gap-2">
-                {/* Real Crib logo — decorative, inside aria-hidden mockup */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/crib-icon-green.png"
-                  alt=""
-                  className="h-5 w-auto"
-                />
-              </div>
+          <div className="w-40 shrink-0 bg-white border-r border-gray-200 flex flex-col">
+            <div className="p-3 border-b border-gray-100">
+              {/* Real Crib logo — decorative */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/crib-icon-green.png" alt="" className="h-5 w-auto" />
             </div>
             <nav className="flex-1 p-2 space-y-0.5">
               {sidebarItems.map(item => (
@@ -67,11 +61,11 @@ function DashboardMockup() {
                   key={item.label}
                   className={`flex items-center gap-2 px-2 py-1.5 rounded text-[11px] font-medium ${
                     item.active
-                      ? "bg-[#239487]/20 text-[#4ecdc4]"
-                      : "text-white/40"
+                      ? "bg-[#f3fcfa] text-[#239487]"
+                      : "text-gray-400 hover:text-gray-600"
                   }`}
                 >
-                  <div className={`h-1.5 w-1.5 rounded-full ${item.active ? "bg-[#239487]" : "bg-white/20"}`} />
+                  <div className={`h-1.5 w-1.5 rounded-full ${item.active ? "bg-[#239487]" : "bg-gray-300"}`} />
                   {item.label}
                 </div>
               ))}
@@ -83,47 +77,47 @@ function DashboardMockup() {
             {/* Header row */}
             <div className="flex items-center justify-between">
               <div>
-                <div className="h-2.5 w-28 rounded-full bg-white/20 mb-1" />
-                <div className="h-1.5 w-20 rounded-full bg-white/10" />
+                <div className="h-2.5 w-28 rounded-full bg-gray-200 mb-1" />
+                <div className="h-1.5 w-20 rounded-full bg-gray-100" />
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="h-6 w-6 rounded-full bg-[#239487]/30 flex items-center justify-center">
-                  <Bell className="h-3 w-3 text-[#4ecdc4]" />
+                <div className="h-6 w-6 rounded-full bg-[#239487]/10 flex items-center justify-center">
+                  <Bell className="h-3 w-3 text-[#239487]" />
                 </div>
-                <div className="h-6 w-6 rounded-full bg-white/10" />
+                <div className="h-6 w-6 rounded-full bg-gray-200" />
               </div>
             </div>
 
             {/* Stats row */}
             <div className="grid grid-cols-3 gap-2">
               {stats.map(s => (
-                <div key={s.label} className="rounded-lg bg-white/[0.05] border border-white/[0.06] p-2.5">
-                  <div className={`h-1.5 w-1.5 rounded-full ${s.color} mb-1.5`} />
-                  <div className="text-[11px] font-bold text-white leading-none mb-0.5">{s.value}</div>
-                  <div className="text-[9px] text-white/40">{s.label}</div>
+                <div key={s.label} className="rounded-lg bg-white border border-gray-200 p-2.5 shadow-sm">
+                  <div className={`h-1.5 w-1.5 rounded-full ${s.dot} mb-1.5`} />
+                  <div className="text-[11px] font-bold text-gray-800 leading-none mb-0.5">{s.value}</div>
+                  <div className="text-[9px] text-gray-400">{s.label}</div>
                 </div>
               ))}
             </div>
 
             {/* Tenant list */}
-            <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] overflow-hidden">
-              <div className="px-3 py-1.5 border-b border-white/[0.06]">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-white/30">
+            <div className="rounded-lg bg-white border border-gray-200 overflow-hidden shadow-sm">
+              <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-100">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
                   Recent Tenants
                 </span>
               </div>
               {tenantRows.map((row, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between px-3 py-1.5 border-b border-white/[0.04] last:border-0"
+                  className="flex items-center justify-between px-3 py-1.5 border-b border-gray-100 last:border-0"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="h-5 w-5 rounded-full bg-[#239487]/30 flex items-center justify-center text-[9px] font-bold text-[#4ecdc4]">
+                    <div className="h-5 w-5 rounded-full bg-[#239487]/15 flex items-center justify-center text-[9px] font-bold text-[#239487]">
                       {row.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="text-[10px] font-medium text-white/70">{row.name}</div>
-                      <div className="text-[9px] text-white/30">{row.unit}</div>
+                      <div className="text-[10px] font-medium text-gray-700">{row.name}</div>
+                      <div className="text-[9px] text-gray-400">{row.unit}</div>
                     </div>
                   </div>
                   <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-medium ${row.statusColor}`}>
