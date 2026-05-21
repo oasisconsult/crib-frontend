@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { ArrowRight, Building2, Users, TrendingUp, Bell, CheckCircle, Home, Wrench } from "lucide-react";
+import { ArrowRight, CheckCircle, Bell, Home, Wrench, MessageCircle } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 // ── CSS-only dashboard illustration ─────────────────────────────────────────
@@ -14,8 +14,8 @@ function DashboardMockup() {
   ];
 
   const stats = [
-    { label: "Properties", value: "12",     color: "bg-[#239487]" },
-    { label: "Tenants",    value: "84",     color: "bg-indigo-500" },
+    { label: "Properties", value: "12",      color: "bg-[#239487]" },
+    { label: "Tenants",    value: "84",      color: "bg-indigo-500" },
     { label: "Revenue",    value: "UGX 8.4M", color: "bg-emerald-500" },
   ];
 
@@ -32,11 +32,8 @@ function DashboardMockup() {
       className="relative w-full max-w-2xl mx-auto select-none"
       role="img"
     >
-      {/* Glow effect behind the window */}
-      <div className="absolute -inset-4 rounded-3xl bg-gradient-to-br from-[#239487]/20 via-teal-300/10 to-indigo-400/10 blur-2xl" />
-
       {/* Browser chrome */}
-      <div className="relative rounded-xl overflow-hidden border border-[#334155] shadow-[0_32px_64px_rgba(0,0,0,0.35)]">
+      <div className="relative rounded-xl overflow-hidden border border-[#334155] shadow-[0_24px_48px_rgba(0,0,0,0.22)]">
         {/* Title bar */}
         <div className="flex items-center gap-2 px-4 py-2.5 bg-[#1e2a3a] border-b border-white/10">
           <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
@@ -136,7 +133,7 @@ function DashboardMockup() {
         </div>
       </div>
 
-      {/* Floating notification card */}
+      {/* Floating: rent collected badge */}
       <div className="absolute -bottom-4 -left-4 z-10 flex items-center gap-2 rounded-xl bg-white shadow-lg border border-[hsl(var(--border))] px-3 py-2.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100">
           <CheckCircle className="h-4 w-4 text-emerald-600" />
@@ -147,7 +144,7 @@ function DashboardMockup() {
         </div>
       </div>
 
-      {/* Floating maintenance card */}
+      {/* Floating: maintenance resolved badge */}
       <div className="absolute -top-4 -right-4 z-10 flex items-center gap-2 rounded-xl bg-white shadow-lg border border-[hsl(var(--border))] px-3 py-2.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100">
           <Wrench className="h-4 w-4 text-amber-600" />
@@ -170,49 +167,42 @@ export function HeroSection() {
       aria-labelledby="hero-headline"
       className="relative min-h-screen flex items-center pt-16 overflow-hidden bg-white"
     >
-      {/* Subtle background grid */}
+      {/* Subtle radial teal glow — no dot grid */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
-          backgroundImage:
-            "linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)",
-          backgroundSize: "48px 48px",
-          opacity: 0.4,
+          background:
+            "radial-gradient(ellipse 80% 55% at 75% 45%, rgba(35,148,135,0.07) 0%, transparent 70%)",
         }}
-      />
-      {/* Gradient overlay to fade grid at edges */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white via-transparent to-[#f3fcfa]/60"
       />
 
       <div className="relative mx-auto w-full max-w-6xl px-4 sm:px-6 py-20 lg:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
 
-          {/* Left: copy */}
+          {/* Left — copy ──────────────────────────────────────────────── */}
           <div className="space-y-8">
+
             {/* Badge */}
             <div className="inline-flex items-center gap-2 rounded-full border border-[#239487]/30 bg-[#f3fcfa] px-3 py-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#239487] animate-pulse" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#239487] animate-pulse" aria-hidden="true" />
               <span className="text-xs font-semibold text-[#16665d]">
-                Built for African landlords &amp; property managers
+                300+ landlords across Uganda
               </span>
             </div>
 
             {/* Headline */}
-            <div className="space-y-3">
+            <div className="space-y-4">
               <h1
                 id="hero-headline"
                 className="text-4xl sm:text-5xl lg:text-[3.25rem] font-bold tracking-tight text-[hsl(var(--foreground))] leading-[1.1]"
               >
-                Property management{" "}
-                <span className="text-[#239487]">that actually works.</span>
+                Manage your rental properties{" "}
+                <span className="text-[#239487]">without the chaos.</span>
               </h1>
-              <p className="text-lg sm:text-xl text-[hsl(var(--muted-foreground))] leading-relaxed max-w-lg">
-                Crib helps landlords and property managers track rent, manage tenants,
-                handle maintenance, and run their entire rental portfolio — from one
-                organised platform.
+              <p className="text-lg text-[hsl(var(--muted-foreground))] leading-relaxed max-w-lg">
+                Crib gives landlords and property managers across Uganda a clear view of every
+                property, every tenant, and every rent payment — from one organised platform.
               </p>
             </div>
 
@@ -220,34 +210,45 @@ export function HeroSection() {
             <div className="flex flex-col sm:flex-row items-start gap-3">
               <Button asChild size="xl">
                 <a href="#booking">
-                  Get Started Free
-                  <ArrowRight className="h-4 w-4" />
+                  Book a Demo
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </a>
               </Button>
               <Button asChild variant="outline" size="xl">
-                <a href="#how-it-works">See how it works</a>
+                <a
+                  href="https://wa.me/256700000000"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
+                  Chat on WhatsApp
+                </a>
               </Button>
             </div>
 
-            {/* Trust signals */}
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2">
+            {/* Trust signals — local, operational */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-1">
               {[
+                "1,200+ units managed",
+                "Kampala · Wakiso · Entebbe · Jinja",
                 "Free plan available",
-                "No credit card required",
-                "Set up in minutes",
               ].map(t => (
-                <span key={t} className="flex items-center gap-1.5 text-sm text-[hsl(var(--muted-foreground))]">
-                  <CheckCircle className="h-3.5 w-3.5 text-[#239487] shrink-0" />
+                <span
+                  key={t}
+                  className="flex items-center gap-1.5 text-sm text-[hsl(var(--muted-foreground))]"
+                >
+                  <CheckCircle className="h-3.5 w-3.5 text-[#239487] shrink-0" aria-hidden="true" />
                   {t}
                 </span>
               ))}
             </div>
           </div>
 
-          {/* Right: dashboard illustration */}
+          {/* Right — dashboard illustration ───────────────────────────── */}
           <div className="relative lg:pl-6">
             <DashboardMockup />
           </div>
+
         </div>
       </div>
     </section>

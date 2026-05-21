@@ -1,29 +1,27 @@
 import { Building2, Users, TrendingUp, ArrowRight } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 const STEPS = [
   {
     number: "01",
     icon: Building2,
-    title: "Add your properties",
-    desc: "Create your property portfolio in minutes. Add units, set rent amounts, and configure rules for each property.",
+    title: "Add your properties and units",
+    desc: "Set up your portfolio in minutes. Add each property, define the units, set rent amounts, and you're ready to go.",
     color: "bg-[#f3fcfa] text-[#239487]",
     border: "border-[#239487]/20",
   },
   {
     number: "02",
     icon: Users,
-    title: "Manage tenants and operations",
-    desc: "Onboard tenants digitally, track lease agreements, handle maintenance requests, and communicate — all from one place.",
+    title: "Onboard your tenants",
+    desc: "Invite tenants digitally, record lease agreements, and handle maintenance requests — all from one place your whole team can use.",
     color: "bg-indigo-50 text-indigo-600",
     border: "border-indigo-200",
   },
   {
     number: "03",
     icon: TrendingUp,
-    title: "Track and grow your business",
-    desc: "Get clear insights into your rental income, occupancy, and outstanding payments. Make informed decisions about your portfolio.",
+    title: "Track rent and stay in control",
+    desc: "Monitor payments, see who's overdue, and get clear reports on your portfolio's performance — without chasing anyone manually.",
     color: "bg-emerald-50 text-emerald-600",
     border: "border-emerald-200",
   },
@@ -34,24 +32,24 @@ export function HowItWorksSection() {
     <section
       id="how-it-works"
       aria-labelledby="how-it-works-heading"
-      className="bg-[#f9fafb] py-20 lg:py-28"
+      className="bg-white py-20 lg:py-28"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
 
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#239487] mb-3">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#16665d] mb-3">
             How It Works
           </p>
           <h2
             id="how-it-works-heading"
             className="text-3xl sm:text-4xl font-bold tracking-tight text-[hsl(var(--foreground))] mb-4"
           >
-            Get up and running in under an hour
+            Set up in a day. Use it every day.
           </h2>
           <p className="text-[hsl(var(--muted-foreground))] text-lg leading-relaxed">
-            No lengthy onboarding. No training required. Crib is built to be intuitive
-            from day one — whether you have 2 units or 200.
+            No lengthy onboarding. No training required. Crib is built to be straightforward
+            from day one.
           </p>
         </div>
 
@@ -69,16 +67,17 @@ export function HowItWorksSection() {
                 {/* Icon circle */}
                 <div className={`relative z-10 mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border-2 ${color} ${border} bg-white shadow-sm`}>
                   <Icon className="h-7 w-7" aria-hidden="true" />
-                  <span className="absolute -top-2.5 -right-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--foreground))] text-[10px] font-bold text-white">
+                  <span
+                    className="absolute -top-2.5 -right-2.5 flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--foreground))] text-[10px] font-bold text-white"
+                    aria-label={`Step ${i + 1}`}
+                  >
                     {i + 1}
                   </span>
                 </div>
 
-                {/* Step number */}
                 <p className="text-[11px] font-bold uppercase tracking-widest text-[hsl(var(--muted-foreground))] mb-2">
                   Step {number}
                 </p>
-
                 <h3 className="text-lg font-bold text-[hsl(var(--foreground))] mb-3">
                   {title}
                 </h3>
@@ -86,7 +85,7 @@ export function HowItWorksSection() {
                   {desc}
                 </p>
 
-                {/* Arrow between steps */}
+                {/* Arrow between steps — mobile only */}
                 {i < STEPS.length - 1 && (
                   <ArrowRight
                     className="lg:hidden mt-6 h-5 w-5 text-[hsl(var(--muted-foreground))]/40 rotate-90"
@@ -100,13 +99,15 @@ export function HowItWorksSection() {
 
         {/* CTA */}
         <div className="mt-14 text-center">
-          <Button asChild size="xl">
-            <a href="#booking">
-              Start for free — no card required
-              <ArrowRight className="h-4 w-4" />
-            </a>
-          </Button>
+          <a
+            href="#booking"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-[hsl(var(--primary))] px-6 py-3 text-sm font-semibold text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90 transition-colors"
+          >
+            Book a Demo
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
         </div>
+
       </div>
     </section>
   );

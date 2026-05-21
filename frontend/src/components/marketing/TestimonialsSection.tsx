@@ -2,39 +2,42 @@ import { Star } from "lucide-react";
 
 const TESTIMONIALS = [
   {
-    quote: "Before Crib, I was tracking rent payments in a notebook. Now I can see everything from my phone — who's paid, who's overdue, and which units need attention.",
-    name: "Robert Mukasa",
-    role: "Landlord",
-    location: "Kampala, Uganda",
+    quote:
+      "Before Crib, I was tracking rent in a notebook and calling everyone every month-end. Now I can see exactly who's paid, who's overdue, and which units need attention — from my phone.",
+    name:       "Robert Mukasa",
+    role:       "Landlord",
+    location:   "Kampala, Uganda",
     properties: "8 units",
-    initials: "RM",
-    color: "bg-[#239487]",
+    initials:   "RM",
+    color:      "bg-[#239487]",
   },
   {
-    quote: "Managing 40 units across 3 properties used to feel impossible. Crib gives my team a shared system that actually works. Maintenance requests no longer get lost.",
-    name: "Sarah Nalwanga",
-    role: "Property Manager",
-    location: "Wakiso, Uganda",
+    quote:
+      "Managing 40 units across 3 properties used to feel impossible. Crib gives my team one shared system that actually works. Maintenance requests no longer get lost.",
+    name:       "Sarah Nalwanga",
+    role:       "Property Manager",
+    location:   "Wakiso, Uganda",
     properties: "40 units",
-    initials: "SN",
-    color: "bg-violet-500",
+    initials:   "SN",
+    color:      "bg-[#16665d]",
   },
   {
-    quote: "I used to spend every month-end chasing tenants. With Crib's automated reminders, most payments come in without me lifting a finger. It's changed how I operate.",
-    name: "James Otieno",
-    role: "Apartment Owner",
-    location: "Entebbe, Uganda",
+    quote:
+      "I'm based in the UK and own three properties in Kampala. Crib lets me see everything in real time — rent status, occupancy, maintenance — without having to call anyone.",
+    name:       "James Ochieng",
+    role:       "Diaspora Landlord",
+    location:   "London, UK · Properties in Kampala",
     properties: "12 units",
-    initials: "JO",
-    color: "bg-indigo-500",
+    initials:   "JO",
+    color:      "bg-indigo-600",
   },
 ];
 
 function StarRow() {
   return (
-    <div className="flex gap-0.5" aria-label="5 stars">
+    <div className="flex gap-0.5" aria-label="5 out of 5 stars">
       {[1, 2, 3, 4, 5].map(i => (
-        <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
+        <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" />
       ))}
     </div>
   );
@@ -45,13 +48,13 @@ export function TestimonialsSection() {
     <section
       id="testimonials"
       aria-labelledby="testimonials-heading"
-      className="bg-[#f9fafb] py-20 lg:py-28"
+      className="bg-white py-20 lg:py-28"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
 
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-14">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#239487] mb-3">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#16665d] mb-3">
             What Landlords Say
           </p>
           <h2
@@ -67,16 +70,19 @@ export function TestimonialsSection() {
           {TESTIMONIALS.map(({ quote, name, role, location, properties, initials, color }) => (
             <figure
               key={name}
-              className="flex flex-col gap-5 rounded-xl border border-[hsl(var(--border))] bg-white p-6 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+              className="flex flex-col gap-5 rounded-xl border border-[hsl(var(--border))] bg-[#fafafa] p-6 hover:bg-white hover:shadow-sm transition-all duration-200"
             >
               <StarRow />
-              <blockquote>
+              <blockquote className="flex-1">
                 <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
                   &ldquo;{quote}&rdquo;
                 </p>
               </blockquote>
-              <figcaption className="flex items-center gap-3 mt-auto pt-4 border-t border-[hsl(var(--border))]">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${color} text-sm font-bold text-white shrink-0`}>
+              <figcaption className="flex items-center gap-3 pt-4 border-t border-[hsl(var(--border))]">
+                <div
+                  className={`flex h-10 w-10 items-center justify-center rounded-full ${color} text-sm font-bold text-white shrink-0`}
+                  aria-hidden="true"
+                >
                   {initials}
                 </div>
                 <div>
@@ -84,12 +90,22 @@ export function TestimonialsSection() {
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">
                     {role} · {location}
                   </p>
-                  <p className="text-xs text-[#239487] font-medium">{properties}</p>
+                  <p className="text-xs text-[#239487] font-medium mt-0.5">{properties}</p>
                 </div>
               </figcaption>
             </figure>
           ))}
         </div>
+
+        {/* City spread note */}
+        <p className="text-sm text-center text-[hsl(var(--muted-foreground))] mt-10">
+          Landlords using Crib across{" "}
+          <span className="font-medium text-[hsl(var(--foreground))]">
+            Kampala, Wakiso, Entebbe, Jinja, Mbarara, Gulu, Mukono
+          </span>{" "}
+          and beyond.
+        </p>
+
       </div>
     </section>
   );
