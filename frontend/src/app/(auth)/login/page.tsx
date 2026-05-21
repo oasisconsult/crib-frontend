@@ -310,10 +310,10 @@ function LoginContent() {
               <Image
                 src="/crib-icon-green.png"
                 alt="Crib"
-                width={56}
-                height={56}
+                width={160}
+                height={40}
                 priority
-                className="h-14 w-14"
+                className="h-11 sm:h-12 md:h-14 w-auto"
               />
             </Link>
           </div>

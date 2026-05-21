@@ -160,10 +160,10 @@ export default function AgencyOnboardingPage({ params }: Props) {
             <Image
               src="/crib-icon-green.png"
               alt="Crib"
-              width={40}
+              width={160}
               height={40}
               priority
-              className="h-10 w-10"
+              className="h-9 sm:h-10 md:h-11 w-auto"
               style={{ height: 'auto' }}
             />
           </Link>

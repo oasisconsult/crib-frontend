@@ -183,10 +183,10 @@ export function Sidebar() {
               <Image
                 src="/crib-icon-green.png"
                 alt="Crib"
-                width={24}
-                height={24}
+                width={160}
+                height={40}
                 priority
-                className="h-6 w-6"
+                className="h-5 w-auto max-w-[40px]"
               />
             </Link>
           ) : (
@@ -194,10 +194,10 @@ export function Sidebar() {
               <Image
                 src="/crib-icon-green.png"
                 alt="Crib"
-                width={32}
-                height={32}
+                width={160}
+                height={40}
                 priority
-                className="h-8 w-8"
+                className="h-8 w-auto"
               />
             </Link>
           )}

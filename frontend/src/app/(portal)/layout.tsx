@@ -21,10 +21,10 @@ function PortalNav() {
             <Image
               src="/crib-icon-green.png"
               alt="Crib"
-              width={36}
-              height={36}
+              width={160}
+              height={40}
               priority
-              className="h-9 w-9"
+              className="h-8 sm:h-9 w-auto"
             />
           </Link>
           <span className="text-muted-foreground/50 text-sm">·</span>

@@ -100,19 +100,19 @@ export function Sidebar({
                 <Image
                   src="/crib-icon-green.png"
                   alt="Crib"
-                  width={32}
-                  height={32}
+                  width={160}
+                  height={40}
                   priority
-                  className="h-8 w-8"
+                  className="h-8 w-auto"
                 />
               ) : (
                 <Image
                   src="/crib-icon-green.png"
                   alt="Crib"
-                  width={32}
-                  height={32}
+                  width={160}
+                  height={40}
                   priority
-                  className="h-8 w-8"
+                  className="h-8 w-auto"
                 />
               )}
             </div>
