@@ -170,6 +170,15 @@ async def create_caretaker_invite(
             detail="At least one property must be selected.",
         )
 
+    # ── Subscription enforcement: caretakers count as team members ────────────
+    owner_result = await db.execute(
+        select(Profile).where(Profile.id == owner_profile_id)
+    )
+    owner_for_limit = owner_result.scalar_one_or_none()
+    if owner_for_limit and owner_for_limit.organisation_id:
+        from app.services.subscription_limits import check_user_limit
+        await check_user_limit(owner_for_limit.organisation_id, db)
+
     if body.permission_level not in ("full", "operations_only"):
         raise HTTPException(
             status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,

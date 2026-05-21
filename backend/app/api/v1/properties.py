@@ -88,7 +88,9 @@ async def create_property(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.create_property(body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    await check_property_limit(org_id, db)          # ← subscription enforcement
+    return await svc.create_property(body, org_id, db)
 
 
 @router.get("/{property_id}", response_model=PropertyOut)
@@ -152,7 +154,9 @@ async def restore_property(
     db: AsyncSession = Depends(get_db),
 ):
     """Restore a soft-archived property and all its units (superadmin only)."""
-    return await svc.restore_property(property_id, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    await check_property_limit(org_id, db)          # ← restoring counts against limit
+    return await svc.restore_property(property_id, org_id, db)
 
 
 # ── Units ─────────────────────────────────────────────────────────────────────
@@ -178,7 +182,9 @@ async def batch_create_units(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.batch_create_units(property_id, body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    await check_unit_limit(org_id, db, adding=len(body.units))  # ← batch check
+    return await svc.batch_create_units(property_id, body, org_id, db)
 
 
 @router.patch("/{property_id}/units/bulk", response_model=list[UnitOut])
@@ -198,7 +204,9 @@ async def create_unit(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.create_unit(property_id, body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    await check_unit_limit(org_id, db)              # ← subscription enforcement
+    return await svc.create_unit(property_id, body, org_id, db)
 
 
 @router.get("/{property_id}/units/{unit_id}", response_model=UnitOut)

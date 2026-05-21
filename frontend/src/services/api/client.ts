@@ -150,6 +150,24 @@ function createApiClient(): AxiosInstance {
         }
       }
 
+      // ── 402 Payment Required — subscription limit exceeded ───────────────
+      // The backend returns a structured detail object with a human-readable
+      // message and machine-readable code. Show a toast and let the caller
+      // handle any further UI logic (e.g. redirecting to the upgrade page).
+      if (error.response?.status === 402) {
+        const detail = (error.response.data as any)?.detail;
+        const message =
+          typeof detail === "object" ? detail?.message : (detail as string);
+        if (message) {
+          import("@/store/useUIStore")
+            .then(({ toast }) => {
+              toast.error("Plan limit reached", message);
+            })
+            .catch(() => {});
+        }
+        return Promise.reject(error);
+      }
+
       return Promise.reject(error);
     },
   );

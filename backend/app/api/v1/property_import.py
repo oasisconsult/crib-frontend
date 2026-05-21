@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_current_user, require_role
 from app.core.database import get_db
 from app.models.profile import Profile
+from app.services.subscription_limits import check_property_limit, check_unit_limit
 from app.services.property_import_service import (
     MAX_FILE_BYTES,
     ImportPreviewResponse,
@@ -113,6 +114,19 @@ async def commit_import_endpoint(
         )
 
     profile: Profile = current_user.profile
+
+    # ── Subscription limit checks (atomic — reject entire import if over limit) ──
+    if profile.organisation_id:
+        # Count distinct property names in the CSV (each unique name = 1 property)
+        import_property_count = len({r.property_name for r in rows})
+        import_unit_count = len(rows)  # each row = 1 unit
+        await check_property_limit(
+            profile.organisation_id, db, adding=import_property_count
+        )
+        await check_unit_limit(
+            profile.organisation_id, db, adding=import_unit_count
+        )
+
     result = await commit_import(rows=rows, db=db, profile=profile)
     await db.commit()
     log.info("property_import.api_committed", user_id=str(profile.id), properties=result.imported_properties)

@@ -19,6 +19,8 @@ import { cn } from "@/utils/cn";
 import { PageHeader } from "@/components/common/PageHeader";
 import { ReadOnlyBanner } from "@/components/common/ReadOnlyBanner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSubscriptionUsage } from "@/hooks/useSubscription";
 import { ImportModal } from "./components/ImportModal";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
 
@@ -281,6 +283,16 @@ export default function PropertiesPage() {
   const setActiveProperty = useAppStore((s) => s.setActiveProperty);
 
   const { canWrite } = usePermissions();
+  const { data: usage } = useSubscriptionUsage();
+
+  // Disable "Add Property" when the org has reached its plan limit
+  const propertyLimit    = usage?.propertiesLimit ?? -1;
+  const propertyUsed     = usage?.propertiesUsed  ?? 0;
+  const atPropertyLimit  = propertyLimit !== -1 && propertyUsed >= propertyLimit;
+  const propertyLimitMsg = atPropertyLimit
+    ? `Your plan allows ${propertyLimit} ${propertyLimit === 1 ? "property" : "properties"}. Upgrade to add more.`
+    : undefined;
+
   const allProperties = data?.data ?? [];
 
   const properties = allProperties.filter((p) => {
@@ -318,20 +330,59 @@ export default function PropertiesPage() {
         title="Properties"
         description={`${data?.total ?? 0} properties in your portfolio`}
         actions={
-          <div className="flex items-center gap-2">
-            {canWrite && (
-              <Button variant="outline" onClick={() => setShowImport(true)}>
-                <Upload className="h-4 w-4" aria-hidden="true" />
-                Import CSV
-              </Button>
-            )}
-            {canWrite && (
-              <Button onClick={() => router.push("/properties/new")}>
-                <Plus className="h-4 w-4" aria-hidden="true" />
-                Add Property
-              </Button>
-            )}
-          </div>
+          <TooltipProvider>
+            <div className="flex items-center gap-2">
+              {canWrite && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowImport(true)}
+                        disabled={atPropertyLimit}
+                      >
+                        <Upload className="h-4 w-4" aria-hidden="true" />
+                        Import CSV
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {propertyLimitMsg && (
+                    <TooltipContent>{propertyLimitMsg}</TooltipContent>
+                  )}
+                </Tooltip>
+              )}
+              {canWrite && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span>
+                      <Button
+                        onClick={() => !atPropertyLimit && router.push("/properties/new")}
+                        disabled={atPropertyLimit}
+                        aria-disabled={atPropertyLimit}
+                      >
+                        <Plus className="h-4 w-4" aria-hidden="true" />
+                        Add Property
+                        {atPropertyLimit && (
+                          <span className="ml-1.5 text-[10px] opacity-70">
+                            {propertyUsed}/{propertyLimit}
+                          </span>
+                        )}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {propertyLimitMsg && (
+                    <TooltipContent side="bottom" className="max-w-[220px] text-center">
+                      {propertyLimitMsg}
+                      {" "}
+                      <a href="/subscription/plans" className="underline font-semibold">
+                        Upgrade →
+                      </a>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              )}
+            </div>
+          </TooltipProvider>
         }
       />
 

@@ -74,44 +74,83 @@ def _limit_exceeded(current: int, limit: int) -> bool:
     return limit != -1 and current >= limit
 
 
-async def check_property_limit(org_id: uuid.UUID, db: AsyncSession) -> None:
-    """Raise 402 if the org has reached its property limit."""
+async def check_property_limit(
+    org_id: uuid.UUID, db: AsyncSession, *, adding: int = 1
+) -> None:
+    """
+    Raise 402 if adding more properties would exceed the plan limit.
+
+    :param adding: number of properties about to be created (default 1;
+                   set to the import count for bulk operations).
+    """
     limits = await _get_active_plan_limits(org_id, db)
     max_p = limits["max_properties"]
     if max_p == -1:
         return
     current = await _count_properties(org_id, db)
-    if current >= max_p:
+    if current + adding > max_p:
+        available = max(max_p - current, 0)
+        noun = "property" if max_p == 1 else "properties"
+        detail = (
+            f"Your {limits['plan_name']} plan allows up to {max_p} {noun}. "
+            f"You currently have {current}."
+        )
+        if adding > 1:
+            detail += (
+                f" This operation would add {adding} "
+                f"({'property' if adding == 1 else 'properties'}) "
+                f"but only {available} {'slot is' if available == 1 else 'slots are'} available."
+            )
+        detail += " Upgrade your plan to add more properties."
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail={
                 "code": "property_limit_exceeded",
-                "message": f"Your {limits['plan_name']} plan allows up to {max_p} "
-                           f"{'property' if max_p == 1 else 'properties'}. "
-                           "Upgrade to add more properties.",
+                "message": detail,
                 "current": current,
+                "adding": adding,
                 "limit": max_p,
+                "available": available,
                 "plan": limits["plan_slug"],
             },
         )
 
 
-async def check_unit_limit(org_id: uuid.UUID, db: AsyncSession) -> None:
-    """Raise 402 if the org has reached its unit limit."""
+async def check_unit_limit(
+    org_id: uuid.UUID, db: AsyncSession, *, adding: int = 1
+) -> None:
+    """
+    Raise 402 if adding more units would exceed the plan limit.
+
+    :param adding: number of units about to be created (default 1;
+                   set to the batch/import count for bulk operations).
+    """
     limits = await _get_active_plan_limits(org_id, db)
     max_u = limits["max_units"]
     if max_u == -1:
         return
     current = await _count_units(org_id, db)
-    if current >= max_u:
+    if current + adding > max_u:
+        available = max(max_u - current, 0)
+        detail = (
+            f"Your {limits['plan_name']} plan allows up to {max_u} units. "
+            f"You currently have {current}."
+        )
+        if adding > 1:
+            detail += (
+                f" This operation would add {adding} units "
+                f"but only {available} {'slot is' if available == 1 else 'slots are'} available."
+            )
+        detail += " Upgrade your plan to add more units."
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail={
                 "code": "unit_limit_exceeded",
-                "message": f"Your {limits['plan_name']} plan allows up to {max_u} units. "
-                           "Upgrade to add more units.",
+                "message": detail,
                 "current": current,
+                "adding": adding,
                 "limit": max_u,
+                "available": available,
                 "plan": limits["plan_slug"],
             },
         )
