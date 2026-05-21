@@ -104,7 +104,7 @@ export function middleware(request: NextRequest) {
 
   // Redirect pure tenants (no staff role) away from ALL staff dashboard routes.
   // roles.length > 0 guard: if cookies aren't set yet, let the page load normally.
-  const isStaff = ["superadmin", "owner", "manager", "maintenance"].some((r) =>
+  const isStaff = ["superadmin", "owner", "manager", "maintenance", "landlord", "caretaker"].some((r) =>
     roles.includes(r),
   );
   if (roles.length > 0 && !isStaff && roles.includes("tenant")) {

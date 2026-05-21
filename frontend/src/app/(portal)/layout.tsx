@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { LogOut, Sun, Moon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -65,6 +66,67 @@ function PortalNav() {
   );
 }
 
+/**
+ * PortalAuthGate — client-side session guard for the tenant portal.
+ *
+ * Mirrors the dashboard's AuthGate pattern:
+ *   1. Shows a spinner while auth is initialising (prevents flash of content).
+ *   2. Redirects to /login if the session is missing or expired.
+ *   3. Redirects non-tenants away from the portal (defence-in-depth alongside middleware).
+ *
+ * The middleware already handles server-side enforcement; this catches
+ * in-page session expiry (e.g. user leaves the tab open for hours).
+ */
+function PortalAuthGate({ children }: { children: React.ReactNode }) {
+  const isAuthInitialized = useAppStore((s) => s.isAuthInitialized);
+  const isAuthenticated   = useAppStore((s) => s.isAuthenticated);
+  const user              = useAppStore((s) => s.user);
+
+  useEffect(() => {
+    if (!isAuthInitialized) return;
+
+    if (!isAuthenticated) {
+      window.location.replace("/login?redirect=/portal");
+      return;
+    }
+
+    // Defence-in-depth: if the authenticated user is not a tenant,
+    // redirect them to the appropriate area.
+    if (user) {
+      const userRoles: string[] =
+        (user.roles as string[] | undefined) ??
+        (user.role ? [user.role as string] : []);
+
+      if (!userRoles.includes("tenant")) {
+        // Staff/owner/manager → staff dashboard
+        window.location.replace("/dashboard");
+      }
+    }
+  }, [isAuthInitialized, isAuthenticated, user]);
+
+  // Spinner while auth is initialising — prevents a flash of portal content
+  if (!isAuthInitialized) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  // Not authenticated — null while the useEffect redirect fires
+  if (!isAuthenticated) return null;
+
+  // Authenticated non-tenant — null while the useEffect redirect fires
+  if (user) {
+    const userRoles: string[] =
+      (user.roles as string[] | undefined) ??
+      (user.role ? [user.role as string] : []);
+    if (!userRoles.includes("tenant")) return null;
+  }
+
+  return <>{children}</>;
+}
+
 export default function PortalLayout({
   children,
 }: {
@@ -72,9 +134,12 @@ export default function PortalLayout({
 }) {
   return (
     <div className="min-h-screen bg-background">
+      {/* Bootstraps token + user profile, schedules silent refresh */}
       <AuthInitializer />
-      <PortalNav />
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6">{children}</main>
+      <PortalAuthGate>
+        <PortalNav />
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6">{children}</main>
+      </PortalAuthGate>
     </div>
   );
 }

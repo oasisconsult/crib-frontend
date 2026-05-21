@@ -37,6 +37,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         "manager",
         "maintenance",
         "landlord",
+        "caretaker",   // delegated property caretakers access the staff dashboard
       ].some((r) => userRoles.includes(r));
       if (!isDashboardUser && userRoles.includes("tenant")) {
         window.location.replace("/portal");
