@@ -318,6 +318,7 @@ export default function AdminPage() {
         <Tabs value={tab} onValueChange={setTab}>
           <div className="overflow-x-auto pb-px">
             <TabsList className="flex w-max min-w-full h-auto gap-0.5 p-1">
+              {/* ── People ── */}
               <TabsTrigger value="users" className="shrink-0">
                 <Users className="h-3.5 w-3.5 mr-1.5" />
                 Users
@@ -330,27 +331,26 @@ export default function AdminPage() {
                 <UserCheck className="h-3.5 w-3.5 mr-1.5" />
                 Landlords
               </TabsTrigger>
+              {/* ── Finance ── */}
+              <TabsTrigger value="lease-billing" className="shrink-0">
+                <ScrollText className="h-3.5 w-3.5 mr-1.5" />
+                Billing Ops
+              </TabsTrigger>
+              {/* ── Platform ── */}
               <TabsTrigger value="system" className="shrink-0">
                 <Server className="h-3.5 w-3.5 mr-1.5" />
-                System
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="shrink-0">
-                <Database className="h-3.5 w-3.5 mr-1.5" />
-                Settings
+                System Health
               </TabsTrigger>
               <TabsTrigger value="access" className="shrink-0">
                 <Shield className="h-3.5 w-3.5 mr-1.5" />
-                Access
+                Access Control
               </TabsTrigger>
               <TabsTrigger value="gdpr" className="shrink-0">
                 <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
                 Compliance
               </TabsTrigger>
-              <TabsTrigger value="lease-billing" className="shrink-0">
-                <ScrollText className="h-3.5 w-3.5 mr-1.5" />
-                Lease Billing
-              </TabsTrigger>
             </TabsList>
+            {/* Settings now has its own sub-pages via sidebar nav — no tab needed */}
           </div>
 
           {/* ─── Users tab ───────────────────────────────────── */}
@@ -1009,11 +1009,6 @@ export default function AdminPage() {
                 })}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* ─── Settings tab ────────────────────────────────── */}
-          <TabsContent value="settings" className="mt-4">
-            <SettingsPanel />
           </TabsContent>
 
           {/* ─── Access Control tab ──────────────────────────── */}

@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -15,11 +16,17 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Wrench,
   Shield,
   LogOut,
   KeyRound,
   BadgeCheck,
+  CreditCard as BillingIcon,
+  Globe,
+  Plug,
+  ToggleLeft,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -37,6 +44,13 @@ import type { UserRole } from "@/types";
 
 /* ── Nav item definition ────────────────────────────────────────────────── */
 
+interface SubNavItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  roles?: UserRole[];
+}
+
 interface NavItem {
   href: string;
   label: string;
@@ -47,7 +61,23 @@ interface NavItem {
   permission?: { action: string; resource: string };
   badge?: number;
   section?: string;
+  /**
+   * When present, renders this item as an accordion parent.
+   * Children are indented below the parent when expanded.
+   * Non-superadmin users see the plain href link instead.
+   */
+  children?: SubNavItem[];
 }
+
+/* ── Admin settings sub-items (superadmin only) ─────────────────────────── */
+
+const ADMIN_SETTINGS_CHILDREN: SubNavItem[] = [
+  { href: "/settings",             label: "My Preferences",  icon: UserCircle },
+  { href: "/admin/billing",        label: "Billing & Plans",  icon: BillingIcon, roles: ["superadmin"] },
+  { href: "/admin/platform",       label: "Platform & Agency",icon: Globe,       roles: ["superadmin"] },
+  { href: "/admin/integrations",   label: "Integrations",     icon: Plug,        roles: ["superadmin"] },
+  { href: "/admin/features",       label: "Feature Flags",    icon: ToggleLeft,  roles: ["superadmin"] },
+];
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, section: "MENU" },
@@ -144,6 +174,39 @@ export function Sidebar() {
   const user = useAppStore((s) => s.user);
   const { logout } = useAuth();
 
+  // ── Accordion state ───────────────────────────────────────────────────────
+  // Track which parent items are expanded. Auto-expand when a child is active.
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(() => {
+    // Initialise: expand any group whose child matches the current path
+    const init = new Set<string>();
+    NAV_ITEMS.forEach((item) => {
+      if (item.children?.some((c) => pathname.startsWith(c.href))) {
+        init.add(item.href);
+      }
+    });
+    // Also expand Settings group if we're on any admin settings route
+    if (
+      pathname.startsWith("/settings") ||
+      pathname.startsWith("/admin/billing") ||
+      pathname.startsWith("/admin/platform") ||
+      pathname.startsWith("/admin/integrations") ||
+      pathname.startsWith("/admin/features")
+    ) {
+      init.add("/settings");
+    }
+    return init;
+  });
+
+  function toggleGroup(href: string) {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(href)) next.delete(href);
+      else next.add(href);
+      return next;
+    });
+  }
+
+  // ── Build visible items with accordion children injected for superadmins ──
   const visibleItems = NAV_ITEMS.filter((item) => {
     // 1. Role gate (fast, no DB) — superadmin bypasses
     if (item.roles && !isSuperAdmin && !item.roles.some((r) => roles.includes(r))) {
@@ -154,6 +217,15 @@ export function Sidebar() {
       return false;
     }
     return true;
+  }).map((item) => {
+    // Inject admin settings children for the Settings item (superadmin only)
+    if (item.href === "/settings" && isSuperAdmin) {
+      return {
+        ...item,
+        children: ADMIN_SETTINGS_CHILDREN,
+      };
+    }
+    return item;
   });
 
   let lastSection = "";
@@ -209,17 +281,50 @@ export function Sidebar() {
           aria-label="Sidebar navigation"
         >
           {visibleItems.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
+            const hasChildren = !sidebarCollapsed && !!item.children?.length;
+            const isExpanded  = expandedGroups.has(item.href);
+            const childActive = item.children?.some((c) => pathname.startsWith(c.href));
+            const isActive    = !hasChildren && (
+              item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+            );
+            // Parent is highlighted when a child is active
+            const parentHighlighted = hasChildren && childActive;
             const Icon = item.icon;
 
             const showSection =
               !sidebarCollapsed && item.section && item.section !== lastSection;
             if (item.section) lastSection = item.section;
 
-            const link = (
+            // ── Accordion parent button (no navigation — just toggle) ──
+            const accordionParent = hasChildren ? (
+              <button
+                type="button"
+                onClick={() => toggleGroup(item.href)}
+                aria-expanded={isExpanded}
+                className={cn(
+                  "w-full flex items-center gap-2.5",
+                  "min-h-[40px] px-2.5 py-2 rounded-[7px]",
+                  "text-sm font-medium transition-[background,color] duration-150 cursor-pointer",
+                  parentHighlighted
+                    ? "bg-[hsl(var(--sidebar-active-bg))] text-[hsl(var(--sidebar-active-fg))] font-semibold"
+                    : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[hsl(var(--foreground))]",
+                )}
+              >
+                <Icon className={cn(
+                  "h-[18px] w-[18px] shrink-0",
+                  parentHighlighted ? "text-[hsl(var(--sidebar-active-fg))]" : "text-[hsl(var(--sidebar-foreground))]",
+                )} />
+                <span className="truncate flex-1 text-left">{item.label}</span>
+                <ChevronDown className={cn(
+                  "h-3.5 w-3.5 shrink-0 transition-transform duration-200",
+                  isExpanded ? "rotate-180" : "rotate-0",
+                  parentHighlighted ? "text-[hsl(var(--sidebar-active-fg))]" : "text-[hsl(var(--sidebar-section-fg))]",
+                )} />
+              </button>
+            ) : null;
+
+            // ── Regular link ──
+            const link = !hasChildren ? (
               <Link
                 href={item.href as any}
                 aria-current={isActive ? "page" : undefined}
@@ -247,12 +352,42 @@ export function Sidebar() {
                   <span className="truncate">{item.label}</span>
                 )}
                 {!sidebarCollapsed && item.badge && (
-                  <span className="ml-auto h-4.5 min-w-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                  <span className="ml-auto h-4.5 min-w-[18px] px-1 flex items-center justify-center rounded-full bg-[hsl(var(--destructive))] text-[10px] font-bold text-white">
                     {item.badge}
                   </span>
                 )}
               </Link>
-            );
+            ) : null;
+
+            // ── Accordion children ──
+            const childrenEl = hasChildren && isExpanded ? (
+              <div className="mt-0.5 ml-3 pl-3 border-l border-[hsl(var(--sidebar-border))] space-y-0.5">
+                {item.children!.map((child) => {
+                  const childIsActive = pathname.startsWith(child.href);
+                  const ChildIcon = child.icon;
+                  return (
+                    <Link
+                      key={child.href}
+                      href={child.href as any}
+                      aria-current={childIsActive ? "page" : undefined}
+                      className={cn(
+                        "flex items-center gap-2 min-h-[36px] px-2 py-1.5 rounded-[6px]",
+                        "text-xs font-medium transition-[background,color] duration-150 cursor-pointer",
+                        childIsActive
+                          ? "bg-[hsl(var(--sidebar-active-bg))] text-[hsl(var(--sidebar-active-fg))] font-semibold"
+                          : "text-[hsl(var(--sidebar-foreground))] hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-[hsl(var(--foreground))]",
+                      )}
+                    >
+                      <ChildIcon className={cn(
+                        "h-[15px] w-[15px] shrink-0",
+                        childIsActive ? "text-[hsl(var(--sidebar-active-fg))]" : "text-[hsl(var(--sidebar-foreground))]",
+                      )} />
+                      <span className="truncate">{child.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null;
 
             return (
               <div key={item.href}>
@@ -261,18 +396,22 @@ export function Sidebar() {
                     {item.section}
                   </p>
                 )}
-                {sidebarCollapsed ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>{link}</TooltipTrigger>
-                    <TooltipContent
-                      side="right"
-                      className="text-xs font-medium"
-                    >
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  link
+                {/* Accordion parent — no tooltip needed (always expanded sidebar) */}
+                {hasChildren && accordionParent}
+                {hasChildren && childrenEl}
+
+                {/* Regular link — wrap in tooltip when collapsed */}
+                {!hasChildren && (
+                  sidebarCollapsed ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>{link}</TooltipTrigger>
+                      <TooltipContent side="right" className="text-xs font-medium">
+                        {item.label}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    link
+                  )
                 )}
               </div>
             );
