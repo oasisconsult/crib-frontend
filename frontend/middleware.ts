@@ -11,11 +11,17 @@ const PUBLIC_PREFIXES = [
   "/favicon.ico",
 ];
 
+// Exact-match public routes (startsWith "/" would match everything)
+const PUBLIC_EXACT = ["/"];
+
 const ADMIN_PREFIXES = ["/admin"];
 const TENANT_PREFIXES = ["/portal"];
 
 function isPublic(pathname: string) {
-  return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+  return (
+    PUBLIC_EXACT.includes(pathname) ||
+    PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
+  );
 }
 
 function isOnboarding(pathname: string) {
