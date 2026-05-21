@@ -45,18 +45,15 @@ export function MarketingNav() {
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
 
           {/* Logo */}
-          <Link href="/" aria-label="Crib home" className="flex items-center gap-2.5 shrink-0">
+          <Link href="/" aria-label="Crib home" className="shrink-0">
             <Image
               src="/crib_logo_green.png"
               alt="Crib"
-              width={32}
-              height={32}
-              className="rounded-md"
+              width={110}
+              height={36}
+              className="h-9 w-auto"
               priority
             />
-            <span className="text-lg font-bold tracking-tight text-[hsl(var(--foreground))]">
-              Crib
-            </span>
           </Link>
 
           {/* Desktop nav */}

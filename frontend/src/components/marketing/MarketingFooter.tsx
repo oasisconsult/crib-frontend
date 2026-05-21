@@ -53,15 +53,14 @@ export function MarketingFooter() {
 
           {/* Brand */}
           <div className="col-span-2 sm:col-span-3 lg:col-span-1 space-y-4">
-            <Link href="/" aria-label="Crib home" className="flex items-center gap-2.5">
+            <Link href="/" aria-label="Crib home">
               <Image
                 src="/crib_logo_white.png"
                 alt="Crib"
-                width={30}
-                height={30}
-                className="rounded-md"
+                width={110}
+                height={36}
+                className="h-8 w-auto"
               />
-              <span className="text-base font-bold text-white">Crib</span>
             </Link>
             <p className="text-sm text-white/50 leading-relaxed max-w-xs">
               Modern property management for landlords and property managers in Africa.
