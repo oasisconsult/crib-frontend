@@ -308,13 +308,12 @@ function LoginContent() {
           <div className="mb-10">
             <Link href="/" aria-label="Go to Crib home">
               <Image
-                src="/crib_logo_green.png"
+                src="/crib-icon-green.png"
                 alt="Crib"
-                width={160}
-                height={44}
+                width={56}
+                height={56}
                 priority
-                className="w-[120px] sm:w-[140px] md:w-[160px] h-auto"
-                style={{ height: 'auto' }}
+                className="h-14 w-14"
               />
             </Link>
           </div>

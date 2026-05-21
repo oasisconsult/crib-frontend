@@ -308,13 +308,12 @@ export default function LoginPage() {
           <div className="mb-10">
             <Link href="/" aria-label="Go to Crib home">
               <Image
-                src="/crib_logo_green.png"
+                src="/crib-icon-green.png"
                 alt="Crib"
-                width={240}
+                width={56}
                 height={56}
                 priority
-                className="w-[200px] sm:w-[220px] md:w-[240px] h-auto"
-                style={{ height: 'auto' }}
+                className="h-14 w-14"
               />
             </Link>
           </div>

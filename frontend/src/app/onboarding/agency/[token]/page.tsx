@@ -158,12 +158,12 @@ export default function AgencyOnboardingPage({ params }: Props) {
         <div className="mb-10">
           <Link href="/" aria-label="Go to Crib home">
             <Image
-              src="/crib_logo_green.png"
+              src="/crib-icon-green.png"
               alt="Crib"
-              width={120}
-              height={34}
+              width={40}
+              height={40}
               priority
-              className="w-[100px] sm:w-[110px] md:w-[120px] h-auto"
+              className="h-10 w-10"
               style={{ height: 'auto' }}
             />
           </Link>

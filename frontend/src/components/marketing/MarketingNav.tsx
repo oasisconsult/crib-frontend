@@ -47,11 +47,11 @@ export function MarketingNav() {
           {/* Logo */}
           <Link href="/" aria-label="Crib home" className="shrink-0">
             <Image
-              src="/crib_logo_green.png"
+              src="/crib-icon-green.png"
               alt="Crib"
-              width={110}
+              width={36}
               height={36}
-              className="h-9 w-auto"
+              className="h-9 w-9"
               priority
             />
           </Link>

@@ -19,13 +19,12 @@ function PortalNav() {
         <div className="flex items-center gap-2.5">
           <Link href="/" aria-label="Go to Crib home">
             <Image
-              src="/crib_logo_green.png"
+              src="/crib-icon-green.png"
               alt="Crib"
-              width={120}
-              height={34}
+              width={36}
+              height={36}
               priority
-              className="w-[90px] sm:w-[105px] md:w-[120px] h-auto"
-              style={{ height: 'auto' }}
+              className="h-9 w-9"
             />
           </Link>
           <span className="text-muted-foreground/50 text-sm">·</span>

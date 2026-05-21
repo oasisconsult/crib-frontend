@@ -31,13 +31,12 @@ export default function OnboardingPage({ params }: Props) {
         <div className="flex items-center justify-between mb-8">
           <Link href="/" aria-label="Go to Crib home">
             <Image
-              src="/crib_logo_green.png"
+              src="/crib-icon-green.png"
               alt="Crib"
-              width={120}
-              height={34}
+              width={40}
+              height={40}
               priority
-              className="w-[90px] sm:w-[105px] md:w-[120px] h-auto"
-              style={{ height: "auto" }}
+              className="h-10 w-10"
             />
           </Link>
           <span className="text-xs text-muted-foreground">Tenant Onboarding</span>

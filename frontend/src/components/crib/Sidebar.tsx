@@ -97,23 +97,22 @@ export function Sidebar({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {collapsed ? (
-                <div className="w-8 h-8 relative">
-                  <Image
-                    src="/crib_logo_green.png"
-                    alt="Crib"
-                    fill
-                    priority
-                    className="object-contain"
-                  />
-                </div>
+                <Image
+                  src="/crib-icon-green.png"
+                  alt="Crib"
+                  width={32}
+                  height={32}
+                  priority
+                  className="h-8 w-8"
+                />
               ) : (
                 <Image
-                  src="/crib_logo_green.png"
+                  src="/crib-icon-green.png"
                   alt="Crib"
-                  width={120}
-                  height={34}
+                  width={32}
+                  height={32}
                   priority
-                  className="w-[100px] lg:w-[120px] h-auto"
+                  className="h-8 w-8"
                 />
               )}
             </div>

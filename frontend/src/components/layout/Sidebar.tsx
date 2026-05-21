@@ -179,25 +179,25 @@ export function Sidebar() {
           )}
         >
           {sidebarCollapsed ? (
-            <Link href="/dashboard" aria-label="Go to dashboard" className="relative w-6 h-6 shrink-0 block">
+            <Link href="/dashboard" aria-label="Go to dashboard" className="shrink-0 block">
               <Image
-                src="/crib_logo_green.png"
+                src="/crib-icon-green.png"
                 alt="Crib"
-                fill
+                width={24}
+                height={24}
                 priority
-                className="object-contain"
+                className="h-6 w-6"
               />
             </Link>
           ) : (
             <Link href="/dashboard" aria-label="Go to dashboard">
               <Image
-                src="/crib_logo_green.png"
+                src="/crib-icon-green.png"
                 alt="Crib"
-                width={80}
-                height={24}
+                width={32}
+                height={32}
                 priority
-                className="w-[72px] lg:w-[80px] h-auto"
-                style={{ height: 'auto' }}
+                className="h-8 w-8"
               />
             </Link>
           )}

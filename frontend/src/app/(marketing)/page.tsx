@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     siteName: "Crib",
     images: [
       {
-        url: "/crib_logo_green.png",
+        url: "/crib-icon-green.png",
         width: 512,
         height: 512,
         alt: "Crib property management",

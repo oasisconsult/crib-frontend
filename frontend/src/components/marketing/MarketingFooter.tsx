@@ -55,11 +55,11 @@ export function MarketingFooter() {
           <div className="col-span-2 sm:col-span-3 lg:col-span-1 space-y-4">
             <Link href="/" aria-label="Crib home">
               <Image
-                src="/crib_logo_white.png"
+                src="/crib-icon-green.png"
                 alt="Crib"
-                width={110}
-                height={36}
-                className="h-8 w-auto"
+                width={32}
+                height={32}
+                className="h-8 w-8"
               />
             </Link>
             <p className="text-sm text-white/50 leading-relaxed max-w-xs">

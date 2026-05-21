@@ -83,7 +83,7 @@ export const metadata: Metadata = {
     "Crib | A modern property management system for landlords and tenants alike",
   icons: {
     icon: "/favicon.ico",
-    apple: "/crib_logo_green.png",
+    apple: "/crib-icon-green.png",
   },
 };
 
