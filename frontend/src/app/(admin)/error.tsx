@@ -38,7 +38,7 @@ export default function AdminError({ error, reset }: Props) {
           <RefreshCw className="h-4 w-4" />
           Try again
         </Button>
-        <Button size="sm" variant="outline" onClick={() => router.push("/")}>
+        <Button size="sm" variant="outline" onClick={() => router.push("/dashboard")}>
           <ArrowLeft className="h-4 w-4" />
           Back to app
         </Button>

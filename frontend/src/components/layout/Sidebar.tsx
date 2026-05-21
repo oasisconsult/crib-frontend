@@ -50,7 +50,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard, section: "MENU" },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, section: "MENU" },
   {
     href: "/properties",
     label: "Properties",

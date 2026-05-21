@@ -290,7 +290,7 @@ function MarketingPanel() {
 
 function LoginContent() {
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") ?? "/";
+  const redirect = searchParams.get("redirect") ?? "/dashboard";
   const [loading, setLoading] = useState(false);
 
   const handleLogin = () => {

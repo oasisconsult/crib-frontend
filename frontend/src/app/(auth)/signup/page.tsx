@@ -34,7 +34,7 @@ export default function SignupPage() {
       "openid profile email phone roles offline_access",
     );
     logtoUrl.searchParams.set("prompt", "create");
-    logtoUrl.searchParams.set("state", btoa(JSON.stringify({ redirect: "/" })));
+    logtoUrl.searchParams.set("state", btoa(JSON.stringify({ redirect: "/dashboard" })));
     window.location.href = logtoUrl.toString();
   };
 

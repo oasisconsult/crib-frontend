@@ -39,7 +39,7 @@ export default function DashboardError({ error, reset }: Props) {
           <RefreshCw className="h-4 w-4" />
           Try again
         </Button>
-        <Button size="sm" onClick={() => router.push("/")}>
+        <Button size="sm" onClick={() => router.push("/dashboard")}>
           <Home className="h-4 w-4" />
           Dashboard
         </Button>
