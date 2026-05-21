@@ -9,17 +9,17 @@ const STATS = [
 
 export function StatsSection() {
   return (
-    <section aria-label="Platform statistics" className="bg-[#111827] py-14">
+    <section aria-label="Platform statistics" className="bg-[#f3fcfa] border-y border-[#239487]/15 py-14">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {STATS.map(({ icon: Icon, value, label, desc }) => (
             <div key={label} className="text-center space-y-1">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#239487]/20 mb-3">
-                <Icon className="h-5 w-5 text-[#4ecdc4]" aria-hidden="true" />
+              <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#239487]/10 mb-3">
+                <Icon className="h-5 w-5 text-[#239487]" aria-hidden="true" />
               </div>
-              <p className="text-3xl font-bold text-white tracking-tight">{value}</p>
-              <p className="text-sm font-semibold text-white/80">{label}</p>
-              <p className="text-xs text-white/40">{desc}</p>
+              <p className="text-3xl font-bold text-[#0B3B36] tracking-tight">{value}</p>
+              <p className="text-sm font-semibold text-[#16665d]">{label}</p>
+              <p className="text-xs text-[#239487]/70">{desc}</p>
             </div>
           ))}
         </div>
