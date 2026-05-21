@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle, Bell, Home, Wrench, MessageCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, Bell, Wrench, MessageCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -52,10 +52,13 @@ function DashboardMockup() {
           <div className="w-40 shrink-0 bg-[#1a2535] border-r border-white/[0.07] flex flex-col">
             <div className="p-3 border-b border-white/[0.07]">
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded bg-[#239487] flex items-center justify-center">
-                  <Home className="h-3.5 w-3.5 text-white" />
-                </div>
-                <span className="text-xs font-bold text-white">Crib</span>
+                {/* Real Crib logo — decorative, inside aria-hidden mockup */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/crib-icon-green.png"
+                  alt=""
+                  className="h-5 w-auto"
+                />
               </div>
             </div>
             <nav className="flex-1 p-2 space-y-0.5">
