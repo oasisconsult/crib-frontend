@@ -18,3 +18,4 @@ from app.models import (  # noqa: F401
     tenant,
     wallet,
 )
+from app.models.caretaker_invite import CaretakerInvite  # noqa: F401

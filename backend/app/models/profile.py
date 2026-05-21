@@ -20,7 +20,7 @@ Role design:
 import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import TimestampedBase
@@ -93,6 +93,27 @@ class Profile(TimestampedBase):
     # ── Activity ─────────────────────────────────────────────────────────────
     last_seen_at: Mapped[DateTime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+
+    # ── Caretaker delegation ──────────────────────────────────────────────────
+    # Set only when role="caretaker".  NULL on all other profiles.
+    #
+    # caretaker_owner_profile_id — the owner who delegated access
+    # caretaker_permission_level — "full" | "operations_only"
+    # caretaker_property_ids     — JSONB list[str] of property UUIDs this
+    #                              caretaker may access; enforced at the API
+    #                              layer on every query.
+    caretaker_owner_profile_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    caretaker_permission_level: Mapped[str | None] = mapped_column(
+        String(30), nullable=True
+    )
+    caretaker_property_ids: Mapped[list | None] = mapped_column(
+        JSONB, nullable=True
     )
 
     def __repr__(self) -> str:

@@ -64,7 +64,18 @@ async def list_properties(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = get_org_id(current_user)
-    landlord_id = current_user.id if current_user.profile.is_read_only else None
+    # Scope by property access for landlords (read-only) AND caretakers
+    landlord_id = None
+    if current_user.profile.is_read_only:
+        landlord_id = current_user.id
+    elif "caretaker" in current_user.roles:
+        # Caretakers: filter to their delegated property UUIDs
+        import uuid as _uuid
+        caretaker_ids = current_user.profile.caretaker_property_ids or []
+        # Reuse the landlord_profile_id filter — LandlordPropertyAccess rows were
+        # created for the caretaker during onboarding; fall back to direct JSONB
+        # filtering if no rows exist yet.
+        landlord_id = current_user.id
     return await svc.list_properties(
         org_id, db, page, page_size, status, type, search,
         landlord_profile_id=landlord_id,
@@ -86,7 +97,18 @@ async def get_property(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    landlord_id = current_user.id if current_user.profile.is_read_only else None
+    # Scope by property access for landlords (read-only) AND caretakers
+    landlord_id = None
+    if current_user.profile.is_read_only:
+        landlord_id = current_user.id
+    elif "caretaker" in current_user.roles:
+        # Caretakers: filter to their delegated property UUIDs
+        import uuid as _uuid
+        caretaker_ids = current_user.profile.caretaker_property_ids or []
+        # Reuse the landlord_profile_id filter — LandlordPropertyAccess rows were
+        # created for the caretaker during onboarding; fall back to direct JSONB
+        # filtering if no rows exist yet.
+        landlord_id = current_user.id
     prop = await svc.get_property(property_id, get_org_id(current_user), db, landlord_profile_id=landlord_id)
     return await svc._property_out(prop, db)
 

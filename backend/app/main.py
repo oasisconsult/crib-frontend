@@ -156,6 +156,8 @@ def create_app() -> FastAPI:
     application.include_router(tenant_import.router, prefix=settings.api_prefix)
     application.include_router(landlords.router, prefix=settings.api_prefix)
     application.include_router(agency_invites.router, prefix=settings.api_prefix)
+    from app.api.v1 import caretaker_invites
+    application.include_router(caretaker_invites.router, prefix=settings.api_prefix)
     application.include_router(admin.router, prefix=settings.api_prefix)
     application.include_router(webhooks.router, prefix=settings.api_prefix)
 

@@ -54,6 +54,7 @@ _PRIORITY_LOCK = asyncio.Lock()
 _FALLBACK_PRIORITY: dict[str, int] = {
     "superadmin":  0,
     "owner":      10,
+    "caretaker":  15,   # delegated property manager — scoped to specific properties
     "manager":    20,
     "landlord":   25,
     "maintenance": 30,
@@ -248,6 +249,15 @@ async def get_current_user(
 
     profile = await _upsert_profile(claims, db)
     raw_roles = _roles_from_claims(claims)
+
+    # ── Caretaker detection ───────────────────────────────────────────────────
+    # A caretaker logs in via Logto as "owner" (for dashboard access), but our
+    # system identifies them by profile.caretaker_owner_profile_id being set.
+    # Appending "caretaker" to their roles allows endpoints to apply property-
+    # level scoping without a dedicated Logto role.
+    if profile.caretaker_owner_profile_id is not None and "caretaker" not in raw_roles:
+        raw_roles = [r for r in raw_roles if r != "owner"] + ["caretaker", "owner"]
+
     return CurrentUser(profile=profile, claims=claims, roles=raw_roles)
 
 

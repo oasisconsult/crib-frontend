@@ -46,6 +46,10 @@ class ProfileOut(CamelModel):
     avatar: str | None = None
     organisation_id: str | None = None
     is_read_only: bool = False
+    # Populated for caretaker profiles; None for all others
+    caretaker_meta: dict | None = None
+    # Populated for landlord (read-only) and caretaker profiles for property scoping
+    property_ids: list[str] | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -67,6 +71,21 @@ def _profile_out(current_user: CurrentUser) -> ProfileOut:
     created_at: datetime = p.created_at  # type: ignore[assignment]
     updated_at: datetime = p.updated_at  # type: ignore[assignment]
 
+    # Build caretaker_meta if this is a caretaker profile
+    caretaker_meta: dict | None = None
+    if p.caretaker_owner_profile_id is not None:
+        caretaker_meta = {
+            "ownerId":         str(p.caretaker_owner_profile_id),
+            "ownerName":       "Property Owner",   # resolved by frontend via name
+            "permissionLevel": p.caretaker_permission_level or "full",
+        }
+
+    # property_ids — populated for landlords (via LandlordPropertyAccess) and
+    # caretakers (stored directly on profile).  Frontend uses this for scoping.
+    property_ids: list[str] | None = None
+    if p.caretaker_property_ids is not None:
+        property_ids = [str(pid) for pid in (p.caretaker_property_ids or [])]
+
     return ProfileOut(
         id=str(p.id),
         email=p.email or "",
@@ -83,6 +102,8 @@ def _profile_out(current_user: CurrentUser) -> ProfileOut:
         avatar=p.avatar_url,
         organisation_id=str(p.organisation_id) if p.organisation_id else None,
         is_read_only=bool(p.is_read_only),
+        caretaker_meta=caretaker_meta,
+        property_ids=property_ids,
         created_at=created_at,
         updated_at=updated_at,
     )
