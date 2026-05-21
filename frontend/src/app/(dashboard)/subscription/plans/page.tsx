@@ -478,8 +478,8 @@ export default function PlansPage() {
               className={cn(
                 "px-3.5 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer",
                 cycle === c
-                  ? "bg-white dark:bg-slate-700 shadow-sm text-foreground font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/60 dark:hover:bg-slate-700/60",
+                  ? "bg-emerald-50 dark:bg-emerald-500/15 shadow-sm text-emerald-800 dark:text-emerald-400 font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-[hsl(var(--accent))]",
               )}
             >
               {c === "monthly" ? "Monthly" : "Annual"}
@@ -501,8 +501,8 @@ export default function PlansPage() {
               className={cn(
                 "px-3.5 py-1.5 text-sm font-medium rounded-md transition-all cursor-pointer",
                 currency === cur
-                  ? "bg-white dark:bg-slate-700 shadow-sm text-foreground font-semibold"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/60 dark:hover:bg-slate-700/60",
+                  ? "bg-emerald-50 dark:bg-emerald-500/15 shadow-sm text-emerald-800 dark:text-emerald-400 font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-[hsl(var(--accent))]",
               )}
             >
               {cur}

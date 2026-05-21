@@ -164,28 +164,28 @@ export default function PaymentsPage() {
             ),
             icon: TrendingUp,
             color: "text-teal-600",
-            bg: "bg-teal-50 dark:bg-teal-950/30",
+            bg: "bg-teal-50 dark:bg-teal-500/15",
           },
           {
             label: "Collected",
             value: formatCurrency(stats?.monthlyRevenue ?? 0, "UGX"),
             icon: CheckCircle2,
             color: "text-emerald-600",
-            bg: "bg-emerald-50 dark:bg-emerald-950/30",
+            bg: "bg-emerald-50 dark:bg-emerald-500/15",
           },
           {
             label: "Overdue",
             value: formatCurrency(stats?.overdueAmount ?? 0, "UGX"),
             icon: AlertTriangle,
             color: "text-red-600",
-            bg: "bg-red-50 dark:bg-red-950/30",
+            bg: "bg-red-50 dark:bg-red-500/15",
           },
           {
             label: "Collection Rate",
             value: `${stats?.collectionRate?.toFixed(0) ?? 0}%`,
             icon: CreditCard,
             color: "text-violet-600",
-            bg: "bg-violet-50 dark:bg-violet-950/30",
+            bg: "bg-violet-50 dark:bg-violet-500/15",
           },
         ].map((s) => (
           <Card key={s.label}>

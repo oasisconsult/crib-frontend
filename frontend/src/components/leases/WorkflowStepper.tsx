@@ -66,9 +66,9 @@ export function WorkflowStepper({
                   // Done: white bg, teal border + teal check — clean tick-box feel
                   status === "done" &&
                     "border-primary bg-white dark:bg-card text-primary shadow-sm",
-                  // Active: solid teal fill — clearly the current step
+                  // Active: light teal bg — clearly the current step
                   status === "active" &&
-                    "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold shadow-md ring-4 ring-emerald-500/20",
+                    "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold shadow-sm ring-4 ring-emerald-500/15",
                   // Upcoming: outlined, dark text at 60% — visually receded but WCAG-compliant
                   // slate-400/slate-50 was ~1.6:1 ❌; foreground/60 on card ≈ 7:1 ✓
                   status === "upcoming" &&

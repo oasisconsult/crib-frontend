@@ -98,7 +98,7 @@ function StepBar({ step }: { step: 1 | 2 }) {
             <div className={cn(
               "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold border-2 transition-colors",
               step === n
-                ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold"
+                ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold"
                 : step > n
                   ? "border-primary bg-primary/10 text-foreground"
                   : "border-border bg-background text-muted-foreground",

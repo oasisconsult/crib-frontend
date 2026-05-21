@@ -73,8 +73,8 @@ function KpiCard({
             className={cn(
               "flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-[4px]",
               positive
-                ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
-                : "bg-[hsl(var(--destructive))]/10 text-[hsl(var(--destructive))]",
+                ? "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-400"
+                : "bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-400",
             )}
           >
             {positive ? <TrendingUp className="h-3 w-3" aria-hidden="true" /> : <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
@@ -367,7 +367,7 @@ function buildKpis(stats: DashboardStats): KpiCardProps[] {
       value: String(stats.totalProperties),
       sub: `${stats.totalUnits} total units`,
       positive: true,
-      iconClass: "bg-primary/15 text-primary",
+      iconClass: "bg-[hsl(var(--accent))] text-[hsl(var(--primary))]",
       icon: <Building2 className="h-5 w-5" />,
       href: "/properties",
     },
@@ -376,7 +376,7 @@ function buildKpis(stats: DashboardStats): KpiCardProps[] {
       value: `${stats.occupancyRate.toFixed(1)}%`,
       sub: `${stats.occupiedUnits} / ${stats.totalUnits} occupied`,
       positive: occupancyGood,
-      iconClass: "bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400",
+      iconClass: "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
       icon: <Users className="h-5 w-5" />,
       href: "/tenants",
     },
@@ -385,7 +385,7 @@ function buildKpis(stats: DashboardStats): KpiCardProps[] {
       value: formatCurrencyCompact(stats.monthlyRevenue),
       sub: `${stats.collectionRate.toFixed(0)}% collection rate`,
       positive: collectionGood,
-      iconClass: "bg-primary/15 text-primary",
+      iconClass: "bg-[hsl(var(--accent))] text-[hsl(var(--primary))]",
       icon: <DollarSign className="h-5 w-5" />,
       href: "/payments",
     },
@@ -394,7 +394,7 @@ function buildKpis(stats: DashboardStats): KpiCardProps[] {
       value: formatCurrencyCompact(stats.overdueAmount),
       sub: `${stats.overduePayments} overdue ${stats.overduePayments === 1 ? "payment" : "payments"}`,
       positive: !hasOverdue,
-      iconClass: "bg-warning/15 text-warning",
+      iconClass: "bg-amber-50 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400",
       icon: <FileText className="h-5 w-5" />,
       href: "/payments",
     },
@@ -488,7 +488,7 @@ export function Dashboard() {
                 value=""
                 sub=""
                 positive={true}
-                iconClass="bg-primary/15 text-primary"
+                iconClass="bg-[hsl(var(--accent))] text-[hsl(var(--primary))]"
                 icon={<Building2 className="h-5 w-5" />}
                 loading
               />

@@ -82,8 +82,8 @@ function AmenityToggle({
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
         checked
-          ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-semibold"
-          : "border-border bg-muted/30 text-muted-foreground hover:border-primary/50",
+          ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-semibold"
+          : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:bg-[hsl(var(--accent))]",
       )}
     >
       {label}
