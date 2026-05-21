@@ -101,8 +101,7 @@ export default function DashboardLayout({
             <OfflineBanner />
             <main
               id="main-content"
-              className="flex-1 overflow-y-auto bg-background"
-              style={{ padding: "24px 28px" }}
+              className="flex-1 overflow-y-auto bg-background p-4 sm:p-5 md:py-6 md:px-7"
             >
               {children}
             </main>

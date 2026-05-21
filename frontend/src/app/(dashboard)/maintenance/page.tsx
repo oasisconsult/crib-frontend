@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,22 +25,18 @@ import type { MaintenanceIssue, FilterConfig } from "@/types";
 
 const PAGE_SIZE = 20;
 
-const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  urgent: { label: "Urgent", color: "text-red-700 bg-red-50 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" },
-  high:   { label: "High",   color: "text-orange-700 bg-orange-50 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" },
-  medium: { label: "Medium", color: "text-amber-700 bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
-  low:    { label: "Low",    color: "text-teal-700 bg-teal-50 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800" },
+const PRIORITY_BADGE: Record<string, { variant: "danger" | "orange" | "warning" | "info"; label: string }> = {
+  urgent: { variant: "danger",  label: "Urgent" },
+  high:   { variant: "orange",  label: "High"   },
+  medium: { variant: "warning", label: "Medium" },
+  low:    { variant: "info",    label: "Low"    },
 };
 
 const CATEGORIES = ["plumbing", "electrical", "structural", "appliance", "pest", "security", "other"];
 
 function PriorityBadge({ priority }: { priority: string }) {
-  const cfg = PRIORITY_CONFIG[priority] ?? PRIORITY_CONFIG.medium;
-  return (
-    <span className={cn("inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium", cfg.color)}>
-      {cfg.label}
-    </span>
-  );
+  const cfg = PRIORITY_BADGE[priority] ?? { variant: "slate" as const, label: priority };
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 }
 
 const COLUMNS: Column<MaintenanceIssue>[] = [

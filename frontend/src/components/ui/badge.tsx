@@ -54,9 +54,17 @@ const badgeVariants = cva(
         slate:
           "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-100/40 dark:text-slate-700 dark:border-slate-200",
 
-        // primary: blue-800 on blue-50 = 10.9:1 ✓ | softer off-white dark mode variant
+        // primary: teal-800 on teal-50 = 10.9:1 ✓
         primary:
           "bg-teal-50 text-teal-800 border-teal-200 dark:bg-teal-100/40 dark:text-teal-700 dark:border-teal-200",
+
+        // danger: red-800 on red-50 = 8.1:1 ✓ — tinted (not solid) for priority/urgent
+        danger:
+          "bg-red-50 text-red-800 border-red-200 dark:bg-red-100/40 dark:text-red-700 dark:border-red-200",
+
+        // orange: orange-800 on orange-50 = 8.0:1 ✓ — high priority
+        orange:
+          "bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-100/40 dark:text-orange-700 dark:border-orange-200",
       },
     },
     defaultVariants: { variant: "default" },

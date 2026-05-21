@@ -19,7 +19,9 @@ import {
 import { cn } from "@/utils/cn";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { useDashboardStats } from "@/hooks/usePayments";
 import { usePayments } from "@/hooks/usePayments";
 import { useProperties } from "@/hooks/useProperties";
@@ -69,10 +71,10 @@ function KpiCard({
         ) : (
           <span
             className={cn(
-              "flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-[4px]",
+              "flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-[4px]",
               positive
-                ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-100/40 dark:text-emerald-300"
-                : "bg-red-50 text-red-800 dark:bg-red-100/40 dark:text-red-300",
+                ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
+                : "bg-[hsl(var(--destructive))]/10 text-[hsl(var(--destructive))]",
             )}
           >
             {positive ? <TrendingUp className="h-3 w-3" aria-hidden="true" /> : <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
@@ -89,7 +91,7 @@ function KpiCard({
         ) : (
           <>
             <p
-              className="text-[28px] font-bold text-foreground leading-none tracking-[-0.03em] tabular-nums"
+              className="text-3xl font-bold text-foreground leading-none tracking-tight tabular-nums"
             >
               {value}
             </p>
@@ -139,10 +141,10 @@ function PropertyRow({ p }: { p: Property }) {
         <Building2 className="h-3.5 w-3.5 text-accent-foreground" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+        <p className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">
           {p.name}
         </p>
-        <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
           <MapPin className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
           {p.address?.city ?? "—"}
         </p>
@@ -209,46 +211,46 @@ const ACTIVITY_ICON_CLASSES = {
   },
 } as const;
 
+/* ── Priority badge for maintenance activity items ──────────────────────── */
+
+const PRIORITY_BADGE_VARIANT: Record<string, "danger" | "orange" | "warning" | "info" | "slate"> = {
+  urgent: "danger",
+  high:   "orange",
+  medium: "warning",
+  low:    "info",
+};
+
+const PRIORITY_LABEL: Record<string, string> = {
+  urgent: "Urgent", high: "High", medium: "Medium", low: "Low",
+};
+
+function ActivityPriorityBadge({ priority }: { priority: string }) {
+  return (
+    <Badge variant={PRIORITY_BADGE_VARIANT[priority] ?? "slate"} className="shrink-0">
+      {PRIORITY_LABEL[priority] ?? priority}
+    </Badge>
+  );
+}
+
 function ActivityRow({ entry }: { entry: ActivityEntry }) {
   const meta = ACTIVITY_ICON_CLASSES[entry.kind];
   const Icon = meta.icon;
 
-  let title = "";
-  let description = "";
-  let badgeClass = "";
-  let badgeLabel = "";
+  let title: string;
+  let description: string;
+  let badge: React.ReactNode;
 
   if (entry.kind === "payment") {
     const p = entry.item;
     title = p.category === "rent" ? "Rent received" : "Payment recorded";
-    description = [p.tenantName, p.propertyName, p.unitName]
-      .filter(Boolean)
-      .join(" · ");
+    description = [p.tenantName, p.propertyName, p.unitName].filter(Boolean).join(" · ");
     if (!description) description = `${formatCurrencyCompact(p.amount, p.currency)} · ${p.state}`;
-    const stateMap: Record<string, { label: string; cls: string }> = {
-      confirmed:  { label: "Confirmed",  cls: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
-      completed:  { label: "Completed",  cls: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800" },
-      pending:    { label: "Pending",    cls: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
-      processing: { label: "Processing", cls: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
-      failed:     { label: "Failed",     cls: "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" },
-      refunded:   { label: "Refunded",   cls: "bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700" },
-    };
-    const s = stateMap[p.state] ?? { label: p.state, cls: "bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700" };
-    badgeClass = s.cls;
-    badgeLabel = s.label;
+    badge = <StatusBadge state={p.state} domain="payment" className="shrink-0" />;
   } else {
     const m = entry.item;
     title = m.title;
     description = [m.propertyName, m.unitName].filter(Boolean).join(" · ");
-    const priorityMap: Record<string, { label: string; cls: string }> = {
-      urgent: { label: "Urgent", cls: "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" },
-      high:   { label: "High",   cls: "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" },
-      medium: { label: "Medium", cls: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" },
-      low:    { label: "Low",    cls: "bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800" },
-    };
-    const p = priorityMap[m.priority] ?? { label: m.priority, cls: "bg-slate-50 text-slate-700 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700" };
-    badgeClass = p.cls;
-    badgeLabel = p.label;
+    badge = <ActivityPriorityBadge priority={m.priority} />;
   }
 
   return (
@@ -261,20 +263,18 @@ function ActivityRow({ entry }: { entry: ActivityEntry }) {
         )}
         aria-hidden="true"
       >
-        <Icon className="h-3.5 w-3.5" />
+        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] text-foreground leading-snug">{title}</p>
+        <p className="text-sm text-foreground leading-snug">{title}</p>
         {description && (
-          <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{description}</p>
         )}
-        <p className="text-[11px] text-muted-foreground mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           <time suppressHydrationWarning>{formatRelative(entry.timestamp)}</time>
         </p>
       </div>
-      <span className={cn("text-[11px] font-semibold rounded-[4px] px-2 py-0.5 shrink-0", badgeClass)}>
-        {badgeLabel}
-      </span>
+      {badge}
     </div>
   );
 }
@@ -322,7 +322,7 @@ function QuickAction({
       >
         {icon}
       </div>
-      <span className="text-[13px] font-medium text-foreground group-hover:text-primary transition-colors">
+      <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
         {label}
       </span>
       <ArrowUpRight
@@ -505,7 +505,7 @@ export function Dashboard() {
         >
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
             <div>
-              <h2 id="dash-properties-heading" className="text-[13.5px] font-semibold text-foreground tracking-[-0.01em]">
+              <h2 id="dash-properties-heading" className="text-sm font-semibold text-foreground tracking-[-0.01em]">
                 Properties
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">Live occupancy snapshot</p>
@@ -540,7 +540,7 @@ export function Dashboard() {
         >
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-border">
             <div>
-              <h2 id="dash-activity-heading" className="text-[13.5px] font-semibold text-foreground tracking-[-0.01em]">
+              <h2 id="dash-activity-heading" className="text-sm font-semibold text-foreground tracking-[-0.01em]">
                 Activity
               </h2>
               <p className="text-[11px] text-muted-foreground mt-0.5">Recent payments & maintenance</p>
@@ -571,7 +571,7 @@ export function Dashboard() {
         className="bg-[hsl(var(--card))] rounded-[12px] border border-border shadow-[0_1px_4px_rgba(15,23,42,0.06)] dark:shadow-none"
       >
         <div className="px-5 py-3.5 border-b border-border">
-          <h2 id="dash-quickactions-heading" className="text-[13.5px] font-semibold text-foreground tracking-[-0.01em]">
+          <h2 id="dash-quickactions-heading" className="text-sm font-semibold text-foreground tracking-[-0.01em]">
             Quick Actions
           </h2>
         </div>
@@ -580,29 +580,29 @@ export function Dashboard() {
             href="/properties/new"
             icon={<Building2 className="h-4 w-4" />}
             label="Add Property"
-            iconClass="text-teal-700 dark:text-teal-300"
-            bgClass="bg-teal-50 dark:bg-teal-100/40"
+            iconClass="text-[hsl(var(--primary))]"
+            bgClass="bg-[hsl(var(--primary))]/10"
           />
           <QuickAction
             href="/tenants"
             icon={<Users className="h-4 w-4" />}
             label="Add Tenant"
-            iconClass="text-emerald-700 dark:text-emerald-300"
-            bgClass="bg-emerald-50 dark:bg-emerald-100/40"
+            iconClass="text-[hsl(var(--success))]"
+            bgClass="bg-[hsl(var(--success))]/10"
           />
           <QuickAction
             href="/leases/new"
             icon={<FileText className="h-4 w-4" />}
             label="Create Lease"
-            iconClass="text-violet-700 dark:text-violet-300"
-            bgClass="bg-violet-50 dark:bg-violet-100/40"
+            iconClass="text-[hsl(var(--info))]"
+            bgClass="bg-[hsl(var(--info))]/10"
           />
           <QuickAction
             href="/maintenance"
             icon={<Wrench className="h-4 w-4" />}
             label="Maintenance"
-            iconClass="text-amber-700 dark:text-amber-300"
-            bgClass="bg-amber-50 dark:bg-amber-100/40"
+            iconClass="text-[hsl(var(--warning))]"
+            bgClass="bg-[hsl(var(--warning))]/10"
           />
         </div>
       </section>
@@ -621,7 +621,7 @@ export function Dashboard() {
               href={href as any}
               className="bg-[hsl(var(--card))] rounded-[10px] border border-border px-4 py-3 hover:border-primary/40 hover:shadow-sm transition-all group"
             >
-              <p className="text-[22px] font-bold text-foreground tracking-[-0.02em] group-hover:text-primary transition-colors">
+              <p className="text-xl font-bold text-foreground tracking-tight group-hover:text-primary transition-colors">
                 {value}
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5 uppercase tracking-[0.04em] font-medium">

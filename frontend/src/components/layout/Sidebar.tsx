@@ -222,7 +222,7 @@ export function Sidebar() {
                 className={cn(
                   "flex items-center gap-2.5",
                   "min-h-[40px] px-2.5 py-2 rounded-[7px]",
-                  "text-[13.5px] font-medium",
+                  "text-sm font-medium",
                   "transition-[background,color] duration-150",
                   "cursor-pointer",
                   isActive

@@ -7,6 +7,7 @@ import {
   Warehouse, Hotel, Briefcase, Castle, Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CardSkeleton } from "@/components/common/LoadingSkeleton";
 import { EmptyState } from "@/components/common/EmptyState";
 import { FilterBar } from "@/components/common/FilterBar";
@@ -22,16 +23,10 @@ import { ImportModal } from "./components/ImportModal";
 import type { Property, PropertyStatus, PropertyType } from "@/types";
 
 // WCAG 1.4.1 — status is always shown as text label; colour is supplementary
-const STATUS_STYLES: Record<PropertyStatus, string> = {
-  active:      "bg-emerald-50 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-300",
-  inactive:    "bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800/40 dark:text-slate-300 dark:border-slate-700",
-  maintenance: "bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300",
-};
-
-const STATUS_DOT: Record<PropertyStatus, string> = {
-  active:      "bg-emerald-500",
-  inactive:    "bg-muted-foreground",
-  maintenance: "bg-amber-500",
+const STATUS_BADGE_VARIANT: Record<PropertyStatus, "success" | "slate" | "warning"> = {
+  active:      "success",
+  inactive:    "slate",
+  maintenance: "warning",
 };
 
 const TYPE_LABELS: Record<PropertyType, string> = {
@@ -108,19 +103,15 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
             )}>
               <TypeIcon className="h-5 w-5" />
             </div>
-            <span className="text-[11px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide">
+            <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wide">
               {TYPE_LABELS[property.type] ?? property.type}
             </span>
           </div>
 
           {/* Status badge — top right */}
-          <span className={cn(
-            "flex items-center gap-1 text-[10px] font-semibold rounded-full px-2.5 py-1 capitalize",
-            STATUS_STYLES[property.status],
-          )}>
-            <span className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[property.status])} />
+          <Badge variant={STATUS_BADGE_VARIANT[property.status]} className="capitalize">
             {property.status}
-          </span>
+          </Badge>
         </div>
       )}
 
@@ -128,7 +119,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
       <div className="p-4">
         {/* Name + location */}
         <div className="mb-3">
-          <h3 className="font-semibold text-[hsl(var(--foreground))] text-[15px] leading-snug group-hover:text-[hsl(var(--primary))] transition-colors">
+          <h3 className="font-semibold text-[hsl(var(--foreground))] text-base leading-snug group-hover:text-[hsl(var(--primary))] transition-colors">
             {property.name}
           </h3>
           <p className="flex items-center gap-1 text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
