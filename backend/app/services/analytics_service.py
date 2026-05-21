@@ -84,6 +84,39 @@ async def get_dashboard_stats(
     units_row = (await db.execute(unit_q)).one()
     total_units = int(units_row.total or 0)
     occupied_units = int(units_row.occupied or 0)
+
+    # ── Whole properties (no DB units) — include in occupancy ────────────────
+    # Properties created as isSingleUnit (or any property with 0 units) are
+    # invisible to the unit-based occupancy query. Count each as 1 unit and
+    # treat it as "occupied" if it has an active lease.
+    whole_prop_q = (
+        select(
+            func.count(Property.id).label("total"),
+            func.count(Property.id).filter(
+                Property.id.in_(
+                    select(Lease.property_id).where(
+                        Lease.status == LeaseStatus.active,
+                        Lease.property_id.isnot(None),
+                    )
+                )
+            ).label("occupied"),
+        ).where(
+            Property.deleted_at.is_(None),
+            # Only properties that have NO units at all
+            ~Property.id.in_(
+                select(Unit.property_id).where(Unit.property_id.isnot(None)).distinct()
+            ),
+        )
+    )
+    if org_id is not None:
+        whole_prop_q = whole_prop_q.where(Property.organisation_id == org_id)
+    if prop_ids is not None:
+        whole_prop_q = whole_prop_q.where(Property.id.in_(prop_ids))
+    whole_row = (await db.execute(whole_prop_q)).one()
+    # Add whole-property "virtual units" to the totals
+    total_units += int(whole_row.total or 0)
+    occupied_units += int(whole_row.occupied or 0)
+
     occupancy_rate = round(occupied_units / total_units * 100, 1) if total_units > 0 else 0.0
 
     # Count properties directly from the properties table — NOT via units.
