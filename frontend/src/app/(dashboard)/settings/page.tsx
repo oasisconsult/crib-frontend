@@ -19,6 +19,161 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useLandlordInvites, useCreateLandlordInvite, useRevokeLandlordInvite, useResendLandlordInvite } from "@/hooks/useLandlordInvites";
 import { useAgencyInvites, useResendAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
 import { useProperties } from "@/hooks/useProperties";
+import { Badge } from "@/components/ui/badge";
+import { useCaretakers, useCaretakerInvites, useDeactivateCaretaker, useRevokeCaretakerInvite, useResendCaretakerInvite } from "@/hooks/useCaretakers";
+import { CaretakerInviteModal } from "./components/CaretakerInviteModal";
+import type { ActiveCaretaker, CaretakerInvite } from "@/services/api/caretakers";
+
+// ── Caretakers Panel ──────────────────────────────────────────────────────────
+
+function CaretakersPanel() {
+  const [showInvite, setShowInvite] = useState(false);
+
+  const { data: caretakers = [],     isLoading: loadingActive }  = useCaretakers();
+  const { data: invites    = [],     isLoading: loadingInvites } = useCaretakerInvites();
+  const { mutate: deactivate, isPending: deactivating }          = useDeactivateCaretaker();
+  const { mutate: revokeInvite }                                 = useRevokeCaretakerInvite();
+  const { mutate: resendInvite }                                 = useResendCaretakerInvite();
+
+  const pendingInvites  = invites.filter((i: CaretakerInvite) => i.status === "pending");
+  const activeCount     = caretakers.filter((c: ActiveCaretaker) => !c.deactivatedAt).length;
+
+  return (
+    <>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-lg font-semibold">Caretakers</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Give trusted people access to manage your properties on your behalf.
+            Each caretaker sees only the properties you assign to them.
+          </p>
+        </div>
+        <Button onClick={() => setShowInvite(true)} size="sm">
+          <Plus className="h-4 w-4" />
+          Invite Caretaker
+        </Button>
+      </div>
+
+      {/* Active caretakers */}
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            Active Caretakers
+            {activeCount > 0 && (
+              <Badge variant="success">{activeCount}</Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loadingActive ? (
+            <div className="space-y-2 px-6 pb-4">
+              {[1, 2].map((i) => <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />)}
+            </div>
+          ) : caretakers.filter((c: ActiveCaretaker) => !c.deactivatedAt).length === 0 ? (
+            <div className="px-6 pb-5 text-center text-sm text-muted-foreground">
+              No active caretakers yet. Invite someone to get started.
+            </div>
+          ) : (
+            caretakers
+              .filter((c: ActiveCaretaker) => !c.deactivatedAt)
+              .map((c: ActiveCaretaker) => (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-3 px-6 py-3.5 border-b last:border-0"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary text-sm font-bold shrink-0">
+                    {c.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">{c.email}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <Badge variant={c.permissionLevel === "full" ? "success" : "info"}>
+                        {c.permissionLevel === "full" ? "Full access" : "Operations only"}
+                      </Badge>
+                      {(c.propertyNames ?? []).map((name: string) => (
+                        <Badge key={name} variant="slate">{name}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 text-destructive border-destructive/30 hover:bg-destructive/10"
+                    onClick={() => deactivate(c.id)}
+                    disabled={deactivating}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Pending invites */}
+      {pendingInvites.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              Pending Invitations
+              <Badge variant="warning">{pendingInvites.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {loadingInvites ? (
+              <div className="px-6 pb-4 space-y-2">
+                {[1].map((i) => <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />)}
+              </div>
+            ) : (
+              pendingInvites.map((inv: CaretakerInvite) => (
+                <div
+                  key={inv.id}
+                  className="flex items-center gap-3 px-6 py-3.5 border-b last:border-0"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/15 text-amber-600 text-sm font-bold shrink-0">
+                    {inv.firstName.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {inv.firstName} {inv.lastName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{inv.email}</p>
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      Invite expires {new Date(inv.expiresAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => resendInvite(inv.id)}
+                    >
+                      Resend
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:bg-destructive/10"
+                      onClick={() => revokeInvite(inv.id)}
+                    >
+                      Revoke
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {showInvite && <CaretakerInviteModal onClose={() => setShowInvite(false)} />}
+    </>
+  );
+}
+
+// ── Settings Page ──────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const user = useAppStore((s) => s.user);
@@ -230,6 +385,13 @@ export default function SettingsPage() {
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notifications</span>
+            </TabsTrigger>
+          )}
+          {/* Caretakers tab — only owners who manage their own properties */}
+          {!isLandlord && !isSuperAdmin && (
+            <TabsTrigger value="caretakers" className="gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Caretakers</span>
             </TabsTrigger>
           )}
           <TabsTrigger value="appearance" className="gap-2">
@@ -979,6 +1141,12 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Caretakers ── */}
+        <TabsContent value="caretakers" className="mt-6">
+          <CaretakersPanel />
+        </TabsContent>
+
       </Tabs>
     </div>
   );

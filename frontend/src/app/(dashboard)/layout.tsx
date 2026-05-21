@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { OfflineBanner } from "@/components/common/OfflineBanner";
+import { CaretakerBanner } from "@/components/common/CaretakerBanner";
 import { AuthInitializer } from "@/components/providers/AuthInitializer";
 import { useAppStore } from "@/store/useAppStore";
 import { CookieConsentBanner } from "@/components/common/CookieConsentBanner";
@@ -98,6 +99,7 @@ export default function DashboardLayout({
           <MobileNav />
           <div className="flex flex-1 flex-col overflow-hidden min-w-0">
             <Header />
+            <CaretakerBanner />
             <OfflineBanner />
             <main
               id="main-content"

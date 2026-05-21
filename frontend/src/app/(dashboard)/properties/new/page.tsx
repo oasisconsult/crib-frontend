@@ -262,12 +262,13 @@ export default function NewPropertyPage() {
 
   // ── Step 1 state ──────────────────────────────────────────────────────────
   const [step, setStep] = useState<1 | 2>(1);
-  const [propName,   setPropName]   = useState("");
-  const [propType,   setPropType]   = useState("flat");
-  const [propStatus, setPropStatus] = useState("active");
-  const [line1,      setLine1]      = useState("");
-  const [city,     setCity]       = useState("Kampala");
-  const [region,   setRegion]     = useState("Central Region");
+  const [propName,     setPropName]     = useState("");
+  const [propType,     setPropType]     = useState("flat");
+  const [propStatus,   setPropStatus]   = useState("active");
+  const [isSingleUnit, setIsSingleUnit] = useState(false);   // NEW
+  const [line1,        setLine1]        = useState("");
+  const [city,         setCity]         = useState("Kampala");
+  const [region,       setRegion]       = useState("Central Region");
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
   const [genCount,       setGenCount]       = useState(10);
@@ -334,17 +335,19 @@ export default function NewPropertyPage() {
         address: { line1, city, state: region, postcode: "00256", country: "Uganda" },
         rules: DEFAULT_RULES,
         landlordId: "landlord-1",
-        totalUnits: units.length,
+        totalUnits: isSingleUnit ? 1 : units.length,
         occupiedUnits: 0,
         occupancyRate: 0,
         monthlyRevenue: 0,
         currency: "UGX",
         tags: [],
         amenities: [],
+        isSingleUnit,  // backend auto-creates the virtual "Main Property" unit when true
       },
       {
         onSuccess: (property) => {
-          if (units.length === 0) {
+          // Single-unit: backend handled unit creation; nothing more to do.
+          if (isSingleUnit || units.length === 0) {
             router.push(`/properties/${property.id}`);
             return;
           }
@@ -473,6 +476,44 @@ export default function NewPropertyPage() {
             </CardContent>
           </Card>
 
+          {/* ── Whole-property toggle ── */}
+          <Card
+            className={cn(
+              "cursor-pointer border-2 transition-colors",
+              isSingleUnit
+                ? "border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
+                : "border-border hover:border-primary/40",
+            )}
+            onClick={() => setIsSingleUnit((v) => !v)}
+            role="checkbox"
+            aria-checked={isSingleUnit}
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") setIsSingleUnit((v) => !v); }}
+          >
+            <CardContent className="py-4 flex items-start gap-3">
+              <div className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 mt-0.5 transition-colors",
+                isSingleUnit
+                  ? "border-emerald-500 bg-emerald-500"
+                  : "border-border bg-background",
+              )}>
+                {isSingleUnit && <CheckCircle2 className="h-3.5 w-3.5 text-white" aria-hidden />}
+              </div>
+              <div>
+                <p className={cn(
+                  "text-sm font-semibold",
+                  isSingleUnit ? "text-emerald-800 dark:text-emerald-300" : "text-foreground",
+                )}>
+                  This property is rented as a whole
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  Use this for a house, villa, or commercial space rented to a single tenant or family.
+                  Crib will manage it as one unit. You can add individual units later if needed.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="border-dashed">
             <CardContent className="py-4 flex items-start gap-3">
               <Settings2 className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
@@ -487,13 +528,23 @@ export default function NewPropertyPage() {
 
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => router.back()}>Cancel</Button>
-            <Button
-              onClick={() => setStep(2)}
-              disabled={!propName || !line1}
-            >
-              Next: Configure Units
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            {isSingleUnit ? (
+              <Button
+                onClick={handleSubmit}
+                disabled={!propName || !line1 || isSubmitting}
+              >
+                {isSubmitting ? "Creating…" : "Create Property"}
+                <CheckCircle2 className="h-4 w-4" aria-hidden />
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setStep(2)}
+                disabled={!propName || !line1}
+              >
+                Next: Configure Units
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       )}

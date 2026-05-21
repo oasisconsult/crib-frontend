@@ -42,6 +42,7 @@ export function usePermissions() {
   const role = roles[0]; // primary role (highest priority)
 
   const isSuperAdmin = roles.includes("superadmin");
+  const isCaretaker  = roles.includes("caretaker");
 
   const hasHigherRole = roles.some((r) =>
     ["owner", "manager", "superadmin"].includes(r)
@@ -50,6 +51,11 @@ export function usePermissions() {
   // Agency-managed landlords have is_read_only=true on their profile.
   // Self-managing landlords (owner role) are not read-only.
   const isReadOnly = Boolean(user?.isReadOnly) || isLandlord;
+
+  // Caretaker finance gate: when permissionLevel === "operations_only",
+  // payments and analytics are hidden at the UI level (backend also enforces).
+  const caretakerOperationsOnly =
+    isCaretaker && user?.caretakerMeta?.permissionLevel === "operations_only";
 
   /**
    * DB-driven permission check (driven by the Access Control admin page).
@@ -64,6 +70,13 @@ export function usePermissions() {
   function canDo(action: string, resource: string): boolean {
     if (isSuperAdmin) return true;
     if (isReadOnly && action !== "read") return false;
+
+    // Caretaker operations_only gate: block financial resources at the UI level.
+    // Backend independently enforces the same rule.
+    if (caretakerOperationsOnly) {
+      const blockedResources = ["payment", "payments", "analytics"];
+      if (blockedResources.includes(resource)) return false;
+    }
 
     if (dbPermissions === null) {
       // Permissions not yet loaded — fall back to static map
@@ -112,5 +125,26 @@ export function usePermissions() {
      */
     isReadOnly,
     canWrite: !isReadOnly,
+
+    // ── Caretaker flags ───────────────────────────────────────────────────────
+    /**
+     * True when the current user is a caretaker delegated by an owner/landlord.
+     * Data is automatically scoped to their propertyIds by the backend.
+     * A landlord may have multiple caretakers; each has their own account and scope.
+     */
+    isCaretaker,
+    /**
+     * True for both owners and their caretakers — used to show operational
+     * nav items that apply to both (e.g. Properties, Tenants, Leases).
+     */
+    isOwnerOrCaretaker: roles.some(r => r === "owner" || r === "caretaker"),
+    /**
+     * True when the caretaker is restricted to operations only (no financials).
+     */
+    caretakerOperationsOnly,
+    /**
+     * Delegating owner info — only set when isCaretaker=true.
+     */
+    caretakerMeta: isCaretaker ? user?.caretakerMeta : undefined,
   };
 }

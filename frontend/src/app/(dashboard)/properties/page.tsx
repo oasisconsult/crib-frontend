@@ -128,7 +128,18 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
           </p>
         </div>
 
-        {/* Stats row */}
+        {/* Stats row — simplified for whole-property mode */}
+        {property.isSingleUnit ? (
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 dark:bg-emerald-500/15 dark:border-emerald-500/30 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+              <Home className="h-3 w-3" aria-hidden="true" />
+              Whole property
+            </span>
+            <span className={cn("text-sm font-semibold", occupancyTextColor)}>
+              {occupancyPct === 100 ? "Occupied" : "Vacant"}
+            </span>
+          </div>
+        ) : (
         <div className="grid grid-cols-3 gap-2 mb-3">
           {[
             { label: "Units",    value: String(property.totalUnits) },
@@ -146,6 +157,7 @@ function PropertyCard({ property, onClick }: { property: Property; onClick: () =
             </div>
           ))}
         </div>
+        )}
 
         {/* Occupancy bar */}
         <div

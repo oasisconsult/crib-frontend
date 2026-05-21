@@ -48,6 +48,13 @@ export interface Property {
   tags: string[];
   amenities: string[];
   description?: string;
+  /**
+   * When true this property is rented as a whole (no individual units).
+   * The backend auto-creates a single virtual unit "Main Property".
+   * All lease/payment/tenant logic operates on that virtual unit unchanged.
+   * Can be converted to multi-unit via property settings at any time.
+   */
+  isSingleUnit?: boolean;
   createdAt: string;
   updatedAt: string;
 }

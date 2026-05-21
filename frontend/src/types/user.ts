@@ -1,4 +1,4 @@
-export type UserRole = "superadmin" | "owner" | "manager" | "landlord" | "tenant" | "maintenance";
+export type UserRole = "superadmin" | "owner" | "manager" | "landlord" | "tenant" | "maintenance" | "caretaker";
 
 export type UserStatus = "active" | "inactive" | "suspended";
 
@@ -27,6 +27,21 @@ export interface User {
   // Tenant-specific
   tenantId?: string;
   currentLeaseId?: string;
+  /**
+   * Caretaker-specific metadata.
+   * Populated when role === "caretaker" — scopes access to one landlord's properties.
+   */
+  caretakerMeta?: {
+    /** ID of the owner/landlord who delegated access */
+    ownerId: string;
+    /** Display name of that owner (shown in the CaretakerBanner) */
+    ownerName: string;
+    /**
+     * "full"            → same view as owner (including payments/analytics)
+     * "operations_only" → operational data only; payments/analytics hidden
+     */
+    permissionLevel: "full" | "operations_only";
+  };
 }
 
 /** True if the user holds any of the given roles. */

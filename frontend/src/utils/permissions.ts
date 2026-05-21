@@ -123,6 +123,40 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     "inspections:read",
     "maintenance:read",
   ],
+  /**
+   * Caretaker — delegated by a single owner/landlord.
+   * Same operational access as owner but WITHOUT:
+   *   • properties:delete   (cannot remove properties)
+   *   • leases:terminate    (cannot end leases)
+   *   • payments:export     (cannot export financial data)
+   *   • admin:*             (no platform admin access)
+   *   • analytics:read      (conditionally blocked for "operations_only" level
+   *                          via runtime check in usePermissions)
+   *
+   * Data scoping: backend enforces property_ids filter for all caretaker requests.
+   * Frontend uses this list only for UI visibility; backend is the security boundary.
+   */
+  caretaker: [
+    "properties:read",
+    "properties:write",
+    "units:read",
+    "units:write",
+    "tenants:read",
+    "tenants:write",
+    "tenants:invite",
+    "leases:read",
+    "leases:write",
+    "payments:read",
+    "payments:write",
+    "inspections:read",
+    "inspections:write",
+    "inspections:approve",
+    "maintenance:read",
+    "maintenance:write",
+    "notifications:read",
+    "notifications:send",
+    "analytics:read",   // gated at runtime by caretakerMeta.permissionLevel
+  ],
 };
 
 /**
