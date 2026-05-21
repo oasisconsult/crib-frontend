@@ -175,7 +175,7 @@ export function Sidebar() {
           )}
         >
           {sidebarCollapsed ? (
-            <div className="relative w-6 h-6 shrink-0">
+            <Link href="/dashboard" aria-label="Go to dashboard" className="relative w-6 h-6 shrink-0 block">
               <Image
                 src="/crib_logo_green.png"
                 alt="Crib"
@@ -183,17 +183,19 @@ export function Sidebar() {
                 priority
                 className="object-contain"
               />
-            </div>
+            </Link>
           ) : (
-            <Image
-              src="/crib_logo_green.png"
-              alt="Crib"
-              width={80}
-              height={24}
-              priority
-              className="w-[72px] lg:w-[80px] h-auto"
-              style={{ height: 'auto' }}
-            />
+            <Link href="/dashboard" aria-label="Go to dashboard">
+              <Image
+                src="/crib_logo_green.png"
+                alt="Crib"
+                width={80}
+                height={24}
+                priority
+                className="w-[72px] lg:w-[80px] h-auto"
+                style={{ height: 'auto' }}
+              />
+            </Link>
           )}
         </div>
 

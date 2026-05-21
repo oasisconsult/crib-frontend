@@ -2,6 +2,7 @@
 
 import { LogOut, Sun, Moon } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { AuthInitializer } from "@/components/providers/AuthInitializer";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,15 +17,17 @@ function PortalNav() {
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="max-w-4xl mx-auto flex h-14 items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-2.5">
-          <Image
-            src="/crib_logo_green.png"
-            alt="Crib"
-            width={120}
-            height={34}
-            priority
-            className="w-[90px] sm:w-[105px] md:w-[120px] h-auto"
+          <Link href="/" aria-label="Go to Crib home">
+            <Image
+              src="/crib_logo_green.png"
+              alt="Crib"
+              width={120}
+              height={34}
+              priority
+              className="w-[90px] sm:w-[105px] md:w-[120px] h-auto"
               style={{ height: 'auto' }}
-          />
+            />
+          </Link>
           <span className="text-muted-foreground/50 text-sm">·</span>
           <span className="text-sm text-muted-foreground">Tenant Portal</span>
         </div>

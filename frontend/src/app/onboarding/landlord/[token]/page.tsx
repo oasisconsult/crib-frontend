@@ -3,6 +3,7 @@
 import { use, useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Clock,
   CheckCircle2,
@@ -74,15 +75,17 @@ export default function LandlordOnboardingPage({ params }: Props) {
       <div className="max-w-3xl mx-auto">
         {/* Logo */}
         <div className="mb-10">
-          <Image
-            src="/crib_logo_green.png"
-            alt="Crib"
-            width={120}
-            height={34}
-            priority
-            className="w-[100px] sm:w-[110px] md:w-[120px] h-auto"
+          <Link href="/" aria-label="Go to Crib home">
+            <Image
+              src="/crib_logo_green.png"
+              alt="Crib"
+              width={120}
+              height={34}
+              priority
+              className="w-[100px] sm:w-[110px] md:w-[120px] h-auto"
               style={{ height: 'auto' }}
-          />
+            />
+          </Link>
         </div>
 
         {/* Loading */}

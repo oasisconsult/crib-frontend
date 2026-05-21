@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Building2,
@@ -305,15 +306,17 @@ export default function LoginPage() {
         <div className="w-full max-w-sm mx-auto">
           {/* Logo */}
           <div className="mb-10">
-            <Image
-              src="/crib_logo_green.png"
-              alt="Crib"
-              width={240}
-              height={56}
-              priority
-              className="w-[200px] sm:w-[220px] md:w-[240px] h-auto"
-              style={{ height: 'auto' }}
-            />
+            <Link href="/" aria-label="Go to Crib home">
+              <Image
+                src="/crib_logo_green.png"
+                alt="Crib"
+                width={240}
+                height={56}
+                priority
+                className="w-[200px] sm:w-[220px] md:w-[240px] h-auto"
+                style={{ height: 'auto' }}
+              />
+            </Link>
           </div>
 
           {/* Heading */}

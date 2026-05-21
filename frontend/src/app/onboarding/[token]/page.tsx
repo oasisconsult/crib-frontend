@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Clock, LinkIcon } from "lucide-react";
 import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { useOnboardingFlowStatus } from "@/hooks/useOnboardingFlow";
@@ -28,15 +29,17 @@ export default function OnboardingPage({ params }: Props) {
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
-          <Image
-            src="/crib_logo_green.png"
-            alt="Crib"
-            width={120}
-            height={34}
-            priority
-            className="w-[90px] sm:w-[105px] md:w-[120px] h-auto"
-            style={{ height: "auto" }}
-          />
+          <Link href="/" aria-label="Go to Crib home">
+            <Image
+              src="/crib_logo_green.png"
+              alt="Crib"
+              width={120}
+              height={34}
+              priority
+              className="w-[90px] sm:w-[105px] md:w-[120px] h-auto"
+              style={{ height: "auto" }}
+            />
+          </Link>
           <span className="text-xs text-muted-foreground">Tenant Onboarding</span>
         </div>
 
