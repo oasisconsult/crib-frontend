@@ -86,13 +86,17 @@ async def get_dashboard_stats(
     occupied_units = int(units_row.occupied or 0)
     occupancy_rate = round(occupied_units / total_units * 100, 1) if total_units > 0 else 0.0
 
-    # Count distinct properties
-    prop_q = select(Unit.property_id).where(Unit.property.has(organisation_id=org_id) if org_id is not None else sql_true()).distinct()
+    # Count properties directly from the properties table — NOT via units.
+    # Counting via units misses properties that have no units yet (e.g. freshly
+    # created properties or isSingleUnit properties before their unit is added).
+    prop_count_q = select(func.count(Property.id)).where(
+        Property.deleted_at.is_(None),
+    )
+    if org_id is not None:
+        prop_count_q = prop_count_q.where(Property.organisation_id == org_id)
     if prop_ids is not None:
-        prop_q = prop_q.where(Unit.property_id.in_(prop_ids))
-    prop_count = await db.scalar(
-        select(func.count()).select_from(prop_q.subquery())
-    ) or 0
+        prop_count_q = prop_count_q.where(Property.id.in_(prop_ids))
+    prop_count = await db.scalar(prop_count_q) or 0
 
     # Tenants — scoped to landlord's properties via their current lease's property
     tenant_q = select(
