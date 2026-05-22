@@ -167,9 +167,9 @@ def _add_months(d: date, months: int) -> date:
     day = min(d.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
 
-def normalize_currency(self, currency: str) -> str:
+def normalize_currency(currency: str) -> str:
 
-    if self.settings.mtn_environment == "sandbox":
+    if settings.mtn_environment == "sandbox":
         return "EUR" 
     return currency   
 
@@ -454,7 +454,7 @@ async def create_payment(
             
             # currency = "EUR" if settings.mtn_environment == "sandbox" else currency_body
             
-            currency = normalize_currency(settings, currency_body)
+            currency = normalize_currency(currency_body)
             
             await initiate_mobile_payment(
                 db,
