@@ -168,9 +168,10 @@ def _add_months(d: date, months: int) -> date:
     return date(year, month, day)
 
 def normalize_currency(self, currency: str) -> str:
-    if self._settings.mtn_environment == "sandbox":
-        return "EUR"
-    return currency
+
+    if self.settings.mtn_environment == "sandbox":
+        return "EUR" 
+    return currency   
 
 
 def _due_date_for_month(year: int, month: int, day_of_month: int) -> date:
