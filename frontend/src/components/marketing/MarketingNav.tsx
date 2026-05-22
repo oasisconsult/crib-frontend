@@ -8,16 +8,16 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 
 const NAV_LINKS = [
-  { label: "Features",    href: "#features" },
-  { label: "How it Works",href: "#how-it-works" },
-  { label: "Pricing",     href: "#pricing" },
-  { label: "About",       href: "#about" },
-  { label: "Contact",     href: "#booking" },
+  { label: "Features", href: "#features" },
+  { label: "How it works", href: "#how-it-works" },
+  { label: "Pricing", href: "#pricing" },
+  { label: "About", href: "#about" },
+  { label: "Contact", href: "#booking" },
 ];
 
 export function MarketingNav() {
-  const [scrolled,  setScrolled]  = useState(false);
-  const [menuOpen,  setMenuOpen]  = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -28,7 +28,9 @@ export function MarketingNav() {
   // Lock body scroll when mobile menu is open
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [menuOpen]);
 
   return (
@@ -43,7 +45,6 @@ export function MarketingNav() {
         )}
       >
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-
           {/* Logo */}
           <Link href="/" aria-label="Crib home" className="shrink-0">
             <Image
@@ -57,7 +58,10 @@ export function MarketingNav() {
           </Link>
 
           {/* Desktop nav */}
-          <nav aria-label="Main navigation" className="hidden md:flex items-center gap-1">
+          <nav
+            aria-label="Main navigation"
+            className="hidden md:flex items-center gap-1"
+          >
             {NAV_LINKS.map(({ label, href }) => (
               <a
                 key={href}
@@ -84,10 +88,14 @@ export function MarketingNav() {
             aria-label={menuOpen ? "Close menu" : "Open menu"}
             aria-expanded={menuOpen}
             aria-controls="mobile-menu"
-            onClick={() => setMenuOpen(v => !v)}
+            onClick={() => setMenuOpen((v) => !v)}
             className="md:hidden flex h-9 w-9 items-center justify-center rounded-md text-[hsl(var(--foreground))] hover:bg-[hsl(var(--accent))] transition-colors"
           >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {menuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
           </button>
         </div>
       </header>
@@ -121,7 +129,9 @@ export function MarketingNav() {
             ))}
             <div className="pt-3 border-t border-[hsl(var(--border))] space-y-2">
               <Button asChild variant="outline" className="w-full">
-                <Link href="/login" onClick={() => setMenuOpen(false)}>Login</Link>
+                <Link href="/login" onClick={() => setMenuOpen(false)}>
+                  Login
+                </Link>
               </Button>
               <Button asChild className="w-full">
                 <a href="#booking" onClick={() => setMenuOpen(false)}>

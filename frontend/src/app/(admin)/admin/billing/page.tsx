@@ -42,10 +42,11 @@ import type { BillingSettings, SubscriptionPlan, AdminPayment, AdminSubscription
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function formatUGX(n: number) {
-  if (n >= 1_000_000) return `UGX ${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `UGX ${(n / 1_000).toFixed(0)}k`;
-  return `UGX ${n.toLocaleString()}`;
+function formatUGX(n: number | undefined | null) {
+  const v = n ?? 0;
+  if (v >= 1_000_000) return `UGX ${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `UGX ${(v / 1_000).toFixed(0)}k`;
+  return `UGX ${v.toLocaleString()}`;
 }
 
 function paymentMethodLabel(m: string) {

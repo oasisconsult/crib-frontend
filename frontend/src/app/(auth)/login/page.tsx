@@ -232,7 +232,7 @@ function MarketingPanel() {
         <div className="inline-flex items-center gap-2 rounded-full bg-white/15 border border-white/20 px-3 py-1 mb-6">
           <span className="h-1.5 w-1.5 rounded-full bg-[hsl(43,100%,60%)]" />
           <span className="text-[12px] font-medium text-white/90 tracking-wide">
-            Trusted by 200+ landlords in East Africa
+            Trusted by 200+ landlords in Uganda
           </span>
         </div>
         <h2 className="text-3xl lg:text-4xl font-bold text-white leading-tight mb-4">

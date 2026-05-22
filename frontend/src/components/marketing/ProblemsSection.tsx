@@ -47,7 +47,6 @@ export function ProblemsSection() {
       className="bg-[#fafafa] py-20 lg:py-28 border-t border-[hsl(var(--border))]"
     >
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-
         {/* Header */}
         <div className="max-w-2xl mx-auto text-center mb-14">
           <p className="text-sm font-semibold uppercase tracking-widest text-[#16665d] mb-3">
@@ -60,9 +59,9 @@ export function ProblemsSection() {
             Managing rental properties is harder than it should be.
           </h2>
           <p className="text-[hsl(var(--muted-foreground))] text-lg leading-relaxed">
-            Most landlords and property managers in Uganda are running their portfolios on
-            notebooks, spreadsheets, and WhatsApp groups. The result is confusion, missed
-            payments, and constant stress.
+            Most landlords and property managers in Uganda are running their
+            portfolios on notebooks, spreadsheets, and WhatsApp groups. The
+            result is confusion, missed payments, and constant stress.
           </p>
         </div>
 
@@ -73,11 +72,17 @@ export function ProblemsSection() {
               key={title}
               className="rounded-xl border border-[hsl(var(--border))] bg-white p-6"
             >
-              <div className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border ${accent} mb-4`}>
+              <div
+                className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border ${accent} mb-4`}
+              >
                 <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
               </div>
-              <h3 className="text-sm font-semibold text-[hsl(var(--foreground))] mb-2">{title}</h3>
-              <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">{desc}</p>
+              <h3 className="text-sm font-semibold text-[hsl(var(--foreground))] mb-2">
+                {title}
+              </h3>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed">
+                {desc}
+              </p>
             </div>
           ))}
         </div>
@@ -97,11 +102,10 @@ export function ProblemsSection() {
             className="shrink-0 inline-flex items-center gap-1.5 text-sm font-semibold text-[#239487] hover:text-[#16665d] transition-colors"
             aria-label="See Crib features"
           >
-            See how it works
+            See How it works
             <span aria-hidden="true">→</span>
           </a>
         </div>
-
       </div>
     </section>
   );
