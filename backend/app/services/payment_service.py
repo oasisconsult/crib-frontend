@@ -19,6 +19,7 @@ from __future__ import annotations
 import calendar
 import csv
 import io
+from locale import currency
 import uuid
 from datetime import date, datetime, timezone
 
@@ -59,6 +60,9 @@ from app.services.payment_allocation_service import (
 )
 from app.services.wallet_service import credit_wallet, debit_wallet
 
+from app.core.config import get_settings
+
+settings = get_settings()
 
 # ── Serialisers ────────────────────────────────────────────────────────────────
 
@@ -162,6 +166,11 @@ def _add_months(d: date, months: int) -> date:
     month = month % 12 + 1
     day = min(d.day, calendar.monthrange(year, month)[1])
     return date(year, month, day)
+
+def normalize_currency(self, currency: str) -> str:
+    if self._settings.mtn_environment == "sandbox":
+        return "EUR"
+    return currency
 
 
 def _due_date_for_month(year: int, month: int, day_of_month: int) -> date:
@@ -438,12 +447,20 @@ async def create_payment(
     if _phone and body.method in _MOBILE_MONEY_METHODS:
         try:
             from app.integrations.payments.service import initiate_mobile_payment
+            # from app.core.config import get_settings
+            # settings = get_settings()
+            currency_body = body.currency or lease.currency
+            
+            # currency = "EUR" if settings.mtn_environment == "sandbox" else currency_body
+            
+            currency = normalize_currency(settings, currency_body)
+            
             await initiate_mobile_payment(
                 db,
                 organisation_id=org_id,
                 phone=_phone,
                 amount=float(body.amount),
-                currency=body.currency or lease.currency,
+                currency=currency,
                 method=body.method,
                 external_reference=str(payment.id),
                 description=f"Rent payment for lease {lease_id}",
