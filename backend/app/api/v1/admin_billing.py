@@ -23,6 +23,7 @@ from app.services import billing_service, subscription_service
 from app.models.subscription import (
     OrganisationSubscription, SubscriptionPayment, SubscriptionPaymentStatus,
 )
+from app.models.organisation import Organisation
 
 router = APIRouter(
     prefix="/admin/billing",
@@ -54,6 +55,7 @@ async def admin_update_plan(
 async def admin_list_subscriptions(
     status: str | None = Query(None),
     plan_slug: str | None = Query(None),
+    search: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -61,18 +63,31 @@ async def admin_list_subscriptions(
     from sqlalchemy import func
     from app.models.subscription import SubscriptionStatus, SubscriptionPlan
 
-    q = select(OrganisationSubscription).join(
-        SubscriptionPlan, OrganisationSubscription.plan_id == SubscriptionPlan.id
+    q = (
+        select(OrganisationSubscription, Organisation.name.label("org_name"))
+        .join(SubscriptionPlan, OrganisationSubscription.plan_id == SubscriptionPlan.id)
+        .outerjoin(Organisation, OrganisationSubscription.organisation_id == Organisation.id)
     )
     if status:
         q = q.where(OrganisationSubscription.status == status)
     if plan_slug:
         q = q.where(SubscriptionPlan.slug == plan_slug)
+    if search:
+        q = q.where(Organisation.name.ilike(f"%{search}%"))
 
     count_q = select(func.count()).select_from(q.subquery())
     total = (await db.execute(count_q)).scalar_one() or 0
-    items = list((await db.execute(q.order_by(OrganisationSubscription.created_at.desc()).limit(limit).offset(offset))).scalars().all())
-    return {"data": items, "total": total, "page": offset // limit + 1, "pageSize": limit, "hasNext": (offset + limit) < total}
+    rows = (await db.execute(
+        q.order_by(OrganisationSubscription.created_at.desc()).limit(limit).offset(offset)
+    )).fetchall()
+    data = []
+    for row in rows:
+        sub = row[0]
+        out = OrganisationSubscriptionOut.model_validate(sub).model_dump()
+        out["orgName"] = row[1] or "—"
+        data.append(out)
+    return {"data": data, "total": total, "page": offset // limit + 1,
+            "pageSize": limit, "hasNext": (offset + limit) < total}
 
 
 @router.post("/subscriptions/{subscription_id}/extend", response_model=OrganisationSubscriptionOut)
@@ -140,8 +155,19 @@ async def list_pending_payments(
         SubscriptionPayment.status == SubscriptionPaymentStatus.pending_verification
     )
     total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar_one() or 0
-    items = list((await db.execute(q.order_by(SubscriptionPayment.submitted_at.asc()).limit(limit).offset(offset))).scalars().all())
-    return {"data": [SubscriptionPaymentOut.model_validate(p) for p in items], "total": total, "page": offset // limit + 1, "pageSize": limit, "hasNext": (offset + limit) < total}
+    q_with_org = (
+        select(SubscriptionPayment, Organisation.name.label("org_name"))
+        .outerjoin(Organisation, SubscriptionPayment.organisation_id == Organisation.id)
+        .where(SubscriptionPayment.status == SubscriptionPaymentStatus.pending_verification)
+    )
+    rows = (await db.execute(q_with_org.order_by(SubscriptionPayment.submitted_at.asc()).limit(limit).offset(offset))).fetchall()
+    data = []
+    for row in rows:
+        p = row[0]
+        out = SubscriptionPaymentOut.model_validate(p).model_dump()
+        out["orgName"] = row[1] or "—"
+        data.append(out)
+    return {"data": data, "total": total, "page": offset // limit + 1, "pageSize": limit, "hasNext": (offset + limit) < total}
 
 
 @router.post("/payments/{payment_id}/verify", response_model=SubscriptionPaymentOut)
@@ -184,7 +210,13 @@ async def update_billing_settings(
 
 # ── Analytics ──────────────────────────────────────────────────────────────────
 
-@router.get("/analytics", response_model=BillingAnalyticsOut)
-async def get_analytics(db: AsyncSession = Depends(get_db)) -> BillingAnalyticsOut:
-    data = await billing_service.get_billing_analytics(db)
-    return BillingAnalyticsOut(**data)
+@router.get("/analytics", response_model=dict)
+async def get_analytics(db: AsyncSession = Depends(get_db)) -> dict:
+    """Real-time KPIs: MRR, ARR, revenue YTD/MTD, churn rate, plan breakdown."""
+    return await billing_service.get_billing_analytics(db)
+
+
+@router.get("/analytics/charts", response_model=dict)
+async def get_analytics_charts(db: AsyncSession = Depends(get_db)) -> dict:
+    """Time-series chart data: revenue trend, growth, status distribution, plan distribution."""
+    return await billing_service.get_billing_analytics_charts(db)

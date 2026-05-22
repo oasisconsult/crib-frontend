@@ -140,5 +140,41 @@ export function useAdminUpdateBillingSettings() {
 }
 
 export function useAdminAnalytics() {
-  return useQuery({ queryKey: KEYS.adminStats, queryFn: adminBillingApi.getAnalytics, staleTime: 5 * 60_000 });
+  return useQuery({ queryKey: KEYS.adminStats, queryFn: adminBillingApi.getAnalytics, staleTime: 2 * 60_000 });
+}
+
+export function useAdminAnalyticsCharts() {
+  return useQuery({
+    queryKey: [...KEYS.adminStats, "charts"],
+    queryFn: adminBillingApi.getAnalyticsCharts,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useAdminSubscriptions(params?: {
+  status?: string; planSlug?: string; search?: string; limit?: number; offset?: number;
+}) {
+  return useQuery({
+    queryKey: [...KEYS.adminSubs, params],
+    queryFn: () => adminBillingApi.getSubscriptions(params),
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminSuspendSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ subscriptionId, reason }: { subscriptionId: string; reason: string }) =>
+      adminBillingApi.suspendSubscription(subscriptionId, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.adminSubs }),
+  });
+}
+
+export function useAdminExtendSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ subscriptionId, days, reason }: { subscriptionId: string; days: number; reason?: string }) =>
+      adminBillingApi.extendSubscription(subscriptionId, days, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.adminSubs }),
+  });
 }
