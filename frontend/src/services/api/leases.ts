@@ -145,10 +145,13 @@ export const leasesApi = {
         raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/terminate`, payload ?? {});
         break;
       case "LEASE_CLOSED":
-      case "NOTICE_GIVEN":
-        // NOTICE_GIVEN / CLOSE are not separate backend states — map to expire
+        // LEASE_CLOSED maps to the expire endpoint (backend: PATCH /leases/{id}/expire)
         raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/expire`, payload ?? {});
         break;
+      case "NOTICE_GIVEN":
+        // NOTICE_GIVEN must go through submitNotice() — it requires a vacateDate
+        // and must NOT call /expire (lease stays active after a notice).
+        throw new Error("Use leasesApi.submitNotice() for NOTICE_GIVEN — not transition()");
       case "LEASE_SENT":
         // "Send for Signature" in the manager UI — direct-activate (manager fast-path).
         // Tenant-facing signing now lives in the onboarding payment flow.

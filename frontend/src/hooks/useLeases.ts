@@ -65,6 +65,27 @@ export function useTransitionLease() {
   });
 }
 
+export function useSubmitNotice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      vacateDate,
+      reason,
+    }: {
+      id: string;
+      vacateDate: string;
+      reason?: string;
+    }) => leasesApi.submitNotice(id, vacateDate, reason),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.leases.audit(id) });
+      toast.success("Notice to vacate recorded — lease remains active until the vacate date");
+    },
+    onError: () => toast.error("Failed to record notice"),
+  });
+}
+
 export function useConfirmOnboardingPayments() {
   const qc = useQueryClient();
   return useMutation({

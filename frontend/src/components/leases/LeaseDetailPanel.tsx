@@ -17,7 +17,7 @@ import { TerminateModal } from "./TerminateModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
-import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease } from "@/hooks/useLeases";
+import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice } from "@/hooks/useLeases";
 import { leasesApi } from "@/services/api/leases";
 import { toast } from "@/store/useUIStore";
 import { canTransition, LEASE_TRANSITIONS } from "@/types/states";
@@ -31,6 +31,9 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [presignOpen, setPresignOpen] = useState(false);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const [noticeVacateDate, setNoticeVacateDate] = useState("");
+  const [noticeReason, setNoticeReason] = useState("");
   const [pendingEvent, setPendingEvent] = useState<string | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | undefined>(lease.documentUrl);
   const [generatingPdf, setGeneratingPdf] = useState(false);
@@ -39,6 +42,27 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const { mutate: sendOnboarding, isPending: sendingOnboarding } = useSendOnboarding();
   const { mutate: confirmPayments, isPending: confirmingPayments } = useConfirmOnboardingPayments();
   const { mutate: acknowledge, isPending: acknowledging } = useAcknowledgeLease();
+  const { mutate: submitNotice, isPending: submittingNotice } = useSubmitNotice();
+
+  // Default vacate date = today + notice period days (editable in the dialog)
+  const defaultVacateDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() + (lease.noticePeriodDays ?? 30));
+    return d.toISOString().split("T")[0];
+  })();
+
+  function openNoticeDialog() {
+    setNoticeVacateDate(defaultVacateDate);
+    setNoticeReason("");
+    setNoticeOpen(true);
+  }
+
+  function confirmNotice() {
+    submitNotice(
+      { id: lease.id, vacateDate: noticeVacateDate, reason: noticeReason || undefined },
+      { onSettled: () => setNoticeOpen(false) },
+    );
+  }
 
   // Imported leases have no terms_accepted_at and no paper acknowledgement
   const needsConfirmation =
@@ -189,9 +213,9 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
               </Alert>
             )}
             {canGiveNotice && (
-              <Button size="sm" variant="warning" onClick={() => handleTransition("NOTICE_GIVEN")}>
+              <Button size="sm" variant="warning" onClick={openNoticeDialog}>
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Give Notice
+                {lease.noticeGivenAt ? "Notice Recorded" : "Give Notice"}
               </Button>
             )}
             {canClose && (
@@ -389,7 +413,87 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         open={presignOpen}
         onOpenChange={setPresignOpen}
       />
+
+      {/* Give Notice dialog — records notice_given_at + notice_vacate_date,
+          lease stays ACTIVE so the Terminate button remains available */}
+      <GiveNoticeDialog
+        open={noticeOpen}
+        onOpenChange={setNoticeOpen}
+        vacateDate={noticeVacateDate}
+        onVacateDateChange={setNoticeVacateDate}
+        reason={noticeReason}
+        onReasonChange={setNoticeReason}
+        onConfirm={confirmNotice}
+        loading={submittingNotice}
+        noticePeriodDays={lease.noticePeriodDays ?? 30}
+      />
     </div>
+  );
+}
+
+// ── Give Notice inline dialog ─────────────────────────────────────────────────
+
+function GiveNoticeDialog({
+  open, onOpenChange,
+  vacateDate, onVacateDateChange,
+  reason, onReasonChange,
+  onConfirm, loading,
+  noticePeriodDays,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  vacateDate: string;
+  onVacateDateChange: (v: string) => void;
+  reason: string;
+  onReasonChange: (v: string) => void;
+  onConfirm: () => void;
+  loading: boolean;
+  noticePeriodDays: number;
+}) {
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Give Notice to Vacate"
+      description={
+        <div className="space-y-4 pt-1">
+          <p className="text-sm text-muted-foreground">
+            The lease will remain <strong>active</strong> until the vacate date. You can still
+            terminate it early using the <strong>Terminate</strong> button.
+          </p>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              Vacate date
+              <span className="ml-1 text-xs text-muted-foreground font-normal">
+                (min. {noticePeriodDays} days notice required)
+              </span>
+            </label>
+            <input
+              type="date"
+              value={vacateDate}
+              onChange={(e) => onVacateDateChange(e.target.value)}
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium">
+              Reason <span className="text-xs text-muted-foreground font-normal">(optional)</span>
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => onReasonChange(e.target.value)}
+              placeholder="e.g. Lease not being renewed, landlord requires vacant possession…"
+              rows={3}
+              className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            />
+          </div>
+        </div>
+      }
+      variant="warning"
+      confirmLabel="Record Notice"
+      onConfirm={onConfirm}
+      loading={loading}
+    />
   );
 }
 

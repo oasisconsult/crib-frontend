@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +16,8 @@ interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description: string;
+  /** Plain string or rich JSX — rendered inside the dialog body. */
+  description: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: "destructive" | "warning" | "default";
@@ -46,7 +48,11 @@ export function ConfirmDialog({
             )}
             <div className="flex-1">
               <DialogTitle>{title}</DialogTitle>
-              <DialogDescription className="mt-1">{description}</DialogDescription>
+              {typeof description === "string" ? (
+                <DialogDescription className="mt-1">{description}</DialogDescription>
+              ) : (
+                <div className="mt-1 text-sm text-muted-foreground">{description}</div>
+              )}
             </div>
           </div>
         </DialogHeader>
