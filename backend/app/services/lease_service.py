@@ -541,6 +541,25 @@ async def terminate_lease(
     await _clear_unit_and_tenant(lease, db)
     await db.flush()
     await db.refresh(lease, attribute_names=["status", "terminated_at", "termination_reason", "updated_at"])
+
+    # Queue notification — wrapped so a notification failure never blocks the lease op
+    try:
+        termination_date = (
+            lease.terminated_at.strftime("%Y-%m-%d")
+            if lease.terminated_at
+            else now.strftime("%Y-%m-%d")
+        )
+        variables = await _build_lease_variables(
+            lease, db,
+            extra={
+                "termination_date": termination_date,
+                "reason": body.reason or "",
+            },
+        )
+        await _queue_lease_notification(lease, "lease_terminated", variables, db)
+    except Exception:
+        log.warning("lease_notification.terminate.failed", lease_id=str(lease_id), exc_info=True)
+
     return _lease_out(lease)
 
 
@@ -628,6 +647,20 @@ async def record_vacate_notice(
         lease_id=str(lease_id),
         vacate_date=str(body.vacate_date),
     )
+
+    # Queue notification — wrapped so a notification failure never blocks the notice op
+    try:
+        variables = await _build_lease_variables(
+            lease, db,
+            extra={
+                "vacate_date": str(body.vacate_date),
+                "reason": body.reason or "",
+            },
+        )
+        await _queue_lease_notification(lease, "notice_given", variables, db)
+    except Exception:
+        log.warning("lease_notification.notice.failed", lease_id=str(lease_id), exc_info=True)
+
     return _lease_out(lease)
 
 
@@ -685,6 +718,203 @@ async def renew_lease(
     await db.flush()
     await db.refresh(renewal, attribute_names=["status", "updated_at", "created_at"])
     return _lease_out(renewal)
+
+
+# ── Notification helpers ───────────────────────────────────────────────────────
+
+async def _build_lease_variables(
+    lease: Lease,
+    db: AsyncSession,
+    extra: dict[str, str] | None = None,
+) -> dict[str, str]:
+    """
+    Collect the standard template variables shared by all lease-event notifications.
+    Callers pass `extra` for trigger-specific fields (e.g. vacate_date, termination_date).
+    """
+    from app.models.organisation import Organisation
+
+    tenant_name = ""
+    if lease.tenant_id:
+        t = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
+        if t:
+            tenant_name = f"{t.first_name or ''} {t.last_name or ''}".strip() or t.email
+
+    unit_name = ""
+    if lease.unit_id:
+        u = await db.scalar(select(Unit).where(Unit.id == lease.unit_id))
+        if u:
+            unit_name = u.name or ""
+
+    property_name = ""
+    if lease.property_id:
+        p = await db.scalar(select(Property).where(Property.id == lease.property_id))
+        if p:
+            property_name = p.name or ""
+
+    org_name = ""
+    org = await db.scalar(select(Organisation).where(Organisation.id == lease.organisation_id))
+    if org:
+        org_name = org.name or ""
+
+    variables: dict[str, str] = {
+        "tenant_name": tenant_name,
+        "unit_name": unit_name,
+        "property_name": property_name,
+        "org_name": org_name,
+        "notice_period_days": str(lease.notice_period_days or 30),
+        "monthly_rent": str(lease.monthly_rent),
+        "currency": lease.currency or "",
+    }
+    if extra:
+        variables.update(extra)
+    return variables
+
+
+async def _queue_lease_notification(
+    lease: Lease,
+    trigger: str,
+    variables: dict[str, str],
+    db: AsyncSession,
+) -> None:
+    """
+    Look up all active notification templates the org has configured for `trigger`.
+    Render each template's body/subject with `variables` and queue a Notification row,
+    then dispatch via Celery.
+
+    Falls back to a built-in plain-text email if no templates are configured,
+    ensuring tenants are always notified even before the manager sets up templates.
+    """
+    import re
+
+    from app.models.notification import Notification, NotificationState, NotificationTemplate
+
+    if not lease.tenant_id:
+        return
+
+    tenant = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
+    if not tenant or not tenant.email:
+        log.warning(
+            "lease_notification.no_tenant_email",
+            lease_id=str(lease.id),
+            trigger=trigger,
+        )
+        return
+
+    recipient_name = (
+        f"{tenant.first_name or ''} {tenant.last_name or ''}".strip() or tenant.email
+    )
+
+    # ── Look up org-configured templates ──────────────────────────────────────
+    tmpl_result = await db.execute(
+        select(NotificationTemplate).where(
+            NotificationTemplate.organisation_id == lease.organisation_id,
+            NotificationTemplate.trigger == trigger,
+            NotificationTemplate.is_active.is_(True),
+            NotificationTemplate.deleted_at.is_(None),
+        )
+    )
+    templates = tmpl_result.scalars().all()
+
+    def _render(text: str) -> str:
+        return re.sub(
+            r"\{\{(\w+)\}\}",
+            lambda m: variables.get(m.group(1), f"[{m.group(1)}]"),
+            text,
+        )
+
+    now = datetime.now(timezone.utc)
+    notifications_to_dispatch: list[Notification] = []
+
+    if templates:
+        # Send one notification per configured channel template
+        for tmpl in templates:
+            channel = tmpl.channel if isinstance(tmpl.channel, str) else tmpl.channel.value
+            notif = Notification(
+                organisation_id=lease.organisation_id,
+                template_id=tmpl.id,
+                tenant_id=lease.tenant_id,
+                channel=channel,
+                trigger=trigger,
+                recipient_name=recipient_name,
+                recipient_email=tenant.email if channel in ("email", "in_app") else None,
+                recipient_phone=tenant.phone if channel in ("sms", "whatsapp") else None,
+                subject=_render(tmpl.subject) if tmpl.subject else None,
+                body=_render(tmpl.body),
+                state=NotificationState.queued,
+                queued_at=now,
+                retry_count=0,
+                lease_id=lease.id,
+                property_id=lease.property_id,
+                created_at=now,
+            )
+            db.add(notif)
+            notifications_to_dispatch.append(notif)
+    else:
+        # ── Built-in fallback (no templates configured yet) ────────────────────
+        if trigger == "notice_given":
+            subject = (
+                f"Notice to Vacate Recorded"
+                f"{' — ' + variables['unit_name'] if variables.get('unit_name') else ''}"
+            )
+            reason_line = f"\nReason: {variables['reason']}" if variables.get("reason") else ""
+            body = (
+                f"Dear {recipient_name},\n\n"
+                f"This is to confirm that your notice to vacate has been recorded.\n\n"
+                f"Vacate date: {variables.get('vacate_date', '[vacate_date]')}"
+                f"{reason_line}\n\n"
+                f"Your lease remains active until the vacate date. "
+                f"If you have any questions, please contact your property manager.\n\n"
+                f"Regards,\n{variables.get('org_name', 'Your Property Manager')}"
+            )
+        else:  # lease_terminated
+            subject = (
+                f"Your Lease Has Been Terminated"
+                f"{' — ' + variables['unit_name'] if variables.get('unit_name') else ''}"
+            )
+            reason_line = f"\nReason: {variables['reason']}" if variables.get("reason") else ""
+            body = (
+                f"Dear {recipient_name},\n\n"
+                f"We are writing to inform you that your lease has been terminated.\n\n"
+                f"Termination date: {variables.get('termination_date', '[termination_date]')}"
+                f"{reason_line}\n\n"
+                f"If you have any questions, please contact your property manager.\n\n"
+                f"Regards,\n{variables.get('org_name', 'Your Property Manager')}"
+            )
+
+        notif = Notification(
+            organisation_id=lease.organisation_id,
+            template_id=None,
+            tenant_id=lease.tenant_id,
+            channel="email",
+            trigger=trigger,
+            recipient_name=recipient_name,
+            recipient_email=tenant.email,
+            subject=subject,
+            body=body,
+            state=NotificationState.queued,
+            queued_at=now,
+            retry_count=0,
+            lease_id=lease.id,
+            property_id=lease.property_id,
+            created_at=now,
+        )
+        db.add(notif)
+        notifications_to_dispatch.append(notif)
+
+    await db.flush()
+
+    # Dispatch asynchronously via Celery
+    try:
+        from app.worker.tasks.notifications import deliver_notification
+        for notif in notifications_to_dispatch:
+            deliver_notification.delay(str(notif.id))
+    except Exception:
+        log.warning(
+            "lease_notification.celery_dispatch_failed",
+            lease_id=str(lease.id),
+            trigger=trigger,
+            exc_info=True,
+        )
 
 
 # ── Private helpers ────────────────────────────────────────────────────────────

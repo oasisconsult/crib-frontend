@@ -14,6 +14,8 @@ export type NotificationTrigger =
   | "payment_failed"
   | "late_fee_applied"
   | "deposit_received"
+  | "notice_given"       // Tenant notice to vacate submitted
+  | "lease_terminated"   // Lease terminated by manager
   | "custom";
 
 export interface NotificationTemplate {

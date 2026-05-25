@@ -35,16 +35,39 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+// All variables that can be used across any trigger.
+// Trigger-specific hints are shown inline in the trigger dropdown.
 const TEMPLATE_VARIABLES = [
   "tenant_name",
   "property_name",
   "unit_name",
+  "org_name",
+  "monthly_rent",
+  "currency",
   "amount",
   "due_date",
   "lease_start",
   "lease_end",
-  "landlord_name",
+  // Notice-to-vacate
+  "vacate_date",
+  "notice_period_days",
+  // Termination
+  "termination_date",
+  // Shared
+  "reason",
 ];
+
+/** Per-trigger variable hints shown below the trigger selector. */
+const TRIGGER_VARIABLE_HINTS: Record<string, string[]> = {
+  notice_given: ["tenant_name", "unit_name", "property_name", "vacate_date", "notice_period_days", "reason", "org_name"],
+  lease_terminated: ["tenant_name", "unit_name", "property_name", "termination_date", "reason", "org_name"],
+  rent_due: ["tenant_name", "unit_name", "property_name", "amount", "due_date", "currency"],
+  rent_overdue: ["tenant_name", "unit_name", "property_name", "amount", "due_date", "currency"],
+  lease_expiry: ["tenant_name", "unit_name", "property_name", "lease_end"],
+  lease_activated: ["tenant_name", "unit_name", "property_name", "lease_start", "monthly_rent", "currency"],
+  payment_confirmed: ["tenant_name", "unit_name", "amount", "currency"],
+  payment_failed: ["tenant_name", "unit_name", "amount", "currency", "due_date"],
+};
 
 interface TemplateEditorProps {
   template?: NotificationTemplate;
@@ -81,6 +104,7 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
 
   const channel = watch("channel");
   const body = watch("body");
+  const trigger = watch("trigger");
 
   const insertVariable = (variable: string) => {
     const textarea = document.getElementById("body") as HTMLTextAreaElement;
@@ -181,6 +205,8 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
               <SelectItem value="rent_overdue">Rent Overdue</SelectItem>
               <SelectItem value="lease_expiry">Lease Expiry</SelectItem>
               <SelectItem value="lease_activated">Lease Activated</SelectItem>
+              <SelectItem value="notice_given">Notice to Vacate</SelectItem>
+              <SelectItem value="lease_terminated">Lease Terminated</SelectItem>
               <SelectItem value="onboarding_invite">
                 Onboarding Invite
               </SelectItem>
@@ -195,6 +221,14 @@ export function TemplateEditor({ template, onSaved }: TemplateEditorProps) {
               <SelectItem value="custom">Custom</SelectItem>
             </SelectContent>
           </Select>
+          {trigger && TRIGGER_VARIABLE_HINTS[trigger] && (
+            <p className="text-xs text-muted-foreground">
+              Suggested variables:{" "}
+              {TRIGGER_VARIABLE_HINTS[trigger].map((v) => (
+                <span key={v} className="font-mono">{`{{${v}}}`} </span>
+              ))}
+            </p>
+          )}
         </div>
 
         {channel === "email" && (
