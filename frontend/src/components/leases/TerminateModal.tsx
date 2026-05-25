@@ -37,7 +37,7 @@ export function TerminateModal({ open, onOpenChange, leaseId }: TerminateModalPr
 
   const onSubmit = (values: FormValues) => {
     transition(
-      { id: leaseId, event: "LEASE_TERMINATED", payload: { terminationReason: values.reason } },
+      { id: leaseId, event: "LEASE_TERMINATED", payload: { reason: values.reason } },
       {
         onSuccess: () => {
           reset();

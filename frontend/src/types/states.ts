@@ -68,13 +68,16 @@ export const LEASE_TRANSITIONS: Record<
   LeaseState,
   Partial<Record<LeaseEvent, LeaseState>>
 > = {
-  draft:               { TENANT_OPENED_LINK: "onboarding_started" },
-  onboarding_started:  { AGREEMENT_PREVIEWED: "agreement_previewed" },
-  agreement_previewed: { TERMS_ACCEPTED: "terms_accepted" },
-  terms_accepted:      { PAYMENT_SUBMITTED: "payment_pending" },
-  payment_pending:     { PAYMENT_CONFIRMED: "payment_secured" },
-  payment_secured:     { AGREEMENT_SIGNED: "agreement_signed" },
-  agreement_signed:    { LEASE_ACTIVATED: "active" },
+  // Manager can fast-activate a draft with LEASE_SENT (bypasses tenant onboarding).
+  // LEASE_TERMINATED is available from draft and any onboarding state so a manager
+  // can cancel/delete a lease at any point before it reaches active.
+  draft:               { TENANT_OPENED_LINK: "onboarding_started", LEASE_SENT: "active", LEASE_TERMINATED: "terminated" },
+  onboarding_started:  { AGREEMENT_PREVIEWED: "agreement_previewed", LEASE_TERMINATED: "terminated" },
+  agreement_previewed: { TERMS_ACCEPTED: "terms_accepted", LEASE_TERMINATED: "terminated" },
+  terms_accepted:      { PAYMENT_SUBMITTED: "payment_pending", LEASE_TERMINATED: "terminated" },
+  payment_pending:     { PAYMENT_CONFIRMED: "payment_secured", LEASE_TERMINATED: "terminated" },
+  payment_secured:     { AGREEMENT_SIGNED: "agreement_signed", LEASE_TERMINATED: "terminated" },
+  agreement_signed:    { LEASE_ACTIVATED: "active", LEASE_TERMINATED: "terminated" },
   active:              { NOTICE_GIVEN: "active", LEASE_TERMINATED: "terminated" },
   expired:             {},
   terminated:          {},

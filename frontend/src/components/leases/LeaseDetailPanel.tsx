@@ -17,7 +17,7 @@ import { TerminateModal } from "./TerminateModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
-import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice } from "@/hooks/useLeases";
+import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useDeleteLease } from "@/hooks/useLeases";
 import { leasesApi } from "@/services/api/leases";
 import { toast } from "@/store/useUIStore";
 import { canTransition, LEASE_TRANSITIONS } from "@/types/states";
@@ -43,6 +43,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const { mutate: confirmPayments, isPending: confirmingPayments } = useConfirmOnboardingPayments();
   const { mutate: acknowledge, isPending: acknowledging } = useAcknowledgeLease();
   const { mutate: submitNotice, isPending: submittingNotice } = useSubmitNotice();
+  const { mutate: deleteLease, isPending: deletingLease } = useDeleteLease();
 
   // Default vacate date = today + notice period days (editable in the dialog)
   const defaultVacateDate = (() => {
@@ -90,6 +91,10 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
 
   const confirmTransition = () => {
     if (!pendingEvent) return;
+    if (pendingEvent === "DELETE_DRAFT") {
+      deleteLease(lease.id, { onSettled: () => setConfirmOpen(false) });
+      return;
+    }
     transition(
       { id: lease.id, event: pendingEvent as Parameters<typeof transition>[0]["event"] },
       { onSettled: () => setConfirmOpen(false) },
@@ -224,7 +229,21 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                 Close Lease
               </Button>
             )}
-            {canTerminate && (
+            {canTerminate && lease.state === "draft" && (
+              <Button
+                size="sm"
+                variant="destructive"
+                loading={deletingLease}
+                onClick={() => {
+                  setPendingEvent("DELETE_DRAFT");
+                  setConfirmOpen(true);
+                }}
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                Delete Draft
+              </Button>
+            )}
+            {canTerminate && lease.state !== "draft" && (
               <Button size="sm" variant="destructive" onClick={() => setTerminateOpen(true)}>
                 <XCircle className="h-3.5 w-3.5" />
                 Terminate
@@ -392,12 +411,16 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Confirm Action"
-        description={`Are you sure you want to transition this lease with event: ${pendingEvent?.replace(/_/g, " ")}?`}
-        variant="warning"
-        confirmLabel="Confirm"
+        title={pendingEvent === "DELETE_DRAFT" ? "Delete Draft Lease" : "Confirm Action"}
+        description={
+          pendingEvent === "DELETE_DRAFT"
+            ? "This draft lease has not been activated. Deleting it is permanent and cannot be undone."
+            : `Are you sure you want to transition this lease with event: ${pendingEvent?.replace(/_/g, " ")}?`
+        }
+        variant="destructive"
+        confirmLabel={pendingEvent === "DELETE_DRAFT" ? "Delete" : "Confirm"}
         onConfirm={confirmTransition}
-        loading={isPending}
+        loading={isPending || deletingLease}
       />
 
       {/* Terminate modal */}

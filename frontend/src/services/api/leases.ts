@@ -154,8 +154,9 @@ export const leasesApi = {
         throw new Error("Use leasesApi.submitNotice() for NOTICE_GIVEN — not transition()");
       case "LEASE_SENT":
         // "Send for Signature" in the manager UI — direct-activate (manager fast-path).
+        // Calls the same PATCH /leases/{id}/activate endpoint as LEASE_ACTIVATED.
         // Tenant-facing signing now lives in the onboarding payment flow.
-        raw = await apiPost<Record<string, unknown>>(`/leases/${id}/activate`, payload ?? {});
+        raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/activate`, payload ?? {});
         break;
       default:
         throw new Error(`Unknown lease event: ${event}`);

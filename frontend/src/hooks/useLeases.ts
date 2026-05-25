@@ -44,6 +44,18 @@ export function useCreateLease() {
   });
 }
 
+export function useDeleteLease() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => leasesApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.all() });
+      toast.success("Draft lease deleted");
+    },
+    onError: () => toast.error("Failed to delete lease"),
+  });
+}
+
 export function useTransitionLease() {
   const qc = useQueryClient();
   return useMutation({
