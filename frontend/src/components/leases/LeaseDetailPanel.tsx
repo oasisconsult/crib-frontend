@@ -48,7 +48,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   // Default vacate date = today + notice period days (editable in the dialog)
   const defaultVacateDate = (() => {
     const d = new Date();
-    d.setDate(d.getDate() + (lease.noticePeriodDays ?? 30));
+    d.setDate(d.getDate() + (lease.terms.noticePeriodDays ?? 30));
     return d.toISOString().split("T")[0];
   })();
 
@@ -67,7 +67,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
 
   // Imported leases have no terms_accepted_at and no paper acknowledgement
   const needsConfirmation =
-    lease.status === "active" &&
+    lease.state === "active" &&
     !lease.termsAcceptedAt &&
     !lease.paperAgreementAcknowledged;
 
@@ -134,6 +134,35 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
             >
               <CheckCircle className="h-3.5 w-3.5" />
               Mark as acknowledged
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* ── Notice to vacate banner — lease stays active during notice period ── */}
+      {lease.state === "active" && lease.noticeGivenAt && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="space-y-0.5">
+              <p className="font-medium text-sm">Notice to Vacate Recorded</p>
+              <p className="text-xs text-muted-foreground">
+                Notice submitted on <strong>{formatDate(lease.noticeGivenAt)}</strong>.
+                {lease.noticeVacateDate && (
+                  <> Tenant intends to vacate by <strong>{formatDate(lease.noticeVacateDate)}</strong>.</>
+                )}
+                {" "}The lease remains <strong>active</strong> until the tenant physically vacates — click{" "}
+                <strong>Terminate Lease</strong> to formally end it.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="destructive"
+              className="shrink-0"
+              onClick={() => setTerminateOpen(true)}
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              Terminate Lease
             </Button>
           </AlertDescription>
         </Alert>
@@ -217,10 +246,16 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                 <AlertDescription>Awaiting all signatures before activation</AlertDescription>
               </Alert>
             )}
-            {canGiveNotice && (
+            {canGiveNotice && !lease.noticeGivenAt && (
               <Button size="sm" variant="warning" onClick={openNoticeDialog}>
                 <AlertTriangle className="h-3.5 w-3.5" />
-                {lease.noticeGivenAt ? "Notice Recorded" : "Give Notice"}
+                Give Notice
+              </Button>
+            )}
+            {canGiveNotice && lease.noticeGivenAt && (
+              <Button size="sm" variant="warning" disabled>
+                <CheckCircle className="h-3.5 w-3.5" />
+                Notice Recorded
               </Button>
             )}
             {canClose && (
@@ -344,8 +379,17 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
             <Separator />
             <DetailRow label="Notice Period" value={formatDays(lease.terms.noticePeriodDays)} />
             <DetailRow label="Activated" value={formatDate(lease.activatedAt)} />
-            {lease.noticeDateGiven && (
-              <DetailRow label="Notice Given" value={formatDate(lease.noticeDateGiven)} />
+            {lease.noticeGivenAt && (
+              <>
+                <Separator />
+                <DetailRow label="Notice Given" value={formatDate(lease.noticeGivenAt)} />
+              </>
+            )}
+            {lease.noticeVacateDate && (
+              <>
+                <Separator />
+                <DetailRow label="Vacate By" value={formatDate(lease.noticeVacateDate)} />
+              </>
             )}
           </CardContent>
         </Card>
@@ -448,7 +492,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         onReasonChange={setNoticeReason}
         onConfirm={confirmNotice}
         loading={submittingNotice}
-        noticePeriodDays={lease.noticePeriodDays ?? 30}
+        noticePeriodDays={lease.terms.noticePeriodDays ?? 30}
       />
     </div>
   );
