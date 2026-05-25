@@ -832,7 +832,9 @@ async def _queue_lease_notification(
             notif = Notification(
                 organisation_id=lease.organisation_id,
                 template_id=tmpl.id,
-                tenant_id=lease.tenant_id,
+                # NOTE: Notification.tenant_id references profiles.id, not tenants.id.
+                # We leave it NULL here — delivery uses recipient_email / recipient_phone.
+                tenant_id=None,
                 channel=channel,
                 trigger=trigger,
                 recipient_name=recipient_name,
@@ -884,7 +886,9 @@ async def _queue_lease_notification(
         notif = Notification(
             organisation_id=lease.organisation_id,
             template_id=None,
-            tenant_id=lease.tenant_id,
+            # NOTE: Notification.tenant_id references profiles.id, not tenants.id.
+            # We leave it NULL here — delivery uses recipient_email / recipient_phone.
+            tenant_id=None,
             channel="email",
             trigger=trigger,
             recipient_name=recipient_name,

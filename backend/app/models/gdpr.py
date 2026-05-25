@@ -15,7 +15,7 @@ fields_cleared — JSON list of field names that were overwritten/nulled, e.g.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -63,7 +63,7 @@ class GdprRequest(Base):
     # ── Detail ────────────────────────────────────────────────────────────────
     # List of field names that were overwritten or nulled.
     fields_cleared: Mapped[list] = mapped_column(
-        JSONB, nullable=False, default=list, server_default="'[]'::jsonb"
+        JSONB, nullable=False, default=list, server_default=text("'[]'::jsonb")
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
