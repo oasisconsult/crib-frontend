@@ -28,10 +28,9 @@ from tests.factories import (
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture
-async def ctx(db_session: AsyncSession):
-    org = await make_organisation(db_session)
+async def ctx(dev_org, db_session: AsyncSession):
     await db_session.flush()
-    return {"org": org}
+    return {"org": dev_org}
 
 
 # ── Template list ──────────────────────────────────────────────────────────────

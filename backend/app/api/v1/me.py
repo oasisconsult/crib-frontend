@@ -1,14 +1,15 @@
 """
 Profile / "me" endpoints.
 
-GET   /me          — return the current user's profile (shape matches frontend User type)
-POST  /me/consent  — record GDPR consent
-PATCH /me          — update phone / display_name
+GET    /me          — return the current user's profile (shape matches frontend User type)
+POST   /me/consent  — record GDPR consent
+PATCH  /me          — update phone / display_name
+DELETE /me          — GDPR right to erasure: anonymise and soft-delete account
 """
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status as http_status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
@@ -59,7 +60,10 @@ class ProfilePatch(CamelModel):
     phone: str | None = None
 
 
-def _profile_out(current_user: CurrentUser) -> ProfileOut:
+async def _profile_out(current_user: CurrentUser, db: AsyncSession) -> ProfileOut:
+    from sqlalchemy import select
+    from app.models.profile import Profile as ProfileModel
+
     p = current_user.profile
 
     display_name = p.display_name
@@ -71,12 +75,28 @@ def _profile_out(current_user: CurrentUser) -> ProfileOut:
     created_at: datetime = p.created_at  # type: ignore[assignment]
     updated_at: datetime = p.updated_at  # type: ignore[assignment]
 
-    # Build caretaker_meta if this is a caretaker profile
+    # Build caretaker_meta if this is a caretaker profile.
+    # Fetch the owner's display name from the DB so the frontend CaretakerBanner
+    # shows the real landlord name instead of a hardcoded placeholder.
     caretaker_meta: dict | None = None
     if p.caretaker_owner_profile_id is not None:
+        owner_name = "Property Owner"
+        try:
+            owner_row = await db.execute(
+                select(ProfileModel).where(ProfileModel.id == p.caretaker_owner_profile_id)
+            )
+            owner = owner_row.scalar_one_or_none()
+            if owner:
+                owner_name = (
+                    owner.display_name
+                    or (owner.email or "").split("@")[0]
+                    or "Property Owner"
+                )
+        except Exception:
+            pass  # fall back to placeholder if DB lookup fails
         caretaker_meta = {
             "ownerId":         str(p.caretaker_owner_profile_id),
-            "ownerName":       "Property Owner",   # resolved by frontend via name
+            "ownerName":       owner_name,
             "permissionLevel": p.caretaker_permission_level or "full",
         }
 
@@ -112,8 +132,9 @@ def _profile_out(current_user: CurrentUser) -> ProfileOut:
 @router.get("", response_model=ProfileOut)
 async def get_me(
     current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> ProfileOut:
-    return _profile_out(current_user)
+    return await _profile_out(current_user, db)
 
 
 @router.post("/consent", response_model=ProfileOut)
@@ -125,7 +146,7 @@ async def record_consent(
     current_user.profile.gdpr_consent_at = datetime.now(timezone.utc)  # type: ignore[assignment]
     await db.flush()
     await db.refresh(current_user.profile)
-    return _profile_out(current_user)
+    return await _profile_out(current_user, db)
 
 
 class PermissionsOut(CamelModel):
@@ -194,4 +215,32 @@ async def update_me(
         current_user.profile.phone = body.phone
     await db.flush()
     await db.refresh(current_user.profile)
-    return _profile_out(current_user)
+    return await _profile_out(current_user, db)
+
+
+@router.delete("", status_code=http_status.HTTP_204_NO_CONTENT, response_model=None)
+async def delete_me(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    GDPR right to erasure (Art. 17) — self-service account deletion.
+
+    Anonymises the user's PII (display_name, email, phone, avatar_url) and
+    soft-deletes the profile. The authenticated session will stop working
+    after the next token refresh since the account is deactivated.
+
+    This action is irreversible. The caller should advise the user to log
+    out immediately after calling this endpoint.
+
+    Note: any linked Tenant record is NOT automatically anonymised here
+    (separate tenancy history may exist for multiple organisations). Use
+    ``POST /tenants/{id}/anonymise`` to erase tenant records individually.
+    """
+    from app.services.gdpr_service import anonymise_profile
+    await anonymise_profile(
+        current_user.profile.id,
+        db,
+        requested_by_profile_id=current_user.profile.id,
+    )
+    await db.commit()

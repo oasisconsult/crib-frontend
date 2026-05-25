@@ -282,4 +282,9 @@ async def anonymise_tenant(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    await svc.anonymise_tenant(tenant_id, current_user.org_id, db)
+    await svc.anonymise_tenant(
+        tenant_id,
+        current_user.org_id,
+        db,
+        requested_by_profile_id=current_user.profile.id,
+    )

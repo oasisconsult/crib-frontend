@@ -19,7 +19,7 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tests.factories import make_organisation, make_property, make_unit
-from tests.conftest import auth_headers
+from tests.conftest import auth_headers, get_dev_org
 
 # ── CSV helpers ────────────────────────────────────────────────────────────────
 
@@ -169,7 +169,7 @@ class TestParseCSV:
 class TestBuildPreview:
     async def test_profile_only_no_warnings(self, db_session: AsyncSession):
         from app.services.tenant_import_service import parse_csv, build_preview
-        org = await make_organisation(db_session, logto_org_id="org_dev")
+        org = await get_dev_org(db_session)
         content = _csv(_minimal_row())
         rows, _ = parse_csv(content)
         result = await build_preview(rows, [], db_session, org.id)
@@ -181,7 +181,7 @@ class TestBuildPreview:
 
     async def test_unit_resolved_correctly(self, db_session: AsyncSession):
         from app.services.tenant_import_service import parse_csv, build_preview
-        org  = await make_organisation(db_session, logto_org_id="org_dev")
+        org  = await get_dev_org(db_session)
         prop = await make_property(db_session, org, name="Block A")
         unit = await make_unit(db_session, prop, name="Unit 1", monthly_rent=500000)
         content = _csv(_minimal_row(
@@ -197,7 +197,7 @@ class TestBuildPreview:
 
     async def test_property_not_found_downgrades_to_profile_only(self, db_session: AsyncSession):
         from app.services.tenant_import_service import parse_csv, build_preview
-        org = await make_organisation(db_session, logto_org_id="org_dev")
+        org = await get_dev_org(db_session)
         content = _csv(_minimal_row(
             property_name="Nonexistent Property", unit_name="Unit 1",
         ))
@@ -210,7 +210,7 @@ class TestBuildPreview:
     async def test_occupied_unit_downgrades_to_profile_only(self, db_session: AsyncSession):
         from app.services.tenant_import_service import parse_csv, build_preview
         from app.models.property import UnitStatus
-        org  = await make_organisation(db_session, logto_org_id="org_dev")
+        org  = await get_dev_org(db_session)
         prop = await make_property(db_session, org, name="Block A")
         unit = await make_unit(db_session, prop, name="Unit 1",
                                status=UnitStatus.occupied, monthly_rent=500000)
@@ -223,7 +223,7 @@ class TestBuildPreview:
     async def test_existing_email_generates_warning(self, db_session: AsyncSession):
         from app.services.tenant_import_service import parse_csv, build_preview
         from tests.factories import make_tenant
-        org = await make_organisation(db_session, logto_org_id="org_dev")
+        org = await get_dev_org(db_session)
         await make_tenant(db_session, org, email="existing@example.com")
         content = _csv(_minimal_row(email="existing@example.com"))
         rows, _ = parse_csv(content)
@@ -233,7 +233,7 @@ class TestBuildPreview:
 
     async def test_parse_errors_short_circuit_preview(self, db_session: AsyncSession):
         from app.services.tenant_import_service import TenantImportError, build_preview
-        org = await make_organisation(db_session, logto_org_id="org_dev")
+        org = await get_dev_org(db_session)
         errors = [TenantImportError(row=2, column="email", message="bad")]
         result = await build_preview([], errors, db_session, org.id)
         assert not result.is_valid
@@ -265,7 +265,7 @@ class TestCommitImport:
         from app.models.tenant import Tenant, TenantInvite, OnboardingState, TenantStatus
         from app.services.tenant_import_service import parse_csv, commit_import
 
-        org     = await make_organisation(db_session, logto_org_id="org_dev")
+        org     = await get_dev_org(db_session)
         profile = await self._make_profile(db_session, org.id)
 
         content = _csv(_minimal_row(email="new@example.com"))
@@ -343,7 +343,7 @@ class TestCommitImport:
         from tests.factories import make_tenant
         from app.services.tenant_import_service import parse_csv, commit_import
 
-        org     = await make_organisation(db_session, logto_org_id="org_dev")
+        org     = await get_dev_org(db_session)
         await make_tenant(db_session, org, email="existing@example.com")
         profile = await self._make_profile(db_session, org.id)
 
@@ -365,7 +365,7 @@ class TestCommitImport:
         from app.models.lease import Lease
         from app.services.tenant_import_service import parse_csv, commit_import
 
-        org     = await make_organisation(db_session, logto_org_id="org_dev")
+        org     = await get_dev_org(db_session)
         prop    = await make_property(db_session, org, name="Block C")
         unit    = await make_unit(db_session, prop, name="Unit 9", monthly_rent=400000)
         profile = await self._make_profile(db_session, org.id)
@@ -399,7 +399,7 @@ class TestCommitImport:
         from app.models.lease import Lease
         from app.services.tenant_import_service import parse_csv, commit_import
 
-        org     = await make_organisation(db_session, logto_org_id="org_dev")
+        org     = await get_dev_org(db_session)
         prop    = await make_property(db_session, org, name="Block D")
         unit    = await make_unit(db_session, prop, name="Unit 10", monthly_rent=750000)
         profile = await self._make_profile(db_session, org.id)
@@ -441,7 +441,7 @@ class TestTenantImportAPI:
         assert "property_name" in resp.text
 
     async def test_preview_valid_csv(self, client: AsyncClient, db_session: AsyncSession):
-        org = await make_organisation(db_session, logto_org_id="org_dev")
+        org = await get_dev_org(db_session)
         content = _csv(_minimal_row())
         resp = await client.post(
             "/api/v1/tenants/import/preview",
@@ -474,7 +474,7 @@ class TestTenantImportAPI:
         assert len(body["errors"]) > 0
 
     async def test_commit_valid_csv(self, client: AsyncClient, db_session: AsyncSession):
-        org = await make_organisation(db_session, logto_org_id="org_dev")
+        org = await get_dev_org(db_session)
         content = _csv(_minimal_row(email="commit_test@example.com"))
         with patch("app.services.logto_service.create_tenant_user", new_callable=AsyncMock) as m:
             m.return_value = None
@@ -516,7 +516,7 @@ class TestTenantImportAPI:
         assert resp.status_code == 403
 
     async def test_owner_can_import(self, client: AsyncClient, db_session: AsyncSession):
-        org = await make_organisation(db_session, logto_org_id="org_dev")
+        org = await get_dev_org(db_session)
         content = _csv(_minimal_row(email="owner_import@example.com"))
         with patch("app.services.logto_service.create_tenant_user", new_callable=AsyncMock) as m:
             m.return_value = None
@@ -578,7 +578,7 @@ class TestExpiredAndUpcomingImport:
         from app.models.property import UnitStatus
         from app.services.tenant_import_service import parse_csv, commit_import
 
-        org     = await make_organisation(db_session, logto_org_id="org_dev")
+        org     = await get_dev_org(db_session)
         prop    = await make_property(db_session, org, name="Old Block")
         unit    = await make_unit(db_session, prop, name="Unit X", monthly_rent=300000)
         profile = await self._make_profile(db_session, org.id)
@@ -622,7 +622,7 @@ class TestExpiredAndUpcomingImport:
         from app.models.property import UnitStatus
         from app.services.tenant_import_service import parse_csv, commit_import
 
-        org     = await make_organisation(db_session, logto_org_id="org_dev")
+        org     = await get_dev_org(db_session)
         prop    = await make_property(db_session, org, name="New Block")
         unit    = await make_unit(db_session, prop, name="Unit Y", monthly_rent=500000)
         profile = await self._make_profile(db_session, org.id)

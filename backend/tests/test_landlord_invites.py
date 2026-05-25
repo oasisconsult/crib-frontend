@@ -19,18 +19,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.landlord_invite import LandlordInvite, InviteStatus
-from tests.conftest import auth_headers
-from tests.factories import make_organisation, make_property, make_unit
+from tests.conftest import auth_headers, get_dev_org
+from tests.factories import make_property
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 async def _seed_org_with_property(db: AsyncSession):
-    """Create org + property, link the dev_manager1 profile to the org."""
+    """Fetch org_dev + create a property, ensuring manager-1's profile is linked."""
     from sqlalchemy import select as sa_select
     from app.models.profile import Profile
 
-    org = await make_organisation(db, logto_org_id="org_dev", name="Test Agency")
+    org = await get_dev_org(db)
     prop = await make_property(db, org, name="Nakasero Flats")
 
     result = await db.execute(sa_select(Profile).where(Profile.logto_sub == "dev_manager1"))

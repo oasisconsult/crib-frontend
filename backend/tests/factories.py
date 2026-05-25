@@ -39,11 +39,12 @@ DEFAULT_RULES = {
 
 
 async def make_organisation(db: AsyncSession, **kwargs) -> Organisation:
+    _uid = uuid.uuid4().hex[:8]
     org = Organisation(
-        logto_org_id=kwargs.get("logto_org_id", "org_dev"),
+        logto_org_id=kwargs.get("logto_org_id", f"org_test_{_uid}"),
         name=kwargs.get("name", "Test Organisation"),
-        slug=kwargs.get("slug", f"test-org-{uuid.uuid4().hex[:6]}"),
-        plan=kwargs.get("plan", Plan.starter),
+        slug=kwargs.get("slug", f"test-org-{_uid}"),
+        plan=kwargs.get("plan", Plan.free),
         currency=kwargs.get("currency", "UGX"),
         settings={},
     )

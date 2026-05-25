@@ -427,6 +427,125 @@ async def _assign_tenant_role(
         return False
 
 
+# ── Create caretaker user ─────────────────────────────────────────────────────
+
+
+async def create_caretaker_user(
+    *,
+    email: str,
+    first_name: str,
+    last_name: str,
+    temp_password: str,
+    logto_org_id: str | None = None,
+) -> tuple[str | None, bool]:
+    """
+    Create or resolve a Logto user for an invited caretaker.
+
+    Org role: 'owner'  — caretakers do everything the landlord does within the
+      org, so they need the same JWT org claim.  The caretaker IDENTITY lives in
+      profile.caretaker_owner_profile_id (not in Logto), and deps.py injects
+      the 'caretaker' role at request time to trigger property-level scoping.
+
+    App role: 'caretaker' — stored as a global user role in Logto so the JWT
+      always carries the claim even when no org token is available.  The
+      frontend's KNOWN_ROLES list includes 'caretaker', so extractRoles() will
+      surface it in the roles cookie.
+
+    Returns (logto_user_id, is_new_user).
+      is_new_user=True  → fresh account, temp_password was set
+      is_new_user=False → existing account (no password change)
+    """
+    if not _is_configured():
+        log.debug("logto.m2m_not_configured — skipping caretaker user creation", email=email)
+        return None, False
+
+    try:
+        token = await _get_m2m_token()
+        headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        base = "http://logto:3001/api"
+        is_new_user = False
+
+        async with httpx.AsyncClient(timeout=10) as client:
+            create_resp = await client.post(
+                f"{base}/users",
+                json={
+                    "primaryEmail": email,
+                    "name": f"{first_name} {last_name}",
+                    "username": email.split("@")[0].lower(),
+                },
+                headers=headers,
+            )
+
+            if create_resp.status_code == 422:
+                # User already exists in Logto — link without touching password.
+                search = await client.get(f"{base}/users", params={"search": email}, headers=headers)
+                search.raise_for_status()
+                users = search.json()
+                if not users:
+                    return None, False
+                logto_user_id = users[0]["id"]
+                log.info("logto.caretaker_existing_user", email=email, user_id=logto_user_id)
+            else:
+                create_resp.raise_for_status()
+                logto_user_id = create_resp.json()["id"]
+                is_new_user = True
+
+                # Set temp password via dedicated PATCH endpoint.
+                pwd_resp = await client.patch(
+                    f"{base}/users/{logto_user_id}/password",
+                    json={"password": temp_password},
+                    headers=headers,
+                )
+                if not pwd_resp.is_success:
+                    log.warning(
+                        "logto.caretaker_password_set_failed",
+                        user_id=logto_user_id,
+                        status=pwd_resp.status_code,
+                        response=pwd_resp.text,
+                    )
+                else:
+                    log.info("logto.caretaker_password_set", user_id=logto_user_id)
+
+            # Assign app-level 'caretaker' role so the JWT carries the claim.
+            await _assign_app_role(client, base, logto_user_id, "caretaker", headers)
+
+            # Add to owner's org + assign org-level 'caretaker' role.
+            if logto_org_id:
+                add_resp = await client.post(
+                    f"{base}/organizations/{logto_org_id}/users",
+                    json={"userIds": [logto_user_id]},
+                    headers=headers,
+                )
+                if add_resp.status_code not in (200, 201, 204):
+                    log.warning(
+                        "logto.caretaker_add_to_org_failed",
+                        user_id=logto_user_id,
+                        org_id=logto_org_id,
+                        status=add_resp.status_code,
+                    )
+                else:
+                    log.info(
+                        "logto.caretaker_added_to_org",
+                        user_id=logto_user_id,
+                        org_id=logto_org_id,
+                    )
+                    await _assign_org_role(
+                        client, base, logto_org_id, logto_user_id, "caretaker", headers
+                    )
+
+        log.info(
+            "logto.caretaker_user_provisioned",
+            email=email,
+            logto_user_id=logto_user_id,
+            is_new=is_new_user,
+        )
+        return logto_user_id, is_new_user
+
+    except Exception as exc:  # noqa: BLE001
+        log.warning("logto.create_caretaker_user_failed", email=email, error=str(exc))
+        return None, False
+
+
 # ── Create landlord user (no org — app-level role only) ───────────────────────
 
 

@@ -145,5 +145,12 @@ class Lease(TimestampedBase):
         foreign_keys=[renewal_of_lease_id],
     )
 
+    # NULL = active; non-NULL = soft-deleted (draft leases discarded by owner).
+    # Only draft / onboarding leases may be soft-deleted; active/expired/terminated
+    # leases must be kept as permanent financial records.
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+
     def __repr__(self) -> str:
         return f"<Lease unit={self.unit_id} tenant={self.tenant_id} status={self.status}>"

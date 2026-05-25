@@ -213,3 +213,59 @@ export function useRetryPayment(leaseId: string) {
     onError: () => toast.error("Failed to retry payment"),
   });
 }
+
+/**
+ * Owner / caretaker / agency manager / superadmin — reject an in-progress payment.
+ *
+ * Reason is required (min 1 character). The rejected payment moves to a terminal
+ * state; a new payment must be created to re-attempt.
+ */
+export function useRejectPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      leaseId,
+      paymentId,
+      reason,
+    }: {
+      leaseId: string;
+      paymentId: string;
+      reason: string;
+    }) => paymentsApi.reject(leaseId, paymentId, reason),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: queryKeys.payments.detail(updated.id) });
+      qc.invalidateQueries({ queryKey: queryKeys.payments.all() });
+      toast.success("Payment rejected");
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.detail ?? "Failed to reject payment"),
+  });
+}
+
+/**
+ * Tenant self-cancels their own in-progress payment.
+ *
+ * Only valid before the payment reaches the `reconciled` state. A reason is
+ * optional but helps the property manager understand why it was cancelled.
+ */
+export function useCancelPayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      leaseId,
+      paymentId,
+      reason,
+    }: {
+      leaseId: string;
+      paymentId: string;
+      reason?: string;
+    }) => paymentsApi.cancel(leaseId, paymentId, reason),
+    onSuccess: (updated) => {
+      qc.invalidateQueries({ queryKey: queryKeys.payments.detail(updated.id) });
+      qc.invalidateQueries({ queryKey: queryKeys.payments.all() });
+      toast.success("Payment cancelled");
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.detail ?? "Failed to cancel payment"),
+  });
+}

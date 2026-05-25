@@ -123,7 +123,7 @@ class Tenant(TimestampedBase):
     # a tenant returns via a resent invite link.
     onboarding_draft: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
-    # ── GDPR ─────────────────────────────────────────────────────────────────
+    # ── GDPR / soft-delete ────────────────────────────────────────────────────
     gdpr_consent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -132,6 +132,11 @@ class Tenant(TimestampedBase):
     )
     anonymised_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # NULL = active; non-NULL = soft-deleted (hidden from normal queries).
+    # PII may still be present — use anonymise_tenant() to erase it (GDPR Art. 17).
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
     )
 
     # ── Relationships ─────────────────────────────────────────────────────────
@@ -170,6 +175,12 @@ class TenantDocument(TimestampedBase):
         DateTime(timezone=True), nullable=False
     )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # NULL = active; non-NULL = soft-deleted.  File is purged from object
+    # storage separately; this row is kept as an audit tombstone.
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
     tenant: Mapped[Tenant] = relationship("Tenant", back_populates="documents")
 

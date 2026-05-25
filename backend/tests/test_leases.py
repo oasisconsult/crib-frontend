@@ -26,19 +26,21 @@ from app.models.lease import LeaseStatus
 from app.models.property import UnitStatus
 from app.models.tenant import OnboardingState, TenantStatus
 from tests.conftest import auth_headers
-from tests.factories import make_lease, make_organisation, make_property, make_tenant, make_unit
+from tests.factories import make_lease, make_property, make_tenant, make_unit
 
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 @pytest.fixture
-async def org(db_session: AsyncSession):
-    return await make_organisation(db_session, logto_org_id="org_dev", slug="org-dev-leases")
+async def org(dev_org):
+    """Use the pre-seeded org_dev so test data is visible to dev-user auth tokens."""
+    return dev_org
 
 
 @pytest.fixture
 async def other_org(db_session: AsyncSession):
-    return await make_organisation(db_session, logto_org_id="org_other", slug="org-other-leases")
+    from tests.factories import make_organisation
+    return await make_organisation(db_session)
 
 
 @pytest.fixture

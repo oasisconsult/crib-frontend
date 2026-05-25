@@ -10,8 +10,10 @@ Endpoints:
   GET    /leases/{id}/payments
   GET    /leases/{id}/payments/export
   GET    /leases/{id}/payments/{pid}
-  PATCH  /leases/{id}/payments/{pid}/confirm
-  PATCH  /leases/{id}/payments/{pid}/refund
+  PATCH  /leases/{id}/payments/{pid}/confirm      — org staff confirms payment
+  PATCH  /leases/{id}/payments/{pid}/refund       — org staff refunds confirmed payment
+  PATCH  /leases/{id}/payments/{pid}/reject       — org staff rejects in-progress payment
+  PATCH  /leases/{id}/payments/{pid}/cancel       — tenant cancels their own payment
   GET    /leases/{id}/payments/{pid}/allocations
   GET    /leases/{id}/late-fees
   POST   /leases/{id}/late-fees/{schedule_id}/apply
@@ -40,10 +42,12 @@ from app.schemas.payment import (
     LedgerOut,
     LedgerPageOut,
     PaymentAllocationOut,
+    PaymentCancelBody,
     PaymentCreate,
     PaymentDecisionOut,
     PaymentEstimateRequest,
     PaymentOut,
+    PaymentRejectBody,
     RentScheduleOut,
 )
 from app.services import payment_service as svc
@@ -209,6 +213,74 @@ async def refund_payment(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.refund_payment(payment_id, lease_id, current_user.org_id, db)
+
+
+@router.patch("/{lease_id}/payments/{payment_id}/reject", response_model=PaymentOut)
+async def reject_payment(
+    lease_id: uuid.UUID,
+    payment_id: uuid.UUID,
+    body: PaymentRejectBody,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Owner / caretaker / agency manager / superadmin declines an in-progress payment.
+
+    Use when a payment was recorded by mistake, has the wrong amount, is a
+    duplicate, or is otherwise unacceptable. Requires a reason which is stored
+    for audit purposes and surfaced to the tenant in the portal.
+
+    A rejected payment is terminal — a new payment must be created to re-attempt.
+    Completed / confirmed payments cannot be rejected; use the refund endpoint instead.
+    """
+    return await svc.reject_payment(
+        payment_id,
+        lease_id,
+        current_user.org_id,
+        db,
+        reason=body.reason,
+        rejected_by_profile_id=current_user.profile.id,
+    )
+
+
+@router.patch("/{lease_id}/payments/{payment_id}/cancel", response_model=PaymentOut)
+async def cancel_payment(
+    lease_id: uuid.UUID,
+    payment_id: uuid.UUID,
+    body: PaymentCancelBody,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Cancel an in-progress payment.
+
+    **Tenant** — self-service cancellation of their own payment.
+    **Superadmin** — can cancel any payment on behalf of a tenant (e.g. support requests).
+
+    Cancellation is only possible before the payment has been reconciled with the
+    payment provider (states: initiated / predicted / routed / pending / retry_scheduled).
+
+    Once a payment reaches ``reconciled`` or beyond — meaning the funds may already
+    be in transit — cancellation is blocked. The tenant should contact their property
+    manager to request a refund instead.
+
+    A reason may optionally be provided (e.g. "Paid in cash instead") and will be
+    visible to the manager in the payment detail view.
+    """
+    is_superadmin = current_user.has_role("superadmin")
+    if not is_superadmin and not current_user.has_role("tenant"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the tenant or a superadmin can cancel a payment",
+        )
+    return await svc.cancel_payment(
+        payment_id,
+        lease_id,
+        db,
+        tenant_logto_sub=current_user.claims.sub,
+        reason=body.reason,
+        bypass_tenant_check=is_superadmin,
+    )
 
 
 @router.get(

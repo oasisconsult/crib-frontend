@@ -251,12 +251,22 @@ async def get_current_user(
     raw_roles = _roles_from_claims(claims)
 
     # ── Caretaker detection ───────────────────────────────────────────────────
-    # A caretaker logs in via Logto as "owner" (for dashboard access), but our
-    # system identifies them by profile.caretaker_owner_profile_id being set.
-    # Appending "caretaker" to their roles allows endpoints to apply property-
-    # level scoping without a dedicated Logto role.
-    if profile.caretaker_owner_profile_id is not None and "caretaker" not in raw_roles:
-        raw_roles = [r for r in raw_roles if r != "owner"] + ["caretaker", "owner"]
+    # A caretaker logs in with a 'caretaker' Logto role (set during onboarding).
+    # profile.caretaker_owner_profile_id is the authoritative signal — if it is
+    # set we always guarantee both "caretaker" AND "owner" are in the roles list:
+    #   • "caretaker" — lets property endpoints apply delegated-property scoping
+    #   • "owner"     — lets them pass is_owner_or_manager() dashboard guards
+    # This is safe to apply unconditionally because the API layer still enforces
+    # the property-level filter when "caretaker" is present in roles.
+    if profile.caretaker_owner_profile_id is not None:
+        roles_set = set(raw_roles)
+        extra: list[str] = []
+        if "caretaker" not in roles_set:
+            extra.append("caretaker")
+        if "owner" not in roles_set:
+            extra.append("owner")
+        if extra:
+            raw_roles = raw_roles + extra
 
     return CurrentUser(profile=profile, claims=claims, roles=raw_roles)
 
@@ -359,6 +369,60 @@ async def get_tenant_record(
         select(Tenant).where(Tenant.logto_user_id == current_user.claims.sub)
     )
     return result.scalar_one_or_none()
+
+
+def require_genuine_owner() -> Callable:
+    """
+    Owner or superadmin only — explicitly blocks caretakers.
+
+    Caretakers receive an injected "owner" role in get_current_user() so they
+    can pass is_owner_or_manager() guards on data endpoints.  This guard MUST
+    be used instead of require_role("owner", "superadmin") on account-management
+    endpoints that only a real owner should perform (e.g. inviting / managing
+    caretakers).  Checking for "caretaker" in roles takes precedence over any
+    injected "owner" role.
+    """
+
+    async def _guard(
+        current_user: CurrentUser = Depends(get_current_user),
+    ) -> CurrentUser:
+        if current_user.has_role("caretaker"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Caretakers cannot perform account-management operations",
+            )
+        if not current_user.has_role("owner", "superadmin"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Required role(s): ['owner', 'superadmin']",
+            )
+        return current_user
+
+    return _guard
+
+
+def require_financial_access() -> Callable:
+    """
+    Block operations_only caretakers from financial analytics endpoints.
+
+    Caretakers with permissionLevel == "operations_only" may see payment status
+    (who paid / who hasn't) but must NOT access financial charts or aggregate
+    analytics.  All other roles pass through.
+    """
+
+    async def _guard(
+        current_user: CurrentUser = Depends(get_current_user),
+    ) -> CurrentUser:
+        if current_user.has_role("caretaker"):
+            level = getattr(current_user.profile, "caretaker_permission_level", None) or "full"
+            if level == "operations_only":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Financial analytics are not available for operations-only caretakers",
+                )
+        return current_user
+
+    return _guard
 
 
 def require_org_access(allow_tenant_own: bool = False) -> Callable:

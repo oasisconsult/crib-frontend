@@ -13,7 +13,8 @@ import uuid
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user, require_role
+from app.api.deps import CurrentUser, get_current_user
+from app.services.policy_service import require_permission
 from app.core.database import get_db
 from app.schemas.common import MessageResponse
 from app.services.landlord_service import (
@@ -37,7 +38,7 @@ router = APIRouter(prefix="/landlords", tags=["landlords"])
     "/invites",
     response_model=LandlordInviteOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role("owner", "manager", "superadmin"))],
+    dependencies=[require_permission("create", "profile")],
 )
 async def create_landlord_invite(
     body: CreateLandlordInviteRequest,
@@ -59,7 +60,7 @@ async def create_landlord_invite(
 @router.get(
     "/invites",
     response_model=list[LandlordInviteOut],
-    dependencies=[Depends(require_role("owner", "manager", "superadmin"))],
+    dependencies=[require_permission("read", "profile")],
 )
 async def list_landlord_invites(
     current_user: CurrentUser = Depends(get_current_user),
@@ -74,7 +75,7 @@ async def list_landlord_invites(
 @router.delete(
     "/invites/{invite_id}",
     response_model=MessageResponse,
-    dependencies=[Depends(require_role("owner", "manager", "superadmin"))],
+    dependencies=[require_permission("delete", "profile")],
 )
 async def revoke_landlord_invite(
     invite_id: uuid.UUID,
@@ -95,7 +96,7 @@ async def revoke_landlord_invite(
 @router.post(
     "/invites/{invite_id}/resend",
     response_model=LandlordInviteOut,
-    dependencies=[Depends(require_role("owner", "manager", "superadmin"))],
+    dependencies=[require_permission("update", "profile")],
 )
 async def resend_landlord_invite(
     invite_id: uuid.UUID,

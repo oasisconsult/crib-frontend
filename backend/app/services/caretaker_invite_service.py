@@ -408,14 +408,15 @@ async def complete_caretaker_onboarding(
 
     temp_password = _generate_temp_password()
 
-    # Create Logto user. We assign the "owner" app role so they can access the
-    # dashboard.  Our deps.py detects caretaker_owner_profile_id and appends
-    # "caretaker" to their roles list, so the API correctly scopes their data.
+    # Create Logto user with the 'caretaker' app role so the JWT carries the
+    # correct role claim.  deps.py also injects 'owner' so they can access the
+    # dashboard and pass is_owner_or_manager() guards without bypassing
+    # property-level scoping.
     logto_user_id: str | None = None
     logto_org_id: str | None = owner.logto_org_id  # caretaker joins owner's org
 
     try:
-        result_tuple = await logto_service.create_landlord_user(
+        result_tuple = await logto_service.create_caretaker_user(
             email=invite.email,
             first_name=body.first_name,
             last_name=body.last_name,
@@ -456,6 +457,30 @@ async def complete_caretaker_onboarding(
         )
         db.add(profile)
 
+    await db.flush()
+
+    # ── Grant property access ─────────────────────────────────────────────────
+    # Create LandlordPropertyAccess rows so the property service can filter
+    # caretaker-visible properties via the same JOIN used for read-only landlords.
+    # We delete any stale rows first so this block is fully idempotent.
+    from app.models.landlord_invite import LandlordPropertyAccess
+    from sqlalchemy import delete as _delete
+    await db.execute(
+        _delete(LandlordPropertyAccess).where(
+            LandlordPropertyAccess.landlord_profile_id == profile.id
+        )
+    )
+    for pid_str in (invite.property_ids or []):
+        try:
+            prop_uuid = uuid.UUID(str(pid_str))
+            db.add(LandlordPropertyAccess(
+                landlord_profile_id=profile.id,
+                property_id=prop_uuid,
+                is_read_only=False,           # caretakers can manage, not just view
+                granted_by_profile_id=invite.owner_profile_id,
+            ))
+        except (ValueError, Exception) as exc:
+            log.warning("caretaker.invalid_property_id", pid=pid_str, error=str(exc))
     await db.flush()
 
     # Mark invite accepted
@@ -540,6 +565,26 @@ async def update_caretaker(
 
     if body.property_ids is not None:
         profile.caretaker_property_ids = body.property_ids
+        # Keep LandlordPropertyAccess in sync so property queries stay accurate.
+        from app.models.landlord_invite import LandlordPropertyAccess
+        from sqlalchemy import delete as _delete
+        await db.execute(
+            _delete(LandlordPropertyAccess).where(
+                LandlordPropertyAccess.landlord_profile_id == profile.id
+            )
+        )
+        for pid_str in body.property_ids:
+            try:
+                prop_uuid = uuid.UUID(str(pid_str))
+                db.add(LandlordPropertyAccess(
+                    landlord_profile_id=profile.id,
+                    property_id=prop_uuid,
+                    is_read_only=False,
+                    granted_by_profile_id=owner_profile_id,
+                ))
+            except (ValueError, Exception) as exc:
+                log.warning("caretaker.invalid_property_id_on_update", pid=pid_str, error=str(exc))
+
     if body.permission_level is not None:
         if body.permission_level not in ("full", "operations_only"):
             raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,

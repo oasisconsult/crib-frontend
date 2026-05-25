@@ -19,3 +19,4 @@ from app.models import (  # noqa: F401
     wallet,
 )
 from app.models.caretaker_invite import CaretakerInvite  # noqa: F401
+from app.models.gdpr import GdprRequest  # noqa: F401

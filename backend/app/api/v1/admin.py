@@ -72,6 +72,7 @@ async def search_profiles(
         select(Profile)
         .where(
             Profile.anonymised_at.is_(None),
+            Profile.deleted_at.is_(None),
             or_(
                 Profile.display_name.ilike(term),
                 Profile.email.ilike(term),
@@ -226,6 +227,33 @@ async def restore_profile(
 ):
     """Restore a soft-deleted profile and re-enable their Logto account."""
     await admin_service.restore_profile(profile_id, db)
+    await db.commit()
+
+
+# ── Profile GDPR ─────────────────────────────────────────────────────────────
+
+@router.post(
+    "/profiles/{profile_id}/anonymise",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+    dependencies=[Depends(require_superadmin())],
+)
+async def anonymise_profile_admin(
+    profile_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    GDPR right to erasure — superadmin erases a platform user's PII.
+
+    Overwrites display_name, email, phone, avatar_url with anonymous
+    placeholders and sets anonymised_at + deleted_at. Idempotent.
+
+    The caller (superadmin) is responsible for suspending or deleting the
+    corresponding Logto account afterwards.
+    """
+    from app.services.gdpr_service import anonymise_profile
+    await anonymise_profile(profile_id, db, requested_by_profile_id=current_user.profile.id)
     await db.commit()
 
 
@@ -519,3 +547,27 @@ async def admin_patch_lease_billing_rules(
     result = await lease_svc.admin_patch_lease_billing_rules(lease_id, body, db)
     await db.commit()
     return result
+
+
+# ── GDPR audit log ────────────────────────────────────────────────────────────
+
+@router.get(
+    "/gdpr-log",
+    response_model=dict,
+    dependencies=[Depends(require_superadmin())],
+)
+async def gdpr_audit_log(
+    subject_type: str | None = Query(None, alias="subjectType", description="Filter by subject type: 'profile', 'tenant'"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200, alias="pageSize"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Paginated GDPR erasure audit log for compliance reporting.
+
+    Returns all anonymise / soft_delete events logged by the system,
+    ordered by most-recent first. Use ``subjectType=profile`` or
+    ``subjectType=tenant`` to narrow results.
+    """
+    from app.services.gdpr_service import get_gdpr_log
+    return await get_gdpr_log(db, subject_type=subject_type, page=page, page_size=page_size)

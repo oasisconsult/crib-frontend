@@ -24,7 +24,6 @@ from tests.conftest import auth_headers
 from tests.factories import (
     make_deposit,
     make_lease,
-    make_organisation,
     make_payment,
     make_property,
     make_rent_schedule,
@@ -36,8 +35,9 @@ from tests.factories import (
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture
-async def org(db_session: AsyncSession):
-    return await make_organisation(db_session)
+async def org(dev_org):
+    """Use the pre-seeded org_dev so test data is visible to dev-user auth tokens."""
+    return dev_org
 
 
 @pytest_asyncio.fixture

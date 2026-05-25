@@ -31,7 +31,6 @@ from app.models.tenant import OnboardingState, TenantStatus
 from tests.conftest import auth_headers
 from tests.factories import (
     make_lease,
-    make_organisation,
     make_property,
     make_tenant,
     make_tenant_invite,
@@ -42,14 +41,9 @@ from tests.factories import (
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 @pytest.fixture
-async def org(db_session: AsyncSession):
-    # logto_org_id="org_dev" matches the owner-1/manager-1 dev fixture users
-    return await make_organisation(
-        db_session,
-        logto_org_id="org_dev",
-        slug="org-full-flow",
-        name="Kampala Properties Ltd",
-    )
+async def org(dev_org):
+    """Use the pre-seeded org_dev so test data is visible to dev-user auth tokens."""
+    return dev_org
 
 
 @pytest.fixture
@@ -282,7 +276,7 @@ async def test_nin_in_rendered_agreement(
     ta = ta_result.scalar_one()
     assert "CM12345678AGNKC" in ta.rendered_html
     assert "Grace Nakato" in ta.rendered_html
-    assert "Kampala Properties Ltd" in ta.rendered_html
+    assert "Dev Agency" in ta.rendered_html   # dev_org name from the pre-seeded org_dev fixture
     assert "Nakasero Hill" in ta.rendered_html  # from property address
 
 

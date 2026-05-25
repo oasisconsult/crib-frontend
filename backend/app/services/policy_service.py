@@ -34,12 +34,11 @@ effectively denied.
 from __future__ import annotations
 
 import time
-from typing import Callable
 
 from fastapi import Depends, HTTPException, status
+from fastapi.params import Depends as DependsType
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.models.rbac import Permission, RoleModel, RolePermission, Resource
@@ -140,7 +139,7 @@ async def get_policy_service() -> PolicyService:
     return PolicyService()
 
 
-def require_permission(action: str, resource: str) -> Callable:
+def require_permission(action: str, resource: str) -> DependsType:
     """
     FastAPI dependency factory.  Ensures the current user has `action` on
     `resource` according to the DB-driven policy engine.

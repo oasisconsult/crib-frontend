@@ -32,13 +32,15 @@ from tests.factories import make_organisation, make_property, make_tenant
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
 @pytest.fixture
-async def org(db_session):
-    return await make_organisation(db_session, logto_org_id="org_dev", slug="org-dev-t3")
+async def org(dev_org):
+    """Organisation linked to the dev manager-1 user (pre-seeded org_dev)."""
+    return dev_org
 
 
 @pytest.fixture
 async def other_org(db_session):
-    return await make_organisation(db_session, logto_org_id="org_other_t3", slug="org-other-t3")
+    """A second organisation that manager-1 does NOT belong to."""
+    return await make_organisation(db_session)
 
 
 @pytest.fixture

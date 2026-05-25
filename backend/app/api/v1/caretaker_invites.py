@@ -20,7 +20,7 @@ import uuid
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user, require_role
+from app.api.deps import CurrentUser, get_current_user, require_genuine_owner
 from app.core.database import get_db
 from app.schemas.common import MessageResponse
 from app.services.caretaker_invite_service import (
@@ -52,7 +52,7 @@ router = APIRouter(tags=["caretakers"])
     "/caretaker-invites",
     response_model=CaretakerInviteOut,
     status_code=status.HTTP_201_CREATED,
-    dependencies=[Depends(require_role("owner", "superadmin"))],
+    dependencies=[Depends(require_genuine_owner())],
 )
 async def create_invite(
     body: CreateCaretakerInviteRequest,
@@ -70,7 +70,7 @@ async def create_invite(
 @router.get(
     "/caretaker-invites",
     response_model=list[CaretakerInviteOut],
-    dependencies=[Depends(require_role("owner", "superadmin"))],
+    dependencies=[Depends(require_genuine_owner())],
 )
 async def list_invites(
     current_user: CurrentUser = Depends(get_current_user),
@@ -86,7 +86,7 @@ async def list_invites(
 @router.post(
     "/caretaker-invites/{invite_id}/resend",
     response_model=CaretakerInviteOut,
-    dependencies=[Depends(require_role("owner", "superadmin"))],
+    dependencies=[Depends(require_genuine_owner())],
 )
 async def resend_invite(
     invite_id: uuid.UUID,
@@ -104,7 +104,7 @@ async def resend_invite(
 @router.delete(
     "/caretaker-invites/{invite_id}",
     response_model=MessageResponse,
-    dependencies=[Depends(require_role("owner", "superadmin"))],
+    dependencies=[Depends(require_genuine_owner())],
 )
 async def revoke_invite(
     invite_id: uuid.UUID,
@@ -126,7 +126,7 @@ async def revoke_invite(
 @router.get(
     "/caretakers",
     response_model=list[ActiveCaretakerOut],
-    dependencies=[Depends(require_role("owner", "superadmin"))],
+    dependencies=[Depends(require_genuine_owner())],
 )
 async def list_caretakers(
     current_user: CurrentUser = Depends(get_current_user),
@@ -142,7 +142,7 @@ async def list_caretakers(
 @router.patch(
     "/caretakers/{caretaker_id}",
     response_model=ActiveCaretakerOut,
-    dependencies=[Depends(require_role("owner", "superadmin"))],
+    dependencies=[Depends(require_genuine_owner())],
 )
 async def update_caretaker_access(
     caretaker_id: uuid.UUID,
@@ -162,7 +162,7 @@ async def update_caretaker_access(
 @router.post(
     "/caretakers/{caretaker_id}/deactivate",
     response_model=MessageResponse,
-    dependencies=[Depends(require_role("owner", "superadmin"))],
+    dependencies=[Depends(require_genuine_owner())],
 )
 async def deactivate(
     caretaker_id: uuid.UUID,

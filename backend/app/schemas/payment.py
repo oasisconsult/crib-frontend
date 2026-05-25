@@ -114,6 +114,13 @@ class PaymentOut(CamelModel):
     retry_count: int = 0
     predicted_failure_score: float | None = None
     recommended_channel: str | None = None
+    # Rejection audit (set when org staff rejects)
+    rejection_reason: str | None = None
+    rejected_at: str | None = None
+    rejected_by_profile_id: str | None = None
+    # Cancellation audit (set when tenant cancels)
+    cancellation_reason: str | None = None
+    cancelled_at: str | None = None
     created_at: str
     updated_at: str
     # Denormalised display names
@@ -122,6 +129,14 @@ class PaymentOut(CamelModel):
     property_name: str | None = None
     # Informational message returned to the client (e.g. "Check your phone for PIN")
     message: str | None = None
+
+
+class PaymentRejectBody(CamelModel):
+    reason: str = Field(min_length=1, description="Why this payment is being rejected")
+
+
+class PaymentCancelBody(CamelModel):
+    reason: str | None = Field(None, description="Optional reason for cancellation (shown to manager)")
 
 
 # ── Late Fee ───────────────────────────────────────────────────────────────────

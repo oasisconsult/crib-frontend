@@ -71,10 +71,11 @@ export function usePermissions() {
     if (isSuperAdmin) return true;
     if (isReadOnly && action !== "read") return false;
 
-    // Caretaker operations_only gate: block financial resources at the UI level.
-    // Backend independently enforces the same rule.
+    // Caretaker operations_only gate: block analytics at the UI level.
+    // Payments (who paid / who hasn't) are still allowed — only financial
+    // analytics/charts are hidden.  Backend independently enforces the same rule.
     if (caretakerOperationsOnly) {
-      const blockedResources = ["payment", "payments", "analytics"];
+      const blockedResources = ["analytics"];
       if (blockedResources.includes(resource)) return false;
     }
 

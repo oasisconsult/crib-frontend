@@ -137,11 +137,17 @@ def _tenant_out(tenant: Tenant) -> TenantOut:
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 async def _get_tenant(
-    tenant_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
+    tenant_id: uuid.UUID,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+    *,
+    include_deleted: bool = False,
 ) -> Tenant:
     _filters = [Tenant.id == tenant_id]
     if org_id is not None:
         _filters.append(Tenant.organisation_id == org_id)
+    if not include_deleted:
+        _filters.append(Tenant.deleted_at.is_(None))
     result = await db.execute(
         select(Tenant)
         .options(selectinload(Tenant.documents))
@@ -169,7 +175,9 @@ async def list_tenants(
         select(Tenant).options(selectinload(Tenant.documents)),
         Tenant.organisation_id, org_id,
     )
-    # By default exclude GDPR-anonymised tenants from dashboard lists.
+    # Exclude soft-deleted tenants from all normal listings.
+    q = q.where(Tenant.deleted_at.is_(None))
+    # By default also exclude GDPR-anonymised tenants from dashboard lists.
     # Admins can pass include_anonymised=True to see the anonymised stubs.
     if not include_anonymised:
         q = q.where(Tenant.anonymised_at.is_(None))
@@ -221,10 +229,42 @@ async def update_tenant(
 
 
 async def delete_tenant(
-    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> None:
+    """
+    Soft-delete a tenant record.
+
+    Marks the row as deleted (hidden from all normal queries) without removing it.
+    PII fields are preserved; use anonymise_tenant() to execute a full GDPR erasure.
+
+    Raises 400 if the tenant has an active lease — the lease must be terminated first.
+    """
     tenant = await _get_tenant(tenant_id, org_id, db)
-    await db.delete(tenant)
+
+    if tenant.current_lease_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Cannot delete a tenant with an active lease. "
+                "Terminate or expire the lease first."
+            ),
+        )
+
+    now = datetime.now(timezone.utc)
+    tenant.deleted_at = now
+    tenant.status = TenantStatus.inactive
+    await db.flush()
+
+    # Audit log
+    from app.models.gdpr import GdprRequest
+    db.add(GdprRequest(
+        subject_type="tenant",
+        subject_id=tenant_id,
+        request_type="soft_delete",
+        completed_at=now,
+        fields_cleared=[],
+        notes="Soft-deleted by manager/owner. PII retained; call anonymise to erase.",
+    ))
     await db.flush()
 
 
@@ -1185,30 +1225,81 @@ async def delete_document(
 # ── GDPR anonymisation ────────────────────────────────────────────────────────
 
 async def anonymise_tenant(
-    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+    *,
+    requested_by_profile_id: uuid.UUID | None = None,
 ) -> None:
     """
-    GDPR right to erasure — replaces all PII with anonymised placeholders.
-    The row is retained for audit/financial history; all identifying data is wiped.
+    GDPR right to erasure (Art. 17) — replaces all PII with anonymised placeholders.
+
+    The row is retained for audit and financial history; every identifying field
+    is overwritten.  Also soft-deletes TenantDocument rows — the actual files must
+    be purged from object storage separately (storage keys are preserved in the
+    audit log).
+
+    Works on already-soft-deleted tenants (include_deleted=True) so a two-step
+    "delete then erase" flow is supported.
     """
-    tenant = await _get_tenant(tenant_id, org_id, db)
+    tenant = await _get_tenant(tenant_id, org_id, db, include_deleted=True)
 
+    now = datetime.now(timezone.utc)
     anon_id = str(tenant.id)[:8]
-    tenant.first_name = "Anonymised"
-    tenant.last_name = anon_id
-    tenant.email = f"anonymised-{anon_id}@deleted.invalid"
-    tenant.phone = None
-    tenant.date_of_birth = None
-    tenant.nationality = None
+
+    # ── Wipe all PII fields ────────────────────────────────────────────────────
+    _pii_fields = [
+        "first_name", "last_name", "email", "phone",
+        "date_of_birth", "nationality", "nin",
+        "whatsapp_number", "mobile_money_number", "mobile_money_provider",
+        "emergency_contact", "notes", "onboarding_draft", "tags",
+        "logto_user_id", "onboarding_token",
+    ]
+    tenant.first_name        = "Anonymised"
+    tenant.last_name         = anon_id
+    tenant.email             = f"anonymised-{anon_id}@deleted.invalid"
+    tenant.phone             = None
+    tenant.date_of_birth     = None
+    tenant.nationality       = None
+    tenant.nin               = None
+    tenant.whatsapp_number   = None
+    tenant.mobile_money_number  = None
+    tenant.mobile_money_provider = None
     tenant.emergency_contact = None
-    tenant.notes = None
-    tenant.logto_user_id = None
-    tenant.onboarding_token = None
-    tenant.anonymised_at = datetime.now(timezone.utc)
-    tenant.status = TenantStatus.inactive
+    tenant.notes             = None
+    tenant.onboarding_draft  = None
+    tenant.tags              = []
+    tenant.logto_user_id     = None
+    tenant.onboarding_token  = None
+    tenant.anonymised_at     = now
+    tenant.deleted_at        = now  # also soft-delete so it's hidden from listings
+    tenant.status            = TenantStatus.inactive
 
-    # Delete all documents (PII files)
+    # ── Soft-delete document rows (keep tombstone, PII metadata stripped) ──────
+    # The caller is responsible for purging the actual files from object storage
+    # using the stored keys before calling this function.
+    doc_storage_keys = []
     for doc in tenant.documents:
-        await db.delete(doc)
+        if doc.deleted_at is None:           # skip already-erased docs
+            doc_storage_keys.append(doc.url) # preserve key for storage purge audit
+            doc.name       = f"[erased-{anon_id}]"
+            doc.url        = ""
+            doc.deleted_at = now
 
+    await db.flush()
+
+    # ── GDPR audit log ─────────────────────────────────────────────────────────
+    from app.models.gdpr import GdprRequest
+    db.add(GdprRequest(
+        subject_type="tenant",
+        subject_id=tenant_id,
+        request_type="anonymise",
+        requested_by_profile_id=requested_by_profile_id,
+        completed_at=now,
+        fields_cleared=_pii_fields,
+        notes=(
+            f"GDPR erasure. {len(doc_storage_keys)} document(s) soft-deleted. "
+            f"Storage keys to purge: {doc_storage_keys}"
+        ) if doc_storage_keys else "GDPR erasure. No documents.",
+    ))
     await db.flush()

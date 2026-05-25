@@ -27,6 +27,13 @@ export interface Payment {
   retryCount?: number;
   predictedFailureScore?: number | null;
   recommendedChannel?: string | null;
+  // Rejection audit (set by org staff)
+  rejectionReason?: string | null;
+  rejectedAt?: string | null;
+  rejectedByProfileId?: string | null;
+  // Cancellation audit (set by tenant)
+  cancellationReason?: string | null;
+  cancelledAt?: string | null;
   // Denormalised display names
   tenantName?: string | null;
   unitName?: string | null;

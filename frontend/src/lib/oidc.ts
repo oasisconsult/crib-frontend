@@ -13,8 +13,28 @@ import { LOGTO_APP_ID, LOGTO_APP_SECRET, API_RESOURCE } from "./config";
 import { decodeJwt } from "./auth";
 import type { UserRole } from "@/types";
 
-const KNOWN_ROLES: UserRole[] = ["superadmin", "owner", "manager", "maintenance", "tenant"];
-const ROLE_PRIORITY: UserRole[] = ["superadmin", "owner", "manager", "maintenance", "tenant"];
+// ALL roles that can appear in a Logto JWT.  Any role not listed here is
+// silently discarded by extractRoles(), so every role used in the system
+// must be present.  Order in ROLE_PRIORITY mirrors the backend priority map
+// in deps.py (lower index = higher privilege).
+const KNOWN_ROLES: UserRole[] = [
+  "superadmin",
+  "owner",
+  "caretaker",   // delegated manager — org member of the owner's org
+  "manager",
+  "landlord",    // agency-managed landlord — scoped read access to their properties
+  "maintenance",
+  "tenant",
+];
+const ROLE_PRIORITY: UserRole[] = [
+  "superadmin",
+  "owner",
+  "caretaker",
+  "manager",
+  "landlord",
+  "maintenance",
+  "tenant",
+];
 
 function tokenEndpoint(): string {
   const base =
@@ -220,7 +240,7 @@ export async function resolveSessionTokens(
   const base = await refreshAccessToken(refreshToken);
 
   let accessToken = base.access_token;
-  const newRefreshToken = base.refresh_token ?? refreshToken;
+  let newRefreshToken = base.refresh_token ?? refreshToken;
 
   if (activeOrgId) {
     try {

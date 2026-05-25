@@ -264,6 +264,11 @@ def mock_redis():
     mock.get.side_effect = fake_get
     mock.setex.side_effect = fake_setex
     mock.ping.side_effect = fake_ping
+    # `exists` must return a falsy int so is_session_stale() → False.
+    # Without this, the default AsyncMock() return value is truthy, which makes
+    # every request hit the "Session refresh required" 401 branch in deps.py.
+    mock.exists = AsyncMock(return_value=0)
+    mock.delete = AsyncMock(return_value=1)
 
     with patch("app.core.redis.get_redis", return_value=mock), \
          patch("app.core.security.get_redis", return_value=mock), \
@@ -295,6 +300,47 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+# ── Shared org fixture ────────────────────────────────────────────────────────
+
+async def get_dev_org(db: AsyncSession):
+    """Async helper (not a fixture) for fetching org_dev inside test methods.
+
+    Use this instead of ``make_organisation(db, logto_org_id="org_dev")`` when
+    you need to create test data in the dev-user org from within a test method
+    body (not a fixture).  The org is pre-seeded at session scope so trying to
+    INSERT it again causes a UniqueViolationError.
+
+    Example::
+
+        org = await get_dev_org(db_session)
+        prop = await make_property(db_session, org)
+    """
+    from sqlalchemy import select
+    from app.models.organisation import Organisation
+
+    result = await db.execute(select(Organisation).where(Organisation.logto_org_id == "org_dev"))
+    return result.scalar_one()
+
+
+@pytest_asyncio.fixture
+async def dev_org(db_session: AsyncSession):
+    """Return the pre-seeded 'org_dev' Organisation that all dev JWT users belong to.
+
+    All dev users (manager-1, owner-1, tenant-2 …) carry org_id="org_dev" in
+    their token claims.  Test data must be created in this same org so that
+    org-scoped API queries can find it.  Use this fixture (or delegate your
+    local ``org`` fixture to it) instead of calling make_organisation() when
+    your tests authenticate via the standard auth_headers() helpers.
+    """
+    from sqlalchemy import select
+    from app.models.organisation import Organisation
+
+    result = await db_session.execute(
+        select(Organisation).where(Organisation.logto_org_id == "org_dev")
+    )
+    return result.scalar_one()
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────

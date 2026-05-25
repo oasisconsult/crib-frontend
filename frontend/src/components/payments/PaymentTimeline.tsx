@@ -16,6 +16,8 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
+  Ban,
   CreditCard,
   Phone,
   Building2,
@@ -48,6 +50,9 @@ const STATUS_CONFIG: Record<
   predicted_failure:  { icon: XCircle,     color: "text-orange-500",  label: "Blocked"        },
   retry_scheduled:    { icon: RefreshCw,   color: "text-amber-500",   label: "Retry Scheduled"},
   permanently_failed: { icon: XCircle,     color: "text-red-500",     label: "Failed"         },
+  // human-action terminal states
+  rejected:           { icon: Ban,         color: "text-red-500",     label: "Rejected"       },
+  cancelled:          { icon: XCircle,     color: "text-gray-400",    label: "Cancelled"      },
   // legacy
   confirmed:          { icon: CheckCircle2, color: "text-emerald-500", label: "Confirmed"      },
   failed:             { icon: XCircle,      color: "text-red-500",     label: "Failed"         },
@@ -122,9 +127,11 @@ interface PaymentRowProps {
   isLast: boolean;
   onRetried?: (updated: Payment) => void;
   onViewReceipt?: (payment: Payment) => void;
+  /** Opens the full tenant detail sheet for this payment */
+  onSelectPayment?: (payment: Payment) => void;
 }
 
-function PaymentRow({ payment, leaseId, schedules, isLast, onRetried, onViewReceipt }: PaymentRowProps) {
+function PaymentRow({ payment, leaseId, schedules, isLast, onRetried, onViewReceipt, onSelectPayment }: PaymentRowProps) {
   const [expanded, setExpanded] = useState(false);
 
   const paymentStatus = (payment as any).status ?? payment.state;
@@ -134,6 +141,8 @@ function PaymentRow({ payment, leaseId, schedules, isLast, onRetried, onViewRece
   const isConfirmed = paymentStatus === "confirmed" || paymentStatus === "completed";
   const isFailed = paymentStatus === "failed" || paymentStatus === "permanently_failed" || paymentStatus === "predicted_failure";
   const isRetryable = paymentStatus === "failed" || paymentStatus === "retry_scheduled";
+  // Row is interactive (expands or opens detail) in either mode
+  const isExpandable = !onSelectPayment && (isConfirmed || isFailed || isRetryable);
 
   return (
     <div className="relative flex gap-3">
@@ -153,9 +162,18 @@ function PaymentRow({ payment, leaseId, schedules, isLast, onRetried, onViewRece
       {/* Content */}
       <div className="flex-1 min-w-0 pb-4">
         <button
-          className="w-full text-left"
-          onClick={() => (isConfirmed || isFailed || isRetryable) && setExpanded((e) => !e)}
-          aria-expanded={expanded}
+          className={cn(
+            "w-full text-left",
+            (onSelectPayment || isExpandable) ? "cursor-pointer" : "cursor-default",
+          )}
+          onClick={() => {
+            if (onSelectPayment) {
+              onSelectPayment(payment);
+            } else if (isExpandable) {
+              setExpanded((e) => !e);
+            }
+          }}
+          aria-expanded={onSelectPayment ? undefined : expanded}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -189,7 +207,12 @@ function PaymentRow({ payment, leaseId, schedules, isLast, onRetried, onViewRece
                   <span className="ml-1 opacity-70">#{payment.retryCount}</span>
                 )}
               </Badge>
-              {(isConfirmed || isFailed || isRetryable) && (
+              {/* Detail-sheet mode: show navigate chevron */}
+              {onSelectPayment && (
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              {/* Expand mode: show up/down chevron for expandable rows */}
+              {isExpandable && (
                 <span className="text-muted-foreground">
                   {expanded ? (
                     <ChevronUp className="h-3.5 w-3.5" />
@@ -244,6 +267,8 @@ interface PaymentTimelineProps {
   isLoading?: boolean;
   onRetried?: (updated: Payment) => void;
   onViewReceipt?: (payment: Payment) => void;
+  /** When provided, each row navigates to the full detail sheet instead of expanding inline */
+  onSelectPayment?: (payment: Payment) => void;
 }
 
 export function PaymentTimeline({
@@ -253,6 +278,7 @@ export function PaymentTimeline({
   isLoading,
   onRetried,
   onViewReceipt,
+  onSelectPayment,
 }: PaymentTimelineProps) {
   if (isLoading) {
     return (
@@ -300,6 +326,7 @@ export function PaymentTimeline({
           isLast={i === sorted.length - 1}
           onRetried={onRetried}
           onViewReceipt={onViewReceipt}
+          onSelectPayment={onSelectPayment}
         />
       ))}
     </div>

@@ -72,6 +72,10 @@ class PaymentStatus(str, enum.Enum):
     retry_scheduled   = "retry_scheduled"    # transient failure, retry queued
     permanently_failed = "permanently_failed" # max retries exceeded or unrecoverable
 
+    # Human-action terminal states:
+    rejected  = "rejected"   # org staff declined the payment (wrong amount, duplicate, etc.)
+    cancelled = "cancelled"  # tenant withdrew the payment before confirmation
+
 
 class DepositStatus(str, enum.Enum):
     held               = "held"
@@ -198,6 +202,20 @@ class Payment(TimestampedBase):
     # Populated by the adaptive routing engine before payment is initiated
     predicted_failure_score: Mapped[float | None] = mapped_column(Float(), nullable=True)
     recommended_channel: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    # ── Rejection audit (set when org staff rejects an in-progress payment) ───
+    rejection_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    rejected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rejected_by_profile_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("profiles.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # ── Cancellation audit (set when tenant cancels before confirmation) ──────
+    cancellation_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     rent_schedule: Mapped["RentSchedule | None"] = relationship(

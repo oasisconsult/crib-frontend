@@ -18,6 +18,8 @@ Stream retention is capped at MAXLEN 50_000 (approximate, using ~ trimming).
 Events published by the payment domain:
   payment.confirmed       — a Payment moved to confirmed status
   payment.refunded        — a Payment moved to refunded status
+  payment.rejected        — org staff declined an in-progress payment
+  payment.cancelled       — tenant withdrew their own in-progress payment
   payment.failed          — a Payment moved to failed/permanently_failed status
   payment.state_changed   — v4 state machine transition (any → any)
   payment.retry_scheduled — a Payment queued for retry
@@ -128,6 +130,54 @@ async def emit_payment_refunded(
             "payment_id": payment_id,
             "lease_id": lease_id,
             "amount": amount,
+        },
+        organisation_id=organisation_id,
+    )
+
+
+async def emit_payment_rejected(
+    *,
+    payment_id: str,
+    lease_id: str,
+    organisation_id: str,
+    amount: float,
+    reason: str,
+    rejected_by: str,
+) -> None:
+    """Emitted when org staff rejects an in-progress payment."""
+    await publish_event(
+        STREAM_PAYMENTS,
+        "payment.rejected",
+        {
+            "payment_id": payment_id,
+            "lease_id": lease_id,
+            "amount": amount,
+            "reason": reason,
+            "rejected_by_profile_id": rejected_by,
+        },
+        organisation_id=organisation_id,
+    )
+
+
+async def emit_payment_cancelled(
+    *,
+    payment_id: str,
+    lease_id: str,
+    organisation_id: str,
+    amount: float,
+    tenant_id: str,
+    reason: str | None,
+) -> None:
+    """Emitted when a tenant self-cancels their own in-progress payment."""
+    await publish_event(
+        STREAM_PAYMENTS,
+        "payment.cancelled",
+        {
+            "payment_id": payment_id,
+            "lease_id": lease_id,
+            "amount": amount,
+            "tenant_id": tenant_id,
+            "reason": reason or "",
         },
         organisation_id=organisation_id,
     )

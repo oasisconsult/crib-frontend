@@ -27,13 +27,12 @@ from tests.factories import (
 # ── Fixtures ───────────────────────────────────────────────────────────────────
 
 @pytest_asyncio.fixture
-async def ctx(db_session: AsyncSession):
+async def ctx(dev_org, db_session: AsyncSession):
     """Shared org + property + unit used across most tests."""
-    org = await make_organisation(db_session)
-    prop = await make_property(db_session, org)
+    prop = await make_property(db_session, dev_org)
     unit = await make_unit(db_session, prop)
     await db_session.flush()
-    return {"org": org, "prop": prop, "unit": unit}
+    return {"org": dev_org, "prop": prop, "unit": unit}
 
 
 # ── Inspection list ────────────────────────────────────────────────────────────

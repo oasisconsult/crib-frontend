@@ -7,6 +7,7 @@ conversation thread can be displayed to both parties.
 """
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -37,4 +38,10 @@ class Message(TimestampedBase):
     # Set when the *other* party reads the message
     read_at: Mapped[DateTime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # NULL = visible; non-NULL = soft-deleted (hidden from thread queries).
+    # When a tenant is anonymised, messages they sent have sender_name cleared
+    # but the row is retained for the conversation thread record.
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
     )

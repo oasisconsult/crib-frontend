@@ -43,6 +43,7 @@ from app.schemas.property import (
     UnitUpdate,
 )
 from app.services import property_service as svc
+from app.services.subscription_limits import check_property_limit, check_unit_limit
 
 router = APIRouter(prefix="/properties", tags=["properties"])
 
@@ -89,7 +90,8 @@ async def create_property(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = get_org_id(current_user)
-    await check_property_limit(org_id, db)          # ← subscription enforcement
+    if org_id is not None:                          # superadmin is not subject to plan limits
+        await check_property_limit(org_id, db)
     return await svc.create_property(body, org_id, db)
 
 
@@ -155,7 +157,8 @@ async def restore_property(
 ):
     """Restore a soft-archived property and all its units (superadmin only)."""
     org_id = get_org_id(current_user)
-    await check_property_limit(org_id, db)          # ← restoring counts against limit
+    if org_id is not None:                          # superadmin bypass — no plan limit applies
+        await check_property_limit(org_id, db)
     return await svc.restore_property(property_id, org_id, db)
 
 
@@ -183,7 +186,8 @@ async def batch_create_units(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = get_org_id(current_user)
-    await check_unit_limit(org_id, db, adding=len(body.units))  # ← batch check
+    if org_id is not None:
+        await check_unit_limit(org_id, db, adding=len(body.units))
     return await svc.batch_create_units(property_id, body, org_id, db)
 
 
@@ -205,7 +209,8 @@ async def create_unit(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = get_org_id(current_user)
-    await check_unit_limit(org_id, db)              # ← subscription enforcement
+    if org_id is not None:
+        await check_unit_limit(org_id, db)
     return await svc.create_unit(property_id, body, org_id, db)
 
 

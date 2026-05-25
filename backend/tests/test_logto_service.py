@@ -698,8 +698,9 @@ async def test_resend_login_credentials_exception_returns_false():
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @pytest.fixture
-async def org(db_session):
-    return await make_organisation(db_session, logto_org_id="org_dev", slug="org-dev-logto")
+async def org(dev_org):
+    """Use the pre-seeded org_dev so test data is visible to dev-user auth tokens."""
+    return dev_org
 
 
 @pytest.fixture

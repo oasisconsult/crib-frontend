@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -12,17 +12,34 @@ import {
   AlertTriangle,
   RotateCcw,
   Copy,
-  // Receipt,
+  XCircle,
+  Ban,
   FileText as Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { usePayment, useReconcilePayment } from "@/hooks/usePayments";
+import {
+  usePayment,
+  useReconcilePayment,
+  useRejectPayment,
+  useCancelPayment,
+} from "@/hooks/usePayments";
 import { useLease } from "@/hooks/useLeases";
+import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 
@@ -98,6 +115,19 @@ const STATE_CONFIG: Record<
     bg: "bg-red-100 dark:bg-red-950/40",
     icon: AlertTriangle,
   },
+  // human-action terminal states
+  rejected: {
+    label: "Rejected",
+    color: "text-red-700",
+    bg: "bg-red-100 dark:bg-red-950/40",
+    icon: Ban,
+  },
+  cancelled: {
+    label: "Cancelled",
+    color: "text-gray-600",
+    bg: "bg-gray-100 dark:bg-gray-800/40",
+    icon: XCircle,
+  },
   // legacy
   confirmed: {
     label: "Confirmed",
@@ -119,7 +149,30 @@ const STATE_CONFIG: Record<
   },
 };
 
-// ── Method label ──────────────────────────────────────────────────────────────
+// ── State sets (mirrors backend state machine) ────────────────────────────────
+
+/** States from which org staff can reject */
+const REJECTABLE = new Set([
+  "initiated", "predicted", "routed", "pending",
+  "reconciled", "allocated",
+  "predicted_failure", "retry_scheduled",
+  "permanently_failed", "failed",
+]);
+
+/** States from which a tenant can still cancel */
+const CANCELLABLE = new Set([
+  "initiated", "predicted", "routed", "pending", "retry_scheduled",
+]);
+
+/** In-progress states (Confirm Payment button) */
+const IN_PROGRESS = new Set([
+  "initiated", "predicted", "routed", "pending",
+  "reconciled", "allocated", "retry_scheduled",
+]);
+
+const SUCCESS_STATES = new Set(["confirmed", "completed"]);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function methodLabel(method?: string | null): string {
   if (!method) return "—";
@@ -140,8 +193,6 @@ function categoryLabel(p: { category?: string; type?: string }): string {
   return raw.replace(/_/g, " ");
 }
 
-// ── Copy helper ───────────────────────────────────────────────────────────────
-
 function CopyButton({ value }: { value: string }) {
   return (
     <button
@@ -159,6 +210,156 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
+// ── Reject dialog ─────────────────────────────────────────────────────────────
+
+function RejectDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  isPending,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onConfirm: (reason: string) => void;
+  isPending: boolean;
+}) {
+  const [reason, setReason] = useState("");
+
+  function handleSubmit() {
+    const trimmed = reason.trim();
+    if (!trimmed) {
+      toast.error("Please provide a reason for the rejection");
+      return;
+    }
+    onConfirm(trimmed);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-600">
+            <Ban className="h-5 w-5" />
+            Reject Payment
+          </DialogTitle>
+          <DialogDescription>
+            This payment will be permanently rejected and cannot be confirmed.
+            A new payment must be created to re-attempt. Please provide a reason
+            — it will be visible to the tenant.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 py-2">
+          <Label htmlFor="reject-reason">
+            Reason <span className="text-red-500">*</span>
+          </Label>
+          <Textarea
+            id="reject-reason"
+            placeholder="e.g. Duplicate entry, wrong amount, payment recorded in error…"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            className="resize-none"
+            autoFocus
+          />
+          <p className="text-xs text-muted-foreground">
+            {reason.trim().length}/500 characters
+          </p>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleSubmit}
+            disabled={!reason.trim() || isPending}
+            loading={isPending}
+          >
+            <Ban className="h-3.5 w-3.5" />
+            Reject Payment
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Cancel dialog ─────────────────────────────────────────────────────────────
+
+function CancelDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  isPending,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onConfirm: (reason?: string) => void;
+  isPending: boolean;
+}) {
+  const [reason, setReason] = useState("");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-gray-700">
+            <XCircle className="h-5 w-5" />
+            Cancel Payment
+          </DialogTitle>
+          <DialogDescription>
+            Are you sure you want to cancel this payment? This action cannot
+            be undone. If you've already sent funds, please contact your
+            property manager to arrange a refund instead.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 py-2">
+          <Label htmlFor="cancel-reason">
+            Reason{" "}
+            <span className="text-muted-foreground text-xs font-normal">
+              (optional)
+            </span>
+          </Label>
+          <Textarea
+            id="cancel-reason"
+            placeholder="e.g. Paid in cash instead, entered wrong amount…"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+            className="resize-none"
+          />
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            Keep Payment
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => onConfirm(reason.trim() || undefined)}
+            disabled={isPending}
+            loading={isPending}
+          >
+            <XCircle className="h-3.5 w-3.5" />
+            Cancel Payment
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function PaymentDetailPage({ params }: Props) {
@@ -167,6 +368,12 @@ export default function PaymentDetailPage({ params }: Props) {
 
   const { data: payment, isLoading } = usePayment(id);
   const { mutate: reconcile, isPending: reconciling } = useReconcilePayment();
+  const { mutate: reject, isPending: rejecting } = useRejectPayment();
+  const { mutate: cancel, isPending: cancelling } = useCancelPayment();
+  const perms = usePermissions();
+
+  const [rejectOpen, setRejectOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   // Related data — only fetch when IDs are known
   const { data: lease } = useLease(payment?.leaseId ?? "");
@@ -184,19 +391,35 @@ export default function PaymentDetailPage({ params }: Props) {
     );
   }
 
-  const stateCfg = STATE_CONFIG[payment.state] ?? STATE_CONFIG.pending;
+  const state = payment.state as string;
+  const stateCfg = STATE_CONFIG[state] ?? STATE_CONFIG.pending;
   const StateIcon = stateCfg.icon;
-  const IN_PROGRESS = new Set([
-    "initiated",
-    "predicted",
-    "routed",
-    "pending",
-    "reconciled",
-    "allocated",
-    "retry_scheduled",
-  ]);
-  const SUCCESS_STATES = new Set(["confirmed", "completed"]);
-  const canReconcile = IN_PROGRESS.has(payment.state as string);
+
+  const canReconcile = IN_PROGRESS.has(state);
+
+  // Reject: org staff only (owner / caretaker / manager / superadmin).
+  // canManageOrg covers owner + manager + superadmin; add isCaretaker explicitly.
+  const isOrgStaff = perms.canManageOrg || perms.isCaretaker;
+  const canReject = REJECTABLE.has(state) && isOrgStaff;
+
+  // Cancel: tenant (self-service) or superadmin (on behalf of tenant), only in early pre-reconciliation states.
+  const canCancel = CANCELLABLE.has(state) && (perms.isTenant || perms.isSuperAdmin);
+
+  function handleReject(reason: string) {
+    if (!payment?.leaseId) return;
+    reject(
+      { leaseId: payment.leaseId, paymentId: payment.id, reason },
+      { onSuccess: () => setRejectOpen(false) },
+    );
+  }
+
+  function handleCancel(reason?: string) {
+    if (!payment?.leaseId) return;
+    cancel(
+      { leaseId: payment.leaseId, paymentId: payment.id, reason },
+      { onSuccess: () => setCancelOpen(false) },
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -228,18 +451,86 @@ export default function PaymentDetailPage({ params }: Props) {
           </div>
         </div>
 
-        {canReconcile && (
-          <Button
-            size="sm"
-            variant="outline"
-            loading={reconciling}
-            onClick={() => reconcile(payment.id)}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Confirm Payment
-          </Button>
-        )}
+        {/* Action buttons — shown based on state + role */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {canReconcile && (
+            <Button
+              size="sm"
+              variant="outline"
+              loading={reconciling}
+              onClick={() => reconcile(payment.id)}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Confirm Payment
+            </Button>
+          )}
+
+          {canReject && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:hover:bg-red-950/30"
+              onClick={() => setRejectOpen(true)}
+            >
+              <Ban className="h-3.5 w-3.5" />
+              Reject
+            </Button>
+          )}
+
+          {canCancel && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-gray-200 text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800/40"
+              onClick={() => setCancelOpen(true)}
+            >
+              <XCircle className="h-3.5 w-3.5" />
+              Cancel Payment
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* ── Rejection / Cancellation notice banners ───────── */}
+      {state === "rejected" && payment.rejectionReason && (
+        <div className="rounded-[6px] border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/20 px-4 py-3 flex gap-3">
+          <Ban className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+          <div className="space-y-0.5 min-w-0">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400">
+              Payment rejected
+              {payment.rejectedAt && (
+                <span className="font-normal text-red-600/80 ml-2">
+                  — {formatDate(payment.rejectedAt)}
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-red-600/80 dark:text-red-400/70 break-words">
+              {payment.rejectionReason}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {state === "cancelled" && (
+        <div className="rounded-[6px] border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/30 px-4 py-3 flex gap-3">
+          <XCircle className="h-4 w-4 text-gray-500 shrink-0 mt-0.5" />
+          <div className="space-y-0.5 min-w-0">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Payment cancelled by tenant
+              {payment.cancelledAt && (
+                <span className="font-normal text-gray-500 ml-2">
+                  — {formatDate(payment.cancelledAt)}
+                </span>
+              )}
+            </p>
+            {payment.cancellationReason && (
+              <p className="text-xs text-gray-500 break-words">
+                {payment.cancellationReason}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Amount hero ──────────────────────────────────────── */}
       <div className="rounded-[6px] border bg-gradient-to-br from-emerald-50 to-background dark:from-emerald-950/20 dark:to-background p-6 flex items-center justify-between gap-4">
@@ -338,6 +629,24 @@ export default function PaymentDetailPage({ params }: Props) {
               <span className="text-muted-foreground">Last Updated</span>
               <span>{formatDate(payment.updatedAt)}</span>
             </div>
+            {payment.rejectedAt && (
+              <>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Rejected At</span>
+                  <span className="text-red-600">{formatDate(payment.rejectedAt)}</span>
+                </div>
+              </>
+            )}
+            {payment.cancelledAt && (
+              <>
+                <Separator />
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Cancelled At</span>
+                  <span className="text-gray-600">{formatDate(payment.cancelledAt)}</span>
+                </div>
+              </>
+            )}
 
             {/* Visual timeline */}
             <div className="pt-2">
@@ -347,9 +656,9 @@ export default function PaymentDetailPage({ params }: Props) {
                   { label: "Paid", done: !!payment.paidAt },
                   {
                     label: "Completed",
-                    done: SUCCESS_STATES.has(payment.state as string),
+                    done: SUCCESS_STATES.has(state),
                   },
-                  { label: "Refunded", done: payment.state === "refunded" },
+                  { label: "Refunded", done: state === "refunded" },
                 ].map((s, i) => (
                   <div key={s.label} className="flex items-center gap-1">
                     {i > 0 && (
@@ -420,6 +729,20 @@ export default function PaymentDetailPage({ params }: Props) {
           </Card>
         )}
       </div>
+
+      {/* ── Dialogs ────────────────────────────────────────── */}
+      <RejectDialog
+        open={rejectOpen}
+        onOpenChange={setRejectOpen}
+        onConfirm={handleReject}
+        isPending={rejecting}
+      />
+      <CancelDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        onConfirm={handleCancel}
+        isPending={cancelling}
+      />
     </div>
   );
 }

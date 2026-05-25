@@ -15,7 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user, require_role
+from app.api.deps import CurrentUser, get_current_user
+from app.services.policy_service import require_permission
 from app.core.database import get_db
 from app.models.profile import Profile
 from app.services.subscription_limits import check_property_limit, check_unit_limit
@@ -39,7 +40,7 @@ router = APIRouter(prefix="/properties/import", tags=["property-import"])
 @router.get(
     "/template",
     summary="Download CSV import template",
-    dependencies=[Depends(require_role("owner", "manager", "superadmin", "landlord"))],
+    dependencies=[require_permission("read", "property")],
 )
 async def get_import_template() -> Response:
     csv_content = generate_template_csv()
@@ -56,7 +57,7 @@ async def get_import_template() -> Response:
     "/preview",
     response_model=ImportPreviewResponse,
     summary="Preview import — parse & validate CSV without writing to DB",
-    dependencies=[Depends(require_role("owner", "manager", "superadmin", "landlord"))],
+    dependencies=[require_permission("create", "property")],
 )
 async def preview_import(
     file: UploadFile,
@@ -85,7 +86,7 @@ async def preview_import(
     response_model=ImportResultResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Commit import — write validated CSV data to the database",
-    dependencies=[Depends(require_role("owner", "manager", "superadmin", "landlord"))],
+    dependencies=[require_permission("create", "property")],
 )
 async def commit_import_endpoint(
     file: UploadFile,

@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPatch } from "./client";
+import { apiGet, apiPost, apiPatch, apiDelete } from "./client";
 import type {
   Payment,
   PaymentDecision,
@@ -55,6 +55,30 @@ export const paymentsApi = {
 
   refund: async (id: string) => {
     const raw = await apiPatch<Record<string, unknown>>(`/payments/${id}/refund`, {});
+    return mapPayment(raw);
+  },
+
+  /**
+   * Org staff (owner / caretaker / manager / superadmin) rejects an in-progress payment.
+   * Uses the lease-nested route because org_id is derived from the lease.
+   */
+  reject: async (leaseId: string, paymentId: string, reason: string) => {
+    const raw = await apiPatch<Record<string, unknown>>(
+      `/leases/${leaseId}/payments/${paymentId}/reject`,
+      { reason },
+    );
+    return mapPayment(raw);
+  },
+
+  /**
+   * Tenant self-cancels their own in-progress payment.
+   * Only valid before the payment reaches reconciled status.
+   */
+  cancel: async (leaseId: string, paymentId: string, reason?: string) => {
+    const raw = await apiPatch<Record<string, unknown>>(
+      `/leases/${leaseId}/payments/${paymentId}/cancel`,
+      { reason: reason ?? null },
+    );
     return mapPayment(raw);
   },
 

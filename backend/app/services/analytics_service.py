@@ -47,16 +47,23 @@ def _months_back(n: int) -> list[tuple[int, int]]:
 
 # ── Dashboard stats ────────────────────────────────────────────────────────────
 
-async def _landlord_property_ids(
-    landlord_profile_id: uuid.UUID, db: AsyncSession
+async def get_property_ids_for_profile(
+    profile_id: uuid.UUID, db: AsyncSession
 ) -> list[uuid.UUID]:
-    """Return the list of property IDs a landlord has been granted access to."""
+    """
+    Return the property IDs a profile has been granted explicit access to via
+    LandlordPropertyAccess.  Used for both read-only landlords and caretakers.
+    """
     rows = await db.execute(
         select(LandlordPropertyAccess.property_id).where(
-            LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
+            LandlordPropertyAccess.landlord_profile_id == profile_id
         )
     )
     return [r[0] for r in rows]
+
+
+# Keep the old private name as an alias so existing callers still work.
+_landlord_property_ids = get_property_ids_for_profile
 
 
 async def get_dashboard_stats(
@@ -260,32 +267,41 @@ async def get_dashboard_stats(
 # ── Occupancy series ───────────────────────────────────────────────────────────
 
 async def get_occupancy_series(
-    org_id: uuid.UUID | None, db: AsyncSession, months: int = 12
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+    months: int = 12,
+    prop_ids: list[uuid.UUID] | None = None,
 ) -> list[dict]:
     """
     For each month: count units with an active lease that overlaps that month
     vs total units at that time (approximated as current total).
+
+    When prop_ids is provided (caretakers, read-only landlords) queries are
+    restricted to those properties only.
     """
-    total_units = await db.scalar(
-        select(func.count(Unit.id)).where(
-            Unit.property.has(organisation_id=org_id) if org_id is not None else sql_true(),
-        )
-    ) or 1  # avoid div by zero
+    unit_count_q = select(func.count(Unit.id)).where(
+        Unit.property.has(organisation_id=org_id) if org_id is not None else sql_true(),
+    )
+    if prop_ids is not None:
+        unit_count_q = unit_count_q.where(Unit.property_id.in_(prop_ids))
+
+    total_units = await db.scalar(unit_count_q) or 1  # avoid div by zero
 
     result = []
     for year, month in _months_back(months):
         month_start = date(year, month, 1)
         month_end = date(year, month, monthrange(year, month)[1])
 
-        occupied = await db.scalar(
-            select(func.count(Lease.id)).where(
-                Lease.organisation_id == org_id if org_id is not None else sql_true(),
-                Lease.status == LeaseStatus.active,
-                Lease.start_date <= month_end,
-                (Lease.end_date >= month_start) | (Lease.end_date.is_(None)),
-            )
-        ) or 0
+        lease_q = select(func.count(Lease.id)).where(
+            Lease.organisation_id == org_id if org_id is not None else sql_true(),
+            Lease.status == LeaseStatus.active,
+            Lease.start_date <= month_end,
+            (Lease.end_date >= month_start) | (Lease.end_date.is_(None)),
+        )
+        if prop_ids is not None:
+            lease_q = lease_q.where(Lease.property_id.in_(prop_ids))
 
+        occupied = await db.scalar(lease_q) or 0
         occupied = min(int(occupied), int(total_units))
         available = int(total_units) - occupied
         rate = round(occupied / int(total_units) * 100, 1)
@@ -303,38 +319,50 @@ async def get_occupancy_series(
 # ── Revenue series ─────────────────────────────────────────────────────────────
 
 async def get_revenue_series(
-    org_id: uuid.UUID | None, db: AsyncSession, months: int = 12
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+    months: int = 12,
+    prop_ids: list[uuid.UUID] | None = None,
 ) -> list[dict]:
+    # Sub-query used when scoping to specific properties
+    _lease_ids_for_props = (
+        select(Lease.id).where(Lease.property_id.in_(prop_ids))
+        if prop_ids is not None else None
+    )
+
     result = []
     for year, month in _months_back(months):
         # Expected = all scheduled rent amounts for that month
-        expected = await db.scalar(
-            select(func.coalesce(func.sum(RentSchedule.amount_due), 0)).where(
-                RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
-                func.extract("year", RentSchedule.due_date) == year,
-                func.extract("month", RentSchedule.due_date) == month,
-            )
-        ) or 0
+        expected_q = select(func.coalesce(func.sum(RentSchedule.amount_due), 0)).where(
+            RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
+            func.extract("year", RentSchedule.due_date) == year,
+            func.extract("month", RentSchedule.due_date) == month,
+        )
+        if _lease_ids_for_props is not None:
+            expected_q = expected_q.where(RentSchedule.lease_id.in_(_lease_ids_for_props))
+        expected = await db.scalar(expected_q) or 0
 
         # Collected = confirmed/completed payments in that month
-        collected = await db.scalar(
-            select(func.coalesce(func.sum(Payment.amount), 0)).where(
-                Payment.organisation_id == org_id if org_id is not None else sql_true(),
-                Payment.status.in_([PaymentStatus.confirmed, PaymentStatus.completed]),
-                func.extract("year", Payment.paid_at) == year,
-                func.extract("month", Payment.paid_at) == month,
-            )
-        ) or 0
+        collected_q = select(func.coalesce(func.sum(Payment.amount), 0)).where(
+            Payment.organisation_id == org_id if org_id is not None else sql_true(),
+            Payment.status.in_([PaymentStatus.confirmed, PaymentStatus.completed]),
+            func.extract("year", Payment.paid_at) == year,
+            func.extract("month", Payment.paid_at) == month,
+        )
+        if _lease_ids_for_props is not None:
+            collected_q = collected_q.where(Payment.lease_id.in_(_lease_ids_for_props))
+        collected = await db.scalar(collected_q) or 0
 
         # Late fees applied that month
-        late_fees = await db.scalar(
-            select(func.coalesce(func.sum(RentSchedule.late_fee_applied), 0)).where(
-                RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
-                func.extract("year", RentSchedule.due_date) == year,
-                func.extract("month", RentSchedule.due_date) == month,
-                RentSchedule.late_fee_applied > 0,
-            )
-        ) or 0
+        late_fees_q = select(func.coalesce(func.sum(RentSchedule.late_fee_applied), 0)).where(
+            RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
+            func.extract("year", RentSchedule.due_date) == year,
+            func.extract("month", RentSchedule.due_date) == month,
+            RentSchedule.late_fee_applied > 0,
+        )
+        if _lease_ids_for_props is not None:
+            late_fees_q = late_fees_q.where(RentSchedule.lease_id.in_(_lease_ids_for_props))
+        late_fees = await db.scalar(late_fees_q) or 0
 
         result.append({
             "month": _month_label(year, month),
@@ -349,31 +377,43 @@ async def get_revenue_series(
 # ── Cash flow series ───────────────────────────────────────────────────────────
 
 async def get_cashflow_series(
-    org_id: uuid.UUID | None, db: AsyncSession, months: int = 12
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+    months: int = 12,
+    prop_ids: list[uuid.UUID] | None = None,
 ) -> list[dict]:
     """
     Inflow  = confirmed payments received.
     Outflow = maintenance actual costs recorded that month (proxy for expenses).
+
+    When prop_ids is provided queries are restricted to those properties only.
     """
+    _lease_ids_for_props = (
+        select(Lease.id).where(Lease.property_id.in_(prop_ids))
+        if prop_ids is not None else None
+    )
+
     result = []
     for year, month in _months_back(months):
-        inflow = await db.scalar(
-            select(func.coalesce(func.sum(Payment.amount), 0)).where(
-                Payment.organisation_id == org_id if org_id is not None else sql_true(),
-                Payment.status.in_([PaymentStatus.confirmed, PaymentStatus.completed]),
-                func.extract("year", Payment.paid_at) == year,
-                func.extract("month", Payment.paid_at) == month,
-            )
-        ) or 0
+        inflow_q = select(func.coalesce(func.sum(Payment.amount), 0)).where(
+            Payment.organisation_id == org_id if org_id is not None else sql_true(),
+            Payment.status.in_([PaymentStatus.confirmed, PaymentStatus.completed]),
+            func.extract("year", Payment.paid_at) == year,
+            func.extract("month", Payment.paid_at) == month,
+        )
+        if _lease_ids_for_props is not None:
+            inflow_q = inflow_q.where(Payment.lease_id.in_(_lease_ids_for_props))
+        inflow = await db.scalar(inflow_q) or 0
 
-        outflow = await db.scalar(
-            select(func.coalesce(func.sum(MaintenanceIssue.actual_cost), 0)).where(
-                MaintenanceIssue.organisation_id == org_id if org_id is not None else sql_true(),
-                MaintenanceIssue.actual_cost.isnot(None),
-                func.extract("year", MaintenanceIssue.resolved_at) == year,
-                func.extract("month", MaintenanceIssue.resolved_at) == month,
-            )
-        ) or 0
+        outflow_q = select(func.coalesce(func.sum(MaintenanceIssue.actual_cost), 0)).where(
+            MaintenanceIssue.organisation_id == org_id if org_id is not None else sql_true(),
+            MaintenanceIssue.actual_cost.isnot(None),
+            func.extract("year", MaintenanceIssue.resolved_at) == year,
+            func.extract("month", MaintenanceIssue.resolved_at) == month,
+        )
+        if prop_ids is not None:
+            outflow_q = outflow_q.where(MaintenanceIssue.property_id.in_(prop_ids))
+        outflow = await db.scalar(outflow_q) or 0
 
         inflow = float(inflow)
         outflow = float(outflow)

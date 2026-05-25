@@ -115,6 +115,11 @@ def _payment_out(
         retry_count=p.retry_count or 0,
         predicted_failure_score=p.predicted_failure_score,
         recommended_channel=p.recommended_channel,
+        rejection_reason=p.rejection_reason,
+        rejected_at=p.rejected_at.isoformat() if p.rejected_at else None,
+        rejected_by_profile_id=str(p.rejected_by_profile_id) if p.rejected_by_profile_id else None,
+        cancellation_reason=p.cancellation_reason,
+        cancelled_at=p.cancelled_at.isoformat() if p.cancelled_at else None,
         created_at=p.created_at.isoformat(),
         updated_at=p.updated_at.isoformat(),
         tenant_name=tenant_name,
@@ -755,6 +760,210 @@ async def refund_payment(
 
 
 # ── Late Fees ─────────────────────────────────────────────��────────────────────
+
+async def reject_payment(
+    payment_id: uuid.UUID,
+    lease_id: uuid.UUID,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+    *,
+    reason: str,
+    rejected_by_profile_id: uuid.UUID,
+) -> PaymentOut:
+    """
+    Org staff (owner / caretaker / manager / superadmin) declines an in-progress payment.
+
+    When to use:
+      - Duplicate payment recorded by mistake
+      - Wrong amount submitted
+      - Suspicious / unverifiable transaction
+      - Any pre-confirmation state needing explicit closure
+
+    Behaviour:
+      1. Validates the transition via the state machine.
+      2. Stamps rejection_reason, rejected_at, rejected_by_profile_id.
+      3. Reverses any schedule allocations already applied (normally none before
+         confirmation, but safe to always run).
+      4. Writes a debit ledger entry marking the reversal.
+      5. Emits a payment.rejected Redis event.
+
+    A new payment must be created if the tenant needs to re-attempt.
+    """
+    await _get_lease_checked(lease_id, org_id, db)
+    p = await _get_payment(payment_id, lease_id, db)
+
+    from app.services.payment_state_machine import can_be_rejected, transition as sm_transition
+    current = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
+    if not can_be_rejected(current):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Payment cannot be rejected in its current state ('{p.status}'). "
+                "Only in-progress or failed payments can be rejected. "
+                "Completed payments must be refunded instead."
+            ),
+        )
+
+    now = datetime.now(timezone.utc)
+    p.rejection_reason = reason
+    p.rejected_at = now
+    p.rejected_by_profile_id = rejected_by_profile_id
+    await db.flush()
+
+    # Transition via state machine (validates + emits state_changed event)
+    await sm_transition(
+        p, PaymentStatus.rejected, db,
+        reason=reason, actor=str(rejected_by_profile_id),
+    )
+
+    # Reverse any allocations that may have been applied (reconciled/allocated
+    # payments can be rejected before final completion)
+    await reverse_allocations(db, payment_id=p.id, lease_id=lease_id)
+
+    # Write debit ledger entry to record the reversal
+    await create_ledger_entry(
+        db,
+        organisation_id=p.organisation_id,
+        lease_id=lease_id,
+        entry_type="debit",
+        amount=float(p.amount),
+        reference_type="rejection",
+        reference_id=p.id,
+        description=f"Payment rejected: {reason}",
+    )
+
+    await db.flush()
+    await db.refresh(p, attribute_names=["status", "rejection_reason", "rejected_at", "updated_at"])
+
+    from app.core.events import emit_payment_rejected
+    await emit_payment_rejected(
+        payment_id=str(p.id),
+        lease_id=str(lease_id),
+        organisation_id=str(p.organisation_id),
+        amount=float(p.amount),
+        reason=reason,
+        rejected_by=str(rejected_by_profile_id),
+    )
+
+    return _payment_out(p)
+
+
+async def cancel_payment(
+    payment_id: uuid.UUID,
+    lease_id: uuid.UUID,
+    db: AsyncSession,
+    *,
+    tenant_logto_sub: str,
+    reason: str | None = None,
+    bypass_tenant_check: bool = False,
+) -> PaymentOut:
+    """
+    Cancel an in-progress payment.
+
+    When called by a tenant (bypass_tenant_check=False), the Logto sub is resolved to a
+    Tenant row and the lease ownership is verified — only the current lease tenant may cancel.
+
+    When called by a superadmin (bypass_tenant_check=True), the ownership check is skipped
+    so that platform staff can cancel payments on behalf of tenants (e.g. support requests).
+
+    Cancellation is only valid while the payment is in an early pre-reconciliation state
+    (initiated / predicted / routed / pending / retry_scheduled).
+    """
+    from app.models.lease import Lease as _Lease
+    from app.models.tenant import Tenant as _Tenant
+
+    tenant: "_Tenant | None" = None
+
+    if not bypass_tenant_check:
+
+        # Resolve the Tenant from Logto sub and verify they own this lease
+        tenant_row = await db.execute(
+            select(_Tenant).where(_Tenant.logto_user_id == tenant_logto_sub)
+        )
+        tenant = tenant_row.scalar_one_or_none()
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant profile not found for this session",
+            )
+
+        # Verify the lease belongs to this tenant
+        lease_row = await db.execute(
+            select(_Lease).where(
+                _Lease.id == lease_id,
+                _Lease.tenant_id == tenant.id,
+            )
+        )
+        if not lease_row.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only cancel payments on your own active lease",
+            )
+
+    p = await _get_payment(payment_id, lease_id, db)
+
+    from app.services.payment_state_machine import can_be_cancelled, transition as sm_transition
+    current = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
+    if not can_be_cancelled(current):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Payment cannot be cancelled in its current state ('{p.status}'). "
+                "Payments that have already been reconciled with the payment provider "
+                "cannot be cancelled — please contact your property manager to request a refund."
+            ),
+        )
+
+    now = datetime.now(timezone.utc)
+    p.cancellation_reason = reason
+    p.cancelled_at = now
+    await db.flush()
+
+    actor_label = "superadmin" if bypass_tenant_check else "tenant"
+    await sm_transition(
+        p, PaymentStatus.cancelled, db,
+        reason=reason or f"Cancelled by {actor_label}",
+        actor=tenant_logto_sub,
+    )
+
+    # Write reversal ledger entry
+    await create_ledger_entry(
+        db,
+        organisation_id=p.organisation_id,
+        lease_id=lease_id,
+        entry_type="debit",
+        amount=float(p.amount),
+        reference_type="cancellation",
+        reference_id=p.id,
+        description=(
+            f"Payment cancelled by {actor_label}"
+            + ((": " + reason) if reason else "")
+        ),
+    )
+
+    await db.flush()
+    await db.refresh(p, attribute_names=["status", "cancellation_reason", "cancelled_at", "updated_at"])
+
+    # Resolve tenant_id for the Redis event — pull from lease when bypassing tenant check
+    if bypass_tenant_check:
+        _lease_rec = await db.execute(select(_Lease).where(_Lease.id == lease_id))
+        _lease_obj = _lease_rec.scalar_one_or_none()
+        tenant_id_for_event = str(_lease_obj.tenant_id) if _lease_obj else "unknown"
+    else:
+        tenant_id_for_event = str(tenant.id)  # type: ignore[union-attr]
+
+    from app.core.events import emit_payment_cancelled
+    await emit_payment_cancelled(
+        payment_id=str(p.id),
+        lease_id=str(lease_id),
+        organisation_id=str(p.organisation_id),
+        amount=float(p.amount),
+        tenant_id=tenant_id_for_event,
+        reason=reason,
+    )
+
+    return _payment_out(p)
+
 
 async def list_late_fees(
     lease_id: uuid.UUID,

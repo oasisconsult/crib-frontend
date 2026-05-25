@@ -15,7 +15,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user, require_role
+from app.api.deps import CurrentUser, get_current_user
+from app.services.policy_service import require_permission
 from app.core.database import get_db
 from app.services.tenant_import_service import (
     MAX_FILE_BYTES,
@@ -31,15 +32,12 @@ log = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/tenants/import", tags=["tenant-import"])
 
-_ALLOWED_ROLES = ("owner", "manager", "superadmin")
-
-
 # ── Template ───────────────────────────────────────────────────────────────────
 
 @router.get(
     "/template",
     summary="Download tenant CSV import template",
-    dependencies=[Depends(require_role(*_ALLOWED_ROLES))],
+    dependencies=[require_permission("read", "tenant")],
 )
 async def get_import_template() -> Response:
     csv_content = generate_template_csv()
@@ -56,7 +54,7 @@ async def get_import_template() -> Response:
     "/preview",
     response_model=TenantImportPreviewResponse,
     summary="Preview import — parse & validate CSV without writing to DB",
-    dependencies=[Depends(require_role(*_ALLOWED_ROLES))],
+    dependencies=[require_permission("create", "tenant")],
 )
 async def preview_import(
     file: UploadFile,
@@ -86,7 +84,7 @@ async def preview_import(
     response_model=TenantImportResultResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Commit import — write validated CSV data to the database",
-    dependencies=[Depends(require_role(*_ALLOWED_ROLES))],
+    dependencies=[require_permission("create", "tenant")],
 )
 async def commit_import_endpoint(
     file: UploadFile,

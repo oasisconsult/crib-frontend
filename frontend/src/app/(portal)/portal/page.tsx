@@ -5,7 +5,7 @@ import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download,
   Smartphone, Building2, Banknote, Calendar, MessageCircle,
-  Send, RefreshCw,
+  Send, RefreshCw, Ban, XCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { usePayments, useRecordPayment, useRentSchedule } from "@/hooks/usePayments";
+import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment } from "@/hooks/usePayments";
 import { useLeases, useLease, useGenerateLeaseDocument, useConfirmLeaseTerms } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
@@ -26,6 +26,7 @@ import { cn } from "@/utils/cn";
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { WalletBalanceCard } from "@/components/payments/WalletBalanceCard";
 import { PaymentReceipt } from "@/components/payments/PaymentReceipt";
+import { PAYMENT_STATE_DISPLAY } from "@/types";
 import type { Payment } from "@/types";
 import type { Message } from "@/services/api/messages";
 
@@ -343,34 +344,216 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
   );
 }
 
-// ─── Payment Detail Sheet ─────────────────────────────────────────────────────
+// ─── Tenant Payment Detail Sheet ─────────────────────────────────────────────
+// States in which a tenant can still cancel (mirrors backend CANCELLABLE_BY_TENANT)
+const TENANT_CANCELLABLE = new Set<Payment["state"]>([
+  "initiated", "predicted", "routed", "pending", "retry_scheduled",
+]);
 
-function PaymentDetailSheet({ payment, onClose }: { payment: Payment; onClose: () => void }) {
-  const rows: [string, string][] = [
-    ["Reference", payment.reference ?? "—"],
-    ["Category", payment.category],
-    ["Method", payment.method ?? "—"],
-    ["Amount", formatCurrency(payment.amount, payment.currency)],
-    ["Paid at", payment.paidAt ? formatDate(payment.paidAt) : "—"],
-    ["Status", payment.state],
-    ["Notes", payment.notes ?? "—"],
-  ];
+function TenantPaymentDetailSheet({
+  payment,
+  leaseId,
+  onClose,
+}: {
+  payment: Payment;
+  leaseId: string;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState<"detail" | "confirm">("detail");
+  const [cancelReason, setCancelReason] = useState("");
+  const { mutate: cancelPayment, isPending: isCancelling } = useCancelPayment();
+
+  const stateDisplay = PAYMENT_STATE_DISPLAY[payment.state] ?? {
+    label: payment.state,
+    color: "text-gray-600",
+    bgColor: "bg-gray-100",
+  };
+
+  const canCancel = TENANT_CANCELLABLE.has(payment.state);
+  const isRejected  = payment.state === "rejected";
+  const isCancelled = payment.state === "cancelled";
+
+  function handleCancelSubmit() {
+    cancelPayment(
+      { leaseId, paymentId: payment.id, reason: cancelReason.trim() || undefined },
+      {
+        onSuccess: () => {
+          setStep("detail");
+          setCancelReason("");
+          onClose();
+        },
+      },
+    );
+  }
+
+  // ── Cancel confirmation step ───────────────────────────────────────────────
+  if (step === "confirm") {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-foreground">Cancel Payment</h3>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setStep("detail")}
+            aria-label="Back to details"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Warning */}
+        <div className="rounded-[6px] bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
+          <p className="font-semibold mb-1">Are you sure you want to cancel?</p>
+          <p>
+            This will permanently cancel your{" "}
+            <strong>{formatCurrency(payment.amount, payment.currency)}</strong>{" "}
+            payment. This action cannot be undone.
+          </p>
+        </div>
+
+        {/* Optional reason */}
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Reason <span className="normal-case font-normal">(optional)</span>
+          </Label>
+          <Textarea
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="e.g. Paid in cash instead, duplicate payment…"
+            rows={3}
+            className="resize-none text-sm"
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => setStep("detail")}
+            disabled={isCancelling}
+          >
+            Keep Payment
+          </Button>
+          <Button
+            variant="destructive"
+            className="flex-1"
+            onClick={handleCancelSubmit}
+            disabled={isCancelling}
+          >
+            {isCancelling
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <XCircle className="h-4 w-4" />
+            }
+            {isCancelling ? "Cancelling…" : "Cancel Payment"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Detail step ────────────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-foreground">Payment Details</h3>
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
           <X className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Status badge — prominent pill */}
+      <div
+        className={cn(
+          "flex items-center gap-2 rounded-[8px] px-3 py-2.5",
+          stateDisplay.bgColor,
+        )}
+      >
+        <span className={cn("h-2 w-2 rounded-full shrink-0 opacity-80", stateDisplay.bgColor.replace("-100", "-500"))} />
+        <span className={cn("text-sm font-semibold capitalize", stateDisplay.color)}>
+          {stateDisplay.label}
+        </span>
+        <span className="text-xs text-muted-foreground ml-auto font-mono tabular-nums">
+          {formatCurrency(payment.amount, payment.currency)}
+        </span>
+      </div>
+
+      {/* Rejection notice */}
+      {isRejected && (
+        <div className="rounded-[6px] bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3 space-y-1">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700 dark:text-red-400">
+            <Ban className="h-3.5 w-3.5 shrink-0" />
+            This payment was rejected by your property manager
+          </p>
+          {payment.rejectedAt && (
+            <p className="text-xs text-red-600/80 dark:text-red-400/80">
+              {formatDate(payment.rejectedAt)}
+            </p>
+          )}
+          {payment.rejectionReason && (
+            <p className="text-xs text-red-700 dark:text-red-300 italic">
+              &ldquo;{payment.rejectionReason}&rdquo;
+            </p>
+          )}
+          <p className="text-xs text-red-600/70 dark:text-red-400/70 pt-1">
+            Please contact your property manager or make a new payment.
+          </p>
+        </div>
+      )}
+
+      {/* Cancellation notice */}
+      {isCancelled && (
+        <div className="rounded-[6px] bg-gray-50 dark:bg-gray-900/20 border border-gray-200 dark:border-gray-700 p-3 space-y-1">
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400">
+            <XCircle className="h-3.5 w-3.5 shrink-0" />
+            You cancelled this payment
+          </p>
+          {payment.cancelledAt && (
+            <p className="text-xs text-gray-500">{formatDate(payment.cancelledAt)}</p>
+          )}
+          {payment.cancellationReason && (
+            <p className="text-xs text-gray-600 dark:text-gray-300 italic">
+              &ldquo;{payment.cancellationReason}&rdquo;
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Details table */}
       <dl className="divide-y divide-border">
-        {rows.map(([label, value]) => (
+        {(
+          [
+            ["Reference", payment.reference ?? "—"],
+            ["Category",  payment.category.replace(/_/g, " ")],
+            ["Method",    payment.method ? payment.method.replace(/_/g, " ") : "—"],
+            ["Amount",    formatCurrency(payment.amount, payment.currency)],
+            ["Date",      payment.paidAt ? formatDate(payment.paidAt) : "—"],
+            ["Created",   formatDate(payment.createdAt)],
+            ...(payment.notes ? [["Notes", payment.notes]] : []),
+          ] as [string, string][]
+        ).map(([label, value]) => (
           <div key={label} className="flex justify-between py-2 text-sm">
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd className="font-medium font-mono text-foreground max-w-[55%] text-right break-all">{value}</dd>
+            <dt className="text-muted-foreground shrink-0">{label}</dt>
+            <dd className="font-medium text-foreground max-w-[55%] text-right break-all capitalize">
+              {value}
+            </dd>
           </div>
         ))}
       </dl>
+
+      {/* Cancel CTA — only for pre-reconciliation states */}
+      {canCancel && (
+        <Button
+          variant="outline"
+          className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+          onClick={() => setStep("confirm")}
+        >
+          <XCircle className="h-4 w-4" />
+          Cancel Payment
+        </Button>
+      )}
     </div>
   );
 }
@@ -1095,6 +1278,7 @@ export default function TenantPortalPage() {
                   schedules={schedulesData?.data ?? []}
                   isLoading={paymentsLoading}
                   onViewReceipt={setReceiptPayment}
+                  onSelectPayment={setSelectedPayment}
                 />
                 {!paymentsLoading && myPayments.length === 0 && myLease && (
                   <div className="flex justify-center mt-2">
@@ -1110,7 +1294,7 @@ export default function TenantPortalPage() {
             {myPayments.length > 0 && (
               <div className="rounded-[6px] border border-primary/15 bg-primary/5 px-3 py-2.5 text-xs text-muted-foreground">
                 <p className="font-medium text-foreground mb-0.5">Keep your payment records safe</p>
-                Click <span className="font-medium text-foreground">View receipt</span> on any payment to see full details including date, time, reference, and what period it covered. You can print or save receipts for your records.
+                Tap any payment to view its details or cancel a pending one. Click <span className="font-medium text-foreground">View receipt</span> to get a printable receipt showing the period covered.
               </div>
             )}
           </TabsContent>
@@ -1331,7 +1515,11 @@ export default function TenantPortalPage() {
 
       {selectedPayment && (
         <DialogOverlay onClose={closeDialog}>
-          <PaymentDetailSheet payment={selectedPayment} onClose={closeDialog} />
+          <TenantPaymentDetailSheet
+            payment={selectedPayment}
+            leaseId={myLease?.id ?? ""}
+            onClose={closeDialog}
+          />
         </DialogOverlay>
       )}
 

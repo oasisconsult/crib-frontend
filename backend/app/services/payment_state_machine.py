@@ -47,17 +47,23 @@ VALID_TRANSITIONS: Final[dict[PaymentStatus, set[PaymentStatus]]] = {
         PaymentStatus.pending,          # skip routing (direct provider push)
         PaymentStatus.predicted_failure,
         PaymentStatus.permanently_failed,  # unrecoverable error at creation time
+        PaymentStatus.rejected,            # org staff declines before any processing
+        PaymentStatus.cancelled,           # tenant withdraws before any processing
     },
     PaymentStatus.predicted: {
         PaymentStatus.routed,
         PaymentStatus.pending,          # skip explicit routing step
         PaymentStatus.predicted_failure,
-        PaymentStatus.permanently_failed,  # unrecoverable error post-prediction
+        PaymentStatus.permanently_failed,
+        PaymentStatus.rejected,
+        PaymentStatus.cancelled,
     },
     PaymentStatus.routed: {
         PaymentStatus.pending,
         PaymentStatus.retry_scheduled,
-        PaymentStatus.permanently_failed,  # unrecoverable provider error before push
+        PaymentStatus.permanently_failed,
+        PaymentStatus.rejected,
+        PaymentStatus.cancelled,
     },
     PaymentStatus.pending: {
         PaymentStatus.reconciled,
@@ -66,14 +72,18 @@ VALID_TRANSITIONS: Final[dict[PaymentStatus, set[PaymentStatus]]] = {
         # legacy path: confirm_payment() on a plain pending payment → confirmed
         PaymentStatus.confirmed,
         PaymentStatus.completed,
+        PaymentStatus.rejected,
+        PaymentStatus.cancelled,
     },
     PaymentStatus.reconciled: {
         PaymentStatus.allocated,
         PaymentStatus.permanently_failed,
+        PaymentStatus.rejected,         # org staff may still reject during reconciliation window
     },
     PaymentStatus.allocated: {
         PaymentStatus.completed,
         PaymentStatus.permanently_failed,
+        PaymentStatus.rejected,         # org staff rejects before final completion
     },
     PaymentStatus.completed: {
         PaymentStatus.refunded,
@@ -82,13 +92,22 @@ VALID_TRANSITIONS: Final[dict[PaymentStatus, set[PaymentStatus]]] = {
     # ── v4 failure paths ──────────────────────────────────────────────────────
     PaymentStatus.predicted_failure: {
         PaymentStatus.routed,           # manager manually overrides prediction
+        PaymentStatus.rejected,         # formally close out the blocked payment
     },
     PaymentStatus.retry_scheduled: {
         PaymentStatus.routed,
         PaymentStatus.pending,
         PaymentStatus.permanently_failed,
+        PaymentStatus.rejected,
+        PaymentStatus.cancelled,
     },
     PaymentStatus.permanently_failed: set(),   # terminal
+
+    # ── Human-action terminal states ──────────────────────────────────────────
+    # rejected: terminal — org staff declined. Cannot be reopened.
+    PaymentStatus.rejected: set(),
+    # cancelled: terminal — tenant withdrew. Cannot be reopened.
+    PaymentStatus.cancelled: set(),
 
     # ── Legacy states (backward compat) ───────────────────────────────────────
     PaymentStatus.confirmed: {
@@ -115,14 +134,34 @@ FAILED_TERMINAL: Final[frozenset[PaymentStatus]] = frozenset({
     PaymentStatus.failed,         # legacy
 })
 
+# States that represent a human-action terminal (neither success nor system failure)
+HUMAN_TERMINAL: Final[frozenset[PaymentStatus]] = frozenset({
+    PaymentStatus.rejected,
+    PaymentStatus.cancelled,
+})
+
 # All terminal states
-TERMINAL: Final[frozenset[PaymentStatus]] = SUCCESSFUL_TERMINAL | FAILED_TERMINAL | {
-    PaymentStatus.refunded,
-}
+TERMINAL: Final[frozenset[PaymentStatus]] = (
+    SUCCESSFUL_TERMINAL | FAILED_TERMINAL | HUMAN_TERMINAL | {PaymentStatus.refunded}
+)
 
 # "In-progress" states — payment is alive but not settled
 IN_PROGRESS: Final[frozenset[PaymentStatus]] = frozenset(
     set(PaymentStatus) - TERMINAL
+)
+
+# States from which a tenant can still cancel (before funds are reconciled)
+CANCELLABLE_BY_TENANT: Final[frozenset[PaymentStatus]] = frozenset({
+    PaymentStatus.initiated,
+    PaymentStatus.predicted,
+    PaymentStatus.routed,
+    PaymentStatus.pending,
+    PaymentStatus.retry_scheduled,
+})
+
+# States from which org staff can reject (anything non-terminal success, non-refunded)
+REJECTABLE_BY_STAFF: Final[frozenset[PaymentStatus]] = frozenset(
+    IN_PROGRESS | FAILED_TERMINAL | {PaymentStatus.predicted_failure}
 )
 
 
@@ -158,6 +197,27 @@ def can_be_confirmed(s: PaymentStatus) -> bool:
 def can_be_refunded(s: PaymentStatus) -> bool:
     """True if the payment can be refunded."""
     return s in SUCCESSFUL_TERMINAL
+
+def can_be_rejected(s: PaymentStatus) -> bool:
+    """
+    True if org staff can reject the payment.
+
+    Org staff may reject any in-progress, failed, or blocked payment that
+    has NOT yet reached a terminal success or been refunded. Useful for
+    clearing duplicate entries, wrong-amount payments, or suspicious transactions.
+    """
+    return s in REJECTABLE_BY_STAFF
+
+def can_be_cancelled(s: PaymentStatus) -> bool:
+    """
+    True if the tenant can cancel the payment.
+
+    Cancellation is limited to the early stages of the payment lifecycle —
+    before funds have been reconciled with the provider. Once the payment
+    reaches `reconciled`, `allocated`, or `completed` the tenant must ask
+    the manager for a refund instead.
+    """
+    return s in CANCELLABLE_BY_TENANT
 
 
 # ── Core transition ────────────────────────────────────────────────────────────

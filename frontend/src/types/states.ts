@@ -128,6 +128,9 @@ export type PaymentState =
   | "predicted_failure"
   | "retry_scheduled"
   | "permanently_failed"
+  // human-action terminal states
+  | "rejected"       // org staff declined the payment
+  | "cancelled"      // tenant withdrew before confirmation
   // legacy (kept for backward compat)
   | "confirmed"
   | "failed"
@@ -146,22 +149,27 @@ export type PaymentEvent =
   | "PAYMENT_RETRY_SCHEDULED"
   | "PAYMENT_PERMANENTLY_FAILED"
   | "PAYMENT_PREDICTION_BLOCKED"
-  | "PAYMENT_REFUNDED";
+  | "PAYMENT_REFUNDED"
+  | "PAYMENT_REJECTED"
+  | "PAYMENT_CANCELLED";
 
 export const PAYMENT_TRANSITIONS: Record<
   PaymentState,
   Partial<Record<PaymentEvent, PaymentState>>
 > = {
-  initiated:          { PAYMENT_PREDICTED: "predicted", PAYMENT_ROUTED: "routed", PAYMENT_PROCESSING: "pending", PAYMENT_PREDICTION_BLOCKED: "predicted_failure" },
-  predicted:          { PAYMENT_ROUTED: "routed", PAYMENT_PROCESSING: "pending", PAYMENT_PREDICTION_BLOCKED: "predicted_failure" },
-  routed:             { PAYMENT_PROCESSING: "pending", PAYMENT_RETRY_SCHEDULED: "retry_scheduled" },
-  pending:            { PAYMENT_RECONCILED: "reconciled", PAYMENT_RETRY_SCHEDULED: "retry_scheduled", PAYMENT_PERMANENTLY_FAILED: "permanently_failed", PAYMENT_CONFIRMED: "confirmed", PAYMENT_COMPLETED: "completed" },
-  reconciled:         { PAYMENT_ALLOCATED: "allocated", PAYMENT_PERMANENTLY_FAILED: "permanently_failed" },
-  allocated:          { PAYMENT_COMPLETED: "completed", PAYMENT_PERMANENTLY_FAILED: "permanently_failed" },
+  initiated:          { PAYMENT_PREDICTED: "predicted", PAYMENT_ROUTED: "routed", PAYMENT_PROCESSING: "pending", PAYMENT_PREDICTION_BLOCKED: "predicted_failure", PAYMENT_REJECTED: "rejected", PAYMENT_CANCELLED: "cancelled" },
+  predicted:          { PAYMENT_ROUTED: "routed", PAYMENT_PROCESSING: "pending", PAYMENT_PREDICTION_BLOCKED: "predicted_failure", PAYMENT_REJECTED: "rejected", PAYMENT_CANCELLED: "cancelled" },
+  routed:             { PAYMENT_PROCESSING: "pending", PAYMENT_RETRY_SCHEDULED: "retry_scheduled", PAYMENT_REJECTED: "rejected", PAYMENT_CANCELLED: "cancelled" },
+  pending:            { PAYMENT_RECONCILED: "reconciled", PAYMENT_RETRY_SCHEDULED: "retry_scheduled", PAYMENT_PERMANENTLY_FAILED: "permanently_failed", PAYMENT_CONFIRMED: "confirmed", PAYMENT_COMPLETED: "completed", PAYMENT_REJECTED: "rejected", PAYMENT_CANCELLED: "cancelled" },
+  reconciled:         { PAYMENT_ALLOCATED: "allocated", PAYMENT_PERMANENTLY_FAILED: "permanently_failed", PAYMENT_REJECTED: "rejected" },
+  allocated:          { PAYMENT_COMPLETED: "completed", PAYMENT_PERMANENTLY_FAILED: "permanently_failed", PAYMENT_REJECTED: "rejected" },
   completed:          { PAYMENT_REFUNDED: "refunded" },
-  predicted_failure:  { PAYMENT_ROUTED: "routed" },
-  retry_scheduled:    { PAYMENT_ROUTED: "routed", PAYMENT_PROCESSING: "pending", PAYMENT_PERMANENTLY_FAILED: "permanently_failed" },
+  predicted_failure:  { PAYMENT_ROUTED: "routed", PAYMENT_REJECTED: "rejected" },
+  retry_scheduled:    { PAYMENT_ROUTED: "routed", PAYMENT_PROCESSING: "pending", PAYMENT_PERMANENTLY_FAILED: "permanently_failed", PAYMENT_REJECTED: "rejected", PAYMENT_CANCELLED: "cancelled" },
   permanently_failed: {},
+  // human-action terminal states
+  rejected:           {},
+  cancelled:          {},
   // legacy
   confirmed:          { PAYMENT_REFUNDED: "refunded", PAYMENT_COMPLETED: "completed" },
   failed:             { PAYMENT_RETRY_SCHEDULED: "retry_scheduled", PAYMENT_PERMANENTLY_FAILED: "permanently_failed" },
@@ -385,6 +393,9 @@ export const PAYMENT_STATE_DISPLAY: Record<PaymentState, StateDisplayConfig> = {
   predicted_failure:  { label: "Blocked",            color: "text-orange-700",  bgColor: "bg-orange-100"  },
   retry_scheduled:    { label: "Retry Scheduled",    color: "text-amber-700",   bgColor: "bg-amber-100"   },
   permanently_failed: { label: "Failed",             color: "text-red-700",     bgColor: "bg-red-100"     },
+  // human-action terminal states
+  rejected:           { label: "Rejected",           color: "text-red-700",     bgColor: "bg-red-100"     },
+  cancelled:          { label: "Cancelled",          color: "text-gray-600",    bgColor: "bg-gray-100"    },
   // legacy
   confirmed:          { label: "Confirmed",          color: "text-emerald-700", bgColor: "bg-emerald-100" },
   failed:             { label: "Failed",             color: "text-red-700",     bgColor: "bg-red-100"     },
