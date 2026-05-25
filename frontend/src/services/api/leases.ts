@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut, apiDelete } from "./client";
+import { apiGet, apiPost, apiPatch, apiPut, apiDelete } from "./client";
 import type { Lease, LeaseAuditEntry, PaginatedResponse, QueryParams } from "@/types";
 import type { LeaseState, LeaseType } from "@/types";
 import { toLeaseParams } from "@/utils/backendParams";
@@ -139,15 +139,15 @@ export const leasesApi = {
     let raw: Record<string, unknown>;
     switch (event) {
       case "LEASE_ACTIVATED":
-        raw = await apiPost<Record<string, unknown>>(`/leases/${id}/activate`, payload ?? {});
+        raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/activate`, payload ?? {});
         break;
       case "LEASE_TERMINATED":
-        raw = await apiPost<Record<string, unknown>>(`/leases/${id}/terminate`, payload ?? {});
+        raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/terminate`, payload ?? {});
         break;
       case "LEASE_CLOSED":
       case "NOTICE_GIVEN":
         // NOTICE_GIVEN / CLOSE are not separate backend states — map to expire
-        raw = await apiPost<Record<string, unknown>>(`/leases/${id}/expire`, payload ?? {});
+        raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/expire`, payload ?? {});
         break;
       case "LEASE_SENT":
         // "Send for Signature" in the manager UI — direct-activate (manager fast-path).
