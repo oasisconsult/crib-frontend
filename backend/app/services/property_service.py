@@ -111,6 +111,7 @@ async def list_properties(
     type_filter: str | None = None,
     search: str | None = None,
     landlord_profile_id: uuid.UUID | None = None,
+    property_id_filter: list[uuid.UUID] | None = None,
 ) -> dict:
     # org_id=None means superadmin with platform-wide access — no org filter
     if org_id is not None:
@@ -120,7 +121,11 @@ async def list_properties(
         )
     else:
         q = select(Property).where(Property.deleted_at.is_(None))
-    if landlord_profile_id is not None:
+    if property_id_filter is not None:
+        # Direct property UUID filter — used for caretakers (bypasses LandlordPropertyAccess).
+        # An empty list means the caretaker has no delegated properties → return nothing.
+        q = q.where(Property.id.in_(property_id_filter)) if property_id_filter else q.where(Property.id.is_(None))
+    elif landlord_profile_id is not None:
         # Restrict to only properties this landlord has been granted access to
         allowed = select(LandlordPropertyAccess.property_id).where(
             LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
@@ -153,6 +158,7 @@ async def get_property(
     org_id: uuid.UUID | None,
     db: AsyncSession,
     landlord_profile_id: uuid.UUID | None = None,
+    property_id_filter: list[uuid.UUID] | None = None,
 ) -> Property:
     # org_id=None → superadmin, fetch by id only (no org boundary)
     filters = [Property.id == prop_id, Property.deleted_at.is_(None)]
@@ -162,7 +168,11 @@ async def get_property(
     prop = result.scalar_one_or_none()
     if not prop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
-    if landlord_profile_id is not None:
+    if property_id_filter is not None:
+        # Direct list check — used for caretakers.
+        if prop_id not in property_id_filter:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Property not found")
+    elif landlord_profile_id is not None:
         access = await db.scalar(
             select(LandlordPropertyAccess.property_id).where(
                 LandlordPropertyAccess.landlord_profile_id == landlord_profile_id,

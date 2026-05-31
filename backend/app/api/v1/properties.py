@@ -24,11 +24,15 @@ Endpoints:
 
 import uuid
 
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import delete as _delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_org_id, require_org_access, require_superadmin
 from app.core.database import get_db
+from app.models.landlord_invite import LandlordPropertyAccess
+
 from app.schemas.common import PaginatedResponse
 from app.schemas.property import (
     BatchUnitCreate,
@@ -45,11 +49,69 @@ from app.schemas.property import (
 from app.services import property_service as svc
 from app.services.subscription_limits import check_property_limit, check_unit_limit
 
+log = structlog.get_logger(__name__)
+
 router = APIRouter(prefix="/properties", tags=["properties"])
 
 # Convenience: managers and owners can mutate; tenants read-only via require_org_access
 _read  = Depends(require_org_access(allow_tenant_own=True))
 _write = Depends(require_org_access(allow_tenant_own=False))
+
+
+async def _resolve_caretaker_filter(
+    current_user: CurrentUser, db: AsyncSession
+) -> tuple[list[uuid.UUID] | None, uuid.UUID | None]:
+    """
+    Return (property_id_filter, landlord_id) for the current user.
+
+    - Regular owners/managers: (None, None) → no extra filter, sees all org properties.
+    - Read-only landlords: (None, profile.id) → filtered via LandlordPropertyAccess.
+    - Caretakers: (caretaker_property_ids_as_uuids, profile.id)
+        Uses caretaker_property_ids directly AND keeps LandlordPropertyAccess in sync
+        so analytics/leases/inspection endpoints (which use LPA) stay accurate.
+    """
+    if current_user.profile.is_read_only:
+        return None, current_user.id
+
+    if "caretaker" not in current_user.roles:
+        return None, None
+
+    raw_ids: list[str] = current_user.profile.caretaker_property_ids or []
+    prop_uuids: list[uuid.UUID] = []
+    for pid in raw_ids:
+        try:
+            prop_uuids.append(uuid.UUID(str(pid)))
+        except (ValueError, TypeError):
+            log.warning("caretaker.invalid_property_id_in_profile", pid=pid,
+                        profile_id=str(current_user.id))
+
+    # Sync LandlordPropertyAccess rows so all other services (analytics, leases, etc.)
+    # see the correct set.  Only write when count differs to avoid pointless churn.
+    from sqlalchemy import func as _func
+    existing_count = await db.scalar(
+        select(_func.count(LandlordPropertyAccess.property_id)).where(
+            LandlordPropertyAccess.landlord_profile_id == current_user.id
+        )
+    ) or 0
+
+    if existing_count != len(prop_uuids):
+        await db.execute(
+            _delete(LandlordPropertyAccess).where(
+                LandlordPropertyAccess.landlord_profile_id == current_user.id
+            )
+        )
+        for prop_uuid in prop_uuids:
+            db.add(LandlordPropertyAccess(
+                landlord_profile_id=current_user.id,
+                property_id=prop_uuid,
+                is_read_only=False,
+                granted_by_profile_id=current_user.profile.caretaker_owner_profile_id,
+            ))
+        await db.flush()
+        log.info("caretaker.lpa_synced", profile_id=str(current_user.id),
+                 count=len(prop_uuids))
+
+    return prop_uuids, current_user.id
 
 
 # ── Properties ────────────────────────────────────────────────────────────────
@@ -65,21 +127,11 @@ async def list_properties(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = get_org_id(current_user)
-    # Scope by property access for landlords (read-only) AND caretakers
-    landlord_id = None
-    if current_user.profile.is_read_only:
-        landlord_id = current_user.id
-    elif "caretaker" in current_user.roles:
-        # Caretakers: filter to their delegated property UUIDs
-        import uuid as _uuid
-        caretaker_ids = current_user.profile.caretaker_property_ids or []
-        # Reuse the landlord_profile_id filter — LandlordPropertyAccess rows were
-        # created for the caretaker during onboarding; fall back to direct JSONB
-        # filtering if no rows exist yet.
-        landlord_id = current_user.id
+    prop_filter, landlord_id = await _resolve_caretaker_filter(current_user, db)
     return await svc.list_properties(
         org_id, db, page, page_size, status, type, search,
-        landlord_profile_id=landlord_id,
+        landlord_profile_id=landlord_id if prop_filter is None else None,
+        property_id_filter=prop_filter,
     )
 
 
@@ -101,19 +153,12 @@ async def get_property(
     current_user: CurrentUser = _read,
     db: AsyncSession = Depends(get_db),
 ):
-    # Scope by property access for landlords (read-only) AND caretakers
-    landlord_id = None
-    if current_user.profile.is_read_only:
-        landlord_id = current_user.id
-    elif "caretaker" in current_user.roles:
-        # Caretakers: filter to their delegated property UUIDs
-        import uuid as _uuid
-        caretaker_ids = current_user.profile.caretaker_property_ids or []
-        # Reuse the landlord_profile_id filter — LandlordPropertyAccess rows were
-        # created for the caretaker during onboarding; fall back to direct JSONB
-        # filtering if no rows exist yet.
-        landlord_id = current_user.id
-    prop = await svc.get_property(property_id, get_org_id(current_user), db, landlord_profile_id=landlord_id)
+    prop_filter, landlord_id = await _resolve_caretaker_filter(current_user, db)
+    prop = await svc.get_property(
+        property_id, get_org_id(current_user), db,
+        landlord_profile_id=landlord_id if prop_filter is None else None,
+        property_id_filter=prop_filter,
+    )
     return await svc._property_out(prop, db)
 
 
