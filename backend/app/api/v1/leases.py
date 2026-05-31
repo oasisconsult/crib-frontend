@@ -181,6 +181,20 @@ async def submit_vacate_notice(
     return await svc.record_vacate_notice(lease_id, body, current_user, db)
 
 
+@router.delete("/{lease_id}/notice", response_model=LeaseOut)
+async def retract_vacate_notice(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _write,  # manager/owner only
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retract a previously submitted notice to vacate.
+    Clears notice_given_at + notice_vacate_date and sends the tenant a
+    system message plus an email notification.
+    """
+    return await svc.retract_vacate_notice(lease_id, get_org_id(current_user), db)
+
+
 @router.post("/{lease_id}/send-onboarding", response_model=TenantInviteOut)
 async def send_onboarding_link(
     lease_id: uuid.UUID,

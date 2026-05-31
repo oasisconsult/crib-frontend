@@ -17,7 +17,7 @@ import { TerminateModal } from "./TerminateModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
-import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useDeleteLease } from "@/hooks/useLeases";
+import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease } from "@/hooks/useLeases";
 import { leasesApi } from "@/services/api/leases";
 import { toast } from "@/store/useUIStore";
 import { canTransition, LEASE_TRANSITIONS } from "@/types/states";
@@ -43,6 +43,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const { mutate: confirmPayments, isPending: confirmingPayments } = useConfirmOnboardingPayments();
   const { mutate: acknowledge, isPending: acknowledging } = useAcknowledgeLease();
   const { mutate: submitNotice, isPending: submittingNotice } = useSubmitNotice();
+  const { mutate: retractNotice, isPending: retractingNotice } = useRetractNotice();
   const { mutate: deleteLease, isPending: deletingLease } = useDeleteLease();
 
   // Default vacate date = today + notice period days (editable in the dialog)
@@ -95,6 +96,10 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
       deleteLease(lease.id, { onSettled: () => setConfirmOpen(false) });
       return;
     }
+    if (pendingEvent === "RETRACT_NOTICE") {
+      retractNotice(lease.id, { onSettled: () => setConfirmOpen(false) });
+      return;
+    }
     transition(
       { id: lease.id, event: pendingEvent as Parameters<typeof transition>[0]["event"] },
       { onSettled: () => setConfirmOpen(false) },
@@ -143,7 +148,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
       {lease.state === "active" && lease.noticeGivenAt && (
         <Alert variant="warning">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <AlertDescription className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div className="space-y-0.5">
               <p className="font-medium text-sm">Notice to Vacate Recorded</p>
               <p className="text-xs text-muted-foreground">
@@ -151,19 +156,30 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                 {lease.noticeVacateDate && (
                   <> Tenant intends to vacate by <strong>{formatDate(lease.noticeVacateDate)}</strong>.</>
                 )}
-                {" "}The lease remains <strong>active</strong> until the tenant physically vacates — click{" "}
-                <strong>Terminate Lease</strong> to formally end it.
+                {" "}The lease remains <strong>active</strong> until the tenant physically vacates.
               </p>
             </div>
-            <Button
-              size="sm"
-              variant="destructive"
-              className="shrink-0"
-              onClick={() => setTerminateOpen(true)}
-            >
-              <XCircle className="h-3.5 w-3.5" />
-              Terminate Lease
-            </Button>
+            <div className="flex gap-2 shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                loading={retractingNotice}
+                onClick={() => {
+                  setPendingEvent("RETRACT_NOTICE");
+                  setConfirmOpen(true);
+                }}
+              >
+                Retract Notice
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setTerminateOpen(true)}
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                Terminate Lease
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -455,16 +471,26 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title={pendingEvent === "DELETE_DRAFT" ? "Delete Draft Lease" : "Confirm Action"}
+        title={
+          pendingEvent === "DELETE_DRAFT" ? "Delete Draft Lease" :
+          pendingEvent === "RETRACT_NOTICE" ? "Retract Notice to Vacate" :
+          "Confirm Action"
+        }
         description={
           pendingEvent === "DELETE_DRAFT"
             ? "This draft lease has not been activated. Deleting it is permanent and cannot be undone."
+            : pendingEvent === "RETRACT_NOTICE"
+            ? "This will withdraw the notice to vacate. The tenant will be notified and their lease continues as normal."
             : `Are you sure you want to transition this lease with event: ${pendingEvent?.replace(/_/g, " ")}?`
         }
-        variant="destructive"
-        confirmLabel={pendingEvent === "DELETE_DRAFT" ? "Delete" : "Confirm"}
+        variant={pendingEvent === "RETRACT_NOTICE" ? "default" : "destructive"}
+        confirmLabel={
+          pendingEvent === "DELETE_DRAFT" ? "Delete" :
+          pendingEvent === "RETRACT_NOTICE" ? "Retract Notice" :
+          "Confirm"
+        }
         onConfirm={confirmTransition}
-        loading={isPending || deletingLease}
+        loading={isPending || deletingLease || retractingNotice}
       />
 
       {/* Terminate modal */}

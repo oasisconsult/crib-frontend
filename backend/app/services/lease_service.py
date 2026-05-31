@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 log = structlog.get_logger(__name__)
 
 from app.models.landlord_invite import LandlordPropertyAccess
+from app.models.message import Message
 from app.utils.db_filters import org_scope
 from app.models.lease import Lease, LeaseStatus
 from app.models.property import Property, Unit, UnitStatus
@@ -661,6 +662,78 @@ async def record_vacate_notice(
     except Exception:
         log.warning("lease_notification.notice.failed", lease_id=str(lease_id), exc_info=True)
 
+    # Post a system message so the tenant sees the notice in their portal Messages tab
+    try:
+        reason_line = f"\n\nReason: {body.reason}" if body.reason else ""
+        await _post_system_message(
+            lease,
+            f"📋 Notice to Vacate has been recorded.\n\n"
+            f"Intended vacate date: {body.vacate_date}. "
+            f"Your lease remains active until the vacate date. "
+            f"Please contact your property manager if you have any questions."
+            f"{reason_line}",
+            db,
+        )
+    except Exception:
+        log.warning("lease_system_message.notice.failed", lease_id=str(lease_id), exc_info=True)
+
+    return _lease_out(lease)
+
+
+async def retract_vacate_notice(
+    lease_id: uuid.UUID,
+    org_id: uuid.UUID,
+    db: AsyncSession,
+) -> LeaseOut:
+    """
+    Retract a previously submitted notice to vacate.
+
+    Rules:
+      - Lease must be active.
+      - A notice must already exist (notice_given_at is set).
+      - Clears notice_given_at + notice_vacate_date so the lease continues normally.
+      - Posts a system message to the tenant's portal Messages tab.
+      - Sends an email notification to the tenant.
+    """
+    lease = await _get_lease(lease_id, org_id, db)
+
+    if lease.status != LeaseStatus.active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot retract a notice on a lease with status '{lease.status}'.",
+        )
+    if not lease.notice_given_at:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No notice to vacate has been submitted for this lease.",
+        )
+
+    lease.notice_given_at = None
+    lease.notice_vacate_date = None
+
+    await db.flush()
+    await db.refresh(lease, attribute_names=["notice_given_at", "notice_vacate_date", "updated_at"])
+    log.info("lease.notice_retracted", lease_id=str(lease_id))
+
+    # Post system message so tenant sees the retraction in their portal Messages tab
+    try:
+        await _post_system_message(
+            lease,
+            "✅ Notice to Vacate has been withdrawn by your property manager.\n\n"
+            "Your lease continues as normal. Please contact your property manager "
+            "if you have any questions about your tenancy.",
+            db,
+        )
+    except Exception:
+        log.warning("lease_system_message.retract.failed", lease_id=str(lease_id), exc_info=True)
+
+    # Email notification to tenant
+    try:
+        variables = await _build_lease_variables(lease, db)
+        await _queue_lease_notification(lease, "notice_retracted", variables, db)
+    except Exception:
+        log.warning("lease_notification.retract.failed", lease_id=str(lease_id), exc_info=True)
+
     return _lease_out(lease)
 
 
@@ -868,6 +941,19 @@ async def _queue_lease_notification(
                 f"If you have any questions, please contact your property manager.\n\n"
                 f"Regards,\n{variables.get('org_name', 'Your Property Manager')}"
             )
+        elif trigger == "notice_retracted":
+            subject = (
+                f"Notice to Vacate Withdrawn"
+                f"{' — ' + variables['unit_name'] if variables.get('unit_name') else ''}"
+            )
+            body = (
+                f"Dear {recipient_name},\n\n"
+                f"Your property manager has withdrawn the notice to vacate for your lease at "
+                f"{variables.get('unit_name', 'your unit')}.\n\n"
+                f"Your tenancy continues as normal. If you have any questions, "
+                f"please contact your property manager.\n\n"
+                f"Regards,\n{variables.get('org_name', 'Your Property Manager')}"
+            )
         else:  # lease_terminated
             subject = (
                 f"Your Lease Has Been Terminated"
@@ -922,6 +1008,27 @@ async def _queue_lease_notification(
 
 
 # ── Private helpers ────────────────────────────────────────────────────────────
+
+async def _post_system_message(lease: Lease, content: str, db: AsyncSession) -> None:
+    """Insert an automated system message into the lease message thread.
+
+    These appear in the tenant portal Messages tab as a left-aligned bubble
+    from "System · system" so tenants see important lease events inline with
+    their conversation history.
+    """
+    if not lease.organisation_id:
+        return
+    msg = Message(
+        organisation_id=lease.organisation_id,
+        lease_id=lease.id,
+        sender_id="system",
+        sender_name="System",
+        sender_role="system",
+        content=content,
+    )
+    db.add(msg)
+    await db.flush()
+
 
 async def _clear_unit_and_tenant(lease: Lease, db: AsyncSession) -> None:
     """Reset unit + tenant cached FKs when a lease ends."""

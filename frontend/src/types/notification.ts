@@ -15,6 +15,7 @@ export type NotificationTrigger =
   | "late_fee_applied"
   | "deposit_received"
   | "notice_given"       // Tenant notice to vacate submitted
+  | "notice_retracted"   // Notice to vacate withdrawn by manager
   | "lease_terminated"   // Lease terminated by manager
   | "custom";
 

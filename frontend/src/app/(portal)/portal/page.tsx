@@ -789,7 +789,23 @@ function MessagesTab({ leaseId, userId, userSub }: { leaseId: string; userId: st
                 </div>
                 <div className="space-y-1">
                   {msgs.map((msg) => {
-                    const isMe = msg.senderId === userId || (!!userSub && msg.senderId === userSub);
+                    const isSystem = msg.senderRole === "system";
+                    const isMe = !isSystem && (msg.senderId === userId || (!!userSub && msg.senderId === userSub));
+
+                    // System messages render as centred status pills
+                    if (isSystem) {
+                      return (
+                        <div key={msg.id} className="flex justify-center my-2">
+                          <div className="max-w-[85%] rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/25 px-4 py-2.5 text-xs text-amber-800 dark:text-amber-300 text-center whitespace-pre-line">
+                            {msg.content}
+                            <p className="text-[10px] text-amber-600/70 dark:text-amber-400/60 mt-1">
+                              {formatMsgTime(msg.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div key={msg.id} className={cn("flex gap-2 items-end", isMe ? "flex-row-reverse" : "flex-row")}>
                         {/* Avatar for others */}

@@ -47,6 +47,7 @@ class NotificationTrigger(str, enum.Enum):
     late_fee_applied     = "late_fee_applied"
     deposit_received     = "deposit_received"
     notice_given         = "notice_given"       # Tenant notice to vacate submitted
+    notice_retracted     = "notice_retracted"   # Notice to vacate withdrawn by manager
     lease_terminated     = "lease_terminated"   # Lease forcibly terminated by manager
     custom               = "custom"
 

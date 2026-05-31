@@ -178,6 +178,12 @@ export const leasesApi = {
   generateDocument: (id: string) =>
     apiPost<{ url: string }>(`/leases/${id}/document`),
 
+  // Manager retracts a previously submitted notice to vacate
+  retractNotice: async (id: string) => {
+    const raw = await apiDelete<Record<string, unknown>>(`/leases/${id}/notice`);
+    return toLeaseModel(raw);
+  },
+
   // Tenant submits notice to vacate
   submitNotice: async (id: string, vacateDate: string, reason?: string) => {
     const raw = await apiPost<Record<string, unknown>>(`/leases/${id}/notice`, {

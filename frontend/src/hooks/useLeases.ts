@@ -77,6 +77,19 @@ export function useTransitionLease() {
   });
 }
 
+export function useRetractNotice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => leasesApi.retractNotice(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.leases.audit(id) });
+      toast.success("Notice retracted — lease continues as normal");
+    },
+    onError: () => toast.error("Failed to retract notice"),
+  });
+}
+
 export function useSubmitNotice() {
   const qc = useQueryClient();
   return useMutation({
