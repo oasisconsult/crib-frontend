@@ -66,6 +66,14 @@ class RequestIdMiddleware:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     log.info("crib.startup", environment=settings.environment, debug=settings.is_debug)
 
+    # RBAC bootstrap — creates rbac database, runs migration, seeds data on first start
+    if settings.rbac_database_url and settings.environment == "staging":
+        try:
+            from rbac.bootstrap import bootstrap_rbac
+            await bootstrap_rbac(rbac_database_url=settings.rbac_database_url, app_slug="crib")
+        except Exception as rbac_err:
+            log.error("rbac.bootstrap.failed", error=str(rbac_err))
+
     # Verify Redis is reachable
     try:
         redis = get_redis()
