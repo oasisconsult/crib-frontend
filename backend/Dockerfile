@@ -1,9 +1,18 @@
+# =============================================================================
+# Crib Backend — Production Dockerfile (Poetry)
+# =============================================================================
 FROM python:3.12-slim AS base
 
-WORKDIR /app
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    POETRY_VERSION=1.8.4 \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_CACHE_DIR=/tmp/poetry-cache
 
-# System deps for WeasyPrint + asyncpg
+# System deps: WeasyPrint rendering libs + git (required for geobox-rbac git dep)
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
     libpangocairo-1.0-0 \
@@ -12,40 +21,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcairo2 \
     && rm -rf /var/lib/apt/lists/*
 
-# ─── Build stage: install only runtime deps ───────────────────────────────────
-FROM base AS builder
-COPY pyproject.toml .
-# Extract and install dependencies without building/installing the package itself
-RUN pip install --no-cache-dir pip-tools \
-    && pip install --no-cache-dir \
-        fastapi==0.115.6 \
-        "uvicorn[standard]==0.32.1" \
-        "sqlalchemy[asyncio]==2.0.36" \
-        asyncpg==0.30.0 \
-        alembic==1.14.0 \
-        "pydantic[email]==2.10.3" \
-        pydantic-settings==2.7.0 \
-        "python-jose[cryptography]==3.3.0" \
-        httpx==0.28.1 \
-        "redis[hiredis]==5.2.1" \
-        minio==7.2.13 \
-        weasyprint==62.3 \
-        jinja2==3.1.5 \
-        "celery[redis]==5.4.0" \
-        kombu==5.4.2 \
-        sendgrid==6.11.0 \
-        twilio==9.3.7 \
-        aiosmtplib>=3.0.0 \
-        prometheus-fastapi-instrumentator==7.0.0 \
-        python-multipart==0.0.20 \
-        python-dateutil==2.9.0 \
-        structlog==24.4.0 \
-        ulid-py==1.1.0
+RUN pip install --no-cache-dir poetry==$POETRY_VERSION
 
-# ─── Production stage ─────────────────────────────────────────────────────────
+# ── Builder: install runtime deps only ───────────────────────────────────────
+FROM base AS builder
+
+WORKDIR /app
+
+# Copy manifests first — layer is cached unless deps change
+COPY pyproject.toml poetry.lock* ./
+
+# Install runtime deps (no dev extras, no project package itself)
+RUN poetry install --no-root --only main && rm -rf $POETRY_CACHE_DIR
+
+# ── Production image ──────────────────────────────────────────────────────────
 FROM base AS production
+
+WORKDIR /app
+
+# Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy application source
 COPY . .
 
 EXPOSE 8000

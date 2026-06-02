@@ -1,79 +1,78 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["app"]
-
-[project]
+[tool.poetry]
 name = "crib-backend"
 version = "0.1.0"
 description = "Crib property management platform — FastAPI backend"
+authors = ["Crib Digital Services (U) Ltd"]
+packages = [{ include = "app" }]
 requires-python = ">=3.12"
-dependencies = [
-    # Shared RBAC framework
-    "geobox-rbac @ git+https://github.com/oasisconsult/geobox-rbac.git",
 
-    # Web framework
-    "fastapi==0.115.6",
-    "uvicorn[standard]==0.32.1",
+[tool.poetry.dependencies]
+python = "^3.12"
 
-    # Database
-    "sqlalchemy[asyncio]==2.0.36",
-    "asyncpg==0.30.0",
-    "alembic==1.14.0",
+# Shared RBAC framework
+geobox-rbac = {git = "https://github.com/oasisconsult/geobox-rbac.git"}
 
-    # Validation / settings
-    "pydantic[email]==2.10.3",
-    "pydantic-settings==2.7.0",
+# Web framework
+fastapi = "0.115.6"
+uvicorn = {version = "0.32.1", extras = ["standard"]}
 
-    # Auth — Logto / OIDC
-    "python-jose[cryptography]==3.3.0",
-    "httpx==0.28.1",
+# Database
+sqlalchemy = {version = "2.0.36", extras = ["asyncio"]}
+asyncpg = "0.30.0"
+alembic = "1.14.0"
 
-    # Redis
-    "redis[hiredis]==5.2.1",
+# Validation / settings
+pydantic = {version = "2.10.3", extras = ["email"]}
+pydantic-settings = "2.7.0"
 
-    # Object storage (S3-compatible: AWS S3, Cloudflare R2, MinIO)
-    "minio==7.2.13",
-    "boto3==1.35.99",
+# Auth — Logto / OIDC
+python-jose = {version = "3.3.0", extras = ["cryptography"]}
+httpx = "0.28.1"
 
-    # Encryption (Fernet symmetric — for DB-stored secrets)
-    "cryptography==44.0.0",
+# Redis
+redis = {version = "5.2.1", extras = ["hiredis"]}
 
-    # PDF generation
-    "weasyprint==62.3",
-    "jinja2==3.1.5",
+# Object storage (S3-compatible: AWS S3, Cloudflare R2, MinIO)
+minio = "7.2.13"
+boto3 = "1.35.99"
 
-    # Task queue
-    "celery[redis]==5.4.0",
-    "kombu==5.4.2",
+# Encryption (Fernet symmetric — for DB-stored secrets)
+cryptography = "44.0.0"
 
-    # Notifications
-    "sendgrid==6.11.0",
-    "twilio==9.3.7",
-    "aiosmtplib>=3.0.0",  # async SMTP for dev (MailHog) and production SMTP relay
+# PDF generation
+weasyprint = "62.3"
+jinja2 = "3.1.5"
 
-    # Observability
-    "prometheus-fastapi-instrumentator==7.0.0",
+# Task queue
+celery = {version = "5.4.0", extras = ["redis"]}
+kombu = "5.4.2"
 
-    # Utilities
-    "python-multipart==0.0.20",
-    "python-dateutil==2.9.0",
-    "structlog==24.4.0",
-    "ulid-py==1.1.0",
-]
+# Notifications
+sendgrid = "6.11.0"
+twilio = "9.3.7"
+aiosmtplib = ">=3.0.0"
 
-[project.optional-dependencies]
-dev = [
-    "pytest==8.3.4",
-    "pytest-asyncio==0.24.0",
-    "pytest-cov==6.0.0",
-    "httpx==0.28.1",
-    "factory-boy==3.3.1",
-    "ruff==0.8.6",
-    "mypy==1.13.0",
-]
+# Observability
+prometheus-fastapi-instrumentator = "7.0.0"
+
+# Utilities
+python-multipart = "0.0.20"
+python-dateutil = "2.9.0"
+structlog = "24.4.0"
+ulid-py = "1.1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "8.3.4"
+pytest-asyncio = "0.24.0"
+pytest-cov = "6.0.0"
+httpx = "0.28.1"
+factory-boy = "3.3.1"
+ruff = "0.8.6"
+mypy = "1.13.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 line-length = 100
