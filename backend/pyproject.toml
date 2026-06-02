@@ -11,6 +11,9 @@ version = "0.1.0"
 description = "Crib property management platform — FastAPI backend"
 requires-python = ">=3.12"
 dependencies = [
+    # Shared RBAC framework
+    "geobox-rbac @ git+https://github.com/oasisconsult/geobox-rbac.git",
+
     # Web framework
     "fastapi==0.115.6",
     "uvicorn[standard]==0.32.1",

@@ -22,6 +22,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.redis import close_redis, get_redis
+from app.core.database import get_db
 
 settings = get_settings()
 configure_logging(debug=settings.is_debug)
@@ -104,6 +105,27 @@ def create_app() -> FastAPI:
 
     # ── Request ID middleware ─────────────────────────────────────────────────
     application.add_middleware(RequestIdMiddleware)
+
+    # ── RBAC context middleware ───────────────────────────────────────────────
+    # Uses the dedicated shared RBAC database (same Postgres server as Crib).
+    # Shadow mode during Phase 1-2: context resolved but not enforced.
+    if settings.rbac_database_url:
+        from rbac.middleware.context_middleware import AppContextMiddleware
+        from rbac.dependencies.ownership import configure_db_dependency
+        from app.core.redis import get_redis as _get_redis
+
+        configure_db_dependency(get_db)
+        application.add_middleware(
+            AppContextMiddleware,
+            app_slug="crib",
+            rbac_database_url=settings.rbac_database_url,
+            redis_factory=_get_redis,
+            internal_secret=settings.secret_key,
+            shadow_mode=settings.environment != "production",
+        )
+        log.info("rbac.middleware.enabled", shadow_mode=settings.environment != "production")
+    else:
+        log.warning("rbac.middleware.disabled", reason="RBAC_DATABASE_URL not set")
 
     # ── Exception handlers ────────────────────────────────────────────────────
     @application.exception_handler(Exception)

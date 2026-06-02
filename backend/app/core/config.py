@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     db_max_overflow: int = 20
     db_echo: bool = False
 
+    # ── RBAC framework (shared database on same Postgres server as Crib) ─────
+    # Format: postgresql+asyncpg://user:pass@host/rbac
+    # Same rbac DB used by GeoBox — one source of truth for roles/plans.
+    rbac_database_url: str | None = None
+
     # ── Redis ─────────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
     redis_ttl_seconds: int = 300  # default cache TTL
