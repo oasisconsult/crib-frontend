@@ -4,7 +4,6 @@ version = "0.1.0"
 description = "Crib property management platform — FastAPI backend"
 authors = ["Crib Digital Services (U) Ltd"]
 packages = [{ include = "app" }]
-requires-python = ">=3.12"
 
 [tool.poetry.dependencies]
 python = "^3.12"
