@@ -156,15 +156,21 @@ services:
       LOGTO_APP_SECRET: "${LOGTO_APP_SECRET}"
       LOGTO_JWKS_URI_OVERRIDE: "${LOGTO_JWKS_URI_OVERRIDE}"
       BACKEND_URL: "http://crib-backend-staging:8000"
+    ports:
+      - "3010:3000"    # NPM proxies to host:3010 → or connect container to NPM network manually
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - crib-staging
-      - npm-network
       - geobox-network
 
+# ─────────────────────────────────────────────────────────────────────────────
+# npm-network is intentionally omitted — connect crib-frontend-staging to the
+# NPM network manually after confirming the network name:
+#   docker network ls | grep npm
+#   docker network connect <npm-network-name> crib-frontend-staging
 # ─────────────────────────────────────────────────────────────────────────────
 networks:
   crib-staging:
@@ -173,7 +179,3 @@ networks:
   geobox-network:
     external: true
     name: geobox-network
-
-  npm-network:
-    external: true
-    name: nginx-proxy-manager_nginx-proxy-manager_default
