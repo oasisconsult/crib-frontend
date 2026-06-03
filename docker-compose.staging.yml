@@ -47,10 +47,10 @@ services:
       - .env.staging
     environment:
       # ── Database — Crib gets its own DB on the shared Postgres ───────────
-      DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}"
+      DATABASE_URL: "postgresql+asyncpg://${DB_POSTGRES_USER}:${DB_POSTGRES_PASSWORD}@${DB_POSTGRES_HOST:-db}:${DB_POSTGRES_PORT:-5432}/crib_staging"
 
       # ── Redis — Crib staging uses DB 8 (GeoBox occupies 0-7) ─────────────
-      REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT:-6379}/${REDIS_DB:-8}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/8"
 
       # ── Logto — shared instance, Crib-specific app credentials ──────────
       LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
@@ -64,7 +64,7 @@ services:
       LOGTO_ADMIN_API_RESOURCE: "${LOGTO_ADMIN_API_RESOURCE}"
 
       # ── RBAC (shared rbac DB) ────────────────────────────────────────────
-      RBAC_DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/rbac"
+      RBAC_DATABASE_URL: "postgresql+asyncpg://${DB_POSTGRES_USER}:${DB_POSTGRES_PASSWORD}@${DB_POSTGRES_HOST:-db}:${DB_POSTGRES_PORT:-5432}/rbac"
       RBAC_SHADOW_MODE: "false"
 
       # ── MinIO / S3 ───────────────────────────────────────────────────────
@@ -107,10 +107,10 @@ services:
     env_file:
       - .env.staging
     environment:
-      DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}"
+      DATABASE_URL: "postgresql+asyncpg://${DB_POSTGRES_USER}:${DB_POSTGRES_PASSWORD}@${DB_POSTGRES_HOST:-db}:${DB_POSTGRES_PORT:-5432}/crib_staging"
       # Celery broker on DB 9
-      REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT:-6379}/9"
-      RBAC_DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/rbac"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST:-redis}:${REDIS_PORT:-6379}/9"
+      RBAC_DATABASE_URL: "postgresql+asyncpg://${DB_POSTGRES_USER}:${DB_POSTGRES_PASSWORD}@${DB_POSTGRES_HOST:-db}:${DB_POSTGRES_PORT:-5432}/rbac"
       LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
       LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
       LOGTO_M2M_APP_ID: "${LOGTO_M2M_APP_ID}"
