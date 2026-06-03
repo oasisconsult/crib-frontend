@@ -96,13 +96,17 @@ mailhog:
 create-db:
 	@DB_CONTAINER=$$(docker ps --format '{{.Names}}' | grep -E 'geobox.*[-_]db|[-_]db[-_]' | head -1); \
 	if [ -z "$$DB_CONTAINER" ]; then echo "ERROR: cannot find geobox db container"; exit 1; fi; \
-	echo "Using container: $$DB_CONTAINER"; \
 	PGUSER=$$(docker exec $$DB_CONTAINER env | grep '^POSTGRES_USER=' | cut -d= -f2); \
 	PGUSER=$${PGUSER:-postgres}; \
-	echo "Using postgres user: $$PGUSER"; \
-	docker exec $$DB_CONTAINER psql -U $$PGUSER -c \
-	  "SELECT 'CREATE DATABASE crib_staging' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'crib_staging')\gexec"
-	@echo "✓ crib_staging database ready"
+	echo "Using container: $$DB_CONTAINER, user: $$PGUSER"; \
+	EXISTS=$$(docker exec $$DB_CONTAINER psql -U $$PGUSER -tAc \
+	  "SELECT 1 FROM pg_database WHERE datname='crib_staging'"); \
+	if [ "$$EXISTS" = "1" ]; then \
+	  echo "✓ crib_staging already exists"; \
+	else \
+	  docker exec $$DB_CONTAINER psql -U $$PGUSER -c "CREATE DATABASE crib_staging"; \
+	  echo "✓ crib_staging created"; \
+	fi
 
 ## Build and start staging services in background
 staging-build: clone-deps
