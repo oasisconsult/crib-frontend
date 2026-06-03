@@ -97,7 +97,7 @@ create-db:
 	@DB_CONTAINER=$$(docker ps --format '{{.Names}}' | grep -E 'geobox.*[-_]db|[-_]db[-_]' | head -1); \
 	if [ -z "$$DB_CONTAINER" ]; then echo "ERROR: cannot find geobox db container"; exit 1; fi; \
 	echo "Using container: $$DB_CONTAINER"; \
-	docker exec $$DB_CONTAINER psql -U $${DB_POSTGRES_USER:-geobox_user} -c \
+	docker exec $$DB_CONTAINER psql -U postgres -c \
 	  "SELECT 'CREATE DATABASE crib_staging' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'crib_staging')\gexec"
 	@echo "✓ crib_staging database ready"
 
