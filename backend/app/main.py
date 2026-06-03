@@ -66,28 +66,20 @@ class RequestIdMiddleware:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     log.info("crib.startup", environment=settings.environment, debug=settings.is_debug)
 
-    # RBAC app registration — registers "crib" in the shared RBAC database so the
-    # AppContextMiddleware can resolve context.  We do NOT run migrations here because
-    # geobox owns and manages the RBAC schema; Crib is a consumer, not the owner.
-    # Running alembic from Crib would fail whenever geobox has applied newer migrations
-    # that Crib's copy of geobox-rbac does not yet include.
+    # RBAC app registration — seeds the "crib" row in rbac_apps so the
+    # AppContextMiddleware can resolve context on every request.
+    #
+    # We skip migrations entirely: geobox owns and manages the RBAC schema.
+    # Running alembic from Crib fails whenever geobox has applied revisions
+    # that Crib's copy of geobox-rbac does not include (e.g. m2m_tiers).
+    # Calling _run_seed directly is safe and idempotent (no-ops if already seeded).
     if settings.rbac_database_url:
         try:
-            from rbac.bootstrap import bootstrap_rbac
-            await bootstrap_rbac(
-                rbac_database_url=settings.rbac_database_url,
-                app_slug="crib",
-                skip_migrations=True,   # geobox manages schema; only seed app row
-            )
-        except TypeError:
-            # Older geobox-rbac without skip_migrations — seed app manually
-            try:
-                from rbac.bootstrap import seed_app
-                await seed_app(rbac_database_url=settings.rbac_database_url, app_slug="crib")
-            except Exception as rbac_err:
-                log.warning("rbac.seed.failed", error=str(rbac_err))
+            from rbac.bootstrap import _run_seed
+            await _run_seed(settings.rbac_database_url, "crib")
+            log.info("rbac.seed.complete")
         except Exception as rbac_err:
-            log.warning("rbac.bootstrap.failed", error=str(rbac_err))
+            log.warning("rbac.seed.failed", error=str(rbac_err))
 
     # Verify Redis is reachable
     try:
