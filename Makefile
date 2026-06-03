@@ -15,7 +15,9 @@
 
 .PHONY: dev-up dev-build dev-build-d stop logs seed-logto logs-backend \
         logs-frontend logs-mailhog shell-backend shell-db pull mailhog \
-        clone-deps
+        clone-deps \
+        staging-build staging-up staging-stop staging-logs \
+        staging-logs-backend staging-shell-backend staging-migrate create-db
 
 # Path to geobox-rbac — resolves from the apps folder layout:
 #   /srv/apps/geobox-rbac   (staging)
@@ -87,6 +89,45 @@ shell-db:
 ## Open MailHog web UI in the default browser (dev only)
 mailhog:
 	open http://localhost:8025 2>/dev/null || xdg-open http://localhost:8025 2>/dev/null || echo "Open http://localhost:8025 in your browser"
+
+## ── Staging ──────────────────────────────────────────────────────────────────
+
+## Create the crib_staging database on the shared Postgres (run once)
+create-db:
+	docker exec -it $$(docker ps -qf name=geobox.*db) \
+	  psql -U postgres -c "CREATE DATABASE crib_staging;" || \
+	  echo "Database may already exist — check manually if this errored."
+
+## Build and start staging services in background
+staging-build: clone-deps
+	docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+
+## Start staging services without rebuild
+staging-up:
+	docker compose -f docker-compose.staging.yml --env-file .env.staging up -d
+
+## Stop and remove staging containers
+staging-stop:
+	docker compose -f docker-compose.staging.yml --env-file .env.staging down
+
+## Follow all staging logs
+staging-logs:
+	docker compose -f docker-compose.staging.yml --env-file .env.staging logs -f
+
+## Follow staging backend logs only
+staging-logs-backend:
+	docker compose -f docker-compose.staging.yml --env-file .env.staging logs -f backend
+
+## Open a bash shell in the staging backend container
+staging-shell-backend:
+	docker compose -f docker-compose.staging.yml --env-file .env.staging exec backend bash
+
+## Run Alembic migrations on staging
+staging-migrate:
+	docker compose -f docker-compose.staging.yml --env-file .env.staging \
+	  exec backend alembic upgrade head
+
+## ─────────────────────────────────────────────────────────────────────────────
 
 ## Pull latest from origin, discarding any locally-copied files that block the merge.
 ## Use this instead of plain 'git pull' when working in WSL after Windows pushes.

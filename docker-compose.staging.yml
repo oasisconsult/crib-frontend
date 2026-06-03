@@ -1,0 +1,179 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Crib — Staging (Shared-Infrastructure Edition)
+#
+# Runs ONLY Crib-specific containers.  Postgres, Redis, Logto, and Nginx Proxy
+# Manager are all shared with GeoBox on the same VPS.
+#
+# Usage:
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging up -d
+#
+# Pre-flight checklist:
+#   1. Clone repos and populate vendor:
+#        cd /srv/apps && git clone https://github.com/oasisconsult/geobox-rbac.git
+#        git clone https://github.com/oasisconsult/crib-frontend.git crib
+#        cd crib && make clone-deps
+#   2. Create the Crib database on the shared Postgres instance:
+#        docker compose -f /srv/geobox-staging/docker-compose.staging.yml exec db \
+#          psql -U postgres -c "CREATE DATABASE crib_staging;"
+#   3. Copy and fill the env file:
+#        cp .env.staging.example .env.staging
+#        nano .env.staging
+#   4. Build and start:
+#        docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+#   5. In Logto Admin (shared Logto instance):
+#        a. Create Application → Traditional Web → note App ID + Secret
+#        b. Create API Resource → audience = https://api-staging.crib.yourdomain.com
+#        c. Create M2M Application for Crib backend → note M2M App ID + Secret
+#        d. Add org roles: owner, manager, landlord, tenant, maintenance, caretaker
+#   6. In Nginx Proxy Manager:
+#        Add proxy host: crib-staging.yourdomain.com → crib-frontend-staging:3000
+#        Add proxy host: crib-api-staging.yourdomain.com → crib-backend-staging:8000
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ─── FastAPI Backend ────────────────────────────────────────────────────────
+  backend:
+    container_name: crib-backend-staging
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    command:
+      [
+        "sh", "-c",
+        "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      ]
+    env_file:
+      - .env.staging
+    environment:
+      # ── Database — Crib gets its own DB on the shared Postgres ───────────
+      DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}"
+
+      # ── Redis — Crib staging uses DB 8 (GeoBox occupies 0-7) ─────────────
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT:-6379}/${REDIS_DB:-8}"
+
+      # ── Logto — shared instance, Crib-specific app credentials ──────────
+      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+      LOGTO_JWKS_URI_OVERRIDE: "${LOGTO_JWKS_URI_OVERRIDE}"
+      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
+      LOGTO_APP_ID: "${LOGTO_APP_ID}"
+      LOGTO_APP_SECRET: "${LOGTO_APP_SECRET}"
+      LOGTO_M2M_APP_ID: "${LOGTO_M2M_APP_ID}"
+      LOGTO_M2M_APP_SECRET: "${LOGTO_M2M_APP_SECRET}"
+      LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE}"
+      LOGTO_ADMIN_API_RESOURCE: "${LOGTO_ADMIN_API_RESOURCE}"
+
+      # ── RBAC (shared rbac DB) ────────────────────────────────────────────
+      RBAC_DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/rbac"
+      RBAC_SHADOW_MODE: "false"
+
+      # ── MinIO / S3 ───────────────────────────────────────────────────────
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+      MINIO_BUCKET: "${MINIO_BUCKET:-crib-staging}"
+      MINIO_SECURE: "${MINIO_SECURE:-false}"
+
+      # ── App ──────────────────────────────────────────────────────────────
+      SECRET_KEY: "${SECRET_KEY}"
+      FRONTEND_URL: "${FRONTEND_URL}"
+      CORS_ORIGINS: "${CORS_ORIGINS}"
+      ENVIRONMENT: staging
+    restart: unless-stopped
+    networks:
+      - crib-staging
+      - geobox-network
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost',8000)); s.close()"]
+      interval: 15s
+      timeout: 8s
+      retries: 5
+      start_period: 30s
+
+  # ─── Celery Worker ──────────────────────────────────────────────────────────
+  worker:
+    container_name: crib-worker-staging
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    command:
+      [
+        "celery", "-A", "app.worker.celery_app", "worker",
+        "--loglevel=info",
+        "-Q", "default,notifications,payments",
+        "--pool=solo",
+      ]
+    env_file:
+      - .env.staging
+    environment:
+      DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/${DB_NAME}"
+      # Celery broker on DB 9
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT:-6379}/9"
+      RBAC_DATABASE_URL: "postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT:-5432}/rbac"
+      LOGTO_ENDPOINT: "${LOGTO_ENDPOINT}"
+      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
+      LOGTO_M2M_APP_ID: "${LOGTO_M2M_APP_ID}"
+      LOGTO_M2M_APP_SECRET: "${LOGTO_M2M_APP_SECRET}"
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+      SECRET_KEY: "${SECRET_KEY}"
+      ENVIRONMENT: staging
+    restart: unless-stopped
+    networks:
+      - crib-staging
+      - geobox-network
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # ─── Next.js Frontend ───────────────────────────────────────────────────────
+  frontend:
+    container_name: crib-frontend-staging
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+      args:
+        NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_PUBLIC_ENDPOINT}"
+        NEXT_PUBLIC_LOGTO_APP_ID: "${LOGTO_APP_ID}"
+        NEXT_PUBLIC_LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE}"
+        NEXT_PUBLIC_APP_URL: "${FRONTEND_URL}"
+        NEXT_PUBLIC_MOCK_API: "false"
+        NEXT_PUBLIC_MAILHOG_URL: ""
+    env_file:
+      - .env.staging
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_LOGTO_ENDPOINT: "${LOGTO_PUBLIC_ENDPOINT}"
+      NEXT_PUBLIC_LOGTO_APP_ID: "${LOGTO_APP_ID}"
+      NEXT_PUBLIC_LOGTO_API_RESOURCE: "${LOGTO_API_RESOURCE}"
+      NEXT_PUBLIC_APP_URL: "${FRONTEND_URL}"
+      # Server-side: use internal container name for token exchange
+      LOGTO_ENDPOINT: "${LOGTO_INTERNAL_ENDPOINT:-http://logto:3001}"
+      LOGTO_ADMIN_ENDPOINT: "${LOGTO_ADMIN_ENDPOINT}"
+      LOGTO_APP_SECRET: "${LOGTO_APP_SECRET}"
+      LOGTO_JWKS_URI_OVERRIDE: "${LOGTO_JWKS_URI_OVERRIDE}"
+      BACKEND_URL: "http://crib-backend-staging:8000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - crib-staging
+      - npm-network
+      - geobox-network
+
+# ─────────────────────────────────────────────────────────────────────────────
+networks:
+  crib-staging:
+    driver: bridge
+
+  geobox-network:
+    external: true
+    name: geobox-network
+
+  npm-network:
+    external: true
+    name: nginx-proxy-manager_nginx-proxy-manager_default
