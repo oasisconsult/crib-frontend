@@ -8,7 +8,8 @@ packages = [{ include = "app" }]
 [tool.poetry.dependencies]
 python = "^3.12"
 
-# Shared RBAC framework
+# Shared RBAC framework — git dep redirected to local vendor/ copy during Docker
+# build via git url.insteadOf (see Dockerfile.dev).  No GitHub credentials needed.
 geobox-rbac = {git = "https://github.com/oasisconsult/geobox-rbac.git"}
 
 # Web framework

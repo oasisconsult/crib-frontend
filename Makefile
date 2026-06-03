@@ -1,28 +1,58 @@
 # ─── Crib — Local Development Helpers ──────────────────────────────────────────
-# Prerequisites: 
+# Prerequisites:
 #   - Docker and Docker Compose installed
 #   - .env file in project root (copy from .env.example)
 #   - docker-compose.local.yml in project root
 #
 # Usage:
+#   make clone-deps      # Clone/update geobox-rbac into backend/vendor/ (run first)
 #   make dev-build       # Build and start all services
+#   make dev-build-d     # Build and start all services in background
 #   make seed-logto      # One-time Logto database seeding
 #   make stop            # Stop all services
 #   make logs            # Follow all service logs
 #   make logs-backend    # Follow backend logs only
 
-.PHONY: dev-up dev-build dev-build-d stop logs seed-logto logs-backend logs-frontend logs-mailhog shell-backend shell-db pull mailhog
+.PHONY: dev-up dev-build dev-build-d stop logs seed-logto logs-backend \
+        logs-frontend logs-mailhog shell-backend shell-db pull mailhog \
+        clone-deps
+
+# Path to geobox-rbac — resolves from the apps folder layout:
+#   /srv/apps/geobox-rbac   (staging)
+#   /home/belac/projects/geobox-rbac   (local WSL dev)
+GEOBOX_RBAC_UPSTREAM ?= $(shell \
+  if [ -d /srv/apps/geobox-rbac ]; then echo /srv/apps/geobox-rbac; \
+  elif [ -d /home/belac/projects/geobox-rbac ]; then echo /home/belac/projects/geobox-rbac; \
+  else echo ""; fi)
+
+VENDOR_DIR := backend/vendor/geobox-rbac
+
+## Clone / sync geobox-rbac into backend/vendor/ (required before first build)
+clone-deps:
+	@if [ -z "$(GEOBOX_RBAC_UPSTREAM)" ]; then \
+	  echo "geobox-rbac not found locally. Cloning from GitHub..."; \
+	  mkdir -p backend/vendor; \
+	  git clone https://github.com/oasisconsult/geobox-rbac.git $(VENDOR_DIR); \
+	elif [ ! -d "$(VENDOR_DIR)" ]; then \
+	  echo "Copying geobox-rbac from $(GEOBOX_RBAC_UPSTREAM)..."; \
+	  mkdir -p backend/vendor; \
+	  cp -r $(GEOBOX_RBAC_UPSTREAM) $(VENDOR_DIR); \
+	else \
+	  echo "Syncing geobox-rbac from $(GEOBOX_RBAC_UPSTREAM)..."; \
+	  rsync -a --delete $(GEOBOX_RBAC_UPSTREAM)/ $(VENDOR_DIR)/; \
+	fi
+	@echo "✓ geobox-rbac ready at $(VENDOR_DIR)"
 
 ## Start all services in background (no rebuild)
 dev-up:
 	docker compose -f docker-compose.local.yml up -d
 
 ## Build and start all services (foreground, good for first-time setup)
-dev-build:
+dev-build: clone-deps
 	docker compose -f docker-compose.local.yml up --build
 
 ## Build and start all services in background
-dev-build-d:
+dev-build-d: clone-deps
 	docker compose -f docker-compose.local.yml up -d --build
 
 ## Stop all services and remove containers
