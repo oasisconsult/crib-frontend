@@ -88,9 +88,9 @@ services:
       test: ["CMD", "python", "-c",
              "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost',8000)); s.close()"]
       interval: 15s
-      timeout: 8s
-      retries: 5
-      start_period: 30s
+      timeout: 10s
+      retries: 8
+      start_period: 90s
 
   # ─── Celery Worker ──────────────────────────────────────────────────────────
   worker:
