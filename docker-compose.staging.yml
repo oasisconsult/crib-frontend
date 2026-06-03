@@ -128,7 +128,7 @@ services:
       - geobox-network
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
 
   # ─── Next.js Frontend ───────────────────────────────────────────────────────
   frontend:
@@ -162,7 +162,7 @@ services:
       - "3010:3000"    # NPM proxies to host:3010 → or connect container to NPM network manually
     depends_on:
       backend:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     networks:
       - crib-staging

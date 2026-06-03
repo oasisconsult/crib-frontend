@@ -66,14 +66,28 @@ class RequestIdMiddleware:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     log.info("crib.startup", environment=settings.environment, debug=settings.is_debug)
 
-    # RBAC bootstrap — creates rbac database, runs migration, seeds data on first start.
-    # Phase 4: runs on all environments when RBAC_DATABASE_URL is set (not just staging).
+    # RBAC app registration — registers "crib" in the shared RBAC database so the
+    # AppContextMiddleware can resolve context.  We do NOT run migrations here because
+    # geobox owns and manages the RBAC schema; Crib is a consumer, not the owner.
+    # Running alembic from Crib would fail whenever geobox has applied newer migrations
+    # that Crib's copy of geobox-rbac does not yet include.
     if settings.rbac_database_url:
         try:
             from rbac.bootstrap import bootstrap_rbac
-            await bootstrap_rbac(rbac_database_url=settings.rbac_database_url, app_slug="crib")
+            await bootstrap_rbac(
+                rbac_database_url=settings.rbac_database_url,
+                app_slug="crib",
+                skip_migrations=True,   # geobox manages schema; only seed app row
+            )
+        except TypeError:
+            # Older geobox-rbac without skip_migrations — seed app manually
+            try:
+                from rbac.bootstrap import seed_app
+                await seed_app(rbac_database_url=settings.rbac_database_url, app_slug="crib")
+            except Exception as rbac_err:
+                log.warning("rbac.seed.failed", error=str(rbac_err))
         except Exception as rbac_err:
-            log.error("rbac.bootstrap.failed", error=str(rbac_err))
+            log.warning("rbac.bootstrap.failed", error=str(rbac_err))
 
     # Verify Redis is reachable
     try:
