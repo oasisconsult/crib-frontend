@@ -15,6 +15,11 @@ Role design:
   for display/notification purposes, re-synced from the JWT on every request.
   The authoritative list of valid roles lives in the `roles` DB table (see rbac.py).
   Use `deps.CurrentUser.roles` (list[str]) for all authorisation decisions.
+
+  Phase 4 (DB-authoritative): `deps.get_current_user` prefers roles resolved by
+  `AppContextMiddleware` via `request.state.rbac.roles` (geobox-rbac RBAC DB) and
+  falls back to JWT claims when the middleware is absent (e.g. RBAC_DATABASE_URL
+  not configured).  No additional column is needed on this model.
 """
 
 import uuid

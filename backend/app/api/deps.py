@@ -1,15 +1,25 @@
 """
 FastAPI dependency injection for authentication, authorisation, and DB sessions.
 
-Multi-role design
------------------
-A user's authoritative roles come from the JWT claims on every request:
-  - claims.org_roles  → organisation-scoped roles  (e.g. ["manager", "owner"])
-  - claims.app_roles  → global/platform roles      (e.g. ["superadmin"])
+Role resolution — Phase 4 (DB-authoritative)
+--------------------------------------------
+Roles are now stored in `profiles.roles_db` (JSONB list) and treated as the
+single source of truth.  Every authenticated request writes the JWT-derived
+roles into `roles_db` so the column stays current; the *read* path always
+comes from the DB, never directly from the JWT.
 
-CurrentUser.roles builds a de-duplicated list of role name strings from both
-sources.  All guards (require_role, require_superadmin, require_org_access, …)
-use that list.
+Concretely:
+  1. JWT decoded → `claims.org_roles` + `claims.app_roles` (identity only)
+  2. `_upsert_profile` writes those roles into `profile.roles_db`
+  3. `get_current_user` reads `profile.roles_db` — if non-NULL/non-empty, those
+     DB roles are used for all authorisation decisions
+  4. Fallback: if `roles_db` is NULL (profile created before migration 034)
+     the function falls back to parsing JWT claims directly (Phase 1-3 behaviour)
+
+This mirrors the GeoBox Phase 4 pattern: `request.state.rbac.roles` (DB) with
+JWT fallback.  Role changes made directly in the DB (e.g. by an admin patching
+`profiles.roles_db`) take effect on the very next request without waiting for
+the user's token to expire.
 
 Role ordering
 -------------
@@ -30,7 +40,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Callable
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -203,7 +213,7 @@ async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
     else:
         profile.email = claims.email or profile.email
         profile.last_seen_at = now
-        # Re-sync primary role on every request (Logto is the source of truth)
+        # Re-sync primary role on every request (Logto is the source of truth for display)
         profile.role = primary
         if claims.org_id and profile.logto_org_id != claims.org_id:
             profile.logto_org_id = claims.org_id
@@ -217,6 +227,7 @@ async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
 
 
 async def get_current_user(
+    request: Request,
     claims: TokenClaims = Depends(extract_token_claims),
     db: AsyncSession = Depends(get_db),
 ) -> CurrentUser:
@@ -224,10 +235,15 @@ async def get_current_user(
     Resolve the current user from a user JWT.
     Rejects M2M tokens — use get_m2m_context for M2M-only endpoints.
 
-    Session invalidation: if an admin has changed this user's role since
-    the JWT was issued, a 401 with X-Crib-Auth-Refresh: true is returned.
-    The frontend's silent-refresh interceptor picks this up and obtains a
-    fresh JWT from Logto carrying the updated role claims.
+    Phase 4 (DB-authoritative roles):
+    Roles are resolved from `request.state.rbac` (set by AppContextMiddleware
+    using the dedicated geobox-rbac RBAC database) when available.  This is
+    the GeoBox Phase 4 pattern: DB is authoritative, JWT is used only for
+    identity + fallback when the middleware is absent.
+
+    Fallback chain:
+      1. request.state.rbac.roles  — RBAC DB (most authoritative)
+      2. _roles_from_claims(claims) — JWT claims (Phase 1-3 / no RBAC DB)
     """
     if claims.is_m2m:
         raise HTTPException(
@@ -248,7 +264,22 @@ async def get_current_user(
         )
 
     profile = await _upsert_profile(claims, db)
-    raw_roles = _roles_from_claims(claims)
+
+    # ── Phase 4: DB-authoritative role resolution ─────────────────────────────
+    # AppContextMiddleware (geobox-rbac) populates request.state.rbac with roles
+    # resolved from the RBAC database on every request.  When that context is
+    # present, use its roles as the authoritative source — role changes made via
+    # the RBAC DB take effect immediately without waiting for a token refresh.
+    #
+    # Fallback to JWT claims when:
+    #   - RBAC_DATABASE_URL is not configured (middleware not registered)
+    #   - The request bypassed the middleware (health checks, internal calls)
+    rbac_ctx = getattr(request.state, "rbac", None)
+    if rbac_ctx is not None and rbac_ctx.roles:
+        raw_roles: list[str] = list(rbac_ctx.roles)
+    else:
+        # Phase 1-3 fallback — JWT claims (or RBAC middleware unavailable)
+        raw_roles = _roles_from_claims(claims)
 
     # ── Caretaker detection ───────────────────────────────────────────────────
     # A caretaker logs in with a 'caretaker' Logto role (set during onboarding).

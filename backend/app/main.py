@@ -66,8 +66,9 @@ class RequestIdMiddleware:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     log.info("crib.startup", environment=settings.environment, debug=settings.is_debug)
 
-    # RBAC bootstrap — creates rbac database, runs migration, seeds data on first start
-    if settings.rbac_database_url and settings.environment == "staging":
+    # RBAC bootstrap — creates rbac database, runs migration, seeds data on first start.
+    # Phase 4: runs on all environments when RBAC_DATABASE_URL is set (not just staging).
+    if settings.rbac_database_url:
         try:
             from rbac.bootstrap import bootstrap_rbac
             await bootstrap_rbac(rbac_database_url=settings.rbac_database_url, app_slug="crib")
@@ -116,7 +117,9 @@ def create_app() -> FastAPI:
 
     # ── RBAC context middleware ───────────────────────────────────────────────
     # Uses the dedicated shared RBAC database (same Postgres server as Crib).
-    # Shadow mode during Phase 1-2: context resolved but not enforced.
+    # Phase 1-2: shadow_mode=True — context resolved but not enforced.
+    # Phase 3:   shadow_mode=True — deps.py reads request.state.rbac (dual-source).
+    # Phase 4:   shadow_mode=False — DB roles authoritative; set RBAC_SHADOW_MODE=false.
     if settings.rbac_database_url:
         from rbac.middleware.context_middleware import AppContextMiddleware
         from rbac.dependencies.ownership import configure_db_dependency
@@ -129,9 +132,10 @@ def create_app() -> FastAPI:
             rbac_database_url=settings.rbac_database_url,
             redis_factory=_get_redis,
             internal_secret=settings.secret_key,
-            shadow_mode=settings.environment != "production",
+            shadow_mode=settings.rbac_shadow_mode,
         )
-        log.info("rbac.middleware.enabled", shadow_mode=settings.environment != "production")
+        log.info("rbac.middleware.enabled", shadow_mode=settings.rbac_shadow_mode,
+                 phase="4" if not settings.rbac_shadow_mode else "1-3")
     else:
         log.warning("rbac.middleware.disabled", reason="RBAC_DATABASE_URL not set")
 

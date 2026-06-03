@@ -46,6 +46,11 @@ class Settings(BaseSettings):
     # Format: postgresql+asyncpg://user:pass@host/rbac
     # Same rbac DB used by GeoBox — one source of truth for roles/plans.
     rbac_database_url: str | None = None
+    # Phase 4: set RBAC_SHADOW_MODE=false to make DB roles authoritative.
+    # Shadow mode (true) = RBAC context resolved and logged but not enforced.
+    # Defaults to True on dev/staging so a misconfigured RBAC DB can't lock
+    # users out; set to False once roles are fully seeded in the RBAC DB.
+    rbac_shadow_mode: bool = True
 
     # ── Redis ─────────────────────────────────────────────────────────────────
     redis_url: str = "redis://localhost:6379/0"
