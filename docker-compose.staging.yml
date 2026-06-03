@@ -37,7 +37,8 @@ services:
     container_name: crib-backend-staging
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      target: production
     command:
       [
         "sh", "-c",
@@ -96,7 +97,8 @@ services:
     container_name: crib-worker-staging
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      target: production
     command:
       [
         "celery", "-A", "app.worker.celery_app", "worker",

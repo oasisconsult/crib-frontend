@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_CREATE=false \
     POETRY_CACHE_DIR=/tmp/poetry-cache
 
-# System deps: WeasyPrint rendering libs + git (required for geobox-rbac git dep)
+# System deps: WeasyPrint rendering libs + git (needed for git url redirect below)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     libpango-1.0-0 \
@@ -28,6 +28,14 @@ FROM base AS builder
 
 WORKDIR /app
 
+# geobox-rbac local copy — redirected via git url.insteadOf so poetry
+# never tries to authenticate against the private GitHub repo.
+# vendor/ is populated by `make clone-deps` before docker compose build.
+COPY vendor/geobox-rbac ./vendor/geobox-rbac
+RUN git config --global \
+    url."file:///app/vendor/geobox-rbac".insteadOf \
+    "https://github.com/oasisconsult/geobox-rbac.git"
+
 # Copy manifests first — layer is cached unless deps change
 COPY pyproject.toml poetry.lock* ./
 
@@ -43,7 +51,7 @@ WORKDIR /app
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application source
+# Copy application source (includes alembic.ini, alembic/, app/)
 COPY . .
 
 EXPOSE 8000
