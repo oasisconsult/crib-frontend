@@ -92,11 +92,12 @@ mailhog:
 
 ## ── Staging ──────────────────────────────────────────────────────────────────
 
-## Create the crib_staging database on the shared Postgres (run once)
+## Create the crib_staging database on the shared Postgres if it doesn't exist
 create-db:
-	docker exec -it $$(docker ps -qf name=geobox.*db) \
-	  psql -U postgres -c "CREATE DATABASE crib_staging;" || \
-	  echo "Database may already exist — check manually if this errored."
+	docker exec $$(docker ps -qf name=geobox.*db) \
+	  psql -U postgres -c \
+	  "SELECT 'CREATE DATABASE crib_staging' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'crib_staging')\gexec"
+	@echo "✓ crib_staging database ready"
 
 ## Build and start staging services in background
 staging-build: clone-deps
