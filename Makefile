@@ -98,13 +98,14 @@ create-db:
 	if [ -z "$$DB_CONTAINER" ]; then echo "ERROR: cannot find geobox db container"; exit 1; fi; \
 	PGUSER=$$(docker exec $$DB_CONTAINER env | grep '^POSTGRES_USER=' | cut -d= -f2); \
 	PGUSER=$${PGUSER:-postgres}; \
+	PGPASSWORD=$$(docker exec $$DB_CONTAINER env | grep '^POSTGRES_PASSWORD=' | cut -d= -f2); \
 	echo "Using container: $$DB_CONTAINER, user: $$PGUSER"; \
-	EXISTS=$$(docker exec $$DB_CONTAINER psql -U $$PGUSER -tAc \
+	EXISTS=$$(docker exec -e PGPASSWORD=$$PGPASSWORD $$DB_CONTAINER psql -U $$PGUSER -tAc \
 	  "SELECT 1 FROM pg_database WHERE datname='crib_staging'"); \
 	if [ "$$EXISTS" = "1" ]; then \
 	  echo "✓ crib_staging already exists"; \
 	else \
-	  docker exec $$DB_CONTAINER psql -U $$PGUSER -c "CREATE DATABASE crib_staging"; \
+	  docker exec -e PGPASSWORD=$$PGPASSWORD $$DB_CONTAINER psql -U $$PGUSER -c "CREATE DATABASE crib_staging"; \
 	  echo "✓ crib_staging created"; \
 	fi
 
