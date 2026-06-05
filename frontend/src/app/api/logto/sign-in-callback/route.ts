@@ -140,7 +140,7 @@ async function handleCallback(request: NextRequest) {
     try {
       const { BACKEND_URL } = await import("@/lib/config");
       console.log("[callback] fetching /v1/me from", BACKEND_URL);
-      const meRes = await fetch(`${BACKEND_URL}/v1/me`, {
+      const meRes = await fetch(`${BACKEND_URL}/api/v1/me`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: AbortSignal.timeout(5000),
       });
