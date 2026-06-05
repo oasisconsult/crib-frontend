@@ -48,6 +48,14 @@ export function useInvoices(limit = 20, offset = 0) {
   });
 }
 
+export function useInvoiceById(id: string) {
+  return useQuery({
+    queryKey: [...KEYS.invoices, id],
+    queryFn: () => subscriptionsApi.getInvoice(id),
+    enabled: !!id,
+  });
+}
+
 export function useBillingSettings() {
   return useQuery({ queryKey: KEYS.settings, queryFn: subscriptionsApi.getBillingSettings, staleTime: 10 * 60_000 });
 }
