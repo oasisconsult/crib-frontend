@@ -176,11 +176,14 @@ class CurrentUser:
 # ── Profile upsert ────────────────────────────────────────────────────────────
 
 
-async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
+async def _upsert_profile(
+    claims: TokenClaims,
+    db: AsyncSession,
+    rbac_roles: list[str] | None = None,
+) -> Profile:
     """
     Get or create a Profile for the authenticated user.
-    Re-syncs the primary role from JWT on every call so Profile.role always
-    reflects the current highest privilege the user holds in Logto.
+    Uses RBAC DB roles (Phase 4) when available, falls back to JWT claims.
     """
     from datetime import datetime, timezone
 
@@ -195,8 +198,9 @@ async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
         org = org_result.scalar_one_or_none()
 
     now = datetime.now(timezone.utc)
-    raw_roles = _roles_from_claims(claims)
-    primary = await _primary_role(raw_roles, db)
+    # Phase 4: prefer RBAC DB roles over JWT-derived roles for profile.role display
+    effective_roles = rbac_roles if rbac_roles else _roles_from_claims(claims)
+    primary = await _primary_role(effective_roles, db)
 
     if profile is None:
         profile = Profile(
@@ -213,7 +217,6 @@ async def _upsert_profile(claims: TokenClaims, db: AsyncSession) -> Profile:
     else:
         profile.email = claims.email or profile.email
         profile.last_seen_at = now
-        # Re-sync primary role on every request (Logto is the source of truth for display)
         profile.role = primary
         if claims.org_id and profile.logto_org_id != claims.org_id:
             profile.logto_org_id = claims.org_id
@@ -263,20 +266,15 @@ async def get_current_user(
             headers={"X-Crib-Auth-Refresh": "true"},
         )
 
-    profile = await _upsert_profile(claims, db)
-
     # ── Phase 4: DB-authoritative role resolution ─────────────────────────────
-    # AppContextMiddleware (geobox-rbac) populates request.state.rbac with roles
-    # resolved from the RBAC database on every request.  When that context is
-    # present, use its roles as the authoritative source — role changes made via
-    # the RBAC DB take effect immediately without waiting for a token refresh.
-    #
-    # Fallback to JWT claims when:
-    #   - RBAC_DATABASE_URL is not configured (middleware not registered)
-    #   - The request bypassed the middleware (health checks, internal calls)
+    # Read RBAC context before upsert so profile.role is set correctly in the DB.
     rbac_ctx = getattr(request.state, "rbac", None)
-    if rbac_ctx is not None and rbac_ctx.roles:
-        raw_roles: list[str] = list(rbac_ctx.roles)
+    rbac_roles: list[str] | None = list(rbac_ctx.roles) if (rbac_ctx and rbac_ctx.roles) else None
+
+    profile = await _upsert_profile(claims, db, rbac_roles=rbac_roles)
+
+    if rbac_roles:
+        raw_roles: list[str] = rbac_roles
     else:
         # Phase 1-3 fallback — JWT claims (or RBAC middleware unavailable)
         raw_roles = _roles_from_claims(claims)

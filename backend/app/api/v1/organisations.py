@@ -146,14 +146,14 @@ async def provision_organisation(
     )
 
 
-@router.get("/me", response_model=OrganisationOut)
+@router.get("/me", response_model=OrganisationOut | None)
 async def get_my_organisation(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> OrganisationOut:
-    """Return the caller's organisation."""
+) -> OrganisationOut | None:
+    """Return the caller's organisation, or null for superadmin without an org."""
     if not current_user.profile.organisation_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No organisation found")
+        return None
     result = await db.execute(
         select(Organisation).where(Organisation.id == current_user.profile.organisation_id)
     )
