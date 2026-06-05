@@ -66,9 +66,8 @@ async def list_landlord_invites(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[LandlordInviteOut]:
-    from fastapi import HTTPException
     if not current_user.profile.organisation_id:
-        raise HTTPException(status_code=400, detail="You must belong to an organisation")
+        return []
     return await list_invites(db=db, organisation_id=current_user.profile.organisation_id)
 
 
