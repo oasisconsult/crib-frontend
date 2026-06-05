@@ -176,7 +176,30 @@ async def update(
 # ── Provider factories (used by integrations) ─────────────────────────────────
 
 async def get_storage_config(db: AsyncSession) -> dict[str, Any]:
-    """Return storage provider config dict for the storage adapter."""
+    """
+    Return storage provider config dict for the storage adapter.
+
+    Env vars take precedence over DB settings.  When MINIO_ACCESS_KEY is set,
+    the provider is automatically treated as 'minio' — no DB change needed.
+    """
+    from app.core.config import get_settings
+    s = get_settings()
+
+    # If MinIO credentials are in env, use them directly (typical in staging/prod).
+    if s.minio_access_key and s.minio_access_key not in ("minioadmin", ""):
+        endpoint = s.minio_endpoint  # e.g. minio:9000 or host:9000
+        scheme = "https" if s.minio_secure else "http"
+        return {
+            "provider": "minio",
+            "bucket": s.minio_bucket,
+            "region": "us-east-1",
+            "endpoint_url": f"{scheme}://{endpoint}",
+            "public_base_url": None,
+            "access_key_id": s.minio_access_key,
+            "secret_access_key": s.minio_secret_key,
+        }
+
+    # Fallback to DB-stored settings
     provider = await get("storage.provider", db, "local")
     return {
         "provider": provider,
