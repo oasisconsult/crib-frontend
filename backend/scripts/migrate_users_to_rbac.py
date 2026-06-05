@@ -44,8 +44,8 @@ logger = logging.getLogger("crib.migrate_users_to_rbac")
 # ── Configuration ──────────────────────────────────────────────────────────────
 
 RBAC_DATABASE_URL     = os.environ["RBAC_DATABASE_URL"]
-LOGTO_CLIENT_ID       = os.environ["LOGTO_ADMIN_CLIENT_ID"]
-LOGTO_CLIENT_SECRET   = os.environ["LOGTO_ADMIN_CLIENT_SECRET"]
+LOGTO_CLIENT_ID       = os.environ.get("LOGTO_ADMIN_CLIENT_ID") or os.environ["LOGTO_M2M_APP_ID"]
+LOGTO_CLIENT_SECRET   = os.environ.get("LOGTO_ADMIN_CLIENT_SECRET") or os.environ["LOGTO_M2M_APP_SECRET"]
 
 LOGTO_ENDPOINT        = os.environ.get("LOGTO_ENDPOINT", "http://logto:3001").rstrip("/")
 LOGTO_API_RESOURCE    = os.environ.get("LOGTO_ADMIN_API_RESOURCE", "https://default.logto.app/api")
@@ -56,12 +56,12 @@ LOGTO_API_URL         = f"{LOGTO_ENDPOINT}/api"
 APP_SLUG              = "crib"
 DRY_RUN               = os.environ.get("DRY_RUN", "false").lower() == "true"
 
-# Map Logto role names → RBAC role names (if they differ)
-ROLE_NAME_MAP: dict[str, str] = {
-    # Crib Logto roles match RBAC names exactly — no mapping needed
-    # Add overrides here if Logto uses different names, e.g.:
-    # "crib_owner": "owner",
-}
+# Map Logto role names → RBAC role names (if they differ).
+# GeoBox and Crib share the same Logto instance. Do NOT map GeoBox roles
+# (superuser, resident, admin, developer) — only Crib-specific roles
+# (superadmin, owner, manager, landlord, caretaker, maintenance, tenant)
+# should be seeded. Users with only GeoBox roles are skipped entirely.
+ROLE_NAME_MAP: dict[str, str] = {}
 
 
 # ── Logto Management API helpers ───────────────────────────────────────────────
@@ -186,7 +186,16 @@ async def run() -> None:
             app_id = await get_app_id(session)
             logger.info("App ID: %s", app_id)
 
-            stats = {"processed": 0, "assigned": 0, "no_roles": 0, "skipped": 0}
+            # Pre-load all Crib role names from the RBAC DB so we can filter
+            # out GeoBox-only users without touching rbac_platform_users.
+            crib_roles_rows = await session.execute(
+                text("SELECT name, id FROM rbac_roles WHERE app_id = :app_id"),
+                {"app_id": app_id},
+            )
+            crib_role_map: dict[str, str] = {row.name: str(row.id) for row in crib_roles_rows}
+            logger.info("Crib roles in RBAC DB: %s", list(crib_role_map.keys()))
+
+            stats = {"processed": 0, "assigned": 0, "no_crib_roles": 0, "skipped": 0}
 
             for user in users:
                 logto_sub  = user["id"]
@@ -196,38 +205,36 @@ async def run() -> None:
                 logto_roles = await get_user_roles(token, logto_sub, http)
                 stats["processed"] += 1
 
-                if not logto_roles:
-                    logger.info("  ⏭  %s (%s) — no roles", short_id, email)
-                    stats["no_roles"] += 1
+                # Resolve only the roles that exist in the Crib RBAC app.
+                # Users with only GeoBox roles won't match and are skipped entirely —
+                # no rbac_platform_users row is created for them.
+                crib_matched: list[tuple[str, str]] = []  # (role_name, role_id)
+                for role_name in logto_roles:
+                    mapped = ROLE_NAME_MAP.get(role_name, role_name).lower()
+                    role_id = crib_role_map.get(mapped)
+                    if role_id:
+                        crib_matched.append((mapped, role_id))
+
+                if not crib_matched:
+                    logger.info("  ⏭  %s (%s) — no Crib roles (logto roles: %s)",
+                                short_id, email, logto_roles or "none")
+                    stats["no_crib_roles"] += 1
                     continue
 
                 if DRY_RUN:
-                    logger.info("  [DRY] %s (%s) → %s", short_id, email, logto_roles)
+                    logger.info("  [DRY] %s (%s) → %s",
+                                short_id, email, [r for r, _ in crib_matched])
                     continue
 
                 user_id = await upsert_platform_user(session, logto_sub, email)
 
-                for role_name in logto_roles:
-                    # Apply name mapping
-                    mapped = ROLE_NAME_MAP.get(role_name, role_name).lower()
-
-                    role_row = await session.execute(
-                        text("SELECT id FROM rbac_roles WHERE app_id = :app_id AND name = :name"),
-                        {"app_id": app_id, "name": mapped},
-                    )
-                    role_id = role_row.scalar()
-
-                    if not role_id:
-                        logger.warning("  Role '%s' not found in rbac_roles for app '%s' — skipping", role_name, APP_SLUG)
-                        stats["skipped"] += 1
-                        continue
-
-                    inserted = await assign_role(session, user_id, str(role_id), app_id)
+                for role_name, role_id in crib_matched:
+                    inserted = await assign_role(session, user_id, role_id, app_id)
                     if inserted:
-                        logger.info("  ✅ %s (%s) → %s", short_id, email, mapped)
+                        logger.info("  ✅ %s (%s) → %s", short_id, email, role_name)
                         stats["assigned"] += 1
                     else:
-                        logger.info("  ✓  %s (%s) → %s (already exists)", short_id, email, mapped)
+                        logger.info("  ✓  %s (%s) → %s (already exists)", short_id, email, role_name)
 
             if not DRY_RUN:
                 await session.commit()
@@ -237,10 +244,10 @@ async def run() -> None:
     logger.info("")
     logger.info("=" * 60)
     logger.info("Migration complete")
-    logger.info("  Users processed : %d", stats["processed"])
-    logger.info("  Roles assigned  : %d", stats["assigned"])
-    logger.info("  No roles        : %d", stats["no_roles"])
-    logger.info("  Skipped         : %d", stats["skipped"])
+    logger.info("  Users processed   : %d", stats["processed"])
+    logger.info("  Roles assigned    : %d", stats["assigned"])
+    logger.info("  Non-Crib users    : %d", stats["no_crib_roles"])
+    logger.info("  Skipped (no role) : %d", stats["skipped"])
     logger.info("=" * 60)
 
 
