@@ -94,7 +94,12 @@ class Settings(BaseSettings):
     # In production this is irrelevant (S3/R2/MinIO return real presigned URLs).
     storage_local_base_url: str = ""
 
-    # ── MinIO (legacy fallback — superseded by system_settings table) ─────────
+    # ── Storage provider override ─────────────────────────────────────────────
+    # Set STORAGE_PROVIDER=minio to use MinIO instead of local storage.
+    # Defaults to "local" (dev/staging without object storage).
+    storage_provider: str = "local"
+
+    # ── MinIO ─────────────────────────────────────────────────────────────────
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "minioadmin"
     minio_secret_key: str = "minioadmin"

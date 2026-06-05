@@ -185,22 +185,21 @@ async def get_storage_config(db: AsyncSession) -> dict[str, Any]:
     from app.core.config import get_settings
     s = get_settings()
 
-    # If MinIO credentials are in env, use them directly (typical in staging/prod).
-    if s.minio_access_key and s.minio_access_key not in ("minioadmin", ""):
-        endpoint = s.minio_endpoint  # e.g. minio:9000 or host:9000
+    # Explicit env override: set STORAGE_PROVIDER=minio to use MinIO.
+    if s.storage_provider == "minio":
         scheme = "https" if s.minio_secure else "http"
         return {
             "provider": "minio",
             "bucket": s.minio_bucket,
             "region": "us-east-1",
-            "endpoint_url": f"{scheme}://{endpoint}",
+            "endpoint_url": f"{scheme}://{s.minio_endpoint}",
             "public_base_url": None,
             "access_key_id": s.minio_access_key,
             "secret_access_key": s.minio_secret_key,
         }
 
-    # Fallback to DB-stored settings
-    provider = await get("storage.provider", db, "local")
+    # Fallback to DB-stored settings (defaults to "local")
+    provider = await get("storage.provider", db, s.storage_provider)
     return {
         "provider": provider,
         "bucket": await get("storage.s3.bucket", db),
