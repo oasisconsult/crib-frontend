@@ -16,8 +16,8 @@
 .PHONY: dev-up dev-build dev-build-d stop logs seed-logto logs-backend \
         logs-frontend logs-mailhog shell-backend shell-db pull mailhog \
         clone-deps \
-        staging-build staging-up staging-stop staging-logs \
-        staging-logs-backend staging-shell-backend staging-migrate create-db
+        staging-build staging-up staging-deploy staging-stop staging-logs \
+        staging-logs-backend staging-shell-backend staging-migrate staging-migrate-rbac create-db
 
 # Path to geobox-rbac — resolves from the apps folder layout:
 #   /srv/apps/geobox-rbac   (staging)
@@ -133,10 +133,23 @@ staging-logs-backend:
 staging-shell-backend:
 	docker compose -f docker-compose.staging.yml --env-file .env.staging exec backend bash
 
+## Pull latest code + build + restart backend only (standard deploy)
+staging-deploy: clone-deps
+	@echo "Deploying Crib staging backend..."
+	git fetch origin main && git reset --hard origin/main
+	docker compose -f docker-compose.staging.yml --env-file .env.staging \
+	  up -d --build --no-deps backend worker
+	@echo "Staging backend deployed"
+
 ## Run Alembic migrations on staging
 staging-migrate:
 	docker compose -f docker-compose.staging.yml --env-file .env.staging \
 	  exec backend alembic upgrade head
+
+## Seed existing Logto users' roles into the RBAC DB (run once after first deploy)
+staging-migrate-rbac:
+	docker compose -f docker-compose.staging.yml --env-file .env.staging \
+	  exec backend python scripts/migrate_users_to_rbac.py
 
 ## ─────────────────────────────────────────────────────────────────────────────
 
