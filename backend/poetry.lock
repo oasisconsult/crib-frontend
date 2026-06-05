@@ -1529,7 +1529,7 @@ sqlalchemy = "^2.0"
 type = "git"
 url = "https://github.com/oasisconsult/geobox-rbac.git"
 reference = "HEAD"
-resolved_reference = "89d7329383d9db65bab22264a572a77a51b7837a"
+resolved_reference = "7a4e5eb6b0739b5be2ca17d0c4f4a7c80ddac097"
 
 [[package]]
 name = "greenlet"
