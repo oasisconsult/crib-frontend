@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/common/PageHeader";
+import { FileUpload } from "@/components/common/FileUpload";
 import {
   usePlans, useCurrentSubscription, useBillingSettings, useSubmitPayment,
 } from "@/hooks/useSubscription";
@@ -276,12 +277,18 @@ function PayPageContent() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="flex items-center gap-1.5"><Upload className="h-3.5 w-3.5" />Upload Proof of Payment</Label>
-              <div className="rounded-[var(--radius-md)] border-2 border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-                <Upload className="h-6 w-6 mx-auto mb-2 opacity-40" />
-                <p>Screenshot or receipt upload</p>
-                <p className="text-xs mt-1 opacity-60">Use the upload feature — PDF, PNG, JPG accepted</p>
-              </div>
+              <Label className="flex items-center gap-1.5">
+                <Upload className="h-3.5 w-3.5" />
+                Upload Proof of Payment
+                {form.proofFileKey && <span className="text-xs text-emerald-600 font-normal ml-1">✓ Uploaded</span>}
+              </Label>
+              <FileUpload
+                category="document"
+                maxFiles={1}
+                onUpload={(results) => {
+                  if (results[0]?.key) set("proofFileKey", results[0].key);
+                }}
+              />
             </div>
 
             <div className="space-y-1.5">
