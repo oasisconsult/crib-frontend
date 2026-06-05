@@ -124,14 +124,14 @@ async def _ensure_platform_org() -> None:
             else:
                 log.info("platform_org.exists", slug=ORG_SLUG)
 
-            # ── 3. Link superadmin profiles with no org ───────────────────────
+            # ── 3. Link ALL superadmin profiles to this org (idempotent) ────────
             result = await db.execute(
-                select(Profile).where(
-                    Profile.role == "superadmin",
-                    Profile.organisation_id.is_(None),
-                )
+                select(Profile).where(Profile.role == "superadmin")
             )
-            profiles_to_link = list(result.scalars())
+            profiles_to_link = [
+                p for p in result.scalars()
+                if p.organisation_id is None or str(p.organisation_id) != str(org.id)
+            ]
 
             for profile in profiles_to_link:
                 profile.organisation_id = org.id

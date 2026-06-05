@@ -141,13 +141,19 @@ async def create_property(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    org_id = get_org_id(current_user)
+    # get_org_id returns None for superadmin (read-all bypass).
+    # For writes, superadmin uses their own platform org so properties have an owner.
+    if current_user.has_role("superadmin"):
+        org_id = current_user.profile.organisation_id
+    else:
+        org_id = get_org_id(current_user)
     if org_id is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Properties must belong to an organisation. Create or join an organisation first.",
+            detail="No organisation assigned. Ask a platform administrator to provision one.",
         )
-    await check_property_limit(org_id, db)
+    if not current_user.has_role("superadmin"):
+        await check_property_limit(org_id, db)
     return await svc.create_property(body, org_id, db)
 
 
@@ -234,13 +240,11 @@ async def batch_create_units(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    org_id = get_org_id(current_user)
+    org_id = current_user.profile.organisation_id if current_user.has_role("superadmin") else get_org_id(current_user)
     if org_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Units must belong to an organisation. Create or join an organisation first.",
-        )
-    await check_unit_limit(org_id, db, adding=len(body.units))
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No organisation assigned.")
+    if not current_user.has_role("superadmin"):
+        await check_unit_limit(org_id, db, adding=len(body.units))
     return await svc.batch_create_units(property_id, body, org_id, db)
 
 
@@ -261,13 +265,11 @@ async def create_unit(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    org_id = get_org_id(current_user)
+    org_id = current_user.profile.organisation_id if current_user.has_role("superadmin") else get_org_id(current_user)
     if org_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Units must belong to an organisation. Create or join an organisation first.",
-        )
-    await check_unit_limit(org_id, db)
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No organisation assigned.")
+    if not current_user.has_role("superadmin"):
+        await check_unit_limit(org_id, db)
     return await svc.create_unit(property_id, body, org_id, db)
 
 
