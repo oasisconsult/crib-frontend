@@ -175,7 +175,6 @@ async function handleCallback(request: NextRequest) {
 
   // Set session cookies
   const role = extractRole(accessToken);
-  // roles already computed above for the org gate check
   const claims = decodeJwt(accessToken);
 
   response.cookies.set(COOKIE.SESSION, accessToken, {
@@ -186,7 +185,7 @@ async function handleCallback(request: NextRequest) {
     ...cookieOpts.session,
     maxAge: tokens.expires_in,
   });
-  response.cookies.set(COOKIE.ROLES, roles.join(","), {
+  response.cookies.set(COOKIE.ROLES, effectiveRoles.join(","), {
     ...cookieOpts.session,
     maxAge: tokens.expires_in,
   });
