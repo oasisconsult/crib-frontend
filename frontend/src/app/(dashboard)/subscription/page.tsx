@@ -91,7 +91,40 @@ export default function SubscriptionPage() {
     );
   }
 
-  if (!sub) return null;
+  if (!sub) {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <PageHeader
+          title="Subscription"
+          description="Manage plans, billing, and feature access."
+        />
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+              <BadgeCheck className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground text-lg">Platform Administrator</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Subscriptions are managed per organisation. Use the admin panel to view and manage all subscriptions.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button asChild>
+                <Link href="/admin/billing">
+                  <Settings className="h-4 w-4" />
+                  Admin Billing Panel
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/subscription/plans">View Plans</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const statusCfg = STATUS_CONFIG[sub.status] ?? STATUS_CONFIG.active;
   const StatusIcon = statusCfg.icon;
