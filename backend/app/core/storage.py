@@ -110,12 +110,14 @@ class S3CompatibleProvider(StorageProvider):
         import asyncio
         import functools
 
+        from datetime import timedelta
+
         client = self._client()
         fn = functools.partial(
-            client.generate_presigned_url,
-            "put_object",
-            Params={"Bucket": self._bucket, "Key": key, "ContentType": mime_type},
-            ExpiresIn=expires_in,
+            client.presigned_put_object,
+            self._bucket,
+            key,
+            expires=timedelta(seconds=expires_in),
         )
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, fn)
@@ -132,11 +134,7 @@ class S3CompatibleProvider(StorageProvider):
         import functools
 
         client = self._client()
-        fn = functools.partial(
-            client.delete_object,
-            Bucket=self._bucket,
-            Key=key,
-        )
+        fn = functools.partial(client.remove_object, self._bucket, key)
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, fn)
 
@@ -144,21 +142,19 @@ class S3CompatibleProvider(StorageProvider):
         import asyncio
         import functools
 
+        import io
         canary_key = f"_crib_test/{uuid.uuid4()}.txt"
         client = self._client()
-
+        data = b"."
         put_fn = functools.partial(
             client.put_object,
-            Bucket=self._bucket,
-            Key=canary_key,
-            Body=b".",
-            ContentType="text/plain",
+            self._bucket,
+            canary_key,
+            io.BytesIO(data),
+            len(data),
+            content_type="text/plain",
         )
-        del_fn = functools.partial(
-            client.delete_object,
-            Bucket=self._bucket,
-            Key=canary_key,
-        )
+        del_fn = functools.partial(client.remove_object, self._bucket, canary_key)
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, put_fn)
         await loop.run_in_executor(None, del_fn)
