@@ -62,6 +62,67 @@ class RequestIdMiddleware:
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
 
+async def _ensure_platform_org() -> None:
+    """
+    Idempotent startup task — creates the platform organisation and links any
+    superadmin profiles that have no organisation yet.
+
+    Runs once on first deploy; subsequent boots no-op in milliseconds.
+    The logto_org_id is set to a stable synthetic value so no Logto API call
+    is needed at startup.
+    """
+    from sqlalchemy import select
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from app.core.database import AsyncSessionLocal
+    from app.models.organisation import Organisation, Plan
+    from app.models.profile import Profile
+
+    ORG_SLUG = "crib-platform"
+    ORG_LOGTO_ID = "org_crib_platform"
+
+    async with AsyncSessionLocal() as db:
+        try:
+            # Find or create the platform org
+            org = await db.scalar(
+                select(Organisation).where(Organisation.slug == ORG_SLUG)
+            )
+            if org is None:
+                org = Organisation(
+                    logto_org_id=ORG_LOGTO_ID,
+                    name=settings.platform_org_name,
+                    slug=ORG_SLUG,
+                    plan=Plan.enterprise,
+                    currency="UGX",
+                    country="UG",
+                    settings={},
+                )
+                db.add(org)
+                await db.flush()
+                log.info("platform_org.created", slug=ORG_SLUG, name=settings.platform_org_name)
+            else:
+                log.info("platform_org.exists", slug=ORG_SLUG)
+
+            # Link superadmin profiles that have no org
+            result = await db.execute(
+                select(Profile).where(
+                    Profile.role == "superadmin",
+                    Profile.organisation_id.is_(None),
+                )
+            )
+            linked = 0
+            for profile in result.scalars():
+                profile.organisation_id = org.id
+                profile.logto_org_id = org.logto_org_id
+                linked += 1
+
+            if linked:
+                log.info("platform_org.linked_superadmins", count=linked)
+
+            await db.commit()
+        except Exception as exc:
+            log.warning("platform_org.failed", error=str(exc))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     log.info("crib.startup", environment=settings.environment, debug=settings.is_debug)
@@ -80,6 +141,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             log.info("rbac.seed.complete")
         except Exception as rbac_err:
             log.warning("rbac.seed.failed", error=str(rbac_err))
+
+    # Provision the platform organisation (idempotent — no-op if already exists)
+    await _ensure_platform_org()
 
     # Verify Redis is reachable
     try:

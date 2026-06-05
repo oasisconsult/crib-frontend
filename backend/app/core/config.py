@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     db_max_overflow: int = 20
     db_echo: bool = False
 
+    # ── Platform organisation ─────────────────────────────────────────────────
+    # Created automatically on first startup so superadmins have an org context.
+    platform_org_name: str = "Crib"
+
     # ── RBAC framework (shared database on same Postgres server as Crib) ─────
     # Format: postgresql+asyncpg://user:pass@host/rbac
     # Same rbac DB used by GeoBox — one source of truth for roles/plans.
