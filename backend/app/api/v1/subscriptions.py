@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_role
@@ -39,6 +39,11 @@ async def get_current_subscription(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> OrganisationSubscriptionOut:
+    if not current_user.profile.organisation_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No organisation associated with this account",
+        )
     sub = await subscription_service.get_or_create_subscription(
         current_user.profile.organisation_id, db
     )
@@ -50,6 +55,15 @@ async def get_subscription_usage(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SubscriptionUsageOut:
+    if not current_user.profile.organisation_id:
+        return SubscriptionUsageOut(
+            properties_used=0, properties_limit=-1,
+            units_used=0, units_limit=-1,
+            users_used=0, users_limit=-1,
+            storage_used_mb=0.0, storage_limit_mb=-1,
+            properties_percent=0.0, units_percent=0.0,
+            users_percent=0.0, storage_percent=0.0,
+        )
     usage = await get_usage(current_user.profile.organisation_id, db)
     return SubscriptionUsageOut(**usage)
 
@@ -100,6 +114,8 @@ async def get_audit_log(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list:
+    if not current_user.profile.organisation_id:
+        return []
     return await subscription_service.get_audit_log(
         current_user.profile.organisation_id, db, limit, offset
     )
