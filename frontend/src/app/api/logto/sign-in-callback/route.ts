@@ -130,18 +130,37 @@ async function handleCallback(request: NextRequest) {
   }
 
   // ── Organisation access gate ──────────────────────────────────────────────
-  // If the user has no org memberships and is not a superadmin, they
-  // authenticated successfully but haven't been invited to any organisation.
-  // Redirect to a friendly "no access" page rather than letting them hit
-  // the dashboard and see a wall of 403s.
-  const roles = extractRoles(accessToken);
-  if (orgIds.length === 0 && !roles.includes("superadmin")) {
-    const noAccess = new URL("/no-access", baseOrigin);
-    const noAccessResponse = NextResponse.redirect(noAccess);
-    noAccessResponse.cookies.delete(COOKIE.PKCE_VERIFIER);
-    noAccessResponse.cookies.delete(COOKIE.PKCE_STATE);
-    noAccessResponse.cookies.delete(COOKIE.POST_LOGIN_REDIRECT);
-    return noAccessResponse;
+  // If the user has no org memberships, check the RBAC DB via the backend
+  // before blocking them — roles are DB-authoritative (Phase 4), not JWT-only.
+  // Superadmins are assigned in the RBAC DB and bypass the org requirement.
+  const jwtRoles = extractRoles(accessToken);
+  let effectiveRoles = jwtRoles;
+
+  if (orgIds.length === 0) {
+    try {
+      const { BACKEND_URL } = await import("@/lib/config");
+      const meRes = await fetch(`${BACKEND_URL}/v1/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (meRes.ok) {
+        const me = await meRes.json();
+        if (Array.isArray(me?.roles) && me.roles.length > 0) {
+          effectiveRoles = me.roles;
+        }
+      }
+    } catch {
+      // Non-fatal — fall back to JWT roles
+    }
+
+    if (!effectiveRoles.includes("superadmin")) {
+      const noAccess = new URL("/no-access", baseOrigin);
+      const noAccessResponse = NextResponse.redirect(noAccess);
+      noAccessResponse.cookies.delete(COOKIE.PKCE_VERIFIER);
+      noAccessResponse.cookies.delete(COOKIE.PKCE_STATE);
+      noAccessResponse.cookies.delete(COOKIE.POST_LOGIN_REDIRECT);
+      return noAccessResponse;
+    }
   }
 
   // ── Build redirect response ───────────────────────────────────────────────
