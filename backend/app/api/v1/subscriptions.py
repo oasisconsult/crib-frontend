@@ -34,16 +34,13 @@ async def list_plans(db: AsyncSession = Depends(get_db)) -> list:
 
 # ── Current subscription ───────────────────────────────────────────────────────
 
-@router.get("/current", response_model=OrganisationSubscriptionOut)
+@router.get("/current", response_model=OrganisationSubscriptionOut | None)
 async def get_current_subscription(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> OrganisationSubscriptionOut:
+) -> OrganisationSubscriptionOut | None:
     if not current_user.profile.organisation_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No organisation associated with this account",
-        )
+        return None
     sub = await subscription_service.get_or_create_subscription(
         current_user.profile.organisation_id, db
     )

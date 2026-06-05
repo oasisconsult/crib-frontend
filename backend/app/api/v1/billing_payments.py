@@ -68,6 +68,8 @@ async def payment_history(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    if not current_user.profile.organisation_id:
+        return {"data": [], "total": 0, "page": 1, "pageSize": limit, "hasNext": False}
     items, total = await billing_service.get_payment_history(
         current_user.profile.organisation_id, db, limit, offset
     )
