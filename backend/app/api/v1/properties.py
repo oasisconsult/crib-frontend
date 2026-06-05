@@ -142,8 +142,12 @@ async def create_property(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = get_org_id(current_user)
-    if org_id is not None:                          # superadmin is not subject to plan limits
-        await check_property_limit(org_id, db)
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Properties must belong to an organisation. Create or join an organisation first.",
+        )
+    await check_property_limit(org_id, db)
     return await svc.create_property(body, org_id, db)
 
 
@@ -231,8 +235,12 @@ async def batch_create_units(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = get_org_id(current_user)
-    if org_id is not None:
-        await check_unit_limit(org_id, db, adding=len(body.units))
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Units must belong to an organisation. Create or join an organisation first.",
+        )
+    await check_unit_limit(org_id, db, adding=len(body.units))
     return await svc.batch_create_units(property_id, body, org_id, db)
 
 
@@ -254,8 +262,12 @@ async def create_unit(
     db: AsyncSession = Depends(get_db),
 ):
     org_id = get_org_id(current_user)
-    if org_id is not None:
-        await check_unit_limit(org_id, db)
+    if org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Units must belong to an organisation. Create or join an organisation first.",
+        )
+    await check_unit_limit(org_id, db)
     return await svc.create_unit(property_id, body, org_id, db)
 
 
