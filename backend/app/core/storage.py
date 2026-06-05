@@ -90,19 +90,15 @@ class S3CompatibleProvider(StorageProvider):
         if endpoint_url:
             self._credentials["endpoint_url"] = endpoint_url
 
-    # def _client(self):  # type: ignore[return]
-    #     import boto3  # local import — only needed when S3 provider is active
-    #     return boto3.client("s3", **self._credentials)
-    
-    from minio import Minio
-
-
     def _client(self):
+        from minio import Minio
+        secure = self._endpoint_url.startswith("https://")
+        endpoint = self._endpoint_url.replace("https://", "").replace("http://", "").rstrip("/")
         return Minio(
-            endpoint=self._endpoint_url.replace("http://", "").replace("https://", ""),
+            endpoint=endpoint,
             access_key=self._credentials["aws_access_key_id"],
             secret_key=self._credentials["aws_secret_access_key"],
-            secure=False,
+            secure=secure,
         )
 
     async def presign_upload(
