@@ -19,7 +19,9 @@
 #   make prod-logs       # Follow production logs
 #   make seed-logto-prod # Seed Logto database (production)
 
-.PHONY: dev-up dev-build dev-build-d stop logs seed-logto logs-backend logs-frontend shell-backend shell-db prod-up prod-build prod-build-d prod-stop prod-logs seed-logto-prod prod-logs-backend prod-shell-backend prod-shell-db
+.PHONY: dev-up dev-build dev-build-d stop logs seed-logto logs-backend logs-frontend shell-backend shell-db \
+        staging-up staging-build staging-deploy staging-stop staging-logs staging-logs-backend staging-shell-backend staging-migrate-rbac \
+        prod-up prod-build prod-build-d prod-stop prod-logs seed-logto-prod prod-logs-backend prod-shell-backend prod-shell-db prod-migrate-rbac
 
 # ─── DEVELOPMENT ───────────────────────────────────────────────────────────
 
@@ -64,6 +66,45 @@ shell-backend:
 shell-db:
 	docker compose -f docker-compose.local.yml --env-file .env exec postgres psql -U $${POSTGRES_USER:-crib} -d $${POSTGRES_DB:-crib_dev}
 
+# ─── STAGING ──────────────────────────────────────────────────────────────
+
+## Start staging services without rebuild
+staging-up:
+	docker compose -f ../docker-compose.staging.yml --env-file ../.env.staging up -d
+
+## Build and start staging services
+staging-build:
+	docker compose -f ../docker-compose.staging.yml --env-file ../.env.staging up -d --build
+
+## Pull latest code + build + restart backend only (standard deploy)
+staging-deploy:
+	@echo "🚀 Deploying Crib staging backend..."
+	@cd .. && git fetch origin main && git reset --hard origin/main
+	docker compose -f ../docker-compose.staging.yml --env-file ../.env.staging \
+	  up -d --build --no-deps backend worker
+	@echo "✅ Staging backend deployed"
+
+## Stop staging services
+staging-stop:
+	docker compose -f ../docker-compose.staging.yml --env-file ../.env.staging down
+
+## Follow all staging logs (or: make staging-logs service=backend)
+staging-logs:
+	docker compose -f ../docker-compose.staging.yml --env-file ../.env.staging logs -f $(service)
+
+## Follow backend staging logs only
+staging-logs-backend:
+	docker compose -f ../docker-compose.staging.yml --env-file ../.env.staging logs -f backend
+
+## Open a shell in the staging backend container
+staging-shell-backend:
+	docker compose -f ../docker-compose.staging.yml --env-file ../.env.staging exec backend bash
+
+## Seed existing Logto users' roles into the RBAC DB (run once after first deploy)
+staging-migrate-rbac:
+	docker compose -f ../docker-compose.staging.yml --env-file ../.env.staging exec backend \
+	  python scripts/migrate_users_to_rbac.py
+
 # ─── PRODUCTION ───────────────────────────────────────────────────────────
 
 ## Start all production services in background (no rebuild)
@@ -93,3 +134,8 @@ prod-logs-backend:
 ## Open a bash shell inside the production backend container
 prod-shell-backend:
 	docker compose -f docker-compose.prod-shared.yml --env-file .env.production exec backend bash
+
+## Seed existing Logto users' roles into the RBAC DB (run once after first deploy)
+prod-migrate-rbac:
+	docker compose -f docker-compose.prod-shared.yml --env-file .env.production exec backend \
+	  python scripts/migrate_users_to_rbac.py
