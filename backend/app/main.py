@@ -64,31 +64,53 @@ class RequestIdMiddleware:
 
 async def _ensure_platform_org() -> None:
     """
-    Idempotent startup task — creates the platform organisation and links any
-    superadmin profiles that have no organisation yet.
+    Idempotent startup task:
+      1. Creates the platform organisation in the Crib DB (if not exists).
+      2. Creates the matching Logto organisation (if M2M credentials are set).
+      3. Links any superadmin profiles that have no organisation yet.
+      4. Adds those superadmin users to the Logto organisation so the JWT
+         carries org membership and the frontend org-gate passes.
 
-    Runs once on first deploy; subsequent boots no-op in milliseconds.
-    The logto_org_id is set to a stable synthetic value so no Logto API call
-    is needed at startup.
+    Runs on every startup but no-ops after the first successful run.
     """
+    import httpx
     from sqlalchemy import select
-    from sqlalchemy.ext.asyncio import AsyncSession
     from app.core.database import AsyncSessionLocal
     from app.models.organisation import Organisation, Plan
     from app.models.profile import Profile
+    from app.services.logto_service import _get_m2m_token
 
     ORG_SLUG = "crib-platform"
-    ORG_LOGTO_ID = "org_crib_platform"
 
     async with AsyncSessionLocal() as db:
         try:
-            # Find or create the platform org
+            # ── 1. Find or create local org ───────────────────────────────────
             org = await db.scalar(
                 select(Organisation).where(Organisation.slug == ORG_SLUG)
             )
+
             if org is None:
+                # ── 2. Create Logto org (if M2M is configured) ────────────────
+                logto_org_id = f"org_{ORG_SLUG}"
+                if settings.logto_m2m_app_id and settings.logto_m2m_app_secret:
+                    try:
+                        token = await _get_m2m_token()
+                        async with httpx.AsyncClient(timeout=10) as client:
+                            resp = await client.post(
+                                f"{settings.logto_management_api_base}/organizations",
+                                json={"name": settings.platform_org_name, "description": "Platform organisation"},
+                                headers={"Authorization": f"Bearer {token}"},
+                            )
+                            if resp.is_success:
+                                logto_org_id = resp.json()["id"]
+                                log.info("platform_org.logto_created", logto_org_id=logto_org_id)
+                            else:
+                                log.warning("platform_org.logto_create_failed", status=resp.status_code)
+                    except Exception as exc:
+                        log.warning("platform_org.logto_error", error=str(exc))
+
                 org = Organisation(
-                    logto_org_id=ORG_LOGTO_ID,
+                    logto_org_id=logto_org_id,
                     name=settings.platform_org_name,
                     slug=ORG_SLUG,
                     plan=Plan.enterprise,
@@ -102,23 +124,42 @@ async def _ensure_platform_org() -> None:
             else:
                 log.info("platform_org.exists", slug=ORG_SLUG)
 
-            # Link superadmin profiles that have no org
+            # ── 3. Link superadmin profiles with no org ───────────────────────
             result = await db.execute(
                 select(Profile).where(
                     Profile.role == "superadmin",
                     Profile.organisation_id.is_(None),
                 )
             )
-            linked = 0
-            for profile in result.scalars():
+            profiles_to_link = list(result.scalars())
+
+            for profile in profiles_to_link:
                 profile.organisation_id = org.id
                 profile.logto_org_id = org.logto_org_id
-                linked += 1
 
-            if linked:
-                log.info("platform_org.linked_superadmins", count=linked)
+            if profiles_to_link:
+                log.info("platform_org.linked_superadmins", count=len(profiles_to_link))
 
             await db.commit()
+
+            # ── 4. Add users to Logto org so JWT carries org membership ───────
+            if profiles_to_link and settings.logto_m2m_app_id and settings.logto_m2m_app_secret:
+                try:
+                    token = await _get_m2m_token()
+                    user_ids = [p.logto_sub for p in profiles_to_link if p.logto_sub]
+                    async with httpx.AsyncClient(timeout=10) as client:
+                        resp = await client.post(
+                            f"{settings.logto_management_api_base}/organizations/{org.logto_org_id}/users",
+                            json={"userIds": user_ids},
+                            headers={"Authorization": f"Bearer {token}"},
+                        )
+                        if resp.is_success:
+                            log.info("platform_org.logto_users_added", users=user_ids)
+                        else:
+                            log.warning("platform_org.logto_users_failed", status=resp.status_code)
+                except Exception as exc:
+                    log.warning("platform_org.logto_users_error", error=str(exc))
+
         except Exception as exc:
             log.warning("platform_org.failed", error=str(exc))
 
