@@ -434,21 +434,21 @@ async def get_billing_analytics(db: AsyncSession) -> dict:
     ]
 
     return {
-        "total_active_subscriptions": active_count,
-        "total_trialing":      row.trialing or 0,
-        "total_suspended":     row.suspended or 0,
-        "total_cancelled":     row.cancelled or 0,
-        "total_expired":       row.expired or 0,
-        "total_pending":       (row.pending_payment or 0) + (row.pending_verification or 0),
-        "total_grace_period":  row.grace_period or 0,
-        "pending_verifications": pending,
-        "mrr_ugx":             mrr_ugx,
-        "mrr_usd_cents":       mrr_usd_cents,
-        "arr_ugx":             arr_ugx,
-        "revenue_ytd_ugx":     revenue_ytd_ugx,
-        "revenue_mtd_ugx":     revenue_mtd_ugx,
-        "churn_rate":          churn_rate,
-        "plan_breakdown":      plan_breakdown,
+        "totalActiveSubscriptions": active_count,
+        "totalTrialing":      row.trialing or 0,
+        "totalSuspended":     row.suspended or 0,
+        "totalCancelled":     row.cancelled or 0,
+        "totalExpired":       row.expired or 0,
+        "totalPending":       (row.pending_payment or 0) + (row.pending_verification or 0),
+        "totalGracePeriod":   row.grace_period or 0,
+        "pendingVerifications": pending,
+        "mrrUgx":             mrr_ugx,
+        "mrrUsdCents":        mrr_usd_cents,
+        "arrUgx":             arr_ugx,
+        "revenueYtdUgx":      revenue_ytd_ugx,
+        "revenueMtdUgx":      revenue_mtd_ugx,
+        "churnRate":          churn_rate,
+        "planBreakdown":      plan_breakdown,
     }
 
 
@@ -511,14 +511,14 @@ async def get_billing_analytics_charts(db: AsyncSession) -> dict:
     plan_dist = [{"plan": r[0], "count": int(r[1])} for r in plan_rows]
 
     return {
-        "revenue_trend": [
+        "revenueTrend": [
             {"month": label(m), "revenue": rev_map.get(label(m), 0)} for m in months
         ],
-        "subscription_growth": [
+        "subscriptionGrowth": [
             {"month": label(m), "new": new_map.get(label(m), 0),
              "cancelled": can_map.get(label(m), 0)} for m in months
         ],
-        "status_distribution": status_dist,
-        "plan_distribution": plan_dist,
+        "statusDistribution": status_dist,
+        "planDistribution": plan_dist,
     }
 
