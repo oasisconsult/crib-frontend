@@ -66,8 +66,7 @@ async def list_landlord_invites(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[LandlordInviteOut]:
-    if not current_user.profile.organisation_id:
-        return []
+    # superadmin (organisation_id=None) sees all invites platform-wide
     return await list_invites(db=db, organisation_id=current_user.profile.organisation_id)
 
 

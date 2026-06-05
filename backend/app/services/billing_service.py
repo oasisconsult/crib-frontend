@@ -225,44 +225,34 @@ async def reject_payment(
 # ── Billing history ────────────────────────────────────────────────────────────
 
 async def get_payment_history(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[SubscriptionPayment], int]:
-    count_q = select(func.count()).select_from(SubscriptionPayment).where(
-        SubscriptionPayment.organisation_id == org_id
-    )
+    count_q = select(func.count()).select_from(SubscriptionPayment)
+    items_q = select(SubscriptionPayment).order_by(SubscriptionPayment.created_at.desc())
+    if org_id is not None:
+        count_q = count_q.where(SubscriptionPayment.organisation_id == org_id)
+        items_q = items_q.where(SubscriptionPayment.organisation_id == org_id)
     total = (await db.execute(count_q)).scalar_one() or 0
-
-    items_q = (
-        select(SubscriptionPayment)
-        .where(SubscriptionPayment.organisation_id == org_id)
-        .order_by(SubscriptionPayment.created_at.desc())
-        .limit(limit).offset(offset)
-    )
-    items = list((await db.execute(items_q)).scalars().all())
+    items = list((await db.execute(items_q.limit(limit).offset(offset))).scalars().all())
     return items, total
 
 
 async def get_invoices(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     limit: int = 20,
     offset: int = 0,
 ) -> tuple[list[SubscriptionInvoice], int]:
-    count_q = select(func.count()).select_from(SubscriptionInvoice).where(
-        SubscriptionInvoice.organisation_id == org_id
-    )
+    count_q = select(func.count()).select_from(SubscriptionInvoice)
+    items_q = select(SubscriptionInvoice).order_by(SubscriptionInvoice.created_at.desc())
+    if org_id is not None:
+        count_q = count_q.where(SubscriptionInvoice.organisation_id == org_id)
+        items_q = items_q.where(SubscriptionInvoice.organisation_id == org_id)
     total = (await db.execute(count_q)).scalar_one() or 0
-
-    items_q = (
-        select(SubscriptionInvoice)
-        .where(SubscriptionInvoice.organisation_id == org_id)
-        .order_by(SubscriptionInvoice.created_at.desc())
-        .limit(limit).offset(offset)
-    )
-    items = list((await db.execute(items_q)).scalars().all())
+    items = list((await db.execute(items_q.limit(limit).offset(offset))).scalars().all())
     return items, total
 
 

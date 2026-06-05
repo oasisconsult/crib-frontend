@@ -418,12 +418,11 @@ async def complete_onboarding(
     )
 
 
-async def list_invites(*, db: AsyncSession, organisation_id: uuid.UUID) -> list[LandlordInviteOut]:
-    result = await db.execute(
-        select(LandlordInvite)
-        .where(LandlordInvite.organisation_id == organisation_id)
-        .order_by(LandlordInvite.created_at.desc())
-    )
+async def list_invites(*, db: AsyncSession, organisation_id: uuid.UUID | None) -> list[LandlordInviteOut]:
+    stmt = select(LandlordInvite).order_by(LandlordInvite.created_at.desc())
+    if organisation_id is not None:
+        stmt = stmt.where(LandlordInvite.organisation_id == organisation_id)
+    result = await db.execute(stmt)
     return [_to_out(inv) for inv in result.scalars()]
 
 
