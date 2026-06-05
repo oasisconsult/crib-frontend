@@ -139,18 +139,24 @@ async function handleCallback(request: NextRequest) {
   if (orgIds.length === 0) {
     try {
       const { BACKEND_URL } = await import("@/lib/config");
+      console.log("[callback] fetching /v1/me from", BACKEND_URL);
       const meRes = await fetch(`${BACKEND_URL}/v1/me`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: AbortSignal.timeout(5000),
       });
+      console.log("[callback] /v1/me status:", meRes.status);
       if (meRes.ok) {
         const me = await meRes.json();
+        console.log("[callback] /v1/me roles:", me?.roles);
         if (Array.isArray(me?.roles) && me.roles.length > 0) {
           effectiveRoles = me.roles;
         }
+      } else {
+        const text = await meRes.text();
+        console.error("[callback] /v1/me error body:", text);
       }
-    } catch {
-      // Non-fatal — fall back to JWT roles
+    } catch (err) {
+      console.error("[callback] /v1/me fetch threw:", err);
     }
 
     if (!effectiveRoles.includes("superadmin")) {
