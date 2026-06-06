@@ -85,9 +85,15 @@ endef
 ## Sync geobox-rbac into backend/vendor/ (required before any docker build)
 clone-deps:
 	@if [ -z "$(GEOBOX_RBAC_UPSTREAM)" ]; then \
-	  echo "geobox-rbac not found locally — cloning from GitHub..."; \
-	  mkdir -p backend/vendor; \
-	  git clone https://github.com/oasisconsult/geobox-rbac.git $(VENDOR_DIR); \
+	  if [ -d "$(VENDOR_DIR)/.git" ]; then \
+	    echo "Updating geobox-rbac from GitHub..."; \
+	    git -C $(VENDOR_DIR) pull --ff-only; \
+	  else \
+	    echo "geobox-rbac not found locally — cloning from GitHub..."; \
+	    rm -rf $(VENDOR_DIR); \
+	    mkdir -p backend/vendor; \
+	    git clone https://github.com/oasisconsult/geobox-rbac.git $(VENDOR_DIR); \
+	  fi; \
 	elif [ ! -d "$(VENDOR_DIR)" ]; then \
 	  echo "Copying geobox-rbac from $(GEOBOX_RBAC_UPSTREAM)..."; \
 	  mkdir -p backend/vendor; \
