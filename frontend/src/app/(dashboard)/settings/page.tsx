@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, Mail, RefreshCw, Check, Link } from "lucide-react";
+import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, Mail, RefreshCw, Check, Link, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/useAppStore";
 import { useUIStore } from "@/store/useUIStore";
 import { toast } from "@/store/useUIStore";
-import { useOrganisation, useUpdateOrganisation, useProvisionOrganisation } from "@/hooks/useOrganisation";
+import { useOrganisation, useUpdateOrganisation, useProvisionOrganisation, useUpdateFeatures } from "@/hooks/useOrganisation";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useLandlordInvites, useCreateLandlordInvite, useRevokeLandlordInvite, useResendLandlordInvite } from "@/hooks/useLandlordInvites";
 import { useAgencyInvites, useResendAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
@@ -191,6 +191,7 @@ export default function SettingsPage() {
   const { data: org, isLoading: loadingOrg } = useOrganisation();
   const { mutate: updateOrg, isPending: savingAgency } = useUpdateOrganisation();
   const { mutate: provisionOrg, isPending: provisioning } = useProvisionOrganisation();
+  const { mutate: updateFeatures, isPending: savingFeatures } = useUpdateFeatures();
 
   const [provisionName, setProvisionName] = useState("");
   const [provisionSlug, setProvisionSlug] = useState("");
@@ -360,14 +361,14 @@ export default function SettingsPage() {
       <Tabs defaultValue="profile">
         {/* Tab count per role:
             landlord    → 4  (Profile, Agency, Appearance, Security)
-            superadmin  → 8  (+ Landlords, Agencies, Notifications, Caretakers)
+            superadmin  → 9  (+ Landlords, Agencies, Notifications, Caretakers, Features)
             manager     → 7  (+ Landlords, Notifications, Caretakers)
-            owner       → 6  (+ Notifications, Caretakers)                   */}
+            owner       → 7  (+ Notifications, Caretakers, Features)                   */}
         <TabsList className={`grid w-full ${
           isLandlord    ? "grid-cols-4"
-          : isSuperAdmin ? "grid-cols-8"
+          : isSuperAdmin ? "grid-cols-9"
           : isManager    ? "grid-cols-7"
-          :                "grid-cols-6"
+          :                "grid-cols-7"
         }`}>
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
@@ -400,6 +401,12 @@ export default function SettingsPage() {
             <TabsTrigger value="caretakers" className="gap-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Caretakers</span>
+            </TabsTrigger>
+          )}
+          {(isSuperAdmin || (!isLandlord && !isManager)) && (
+            <TabsTrigger value="features" className="gap-2">
+              <Zap className="h-4 w-4" />
+              <span className="hidden sm:inline">Features</span>
             </TabsTrigger>
           )}
           <TabsTrigger value="appearance" className="gap-2">
@@ -1038,6 +1045,58 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── Features ── */}
+        {(isSuperAdmin || (!isLandlord && !isManager)) && (
+          <TabsContent value="features" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Features</CardTitle>
+                <CardDescription>
+                  Enable or disable optional functionality for your organisation.
+                  Changes take effect immediately.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="divide-y">
+                {([
+                  {
+                    key: "manualPayments" as const,
+                    label: "Record Manual Payment",
+                    description:
+                      "Allow managers to record payments made outside Crib (mobile money, bank transfer, cash). " +
+                      "When enabled, a \"Record Payment\" button appears on every active lease.",
+                  },
+                ] as const).map(({ key, label, description }) => {
+                  const enabled = org?.features?.[key] !== false;
+                  return (
+                    <div key={key} className="flex items-start justify-between gap-6 py-4 first:pt-0 last:pb-0">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium">{label}</p>
+                        <p className="text-xs text-muted-foreground max-w-md">{description}</p>
+                      </div>
+                      <Switch
+                        checked={enabled}
+                        disabled={savingFeatures || loadingOrg}
+                        onCheckedChange={(value) =>
+                          updateFeatures(
+                            { [key]: value },
+                            {
+                              onSuccess: () =>
+                                toast.success(
+                                  value ? `${label} enabled` : `${label} disabled`,
+                                ),
+                              onError: () => toast.error("Failed to update feature"),
+                            },
+                          )
+                        }
+                      />
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* ── Appearance ── */}
         <TabsContent value="appearance" className="mt-6">

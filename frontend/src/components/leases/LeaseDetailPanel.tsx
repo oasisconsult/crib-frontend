@@ -19,6 +19,7 @@ import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { RecordManualPaymentModal } from "./RecordManualPaymentModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease } from "@/hooks/useLeases";
+import { useOrganisation } from "@/hooks/useOrganisation";
 import { leasesApi } from "@/services/api/leases";
 import { toast } from "@/store/useUIStore";
 import { canTransition, LEASE_TRANSITIONS } from "@/types/states";
@@ -47,6 +48,8 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const { mutate: submitNotice, isPending: submittingNotice } = useSubmitNotice();
   const { mutate: retractNotice, isPending: retractingNotice } = useRetractNotice();
   const { mutate: deleteLease, isPending: deletingLease } = useDeleteLease();
+  const { data: org } = useOrganisation();
+  const manualPaymentsEnabled = org?.features?.manualPayments !== false;
 
   // Default vacate date = today + notice period days (editable in the dialog)
   const defaultVacateDate = (() => {
@@ -246,8 +249,8 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                 Confirm Payment
               </Button>
             )}
-            {/* Record manual payment — available on active leases */}
-            {lease.state === "active" && (
+            {/* Record manual payment — available on active leases when feature is enabled */}
+            {lease.state === "active" && manualPaymentsEnabled && (
               <Button
                 size="sm"
                 variant="outline"

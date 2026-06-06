@@ -39,6 +39,7 @@ class OrganisationOut(CamelModel):
     country: str | None = None
     contact_phone: str | None = None
     contact_email: str | None = None
+    features: dict = {}
 
 
 class OrganisationUpdateRequest(CamelModel):
@@ -49,6 +50,11 @@ class OrganisationUpdateRequest(CamelModel):
     name: str | None = None
     contact_phone: str | None = None
     contact_email: str | None = None
+
+
+class UpdateFeaturesRequest(CamelModel):
+    """Merge-patch individual feature flags. Unknown keys are ignored."""
+    features: dict
 
 
 async def _create_logto_org(name: str, slug: str) -> str:
@@ -143,6 +149,7 @@ async def provision_organisation(
         country=org.country,
         contact_phone=org.settings.get("contact_phone"),
         contact_email=org.settings.get("contact_email"),
+        features=org.settings.get("features", {}),
     )
 
 
@@ -170,6 +177,7 @@ async def get_my_organisation(
         country=org.country,
         contact_phone=org.settings.get("contact_phone"),
         contact_email=org.settings.get("contact_email"),
+        features=org.settings.get("features", {}),
     )
 
 
@@ -226,4 +234,60 @@ async def update_my_organisation(
         country=org.country,
         contact_phone=org.settings.get("contact_phone"),
         contact_email=org.settings.get("contact_email"),
+        features=org.settings.get("features", {}),
+    )
+
+
+# ── Feature flags ──────────────────────────────────────────────────────────────
+
+_ALLOWED_FEATURE_KEYS = {"manualPayments"}
+
+
+@router.patch("/me/features", response_model=OrganisationOut)
+async def update_features(
+    body: UpdateFeaturesRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OrganisationOut:
+    """
+    Toggle org-level feature flags. Owner and superadmin only.
+    Partial update — only supplied keys are changed, others left as-is.
+    Unknown keys are silently ignored.
+    """
+    if not current_user.has_role("owner", "superadmin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Owner or superadmin required to manage features",
+        )
+    if not current_user.profile.organisation_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No organisation found")
+
+    result = await db.execute(
+        select(Organisation).where(Organisation.id == current_user.profile.organisation_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found")
+
+    settings_blob: dict = dict(org.settings or {})
+    merged: dict = dict(settings_blob.get("features", {}))
+    for key, value in body.features.items():
+        if key in _ALLOWED_FEATURE_KEYS:
+            merged[key] = bool(value)
+
+    settings_blob["features"] = merged
+    org.settings = settings_blob
+    await db.flush()
+
+    return OrganisationOut(
+        id=str(org.id),
+        logto_org_id=org.logto_org_id,
+        name=org.name,
+        slug=org.slug,
+        plan=org.plan.value,
+        currency=org.currency,
+        country=org.country,
+        contact_phone=settings_blob.get("contact_phone"),
+        contact_email=settings_blob.get("contact_email"),
+        features=settings_blob.get("features", {}),
     )

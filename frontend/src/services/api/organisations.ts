@@ -1,5 +1,10 @@
 import { apiGet, apiPatch, apiPost } from "./client";
 
+export interface OrgFeatures {
+  manualPayments?: boolean;
+  [key: string]: boolean | undefined;
+}
+
 export interface Organisation {
   id: string;
   logtoOrgId: string;
@@ -10,6 +15,7 @@ export interface Organisation {
   country?: string;
   contactPhone?: string;
   contactEmail?: string;
+  features?: OrgFeatures;
 }
 
 export interface UpdateOrganisationRequest {
@@ -31,4 +37,6 @@ export const organisationsApi = {
     apiPatch<Organisation>("/organisations/me", body),
   provision: (body: ProvisionOrganisationRequest) =>
     apiPost<Organisation>("/organisations/provision", body),
+  updateFeatures: (features: OrgFeatures) =>
+    apiPatch<Organisation>("/organisations/me/features", { features }),
 };

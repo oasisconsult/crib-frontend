@@ -191,8 +191,21 @@ async def record_manual_payment(
     rent schedules oldest-first. No mobile money STK push is triggered.
 
     Accessible to: owner, manager, superadmin.
+    Blocked if the org has disabled the manualPayments feature flag.
     """
-    return await svc.record_manual_payment(lease_id, body, get_org_id(current_user), db)
+    from sqlalchemy import select as _select
+    from app.models.organisation import Organisation as _Org
+
+    _org_id = get_org_id(current_user)
+    if _org_id:
+        _org = await db.scalar(_select(_Org).where(_Org.id == _org_id))
+        if _org and not _org.settings.get("features", {}).get("manualPayments", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Manual payment recording has been disabled for this organisation",
+            )
+
+    return await svc.record_manual_payment(lease_id, body, _org_id, db)
 
 
 @router.get("/{lease_id}/payments", response_model=dict)
