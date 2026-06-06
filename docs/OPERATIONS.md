@@ -12,13 +12,14 @@ This file is **not for public distribution**.
 3. [Make Commands Reference](#3-make-commands-reference)
 4. [First Deploy Checklist](#4-first-deploy-checklist)
 5. [Standard Deploy (BAU)](#5-standard-deploy-bau)
-6. [User Roles](#6-user-roles)
-7. [RBAC Setup & Management](#7-rbac-setup--management)
-8. [Logto Configuration](#8-logto-configuration)
-9. [Database Operations](#9-database-operations)
-10. [Environment Variables Reference](#10-environment-variables-reference)
-11. [Troubleshooting](#11-troubleshooting)
-12. [Useful One-liners](#12-useful-one-liners)
+6. [Automated Rent Lifecycle](#6-automated-rent-lifecycle)
+7. [User Roles](#7-user-roles)
+8. [RBAC Setup & Management](#8-rbac-setup--management)
+9. [Logto Configuration](#9-logto-configuration)
+10. [Database Operations](#10-database-operations)
+11. [Environment Variables Reference](#11-environment-variables-reference)
+12. [Troubleshooting](#12-troubleshooting)
+13. [Useful One-liners](#13-useful-one-liners)
 
 ---
 
@@ -244,7 +245,137 @@ make prod-deploy
 
 ---
 
-## 6. User Roles
+## 6. Automated Rent Lifecycle
+
+**Admin does not need to do anything day-to-day.** Rent schedules, overdue detection, late fees, and tenant notifications are all handled automatically by the Celery beat scheduler embedded in the worker container.
+
+### How it works
+
+```
+Lease activated / imported
+        │
+        ▼
+generate_rent_schedules() called immediately
+  ├─ Creates one RentSchedule row per billing month
+  ├─ Rolling leases: covers from lease.created_at up to today + 3 months
+  └─ Fixed-term leases: covers start_date → end_date exactly
+
+Every 24 hours (Celery beat, embedded in crib-worker-prod):
+        │
+        ├─ extend_rolling_schedules
+        │    └─ Tops up rolling leases 3 months ahead (idempotent)
+        │
+        ├─ mark_overdue_schedules
+        │    └─ Sets status = overdue for any pending schedule past its due_date
+        │
+        ├─ apply_late_fees_task
+        │    └─ Applies late fee to newly-overdue schedules (if org has autoApplyLateFees=true)
+        │
+        └─ send_rent_reminders
+             └─ Sends in-app notification to tenant N days before due_date
+```
+
+### Daily scheduled tasks
+
+| Task | Schedule | What it does |
+|---|---|---|
+| `extend_rolling_schedules` | Daily | Generates missing schedule rows for rolling leases; extends 3 months ahead |
+| `mark_overdue_schedules` | Daily | Marks `pending` schedules past `due_date` as `overdue` |
+| `apply_late_fees_task` | Daily | Applies flat/percentage late fee to overdue schedules (per-org opt-in) |
+| `send_rent_reminders` | Daily | Sends reminder notifications N days before due date (per-org, default 3 days) |
+| `poll_mtn_transactions` | Every 5 min | Polls MTN Mobile Money for pending transactions (fallback for missed webhooks) |
+| `poll_airtel_transactions` | Every 5 min | Same for Airtel Money |
+
+All tasks are **idempotent** — re-running them manually is safe.
+
+### When leases are created
+
+| How lease is created | Schedule generation |
+|---|---|
+| Normal activation flow (UI) | `generate_rent_schedules` called immediately on activation |
+| Bulk CSV import (active/rolling) | `generate_rent_schedules` called immediately during import |
+| Bulk CSV import (draft/upcoming) | No schedules until the lease is activated |
+
+> **Important for backdated leases:** If a lease has a `start_date` in the past (e.g. a tenancy that started in 2023 but was only entered into Crib in 2026), the system counts from **when it was entered into Crib** (`created_at`), not from the historical `start_date`. This avoids generating years of backdated overdue charges for tenancies that predate the system.
+
+### When notifications are sent
+
+| Trigger | Recipient | Channel | Timing |
+|---|---|---|---|
+| Rent reminder | Tenant | In-app notification | N days before `due_date` (default 3 days, configurable per org) |
+| Rent overdue | — | — | Currently flagged on dashboard; email can be enabled per org via `autoMarkOverdue=true` |
+| Late fee applied | — | — | Applied silently; visible on tenant's payment schedule |
+
+> Email/SMS notifications for overdue events are sent only if the org has the relevant integrations configured (SendGrid / SMS provider) and the per-org setting is enabled in **Settings → Payment Settings**.
+
+### Per-org payment settings
+
+These are configured by the org owner in **Settings → Payment Settings** and control per-org automation behaviour:
+
+| Setting | Default | Effect |
+|---|---|---|
+| `autoMarkOverdue` | `true` | Whether to mark unpaid schedules as overdue after due date |
+| `autoApplyLateFees` | `false` | Whether to automatically apply a late fee when a schedule becomes overdue |
+| `lateFeeType` | `flat` | `flat` (fixed amount) or `percentage` of rent |
+| `lateFeeValue` | `0` | Amount or percentage, e.g. `700000` (flat) or `1` (1%) |
+| `gracePeriodDays` | `5` | Days after due date before late fee is applied |
+| `reminderDaysBefore` | `3` | Days before due date to send reminder notification |
+
+### Verifying the scheduler is running
+
+```bash
+# Check beat scheduler started in worker logs
+docker compose -f docker-compose.prod.shared.yml --env-file .env.production logs --tail=20 worker
+# Expect: [INFO/Beat] beat: Starting...
+
+# Check a specific task ran
+docker compose -f docker-compose.prod.shared.yml --env-file .env.production logs worker | \
+  grep "mark_overdue_schedules complete"
+# Expect: mark_overdue_schedules complete: marked=X skipped_orgs=Y
+```
+
+### Manually triggering tasks (if needed)
+
+The beat scheduler runs tasks automatically, but any task can be triggered manually — for example, after a bulk import or if the worker was down for a day:
+
+```bash
+# Backfill / extend schedules for all active rolling leases
+docker compose -f docker-compose.prod.shared.yml --env-file .env.production exec worker \
+  celery -A app.worker.celery_app call app.worker.tasks.payments.extend_rolling_schedules
+
+# Mark overdue schedules immediately (don't wait for tonight's run)
+docker compose -f docker-compose.prod.shared.yml --env-file .env.production exec worker \
+  celery -A app.worker.celery_app call app.worker.tasks.payments.mark_overdue_schedules
+
+# Apply late fees now
+docker compose -f docker-compose.prod.shared.yml --env-file .env.production exec worker \
+  celery -A app.worker.celery_app call app.worker.tasks.payments.apply_late_fees_task
+
+# Send rent reminders now (only fires for tenants whose due_date is exactly N days away)
+docker compose -f docker-compose.prod.shared.yml --env-file .env.production exec worker \
+  celery -A app.worker.celery_app call app.worker.tasks.payments.send_rent_reminders
+
+# One-time cleanup: waive pre-system backdated schedules for rolling leases
+docker compose -f docker-compose.prod.shared.yml --env-file .env.production exec worker \
+  celery -A app.worker.celery_app call app.worker.tasks.payments.waive_pre_system_schedules
+```
+
+### What the Payments dashboard shows
+
+| Card | Source |
+|---|---|
+| **Expected** | Sum of `amount_due` for all rent schedules due in the current calendar month |
+| **Collected** | Confirmed/completed payments made this calendar month |
+| **Overdue** | Total outstanding balance across all overdue schedules |
+| **Collection Rate** | Collected ÷ (Collected + Overdue) × 100 |
+
+The **Overdue Rent** tab shows individual schedules with the tenant name, unit, outstanding balance, and a link to the lease.
+
+The **dashboard** (home page) shows the same overdue count and amount, updated in real time.
+
+---
+
+## 7. User Roles
 
 Roles are stored in the shared RBAC database and synced from Logto on each user login.
 
@@ -275,7 +406,7 @@ POST /api/v1/admin/users/{logto_sub}/invalidate-session
 
 ---
 
-## 7. RBAC Setup & Management
+## 8. RBAC Setup & Management
 
 Crib uses the shared `geobox-rbac` framework. The RBAC database (`rbac`) lives on the same Postgres instance as Crib's app database.
 
@@ -311,7 +442,7 @@ docker restart crib-backend-prod
 
 ---
 
-## 8. Logto Configuration
+## 9. Logto Configuration
 
 Crib uses the **shared GeoBox Logto instance** (`auth.geoboxafrica.com`).
 
@@ -345,7 +476,7 @@ Crib uses the **shared GeoBox Logto instance** (`auth.geoboxafrica.com`).
 
 ---
 
-## 9. Database Operations
+## 10. Database Operations
 
 ### Connect to production DB
 
@@ -395,7 +526,7 @@ If GeoBox runs a migration that adds new tables, re-run `prod-grant-rbac` to cov
 
 ---
 
-## 10. Environment Variables Reference
+## 11. Environment Variables Reference
 
 ### Required — must be set before first build
 
@@ -423,7 +554,7 @@ If GeoBox runs a migration that adds new tables, re-run `prod-grant-rbac` to cov
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### Backend won't start
 
@@ -508,7 +639,7 @@ docker logs crib-backend-prod 2>&1 | grep storage
 
 ---
 
-## 12. Useful One-liners
+## 13. Useful One-liners
 
 ```bash
 # Check all Crib container status
