@@ -102,6 +102,67 @@ async def _mark_overdue_schedules_async() -> dict:
     return {"marked": marked, "skipped_orgs": skipped_orgs}
 
 
+# ── extend_rolling_schedules ──────────────────────────────────────────────────
+
+@celery_app.task(
+    name="app.worker.tasks.payments.extend_rolling_schedules",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=300,
+)
+def extend_rolling_schedules(self) -> dict:
+    """
+    Daily cron: backfill missing rent schedules for active rolling leases
+    and extend them 3 months ahead. Safe to run multiple times (idempotent).
+    """
+    try:
+        return _run(_extend_rolling_schedules_async())
+    except Exception as exc:
+        log.exception("extend_rolling_schedules failed")
+        raise self.retry(exc=exc)
+
+
+async def _extend_rolling_schedules_async() -> dict:
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.pool import NullPool
+
+    from app.core.config import get_settings
+    from app.models.lease import Lease, LeaseStatus
+    from app.services.payment_service import generate_rent_schedules
+
+    settings = get_settings()
+    engine = create_async_engine(settings.database_url, poolclass=NullPool)
+
+    total_added = 0
+    leases_processed = 0
+
+    try:
+        async with AsyncSession(engine, expire_on_commit=False) as db:
+            async with db.begin():
+                # All active rolling leases (end_date is NULL)
+                result = await db.execute(
+                    select(Lease).where(
+                        Lease.status == LeaseStatus.active,
+                        Lease.end_date.is_(None),
+                    )
+                )
+                leases = result.scalars().all()
+
+                for lease in leases:
+                    added = await generate_rent_schedules(lease, db)
+                    total_added += added
+                    leases_processed += 1
+
+    finally:
+        await engine.dispose()
+
+    log.info(
+        "extend_rolling_schedules complete: leases=%s added=%s",
+        leases_processed, total_added,
+    )
+    return {"leases_processed": leases_processed, "schedules_added": total_added}
+
+
 # ── apply_late_fees_task ───────────────────────────────────────────────────────
 
 @celery_app.task(

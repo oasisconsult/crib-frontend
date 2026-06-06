@@ -61,6 +61,10 @@ celery_app.conf.update(
             "schedule": 86400,
         },
         # ── Rent payment lifecycle ────────────────────────────────────────────
+        "extend-rolling-schedules-daily": {
+            "task": "app.worker.tasks.payments.extend_rolling_schedules",
+            "schedule": 86400,
+        },
         "mark-overdue-schedules-daily": {
             "task": "app.worker.tasks.payments.mark_overdue_schedules",
             "schedule": 86400,  # every 24 hours

@@ -200,19 +200,21 @@ def _due_date_for_month(year: int, month: int, day_of_month: int) -> date:
     return date(year, month, min(day_of_month, last))
 
 
-def _build_schedules(lease: Lease) -> list[RentSchedule]:
+def _build_schedules(lease: Lease, up_to: date | None = None) -> list[RentSchedule]:
     """
     Build RentSchedule objects for a lease.
 
     For fixed-term leases: one schedule per calendar month from start_date to end_date.
-    For rolling leases (end_date=None): generate 12 months forward from start_date.
+    For rolling leases (end_date=None): generate from start_date up to 3 months ahead
+    of today (or `up_to` if provided), so long-running leases are always covered.
     """
     start = lease.start_date
     end = lease.end_date  # None = rolling
 
-    # Rolling: generate 12 months
     if end is None:
-        end = _add_months(start, 12)
+        horizon = up_to or _add_months(date.today(), 3)
+        # Always at least 12 months from start so short leases get enough schedules
+        end = max(_add_months(start, 12), horizon)
 
     schedules: list[RentSchedule] = []
     current = date(start.year, start.month, 1)  # align to first of month
@@ -315,15 +317,26 @@ def _calculate_late_fee_amount(lease: Lease, outstanding: float) -> float:
 
 # ── Called by lease_service on activation ──────────────────────────────────────
 
-async def generate_rent_schedules(lease: Lease, db: AsyncSession) -> None:
-    """Auto-generate rent schedules when a lease is activated."""
+async def generate_rent_schedules(lease: Lease, db: AsyncSession) -> int:
+    """Auto-generate rent schedules when a lease is activated. Returns count added."""
+    # Fetch existing period tags so re-runs and backfills are idempotent
+    existing = (await db.execute(
+        select(RentSchedule.period_start).where(RentSchedule.lease_id == lease.id)
+    )).scalars().all()
+    existing_tags = {d.strftime("%Y%m") for d in existing}
+
     schedules = _build_schedules(lease)
+    added = 0
     for s in schedules:
         period_tag = s.period_start.strftime("%Y%m")
+        if period_tag in existing_tags:
+            continue
         seq = await next_rs_seq(db, period_tag)
         s.reference = build_ref("RS", seq, period_tag)
         db.add(s)
+        added += 1
     # flush happens in the caller (activate_lease) after all side-effects
+    return added
 
 
 async def create_deposit_record(lease: Lease, db: AsyncSession) -> None:
