@@ -216,10 +216,7 @@ export default function PaymentsPage() {
         {[
           {
             label: "Expected",
-            value: formatCurrency(
-              stats ? stats.monthlyRevenue / (stats.collectionRate / 100) : 0,
-              "UGX",
-            ),
+            value: formatCurrency(stats?.expectedMonthlyRent ?? 0, "UGX"),
             icon: TrendingUp,
             color: "text-teal-600",
             bg: "bg-teal-50 dark:bg-teal-500/15",

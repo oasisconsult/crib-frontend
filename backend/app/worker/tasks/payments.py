@@ -163,6 +163,62 @@ async def _extend_rolling_schedules_async() -> dict:
     return {"leases_processed": leases_processed, "schedules_added": total_added}
 
 
+# ── waive_pre_system_schedules ────────────────────────────────────────────────
+
+@celery_app.task(
+    name="app.worker.tasks.payments.waive_pre_system_schedules",
+    bind=True,
+    max_retries=1,
+)
+def waive_pre_system_schedules(self) -> dict:
+    """
+    One-time cleanup: waive overdue/pending schedules whose due_date falls
+    before the lease was entered into Crib (lease.created_at). These are
+    historical backdated periods that were never tracked in the system.
+    """
+    try:
+        return _run(_waive_pre_system_schedules_async())
+    except Exception as exc:
+        log.exception("waive_pre_system_schedules failed")
+        raise self.retry(exc=exc)
+
+
+async def _waive_pre_system_schedules_async() -> dict:
+    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+    from sqlalchemy.pool import NullPool
+    from sqlalchemy import cast, Date as SADate
+
+    from app.core.config import get_settings
+    from app.models.lease import Lease
+    from app.models.payment import RentSchedule, RentScheduleStatus
+
+    settings = get_settings()
+    engine = create_async_engine(settings.database_url, poolclass=NullPool)
+
+    waived = 0
+
+    try:
+        async with AsyncSession(engine, expire_on_commit=False) as db:
+            async with db.begin():
+                result = await db.execute(
+                    select(RentSchedule)
+                    .join(Lease, Lease.id == RentSchedule.lease_id)
+                    .where(
+                        RentSchedule.status.in_([RentScheduleStatus.overdue, RentScheduleStatus.pending]),
+                        RentSchedule.due_date < cast(Lease.created_at, SADate),
+                        Lease.end_date.is_(None),
+                    )
+                )
+                for s in result.scalars().all():
+                    s.status = RentScheduleStatus.waived
+                    waived += 1
+    finally:
+        await engine.dispose()
+
+    log.info("waive_pre_system_schedules complete: waived=%s", waived)
+    return {"waived": waived}
+
+
 # ── apply_late_fees_task ───────────────────────────────────────────────────────
 
 @celery_app.task(

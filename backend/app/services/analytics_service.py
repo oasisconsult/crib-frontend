@@ -176,6 +176,22 @@ async def get_dashboard_stats(
         )
     monthly_rev = await db.scalar(rev_q) or 0
 
+    # Expected rent this month (sum of amount_due for schedules due in current calendar month)
+    expected_q = select(
+        func.coalesce(func.sum(RentSchedule.amount_due), 0).label("expected"),
+    ).where(
+        RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
+        func.date_trunc("month", RentSchedule.due_date) == func.date_trunc("month", func.current_date()),
+    )
+    if prop_ids is not None:
+        expected_q = expected_q.where(
+            RentSchedule.lease_id.in_(
+                select(Lease.id).where(Lease.property_id.in_(prop_ids))
+            )
+        )
+    expected_row = (await db.execute(expected_q)).one()
+    expected_monthly = float(expected_row.expected or 0)
+
     # Overdue schedules
     overdue_q = select(
         func.count(RentSchedule.id).label("count"),
@@ -258,6 +274,7 @@ async def get_dashboard_stats(
         "activeTenants": int(tenants_row.active or 0),
         "pendingOnboarding": int(tenants_row.pending or 0),
         "monthlyRevenue": float(monthly_rev),
+        "expectedMonthlyRent": expected_monthly,
         "pendingPayments": int(pending_payments),
         "overduePayments": int(overdue_row.count or 0),
         "overdueAmount": overdue_total,

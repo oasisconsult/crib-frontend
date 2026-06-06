@@ -213,7 +213,11 @@ def _build_schedules(lease: Lease, up_to: date | None = None) -> list[RentSchedu
 
     if end is None:
         horizon = up_to or _add_months(date.today(), 3)
-        # Always at least 12 months from start so short leases get enough schedules
+        # For rolling leases, start from when the lease was entered in the system
+        # (created_at), not the historical start_date, to avoid generating years of
+        # backdated overdue schedules for leases migrated into Crib mid-tenancy.
+        system_start = lease.created_at.date() if lease.created_at else start
+        start = max(start, system_start)
         end = max(_add_months(start, 12), horizon)
 
     schedules: list[RentSchedule] = []

@@ -52,6 +52,7 @@ export interface DashboardStats {
   activeTenants: number;
   pendingOnboarding: number;
   monthlyRevenue: number;
+  expectedMonthlyRent: number;
   pendingPayments: number;
   overduePayments: number;
   overdueAmount: number;
