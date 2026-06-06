@@ -803,6 +803,8 @@ async def commit_import(
                 tenant.current_unit_id = resolved_unit.id               # type: ignore[union-attr]
                 tenant.current_lease_id = lease.id
                 claimed_unit_ids.add(resolved_unit.id)               # type: ignore[union-attr]
+                from app.services.payment_service import generate_rent_schedules
+                await generate_rent_schedules(lease, db)
 
         # ── Create TenantInvite for profile-only tenants ──────────────────────
         if lease_mode == "profile_only":
