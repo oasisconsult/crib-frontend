@@ -14,7 +14,7 @@ import uuid
 from calendar import month_abbr, monthrange
 from datetime import date, datetime, timezone  # date used in occupancy/revenue helpers
 
-from sqlalchemy import func, select, true as sql_true
+from sqlalchemy import func, or_, select, true as sql_true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.inspection import Inspection, InspectionState, MaintenanceIssue, MaintenanceState
@@ -184,7 +184,10 @@ async def get_dashboard_stats(
         ), 0).label("overdue_amount"),
     ).where(
         RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
-        RentSchedule.status == RentScheduleStatus.overdue,
+        or_(
+            RentSchedule.status == RentScheduleStatus.overdue,
+            (RentSchedule.status == RentScheduleStatus.pending) & (RentSchedule.due_date < date.today()),
+        ),
     )
     if prop_ids is not None:
         overdue_q = overdue_q.where(

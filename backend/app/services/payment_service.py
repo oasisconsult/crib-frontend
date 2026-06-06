@@ -24,7 +24,7 @@ import uuid
 from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.lease import Lease
@@ -66,6 +66,13 @@ settings = get_settings()
 
 # ── Serialisers ────────────────────────────────────────────────────────────────
 
+def _effective_status(s: RentSchedule) -> str:
+    raw = s.status if isinstance(s.status, str) else s.status.value
+    if raw == RentScheduleStatus.pending.value and s.due_date < date.today():
+        return RentScheduleStatus.overdue.value
+    return raw
+
+
 def _schedule_out(
     s: RentSchedule,
     tenant_name: str | None = None,
@@ -87,7 +94,7 @@ def _schedule_out(
         amount_paid=paid,
         late_fee_applied=fee,
         balance=round(due + fee - paid, 2),
-        status=s.status if isinstance(s.status, str) else s.status.value,
+        status=_effective_status(s),
         paid_at=s.paid_at.isoformat() if s.paid_at else None,
         notes=s.notes,
         created_at=s.created_at.isoformat(),
@@ -354,7 +361,15 @@ async def list_schedules(
 
     q = select(RentSchedule).where(RentSchedule.lease_id == lease_id)
     if status_filter:
-        q = q.where(RentSchedule.status == status_filter)
+        if status_filter == RentScheduleStatus.overdue or status_filter == RentScheduleStatus.overdue.value:
+            q = q.where(
+                or_(
+                    RentSchedule.status == RentScheduleStatus.overdue,
+                    (RentSchedule.status == RentScheduleStatus.pending) & (RentSchedule.due_date < date.today()),
+                )
+            )
+        else:
+            q = q.where(RentSchedule.status == status_filter)
 
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(RentSchedule.due_date.asc()).offset((page - 1) * page_size).limit(page_size)
@@ -1476,7 +1491,15 @@ async def list_schedules_org(
 ) -> dict:
     q = org_scope(select(RentSchedule), RentSchedule.organisation_id, org_id)
     if status_filter:
-        q = q.where(RentSchedule.status == status_filter)
+        if status_filter == RentScheduleStatus.overdue or status_filter == RentScheduleStatus.overdue.value:
+            q = q.where(
+                or_(
+                    RentSchedule.status == RentScheduleStatus.overdue,
+                    (RentSchedule.status == RentScheduleStatus.pending) & (RentSchedule.due_date < date.today()),
+                )
+            )
+        else:
+            q = q.where(RentSchedule.status == status_filter)
     if lease_id_filter:
         q = q.where(RentSchedule.lease_id == lease_id_filter)
 
