@@ -717,18 +717,19 @@ function PaymentMethodsForm() {
 // ── Plans form (existing) ──────────────────────────────────────────────────────
 
 const PLAN_FEATURES: { key: string; label: string }[] = [
-  { key: "analytics_basic",       label: "Basic Analytics"       },
-  { key: "analytics_advanced",    label: "Advanced Analytics"    },
-  { key: "maintenance_workflows", label: "Maintenance Workflows" },
-  { key: "document_storage",      label: "Document Storage"      },
-  { key: "tenant_messaging",      label: "Tenant Messaging"      },
-  { key: "team_members",          label: "Team Members"          },
-  { key: "custom_branding",       label: "Custom Branding"       },
-  { key: "priority_support",      label: "Priority Support"      },
-  { key: "dedicated_support",     label: "Dedicated Support"     },
-  { key: "api_access",            label: "API Access"            },
-  { key: "sso",                   label: "SSO / SAML"            },
-  { key: "audit_logs",            label: "Audit Logs"            },
+  { key: "analytics_basic",       label: "Basic Analytics"        },
+  { key: "analytics_advanced",    label: "Advanced Analytics"     },
+  { key: "maintenance_workflows", label: "Maintenance Workflows"  },
+  { key: "document_storage",      label: "Document Storage"       },
+  { key: "tenant_messaging",      label: "Tenant Messaging"       },
+  { key: "team_members",          label: "Team Members"           },
+  { key: "custom_branding",       label: "Custom Branding"        },
+  { key: "priority_support",      label: "Priority Support"       },
+  { key: "dedicated_support",     label: "Dedicated Support"      },
+  { key: "api_access",            label: "API Access"             },
+  { key: "sso",                   label: "SSO / SAML"             },
+  { key: "audit_logs",            label: "Audit Logs"             },
+  { key: "manualPayments",        label: "Record Manual Payment"  },
 ];
 
 function PlanCard({ plan }: { plan: SubscriptionPlan }) {

@@ -286,6 +286,60 @@ async def transfer_properties(
     )
 
 
+# ── Organisation feature flags ────────────────────────────────────────────────
+
+class UpdateOrgFeaturesBody(BaseModel):
+    features: dict
+
+
+@router.get(
+    "/organisations/{org_id}/features",
+    response_model=dict,
+    dependencies=[Depends(require_superadmin())],
+)
+async def admin_get_org_features(
+    org_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Return the resolved effective feature flags for an organisation."""
+    from app.api.v1.organisations import resolve_org_features
+
+    org = await db.scalar(select(Organisation).where(Organisation.id == org_id))
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found")
+
+    resolved = await resolve_org_features(org, db)
+    return {"organisationId": str(org_id), "features": resolved}
+
+
+@router.patch(
+    "/organisations/{org_id}/features",
+    response_model=dict,
+    dependencies=[Depends(require_superadmin())],
+)
+async def admin_update_org_features(
+    org_id: uuid.UUID,
+    body: UpdateOrgFeaturesBody,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Set feature flag overrides for any organisation.
+
+    Accepted keys: manualPayments  (more added as new features ship)
+    Partial update — only supplied keys are changed.
+    Setting a key overrides whatever the org's subscription plan provides.
+    """
+    from app.api.v1.organisations import _set_org_feature_overrides
+
+    org = await db.scalar(select(Organisation).where(Organisation.id == org_id))
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found")
+
+    resolved = await _set_org_feature_overrides(org, body.features, db)
+    await db.commit()
+    return {"organisationId": str(org_id), "features": resolved}
+
+
 # ── Profile lifecycle ─────────────────────────────────────────────────────────
 
 @router.post(

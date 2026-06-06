@@ -1,4 +1,4 @@
-import { apiGet } from "./client";
+import { apiGet, apiPatch } from "./client";
 
 export interface AdminProfile {
   id: string;
@@ -44,4 +44,15 @@ export const adminApi = {
       status: "degraded",
       checks: { database: "error", redis: "error" },
     })),
+
+  getOrgFeatures: (orgId: string) =>
+    apiGet<{ organisationId: string; features: Record<string, boolean> }>(
+      `/admin/organisations/${orgId}/features`,
+    ),
+
+  updateOrgFeatures: (orgId: string, features: Record<string, boolean>) =>
+    apiPatch<{ organisationId: string; features: Record<string, boolean> }>(
+      `/admin/organisations/${orgId}/features`,
+      { features },
+    ),
 };

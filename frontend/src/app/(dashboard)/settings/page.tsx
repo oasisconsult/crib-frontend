@@ -363,12 +363,12 @@ export default function SettingsPage() {
             landlord    → 4  (Profile, Agency, Appearance, Security)
             superadmin  → 9  (+ Landlords, Agencies, Notifications, Caretakers, Features)
             manager     → 7  (+ Landlords, Notifications, Caretakers)
-            owner       → 7  (+ Notifications, Caretakers, Features)                   */}
+            owner       → 6  (+ Notifications, Caretakers)                   */}
         <TabsList className={`grid w-full ${
           isLandlord    ? "grid-cols-4"
           : isSuperAdmin ? "grid-cols-9"
           : isManager    ? "grid-cols-7"
-          :                "grid-cols-7"
+          :                "grid-cols-6"
         }`}>
           <TabsTrigger value="profile" className="gap-2">
             <User className="h-4 w-4" />
@@ -403,7 +403,7 @@ export default function SettingsPage() {
               <span className="hidden sm:inline">Caretakers</span>
             </TabsTrigger>
           )}
-          {(isSuperAdmin || (!isLandlord && !isManager)) && (
+          {isSuperAdmin && (
             <TabsTrigger value="features" className="gap-2">
               <Zap className="h-4 w-4" />
               <span className="hidden sm:inline">Features</span>
@@ -1047,13 +1047,15 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ── Features ── */}
-        {(isSuperAdmin || (!isLandlord && !isManager)) && (
+        {isSuperAdmin && (
           <TabsContent value="features" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Features</CardTitle>
+                <CardTitle>Feature Flags</CardTitle>
                 <CardDescription>
-                  Enable or disable optional functionality for your organisation.
+                  Control which features are active for this organisation.
+                  Features can also be bundled into subscription plans — plan features
+                  are enabled automatically; overrides here take precedence.
                   Changes take effect immediately.
                 </CardDescription>
               </CardHeader>
@@ -1062,16 +1064,22 @@ export default function SettingsPage() {
                   {
                     key: "manualPayments" as const,
                     label: "Record Manual Payment",
+                    plan: "All plans",
                     description:
-                      "Allow managers to record payments made outside Crib (mobile money, bank transfer, cash). " +
-                      "When enabled, a \"Record Payment\" button appears on every active lease.",
+                      "Lets managers record payments made outside Crib (mobile money, bank transfer, cash). " +
+                      "Disabling hides the \"Record Payment\" button on all active leases and blocks the API endpoint.",
                   },
-                ] as const).map(({ key, label, description }) => {
+                ] as const).map(({ key, label, plan, description }) => {
                   const enabled = org?.features?.[key] !== false;
                   return (
                     <div key={key} className="flex items-start justify-between gap-6 py-4 first:pt-0 last:pb-0">
-                      <div className="space-y-0.5">
-                        <p className="text-sm font-medium">{label}</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{label}</p>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium border">
+                            {plan}
+                          </span>
+                        </div>
                         <p className="text-xs text-muted-foreground max-w-md">{description}</p>
                       </div>
                       <Switch
@@ -1085,7 +1093,7 @@ export default function SettingsPage() {
                                 toast.success(
                                   value ? `${label} enabled` : `${label} disabled`,
                                 ),
-                              onError: () => toast.error("Failed to update feature"),
+                              onError: () => toast.error("Failed to update feature flag"),
                             },
                           )
                         }

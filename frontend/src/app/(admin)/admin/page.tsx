@@ -21,6 +21,7 @@ import {
   MailCheck,
   Loader2,
   ScrollText,
+  Zap,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { RbacPanel } from "@/components/admin/RbacPanel";
@@ -269,6 +271,40 @@ export default function AdminPage() {
           toast.error("Assignment failed", err?.response?.data?.detail ?? "Please try again"),
       },
     );
+  }
+
+  // ── Org feature flags ──────────────────────────────────────────────────
+  const [featOrg, setFeatOrg] = useState<ComboboxOption | null>(null);
+  const [featValues, setFeatValues] = useState<Record<string, boolean>>({});
+  const [loadingFeats, setLoadingFeats] = useState(false);
+  const [savingFeat, setSavingFeat] = useState<string | null>(null);
+
+  async function loadOrgFeatures(org: ComboboxOption) {
+    setFeatOrg(org);
+    setFeatValues({});
+    setLoadingFeats(true);
+    try {
+      const result = await adminApi.getOrgFeatures(org.id);
+      setFeatValues(result.features);
+    } catch {
+      toast.error("Failed to load feature flags for this organisation");
+    } finally {
+      setLoadingFeats(false);
+    }
+  }
+
+  async function toggleOrgFeature(key: string, value: boolean) {
+    if (!featOrg) return;
+    setSavingFeat(key);
+    try {
+      const result = await adminApi.updateOrgFeatures(featOrg.id, { [key]: value });
+      setFeatValues(result.features);
+      toast.success(`${value ? "Enabled" : "Disabled"} for ${featOrg.label}`);
+    } catch {
+      toast.error("Failed to update feature flag");
+    } finally {
+      setSavingFeat(null);
+    }
   }
 
   // ── Agency invites ──────────────────────────────────────────────────────
@@ -599,6 +635,75 @@ export default function AdminPage() {
                       ))}
                     </div>
                   </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* ── Org Feature Flags ── */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-violet-500" />
+                  Organisation Feature Flags
+                </CardTitle>
+                <CardDescription>
+                  Override which features are active for a specific organisation. Overrides layer on
+                  top of the organisation&apos;s subscription plan features.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Organisation</Label>
+                  <AdminSearchCombobox
+                    placeholder="Search by org name…"
+                    onSearch={(q) => searchAgencies(q)}
+                    onSelect={loadOrgFeatures}
+                    selected={featOrg}
+                    disabled={loadingFeats || !!savingFeat}
+                  />
+                </div>
+
+                {featOrg && (
+                  <div className="rounded-[6px] border divide-y">
+                    {loadingFeats ? (
+                      <div className="flex items-center gap-2 p-4 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading feature flags…
+                      </div>
+                    ) : (
+                      [
+                        {
+                          key: "manualPayments",
+                          label: "Record Manual Payment",
+                          description: "Managers can record cash / bank / mobile money payments made outside Crib.",
+                        },
+                      ].map(({ key, label, description }) => {
+                        const enabled = featValues[key] === true;
+                        const isSaving = savingFeat === key;
+                        return (
+                          <div key={key} className="flex items-start justify-between gap-4 p-3">
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-medium">{label}</p>
+                              <p className="text-xs text-muted-foreground">{description}</p>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 pt-0.5">
+                              {isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+                              <Switch
+                                checked={enabled}
+                                disabled={!!savingFeat}
+                                onCheckedChange={(v) => toggleOrgFeature(key, v)}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+
+                {!featOrg && (
+                  <p className="text-xs text-muted-foreground">
+                    Search for an organisation above to view and edit its feature flags.
+                  </p>
                 )}
               </CardContent>
             </Card>
