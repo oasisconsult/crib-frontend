@@ -98,7 +98,7 @@ async def _mark_overdue_schedules_async() -> dict:
     finally:
         await engine.dispose()
 
-    log.info("mark_overdue_schedules complete", marked=marked, skipped_orgs=skipped_orgs)
+    log.info("mark_overdue_schedules complete: marked=%s skipped_orgs=%s", marked, skipped_orgs)
     return {"marked": marked, "skipped_orgs": skipped_orgs}
 
 
@@ -205,7 +205,7 @@ async def _apply_late_fees_async() -> dict:
     finally:
         await engine.dispose()
 
-    log.info("apply_late_fees_task complete", applied=applied, skipped=skipped)
+    log.info("apply_late_fees_task complete: applied=%s skipped=%s", applied, skipped)
     return {"applied": applied, "skipped": skipped}
 
 
@@ -270,10 +270,8 @@ async def _send_rent_reminders_async() -> dict:
 
                     if reminder_date == today:
                         log.info(
-                            "rent_reminder_due",
-                            lease_id=str(s.lease_id),
-                            due_date=str(s.due_date),
-                            schedule_id=str(s.id),
+                            "rent_reminder_due: lease_id=%s due_date=%s schedule_id=%s",
+                            s.lease_id, s.due_date, s.id,
                         )
                         # Resolve tenant details for the notification
                         from app.models.lease import Lease
@@ -316,7 +314,7 @@ async def _send_rent_reminders_async() -> dict:
     finally:
         await engine.dispose()
 
-    log.info("send_rent_reminders complete", sent=sent)
+    log.info("send_rent_reminders complete: sent=%s", sent)
     return {"sent": sent}
 
 
