@@ -101,6 +101,22 @@ export const paymentsApi = {
     return mapPayment(raw);
   },
 
+  recordManual: async (leaseId: string, data: {
+    amount: number;
+    currency?: string;
+    category?: string;
+    method: string;
+    paidAt?: string | null;
+    reference?: string | null;
+    notes?: string | null;
+  }) => {
+    const raw = await apiPost<Record<string, unknown>>(
+      `/leases/${leaseId}/payments/record`,
+      data,
+    );
+    return mapPayment(raw);
+  },
+
   // Cost estimate + adaptive channel recommendation (does not mutate state)
   estimate: (leaseId: string, data: PaymentEstimateRequest) =>
     apiPost<PaymentDecision>(`/leases/${leaseId}/payments/estimate`, data),

@@ -48,6 +48,7 @@ from app.schemas.payment import (
     LateFeeOut,
     LateFeeWaive,
     LedgerOut,
+    ManualPaymentCreate,
     PaymentCreate,
     PaymentCreateFlat,
     PaymentOut,
@@ -696,6 +697,89 @@ async def confirm_payment(
     )
 
     return _payment_out(p)
+
+
+async def record_manual_payment(
+    lease_id: uuid.UUID,
+    body: ManualPaymentCreate,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+) -> PaymentOut:
+    """
+    Record an out-of-band payment (cash, bank transfer, mobile money) that was
+    made outside the Crib app. The payment is immediately set to completed and
+    allocation runs automatically — rent schedules are marked paid oldest-first.
+    """
+    lease = await _get_lease_checked(lease_id, org_id, db)
+    _org_id = org_id or lease.organisation_id
+
+    now = datetime.now(timezone.utc)
+    payment = Payment(
+        organisation_id=_org_id,
+        lease_id=lease_id,
+        rent_schedule_id=None,
+        amount=body.amount,
+        currency=body.currency or lease.currency,
+        category=body.category,
+        method=body.method,
+        reference=body.reference,
+        status=PaymentStatus.completed,
+        paid_at=body.paid_at or now,
+        notes=body.notes,
+    )
+    db.add(payment)
+    await db.flush()
+    await db.refresh(payment, attribute_names=["status", "category", "method", "updated_at", "created_at"])
+
+    if payment.category == PaymentCategory.deposit:
+        deposit = await db.scalar(select(Deposit).where(Deposit.lease_id == lease_id))
+        if deposit:
+            deposit.amount_held = round(float(deposit.amount_held) + float(payment.amount), 2)
+            await db.flush()
+        await create_ledger_entry(
+            db,
+            organisation_id=_org_id,
+            lease_id=lease_id,
+            entry_type="credit",
+            amount=float(payment.amount),
+            reference_type="deposit",
+            reference_id=payment.id,
+            description=f"Manual deposit payment via {payment.method}",
+        )
+    else:
+        overpayment = await allocate_payment(db, lease_id, payment)
+        if overpayment > 0 and lease.tenant_id:
+            await credit_wallet(
+                db,
+                tenant_id=lease.tenant_id,
+                organisation_id=_org_id,
+                amount=overpayment,
+                reference_type="overpayment",
+                reference_id=payment.id,
+                description=f"Overpayment credit from manual payment {payment.id}",
+            )
+            await create_ledger_entry(
+                db,
+                organisation_id=_org_id,
+                lease_id=lease_id,
+                entry_type="credit",
+                amount=overpayment,
+                reference_type="overpayment",
+                reference_id=payment.id,
+                description=f"Overpayment of {overpayment} credited to wallet",
+            )
+        await create_ledger_entry(
+            db,
+            organisation_id=_org_id,
+            lease_id=lease_id,
+            entry_type="credit",
+            amount=float(payment.amount),
+            reference_type="payment",
+            reference_id=payment.id,
+            description=f"Manual payment recorded via {payment.method}",
+        )
+
+    return _payment_out(payment)
 
 
 async def refund_payment(

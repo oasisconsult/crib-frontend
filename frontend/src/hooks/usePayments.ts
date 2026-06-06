@@ -96,6 +96,30 @@ export function useRecordPayment() {
   });
 }
 
+export function useRecordManualPayment(leaseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      amount: number;
+      currency?: string;
+      category?: string;
+      method: string;
+      paidAt?: string | null;
+      reference?: string | null;
+      notes?: string | null;
+    }) => paymentsApi.recordManual(leaseId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.payments.all() });
+      qc.invalidateQueries({ queryKey: queryKeys.payments.rentSchedule(leaseId) });
+      qc.invalidateQueries({ queryKey: queryKeys.payments.ledger(leaseId) });
+      qc.invalidateQueries({ queryKey: queryKeys.dashboard.stats() });
+      toast.success("Payment recorded and schedules updated");
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.detail ?? "Failed to record payment"),
+  });
+}
+
 export function useWaiveLateFee() {
   const qc = useQueryClient();
   return useMutation({

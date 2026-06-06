@@ -16,6 +16,7 @@ import { LeaseWorkflowStepper } from "./WorkflowStepper";
 import { TerminateModal } from "./TerminateModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
+import { RecordManualPaymentModal } from "./RecordManualPaymentModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease } from "@/hooks/useLeases";
 import { leasesApi } from "@/services/api/leases";
@@ -31,6 +32,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [presignOpen, setPresignOpen] = useState(false);
+  const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [noticeVacateDate, setNoticeVacateDate] = useState("");
   const [noticeReason, setNoticeReason] = useState("");
@@ -242,6 +244,17 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                   ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   : <CheckCircle className="h-3.5 w-3.5" />}
                 Confirm Payment
+              </Button>
+            )}
+            {/* Record manual payment — available on active leases */}
+            {lease.state === "active" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setRecordPaymentOpen(true)}
+              >
+                <CreditCard className="h-3.5 w-3.5" />
+                Record Payment
               </Button>
             )}
             {canSend && (
@@ -519,6 +532,14 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         onConfirm={confirmNotice}
         loading={submittingNotice}
         noticePeriodDays={lease.terms.noticePeriodDays ?? 30}
+      />
+
+      {/* Record manual payment modal */}
+      <RecordManualPaymentModal
+        open={recordPaymentOpen}
+        onOpenChange={setRecordPaymentOpen}
+        leaseId={lease.id}
+        currency={lease.terms.currency}
       />
     </div>
   );

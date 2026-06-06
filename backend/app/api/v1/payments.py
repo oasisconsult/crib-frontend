@@ -41,6 +41,7 @@ from app.schemas.payment import (
     LedgerEntryOut,
     LedgerOut,
     LedgerPageOut,
+    ManualPaymentCreate,
     PaymentAllocationOut,
     PaymentCancelBody,
     PaymentCreate,
@@ -170,6 +171,28 @@ async def create_payment(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.create_payment(lease_id, body, current_user.org_id, db)
+
+
+@router.post(
+    "/{lease_id}/payments/record",
+    response_model=PaymentOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def record_manual_payment(
+    lease_id: uuid.UUID,
+    body: ManualPaymentCreate,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Record a payment made outside the Crib app (cash, bank transfer, mobile money).
+
+    The payment is immediately confirmed and allocated against pending/overdue
+    rent schedules oldest-first. No mobile money STK push is triggered.
+
+    Accessible to: owner, manager, superadmin.
+    """
+    return await svc.record_manual_payment(lease_id, body, get_org_id(current_user), db)
 
 
 @router.get("/{lease_id}/payments", response_model=dict)

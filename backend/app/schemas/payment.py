@@ -99,6 +99,33 @@ class PaymentCreateFlat(CamelModel):
         return v
 
 
+class ManualPaymentCreate(CamelModel):
+    """Used by POST /leases/{id}/payments/record to record an out-of-band payment."""
+    amount: float = Field(gt=0)
+    currency: str = "UGX"
+    category: str = "rent"
+    method: str = "bank_transfer"
+    paid_at: datetime | None = None   # when the tenant actually paid; defaults to now()
+    reference: str | None = None      # mobile money / bank transaction reference
+    notes: str | None = None
+
+    @field_validator("category")
+    @classmethod
+    def valid_category(cls, v: str) -> str:
+        allowed = {"rent", "deposit", "late_fee", "other"}
+        if v not in allowed:
+            raise ValueError(f"category must be one of {allowed}")
+        return v
+
+    @field_validator("method")
+    @classmethod
+    def valid_method(cls, v: str) -> str:
+        allowed = {"cash", "bank_transfer", "mobile_money_mtn", "mobile_money_airtel", "cheque", "other"}
+        if v not in allowed:
+            raise ValueError(f"method must be one of {allowed}")
+        return v
+
+
 class PaymentOut(CamelModel):
     id: str
     organisation_id: str
