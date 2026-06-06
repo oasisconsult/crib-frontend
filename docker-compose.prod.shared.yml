@@ -105,7 +105,9 @@ services:
         "--loglevel=info",
         "-Q", "default,notifications,payments",
         "--pool=solo",
+        "--beat",
         # solo pool: single-threaded, async-friendly.
+        # --beat: embed the scheduler in this worker (safe with solo pool + single worker).
         # Crib tasks are I/O-bound (email, payments, notifications) so solo
         # handles them well while using ~70MB less RAM than prefork on this VPS.
       ]
