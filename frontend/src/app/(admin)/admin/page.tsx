@@ -15,8 +15,6 @@ import {
   XCircle,
   Clock,
   Server,
-  HardDrive,
-  Cpu,
   MoreHorizontal,
   Search,
   Plus,
@@ -35,37 +33,15 @@ import { PermissionGate } from "@/components/common/PermissionGate";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { RbacPanel } from "@/components/admin/RbacPanel";
 import { LeaseBillingTab } from "@/components/admin/LeaseBillingTab";
+import { useQuery } from "@tanstack/react-query";
 import { useAgencyInvites, useCreateAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
 import { useMigrateToPersonalOrg, useAssignToAgency, useRepairLandlordOrg, useRemoveFromLogtoOrg } from "@/hooks/useAdminLandlords";
 import { AdminSearchCombobox, type ComboboxOption } from "@/components/admin/AdminSearchCombobox";
 import { landlordsApi } from "@/services/api/landlords";
+import { adminApi } from "@/services/api/admin";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 
-const MOCK_USERS = [
-  { id: "1", name: "Tendo Mukasa",    email: "tendo@crib.ug",   role: "owner", properties: 3, status: "active",   joined: "Jan 2026" },
-  { id: "2", name: "Grace Nabirye",   email: "grace@crib.ug",   role: "owner", properties: 1, status: "active",   joined: "Feb 2026" },
-  { id: "3", name: "Brian Ssempala",  email: "brian@crib.ug",   role: "tenant",   properties: 0, status: "active",   joined: "Feb 2026" },
-  { id: "4", name: "Fatuma Nakato",   email: "fatuma@crib.ug",  role: "tenant",   properties: 0, status: "active",   joined: "Mar 2026" },
-  { id: "5", name: "Ronald Kiggundu", email: "ronald@crib.ug",  role: "owner", properties: 2, status: "inactive", joined: "Jan 2026" },
-  { id: "6", name: "Aisha Namusoke",  email: "aisha@crib.ug",   role: "tenant",   properties: 0, status: "pending",  joined: "Mar 2026" },
-];
-
-const SYSTEM_SERVICES = [
-  { service: "API Server",     status: "healthy",  latency: "12ms" },
-  { service: "PostgreSQL",     status: "healthy",  latency: "4ms"  },
-  { service: "Redis Cache",    status: "healthy",  latency: "1ms"  },
-  { service: "MinIO Storage",  status: "healthy",  latency: "8ms"  },
-  { service: "Logto Auth",     status: "healthy",  latency: "22ms" },
-  { service: "SMS Gateway",    status: "degraded", latency: "340ms"},
-];
-
-const STATS = [
-  { label: "Landlords",   value: "3",   icon: Building2, color: "text-blue-600",    bg: "bg-blue-100 dark:bg-blue-950/30"    },
-  { label: "Tenants",     value: "4",   icon: Users,     color: "text-violet-600",  bg: "bg-violet-100 dark:bg-violet-950/30"},
-  { label: "Properties",  value: "6",   icon: Database,  color: "text-emerald-600", bg: "bg-emerald-100 dark:bg-emerald-950/30"},
-  { label: "System Health", value: "98%", icon: Activity, color: "text-green-600",  bg: "bg-green-100 dark:bg-green-950/30"  },
-];
 
 const STATUS_CONFIG: Record<string, { label: string; variant: "success" | "destructive" | "outline" | "warning" }> = {
   active:   { label: "Active",   variant: "success"     },
@@ -102,6 +78,75 @@ const EMPTY_INVITE_FORM = {
 export default function AdminPage() {
   const [tab, setTab] = useState("users");
   const [search, setSearch] = useState("");
+
+  // ── Real data fetching ──────────────────────────────────────────────────
+  const { data: profilesPage, isLoading: loadingProfiles } = useQuery({
+    queryKey: ["admin", "profiles", search],
+    queryFn: () => adminApi.listProfiles({ pageSize: 100 }),
+    staleTime: 30_000,
+  });
+
+  const { data: platformStats } = useQuery({
+    queryKey: ["admin", "platform-stats"],
+    queryFn: adminApi.platformStats,
+    staleTime: 60_000,
+  });
+
+  const { data: healthData } = useQuery({
+    queryKey: ["admin", "health"],
+    queryFn: adminApi.healthReady,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
+  const allProfiles = profilesPage?.data ?? [];
+  const filteredProfiles = allProfiles.filter(
+    (u) =>
+      !search ||
+      (u.displayName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (u.email ?? "").toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const statsCards = [
+    {
+      label: "Total Users",
+      value: platformStats?.totalProfiles?.toString() ?? "—",
+      icon: Users,
+      color: "text-blue-600",
+      bg: "bg-blue-100 dark:bg-blue-950/30",
+    },
+    {
+      label: "Organisations",
+      value: platformStats?.activeOrganisations?.toString() ?? "—",
+      icon: Building2,
+      color: "text-violet-600",
+      bg: "bg-violet-100 dark:bg-violet-950/30",
+    },
+    {
+      label: "DB",
+      value: healthData?.checks?.database === "ok" ? "Healthy" : "Error",
+      icon: Database,
+      color: healthData?.checks?.database === "ok" ? "text-emerald-600" : "text-red-600",
+      bg: healthData?.checks?.database === "ok"
+        ? "bg-emerald-100 dark:bg-emerald-950/30"
+        : "bg-red-100 dark:bg-red-950/30",
+    },
+    {
+      label: "Redis",
+      value: healthData?.checks?.redis === "ok" ? "Healthy" : "Error",
+      icon: Activity,
+      color: healthData?.checks?.redis === "ok" ? "text-green-600" : "text-red-600",
+      bg: healthData?.checks?.redis === "ok"
+        ? "bg-green-100 dark:bg-green-950/30"
+        : "bg-red-100 dark:bg-red-950/30",
+    },
+  ];
+
+  const systemServices = Object.entries(healthData?.checks ?? {}).map(([svc, status]) => ({
+    service: svc === "database" ? "PostgreSQL" : svc === "redis" ? "Redis Cache" : svc,
+    status: status === "ok" ? "healthy" : "down",
+    detail: status === "ok" ? "ok" : status,
+  }));
 
   // ── Landlord admin actions ──────────────────────────────────────────────
   const [migrateLandlord, setMigrateLandlord] = useState<ComboboxOption | null>(null);
@@ -262,13 +307,6 @@ export default function AdminPage() {
     );
   }
 
-  const filteredUsers = MOCK_USERS.filter(
-    (u) =>
-      !search ||
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()),
-  );
-
   return (
     <PermissionGate
       role="superadmin"
@@ -301,7 +339,7 @@ export default function AdminPage() {
 
         {/* ── Summary stats ─────────────────────────────────────── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {STATS.map((s) => (
+          {statsCards.map((s) => (
             <Card key={s.label}>
               <CardContent className="pt-4 pb-3">
                 <div className={cn("h-8 w-8 rounded-[6px] flex items-center justify-center mb-2", s.bg)}>
@@ -381,90 +419,78 @@ export default function AdminPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                {/* Table header */}
-                <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
-                  <span>User</span>
-                  <span>Role</span>
-                  <span className="text-center">Properties</span>
-                  <span>Joined</span>
-                  <span>Status</span>
-                </div>
+                {loadingProfiles ? (
+                  <div className="flex items-center gap-2 py-8 text-muted-foreground text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading users…
+                  </div>
+                ) : (
+                  <>
+                    {/* Table header */}
+                    <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-3 py-2 text-xs font-medium text-muted-foreground border-b">
+                      <span>User</span>
+                      <span>Role</span>
+                      <span>Joined</span>
+                      <span>Status</span>
+                    </div>
 
-                <div className="divide-y">
-                  {filteredUsers.map((u) => {
-                    const sc = STATUS_CONFIG[u.status] ?? STATUS_CONFIG.inactive;
-                    return (
-                      <div
-                        key={u.id}
-                        className="grid sm:grid-cols-[1fr_auto_auto_auto_auto] gap-3 sm:gap-4 items-center py-3 px-3 hover:bg-primary/5 rounded-[6px] transition-colors"
-                      >
-                        {/* User info */}
-                        <div className="flex items-center gap-3">
-                          <Avatar name={u.name} />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{u.name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                    <div className="divide-y">
+                      {filteredProfiles.map((u) => (
+                        <div
+                          key={u.id}
+                          className="grid sm:grid-cols-[1fr_auto_auto_auto] gap-3 sm:gap-4 items-center py-3 px-3 hover:bg-primary/5 rounded-[6px] transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Avatar name={u.displayName ?? u.email ?? "?"} />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{u.displayName ?? "—"}</p>
+                              <p className="text-xs text-muted-foreground truncate">{u.email ?? "—"}</p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-xs capitalize w-fit">
+                            {u.role}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground hidden sm:block whitespace-nowrap">
+                            {new Date(u.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}
+                          </span>
+                          <div className="flex items-center gap-2 justify-end">
+                            <Badge variant={u.isActive ? "success" : "outline"} className="text-xs hidden sm:inline-flex">
+                              {u.isActive ? "Active" : "Inactive"}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </div>
+                      ))}
+                    </div>
 
-                        {/* Role */}
-                        <Badge variant="outline" className="text-xs capitalize w-fit">
-                          {u.role}
-                        </Badge>
-
-                        {/* Properties */}
-                        <span className="text-xs text-muted-foreground text-center hidden sm:block">
-                          {u.properties > 0 ? u.properties : "—"}
-                        </span>
-
-                        {/* Joined */}
-                        <span className="text-xs text-muted-foreground hidden sm:block whitespace-nowrap">
-                          {u.joined}
-                        </span>
-
-                        {/* Status + actions */}
-                        <div className="flex items-center gap-2 justify-end">
-                          <Badge variant={sc.variant} className="text-xs hidden sm:inline-flex">
-                            {sc.label}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <MoreHorizontal className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {filteredUsers.length === 0 && (
-                  <p className="py-8 text-center text-sm text-muted-foreground">No users match your search</p>
+                    {filteredProfiles.length === 0 && (
+                      <p className="py-8 text-center text-sm text-muted-foreground">
+                        {search ? "No users match your search" : "No users found"}
+                      </p>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
 
-            {/* Role breakdown */}
+            {/* Breakdown by status */}
             <div className="grid sm:grid-cols-3 gap-3">
               {[
-                { label: "Active",   count: MOCK_USERS.filter((u) => u.status === "active").length,   icon: UserCheck, color: "text-emerald-600" },
-                { label: "Pending",  count: MOCK_USERS.filter((u) => u.status === "pending").length,  icon: Clock,     color: "text-amber-600"   },
-                { label: "Inactive", count: MOCK_USERS.filter((u) => u.status === "inactive").length, icon: UserX,     color: "text-muted-foreground" },
+                { label: "Active",   count: platformStats?.activeProfiles ?? 0,   icon: UserCheck, color: "text-emerald-600" },
+                { label: "Total Orgs", count: platformStats?.activeOrganisations ?? 0, icon: Building2, color: "text-blue-600" },
+                { label: "Total Profiles", count: platformStats?.totalProfiles ?? 0, icon: Users, color: "text-violet-600" },
               ].map((s) => (
                 <Card key={s.label}>
                   <CardContent className="flex items-center gap-3 pt-4 pb-3">
                     <s.icon className={cn("h-5 w-5", s.color)} />
                     <div>
-                      <p className="text-xs text-muted-foreground">{s.label} Users</p>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
                       <p className="text-xl font-bold">{s.count}</p>
                     </div>
                   </CardContent>
@@ -961,9 +987,9 @@ export default function AdminPage() {
           <TabsContent value="system" className="mt-4 space-y-4">
             <div className="grid sm:grid-cols-3 gap-3">
               {[
-                { label: "CPU Usage",    value: "18%",  icon: Cpu,       color: "text-sky-600"     },
-                { label: "Memory",       value: "2.1GB",icon: Server,    color: "text-violet-600"  },
-                { label: "Disk Used",    value: "34%",  icon: HardDrive, color: "text-amber-600"   },
+                { label: "Total Profiles", value: platformStats?.totalProfiles ?? "—", icon: Users,    color: "text-sky-600"     },
+                { label: "Organisations",  value: platformStats?.activeOrganisations ?? "—", icon: Building2, color: "text-violet-600"  },
+                { label: "API Status",     value: healthData?.status === "ready" ? "Ready" : healthData?.status ?? "—", icon: Server,  color: healthData?.status === "ready" ? "text-emerald-600" : "text-amber-600" },
               ].map((s) => (
                 <Card key={s.label}>
                   <CardContent className="flex items-center gap-3 pt-4 pb-3">
@@ -983,30 +1009,38 @@ export default function AdminPage() {
                 <CardDescription>Real-time health of platform services</CardDescription>
               </CardHeader>
               <CardContent className="space-y-1">
-                {SYSTEM_SERVICES.map((s, i) => {
-                  const cfg = SERVICE_CONFIG[s.status] ?? SERVICE_CONFIG.healthy;
-                  const Icon = cfg.icon;
-                  return (
-                    <div key={s.service}>
-                      {i > 0 && <Separator className="my-1" />}
-                      <div className="flex items-center justify-between py-2 text-sm">
-                        <div className="flex items-center gap-2.5">
-                          <Icon className={cn("h-4 w-4", cfg.color)} />
-                          <span className="font-medium">{s.service}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-muted-foreground">{s.latency}</span>
-                          <Badge
-                            variant={s.status === "healthy" ? "success" : s.status === "degraded" ? "warning" : "destructive"}
-                            className="text-xs capitalize"
-                          >
-                            {s.status}
-                          </Badge>
+                {systemServices.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-muted-foreground">Loading health data…</p>
+                ) : (
+                  systemServices.map((s, i) => {
+                    const cfg = SERVICE_CONFIG[s.status] ?? SERVICE_CONFIG.healthy;
+                    const Icon = cfg.icon;
+                    return (
+                      <div key={s.service}>
+                        {i > 0 && <Separator className="my-1" />}
+                        <div className="flex items-center justify-between py-2 text-sm">
+                          <div className="flex items-center gap-2.5">
+                            <Icon className={cn("h-4 w-4", cfg.color)} />
+                            <span className="font-medium">{s.service}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {s.status !== "healthy" && (
+                              <span className="text-xs text-muted-foreground truncate max-w-[180px]" title={s.detail}>
+                                {s.detail}
+                              </span>
+                            )}
+                            <Badge
+                              variant={s.status === "healthy" ? "success" : s.status === "degraded" ? "warning" : "destructive"}
+                              className="text-xs capitalize"
+                            >
+                              {s.status}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
           </TabsContent>

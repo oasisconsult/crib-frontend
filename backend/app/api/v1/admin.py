@@ -21,7 +21,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_superadmin
@@ -125,6 +125,98 @@ async def search_organisations(
         )
         for r in rows
     ]
+
+
+# ── Platform listing / stats ─────────────────────────────────────────────────
+
+class ProfileListItem(BaseModel):
+    id: str
+    display_name: str | None
+    email: str | None
+    role: str
+    is_active: bool
+    organisation_id: str | None
+    created_at: str
+
+
+class PlatformStats(BaseModel):
+    total_profiles: int
+    active_profiles: int
+    pending_profiles: int
+    inactive_profiles: int
+    total_organisations: int
+    active_organisations: int
+
+
+@router.get(
+    "/profiles",
+    response_model=dict,
+    dependencies=[Depends(require_superadmin())],
+)
+async def list_profiles(
+    role: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200, alias="pageSize"),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """List all platform profiles (paginated). Excludes anonymised/deleted."""
+    stmt = select(Profile).where(
+        Profile.anonymised_at.is_(None),
+        Profile.deleted_at.is_(None),
+    )
+    if role:
+        stmt = stmt.where(Profile.role == role)
+
+    total = await db.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+    stmt = stmt.order_by(Profile.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    rows = (await db.execute(stmt)).scalars().all()
+
+    def _row(p: Profile) -> dict:
+        return {
+            "id": str(p.id),
+            "displayName": p.display_name,
+            "email": p.email,
+            "role": p.role,
+            "isActive": p.deleted_at is None,
+            "organisationId": str(p.organisation_id) if p.organisation_id else None,
+            "createdAt": p.created_at.isoformat(),
+        }
+
+    return {
+        "data": [_row(p) for p in rows],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "hasNext": (page * page_size) < total,
+    }
+
+
+@router.get(
+    "/platform-stats",
+    response_model=PlatformStats,
+    dependencies=[Depends(require_superadmin())],
+)
+async def platform_stats(db: AsyncSession = Depends(get_db)) -> PlatformStats:
+    """Return high-level platform-wide counts for the superadmin dashboard."""
+    active_profiles = await db.scalar(
+        select(func.count(Profile.id)).where(
+            Profile.anonymised_at.is_(None), Profile.deleted_at.is_(None)
+        )
+    ) or 0
+
+    total_orgs = await db.scalar(select(func.count(Organisation.id))) or 0
+    active_orgs = await db.scalar(
+        select(func.count(Organisation.id)).where(Organisation.deleted_at.is_(None))
+    ) or 0
+
+    return PlatformStats(
+        total_profiles=active_profiles,
+        active_profiles=active_profiles,
+        pending_profiles=0,
+        inactive_profiles=0,
+        total_organisations=total_orgs,
+        active_organisations=active_orgs,
+    )
 
 
 # ── Organisation lifecycle ────────────────────────────────────────────────────
