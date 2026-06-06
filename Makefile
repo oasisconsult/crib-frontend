@@ -235,10 +235,7 @@ prod-grant-rbac:
 	echo "Granting rbac access to: $$CRIB_USER"; \
 	docker exec -e PGPASSWORD=$$PGPASSWORD $$DB_CONTAINER psql -U $$PGUSER -d rbac -c \
 	  "GRANT USAGE ON SCHEMA public TO $$CRIB_USER; \
-	   GRANT SELECT ON rbac_apps, rbac_roles, rbac_platform_users, rbac_user_roles TO $$CRIB_USER; \
-	   GRANT INSERT, UPDATE ON rbac_apps TO $$CRIB_USER; \
-	   GRANT INSERT, UPDATE ON rbac_platform_users TO $$CRIB_USER; \
-	   GRANT INSERT ON rbac_user_roles TO $$CRIB_USER; \
+	   GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO $$CRIB_USER; \
 	   GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO $$CRIB_USER;"; \
 	echo "✓ rbac grants applied for $$CRIB_USER"
 
