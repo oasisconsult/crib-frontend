@@ -130,27 +130,6 @@ services:
       backend:
         condition: service_started
 
-  # ─── Flower (Celery monitoring UI) ─────────────────────────────────────────
-  flower:
-    container_name: crib-flower-staging
-    image: mher/flower:2.0.1
-    command:
-      [
-        "celery",
-        "--broker=redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}",
-        "flower",
-        "--port=5555",
-        "--basic_auth=${FLOWER_USER}:${FLOWER_PASSWORD}",
-      ]
-    env_file:
-      - .env.staging
-    restart: unless-stopped
-    networks:
-      - crib-staging
-      - geobox-network
-    depends_on:
-      - worker
-
   # ─── Next.js Frontend ───────────────────────────────────────────────────────
   frontend:
     container_name: crib-frontend-staging

@@ -134,28 +134,6 @@ services:
       backend:
         condition: service_healthy
 
-  # ─── Flower (Celery monitoring UI) ─────────────────────────────────────────
-  flower:
-    container_name: crib-flower-prod
-    image: mher/flower:2.0.1
-    command:
-      [
-        "celery",
-        "--broker=redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}",
-        "flower",
-        "--port=5555",
-        "--basic_auth=${FLOWER_USER}:${FLOWER_PASSWORD}",
-      ]
-    env_file:
-      - .env.production
-    restart: unless-stopped
-    networks:
-      - crib-prod
-      - geobox-network
-      - npm-network
-    depends_on:
-      - worker
-
   # ─── Next.js Frontend ───────────────────────────────────────────────────────
   frontend:
     container_name: crib-frontend-prod   # explicit name — use this in NPM: crib-frontend-prod:3000
