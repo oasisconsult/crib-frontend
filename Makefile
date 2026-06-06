@@ -28,6 +28,7 @@
 #
 # Production  (requires .env.production):
 #   make prod-create-db        Create crib DB on shared Postgres (once)
+#   make prod-grant-rbac       Grant Crib DB user access to shared rbac tables (once)
 #   make prod-build            Pull + build + start all production containers
 #   make prod-deploy           Pull + rebuild backend+worker only (rolling)
 #   make prod-up               Start without rebuild
@@ -45,7 +46,7 @@
         staging-create-db staging-build staging-up staging-deploy staging-stop \
         staging-logs staging-logs-backend staging-logs-frontend \
         staging-shell-backend staging-migrate staging-migrate-rbac \
-        prod-create-db prod-build prod-up prod-deploy prod-stop \
+        prod-create-db prod-grant-rbac prod-build prod-up prod-deploy prod-stop \
         prod-logs prod-logs-backend prod-logs-frontend \
         prod-shell-backend prod-migrate prod-migrate-rbac
 
@@ -221,6 +222,25 @@ staging-migrate-rbac:
 ## Create crib production DB on shared Postgres (run once on first deploy)
 prod-create-db:
 	$(call _create_db,crib)
+
+## Grant Crib DB user access to shared rbac tables (run once on first deploy)
+## The rbac DB is owned by GeoBox; Crib needs SELECT/INSERT/UPDATE on its tables.
+prod-grant-rbac:
+	@DB_CONTAINER=$$(docker ps --format '{{.Names}}' | grep -E 'geobox.*[-_]db|[-_]db[-_]' | head -1); \
+	if [ -z "$$DB_CONTAINER" ]; then echo "ERROR: cannot find geobox db container"; exit 1; fi; \
+	PGUSER=$$(docker exec $$DB_CONTAINER env | grep '^POSTGRES_USER=' | cut -d= -f2); \
+	PGUSER=$${PGUSER:-postgres}; \
+	PGPASSWORD=$$(docker exec $$DB_CONTAINER env | grep '^POSTGRES_PASSWORD=' | cut -d= -f2); \
+	CRIB_USER=$$(grep '^DB_USER=' .env.production | cut -d= -f2 | tr -d ' \r'); \
+	echo "Granting rbac access to: $$CRIB_USER"; \
+	docker exec -e PGPASSWORD=$$PGPASSWORD $$DB_CONTAINER psql -U $$PGUSER -d rbac -c \
+	  "GRANT USAGE ON SCHEMA public TO $$CRIB_USER; \
+	   GRANT SELECT ON rbac_apps, rbac_roles, rbac_platform_users, rbac_user_roles TO $$CRIB_USER; \
+	   GRANT INSERT, UPDATE ON rbac_apps TO $$CRIB_USER; \
+	   GRANT INSERT, UPDATE ON rbac_platform_users TO $$CRIB_USER; \
+	   GRANT INSERT ON rbac_user_roles TO $$CRIB_USER; \
+	   GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO $$CRIB_USER;"; \
+	echo "✓ rbac grants applied for $$CRIB_USER"
 
 ## Pull latest + build + start all production containers
 prod-build: pull clone-deps
