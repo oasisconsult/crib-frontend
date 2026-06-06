@@ -1,25 +1,27 @@
 """
 FastAPI dependency injection for authentication, authorisation, and DB sessions.
 
-Role resolution — Phase 4 (DB-authoritative)
---------------------------------------------
-Roles are now stored in `profiles.roles_db` (JSONB list) and treated as the
-single source of truth.  Every authenticated request writes the JWT-derived
-roles into `roles_db` so the column stays current; the *read* path always
-comes from the DB, never directly from the JWT.
+Role resolution — Phase 1-4 (RBAC framework)
+---------------------------------------------
+Phase 1: AppContextMiddleware installed (shadow_mode=True) — resolves RBAC
+         context on every request but does not enforce; attaches to request.state.rbac.
+Phase 2: _run_seed() registers "crib" in rbac_apps so the middleware has an
+         app context to resolve against.
+Phase 3: get_current_user() reads request.state.rbac.roles alongside JWT claims
+         (dual-source). RBAC DB roles take precedence when present.
+Phase 4: RBAC_SHADOW_MODE=false — DB roles are authoritative. JWT is used only
+         for identity (sub, org_id, email) and as a fallback when the RBAC DB
+         has no entry for this user yet.
 
 Concretely:
-  1. JWT decoded → `claims.org_roles` + `claims.app_roles` (identity only)
-  2. `_upsert_profile` writes those roles into `profile.roles_db`
-  3. `get_current_user` reads `profile.roles_db` — if non-NULL/non-empty, those
-     DB roles are used for all authorisation decisions
-  4. Fallback: if `roles_db` is NULL (profile created before migration 034)
-     the function falls back to parsing JWT claims directly (Phase 1-3 behaviour)
+  1. JWT decoded → identity (sub, org_id, email) + raw role claims
+  2. AppContextMiddleware sets request.state.rbac with DB-sourced roles
+  3. get_current_user() reads request.state.rbac.roles (Phase 4, authoritative)
+  4. Fallback: if rbac_ctx is absent or has no roles, _roles_from_claims(claims)
+     is used instead (safe degradation for users not yet seeded in the RBAC DB)
 
-This mirrors the GeoBox Phase 4 pattern: `request.state.rbac.roles` (DB) with
-JWT fallback.  Role changes made directly in the DB (e.g. by an admin patching
-`profiles.roles_db`) take effect on the very next request without waiting for
-the user's token to expire.
+Role changes take effect on the next request without waiting for token expiry,
+because the RBAC DB is read on every request via the middleware.
 
 Role ordering
 -------------
@@ -28,8 +30,7 @@ Lower value = higher privilege (superadmin=0, tenant=40).  The list is cached
 in-process for 5 minutes so every request doesn't hit the DB.
 
 Profile.role stores the *highest-priority* role name purely as a display/
-notification convenience and is re-synced from the JWT on every authenticated
-request.
+notification convenience and is re-synced on every authenticated request.
 """
 
 from __future__ import annotations
@@ -38,7 +39,10 @@ import asyncio
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
+
+if TYPE_CHECKING:
+    from app.models.tenant import Tenant
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select

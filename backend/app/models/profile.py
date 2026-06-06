@@ -23,6 +23,7 @@ Role design:
 """
 
 import uuid
+from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -81,22 +82,22 @@ class Profile(TimestampedBase):
 
     # ── GDPR ─────────────────────────────────────────────────────────────────
     gdpr_consent_given: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    gdpr_consent_at: Mapped[DateTime | None] = mapped_column(
+    gdpr_consent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    anonymised_at: Mapped[DateTime | None] = mapped_column(
+    anonymised_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
     # ── Soft-delete ───────────────────────────────────────────────────────────
     # NULL = active. Non-NULL = deactivated; profile hidden from normal queries.
     # LandlordPropertyAccess rows are kept so access is restored on un-delete.
-    deleted_at: Mapped[DateTime | None] = mapped_column(
+    deleted_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True
     )
 
     # ── Activity ─────────────────────────────────────────────────────────────
-    last_seen_at: Mapped[DateTime | None] = mapped_column(
+    last_seen_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
 
