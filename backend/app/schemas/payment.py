@@ -29,6 +29,10 @@ class RentScheduleOut(CamelModel):
     notes: str | None
     created_at: str
     updated_at: str
+    # Denormalised display names (populated on org-level list queries)
+    tenant_name: str | None = None
+    unit_name: str | None = None
+    property_name: str | None = None
 
 
 # ── Payment ────────────────────────────────────────────────────────────────────

@@ -11,8 +11,8 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
 import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { usePayments, useDashboardStats } from "@/hooks/usePayments";
-import type { Payment, FilterConfig } from "@/types";
+import { usePayments, useDashboardStats, useOverdueSchedules } from "@/hooks/usePayments";
+import type { Payment, RentSchedule, FilterConfig } from "@/types";
 
 const PAGE_SIZE = 20;
 
@@ -81,7 +81,64 @@ const TAB_FILTERS: Record<string, FilterConfig[]> = {
   refunded:  [{ field: "state", operator: "eq", value: "refunded" }],
 };
 
-const TABS = ["all", "pending", "confirmed", "failed", "refunded"] as const;
+const TABS = ["all", "pending", "confirmed", "failed", "refunded", "overdue"] as const;
+
+const OVERDUE_COLUMNS: Column<RentSchedule>[] = [
+  {
+    key: "tenantName",
+    header: "Tenant",
+    render: (s) => (
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{s.tenantName ?? "—"}</p>
+        {(s.unitName ?? s.propertyName) && (
+          <p className="text-xs text-muted-foreground truncate">
+            {s.unitName ?? s.propertyName}
+          </p>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: "dueDate",
+    header: "Due Date",
+    render: (s) => (
+      <span className="text-sm text-destructive font-medium">{formatDate(s.dueDate)}</span>
+    ),
+  },
+  {
+    key: "balance",
+    header: "Outstanding",
+    sortable: true,
+    render: (s) => (
+      <span className="font-semibold text-destructive">{formatCurrency(s.balance, "UGX")}</span>
+    ),
+  },
+  {
+    key: "amountDue",
+    header: "Rent Due",
+    render: (s) => (
+      <span className="text-sm">{formatCurrency(s.amountDue, "UGX")}</span>
+    ),
+  },
+  {
+    key: "lateFeeApplied",
+    header: "Late Fee",
+    render: (s) => (
+      <span className="text-sm text-amber-600">
+        {s.lateFeeApplied > 0 ? formatCurrency(s.lateFeeApplied, "UGX") : "—"}
+      </span>
+    ),
+  },
+  {
+    key: "periodStart",
+    header: "Period",
+    render: (s) => (
+      <span className="text-xs text-muted-foreground">
+        {formatDate(s.periodStart)} – {formatDate(s.periodEnd)}
+      </span>
+    ),
+  },
+];
 
 const FILTER_FIELDS: FilterField[] = [
   {
@@ -114,9 +171,10 @@ export default function PaymentsPage() {
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
-    filters: [...TAB_FILTERS[tab], ...panelFiltersToConfig(activeFilters)],
+    filters: [...(TAB_FILTERS[tab as keyof typeof TAB_FILTERS] ?? []), ...panelFiltersToConfig(activeFilters)],
   });
 
+  const { data: overdueData, isLoading: overdueLoading } = useOverdueSchedules({ page, pageSize: PAGE_SIZE });
   const { data: stats } = useDashboardStats();
 
   const handleTabChange = (t: string) => {
@@ -223,9 +281,17 @@ export default function PaymentsPage() {
           <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
           <TabsTrigger value="failed">Failed</TabsTrigger>
           <TabsTrigger value="refunded">Refunded</TabsTrigger>
+          <TabsTrigger value="overdue" className="text-destructive data-[state=active]:text-destructive">
+            Overdue Rent
+            {(stats?.overduePayments ?? 0) > 0 && (
+              <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-semibold h-4 min-w-[1rem] px-1">
+                {stats!.overduePayments}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
 
-        {TABS.map((t) => (
+        {(["all", "pending", "confirmed", "failed", "refunded"] as const).map((t) => (
           <TabsContent key={t} value={t} className="mt-3">
             <DataTable
               data={data?.data ?? []}
@@ -246,6 +312,22 @@ export default function PaymentsPage() {
             />
           </TabsContent>
         ))}
+
+        <TabsContent value="overdue" className="mt-3">
+          <DataTable
+            data={overdueData?.data ?? []}
+            columns={OVERDUE_COLUMNS}
+            loading={overdueLoading}
+            rowKey={(s) => s.id}
+            onRowClick={(s) => router.push(`/leases/${s.leaseId}`)}
+            emptyTitle="No overdue rent"
+            emptyDescription="All tenants are up to date with their rent payments"
+            pageSize={PAGE_SIZE}
+            totalItems={overdueData?.total}
+            currentPage={page}
+            onPageChange={setPage}
+          />
+        </TabsContent>
       </Tabs>
     </div>
   );

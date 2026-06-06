@@ -66,7 +66,12 @@ settings = get_settings()
 
 # ── Serialisers ────────────────────────────────────────────────────────────────
 
-def _schedule_out(s: RentSchedule) -> RentScheduleOut:
+def _schedule_out(
+    s: RentSchedule,
+    tenant_name: str | None = None,
+    unit_name: str | None = None,
+    property_name: str | None = None,
+) -> RentScheduleOut:
     paid = float(s.amount_paid)
     due = float(s.amount_due)
     fee = float(s.late_fee_applied)
@@ -87,6 +92,9 @@ def _schedule_out(s: RentSchedule) -> RentScheduleOut:
         notes=s.notes,
         created_at=s.created_at.isoformat(),
         updated_at=s.updated_at.isoformat(),
+        tenant_name=tenant_name,
+        unit_name=unit_name,
+        property_name=property_name,
     )
 
 
@@ -1475,9 +1483,44 @@ async def list_schedules_org(
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(RentSchedule.due_date.asc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(q)
+    schedules = result.scalars().all()
+
+    # Batch-fetch tenant/unit/property names for enrichment
+    lease_ids = {s.lease_id for s in schedules}
+    lease_map: dict[uuid.UUID, Lease] = {}
+    tenant_map: dict[uuid.UUID, str] = {}
+    unit_map: dict[uuid.UUID, str] = {}
+    property_map: dict[uuid.UUID, str] = {}
+
+    if lease_ids:
+        leases = (await db.execute(select(Lease).where(Lease.id.in_(lease_ids)))).scalars().all()
+        lease_map = {le.id: le for le in leases}
+
+        tenant_ids = {le.tenant_id for le in leases if le.tenant_id}
+        unit_ids   = {le.unit_id   for le in leases if le.unit_id}
+        prop_ids   = {le.property_id for le in leases if le.property_id}
+
+        if tenant_ids:
+            tenants = (await db.execute(select(TenantModel).where(TenantModel.id.in_(tenant_ids)))).scalars().all()
+            tenant_map = {t.id: f"{t.first_name} {t.last_name}" for t in tenants}
+        if unit_ids:
+            units = (await db.execute(select(Unit).where(Unit.id.in_(unit_ids)))).scalars().all()
+            unit_map = {u.id: u.name for u in units}
+        if prop_ids:
+            props = (await db.execute(select(Property).where(Property.id.in_(prop_ids)))).scalars().all()
+            property_map = {pr.id: pr.name for pr in props}
+
+    def _enrich(s: RentSchedule) -> RentScheduleOut:
+        lease = lease_map.get(s.lease_id)
+        return _schedule_out(
+            s,
+            tenant_name=tenant_map.get(lease.tenant_id) if lease and lease.tenant_id else None,
+            unit_name=unit_map.get(lease.unit_id) if lease and lease.unit_id else None,
+            property_name=property_map.get(lease.property_id) if lease and lease.property_id else None,
+        )
 
     return {
-        "data": [_schedule_out(s) for s in result.scalars().all()],
+        "data": [_enrich(s) for s in schedules],
         "total": total,
         "page": page,
         "pageSize": page_size,

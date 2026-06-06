@@ -19,7 +19,7 @@ import type {
   RevenueDataPoint,
   CashFlowDataPoint,
 } from "@/types";
-import { toPaymentParams } from "@/utils/backendParams";
+import { toPaymentParams, toScheduleParams } from "@/utils/backendParams";
 
 // Backend PaymentOut uses `status`; frontend Payment type uses `state`.
 function mapPayment(raw: Record<string, unknown>): Payment {
@@ -31,6 +31,16 @@ function mapPayment(raw: Record<string, unknown>): Payment {
 
 function mapPaymentList(raw: PaginatedResponse<Record<string, unknown>>): PaginatedResponse<Payment> {
   return { ...raw, data: raw.data.map(mapPayment) };
+}
+
+// Backend RentScheduleOut uses `status`; keep `state` as alias for legacy code
+function mapRentSchedule(raw: Record<string, unknown>): RentSchedule {
+  const s = raw as unknown as RentSchedule;
+  return { ...s, state: s.status };
+}
+
+function mapRentScheduleList(raw: PaginatedResponse<Record<string, unknown>>): PaginatedResponse<RentSchedule> {
+  return { ...raw, data: raw.data.map(mapRentSchedule) };
 }
 
 export const paymentsApi = {
@@ -96,12 +106,14 @@ export const paymentsApi = {
     apiPost<PaymentDecision>(`/leases/${leaseId}/payments/estimate`, data),
 
   // Rent schedules
-  listRentSchedules: (params?: QueryParams) =>
-    apiGet<PaginatedResponse<RentSchedule>>(`/rent-schedules`, mapQueryParamsToBackend(params)),
+  listRentSchedules: async (params?: QueryParams) => {
+    const raw = await apiGet<PaginatedResponse<Record<string, unknown>>>(`/rent-schedules`, toScheduleParams(params));
+    return mapRentScheduleList(raw);
+  },
 
   // Late fees
   listLateFees: (params?: QueryParams) =>
-    apiGet<PaginatedResponse<LateFee>>("/late-fees", mapQueryParamsToBackend(params)),
+    apiGet<PaginatedResponse<LateFee>>("/late-fees", toScheduleParams(params)),
 
   // NOTE: flat late-fees router currently only supports GET; waive/apply are lease-nested.
   // Keep these lease-nested helpers for now where used.

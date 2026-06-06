@@ -46,6 +46,19 @@ export function useRentSchedule(leaseId: string) {
   });
 }
 
+export function useOverdueSchedules(params?: { page?: number; pageSize?: number }) {
+  return useQuery({
+    queryKey: queryKeys.payments.overdueSchedules(params),
+    queryFn: () =>
+      paymentsApi.listRentSchedules({
+        page: params?.page,
+        pageSize: params?.pageSize ?? 50,
+        filters: [{ field: "status", operator: "eq", value: "overdue" }],
+      }),
+    placeholderData: keepPreviousData,
+  });
+}
+
 export function useLedger(leaseId: string) {
   return useQuery({
     queryKey: queryKeys.payments.ledger(leaseId),

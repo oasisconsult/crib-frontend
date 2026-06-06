@@ -95,6 +95,18 @@ export function toMaintenanceParams(params?: QueryParams): Record<string, unknow
   return out;
 }
 
+export function toScheduleParams(params?: QueryParams): Record<string, unknown> | undefined {
+  if (!params) return undefined;
+  const out: Record<string, unknown> = {};
+  if (params.page != null) out.page = params.page;
+  if (params.pageSize != null) out.pageSize = params.pageSize;
+  for (const f of params.filters ?? []) {
+    if ((f.field === "status" || f.field === "state") && f.operator === "eq") out.status = f.value;
+    if (f.field === "leaseId" && f.operator === "eq") out.leaseId = f.value;
+  }
+  return out;
+}
+
 export function toNotificationParams(params?: QueryParams): Record<string, unknown> | undefined {
   if (!params) return undefined;
   const out: Record<string, unknown> = {};

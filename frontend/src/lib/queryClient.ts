@@ -67,6 +67,8 @@ export const queryKeys = {
     ledger: (tenantId: string) => ["payments", "ledger", tenantId] as const,
     rentSchedule: (leaseId: string) =>
       ["payments", "rent-schedule", leaseId] as const,
+    overdueSchedules: (params?: object) =>
+      ["payments", "overdue-schedules", params] as const,
     lateFees: (params?: object) =>
       ["payments", "late-fees", params] as const,
     deposits: (leaseId: string) =>

@@ -211,13 +211,18 @@ describe("PaymentTimeline", () => {
       const schedules: RentSchedule[] = [
         {
           id: "sched-1",
-          state: "settled",
+          organisationId: "org-1",
+          status: "paid",
           leaseId: LEASE_ID,
           periodStart: "2025-03-01",
           periodEnd: "2025-03-31",
           dueDate: "2025-03-05",
-          amount: 750000,
-          currency: "UGX",
+          amountDue: 750000,
+          amountPaid: 750000,
+          lateFeeApplied: 0,
+          balance: 0,
+          createdAt: "2025-03-01T00:00:00Z",
+          updatedAt: "2025-03-01T00:00:00Z",
         },
       ];
       render(

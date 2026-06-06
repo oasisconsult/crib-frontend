@@ -66,23 +66,28 @@ export interface PaymentEstimateRequest {
 export interface RentSchedule {
   id: string;
   reference?: string | null;
-  state: RentState;
+  organisationId: string;
   leaseId: string;
-  tenantId: string;
-  unitId: string;
+  // status is the canonical field from the backend (pending | overdue | paid | waived)
+  status: string;
+  // state is kept as a read-only alias populated by mapRentSchedule for legacy compat
+  state?: string;
   // Period
   periodStart: string;
   periodEnd: string;
   dueDate: string;
-  amount: number;
-  currency: string;
-  // Linked
-  paymentId?: string;
-  lateFeeId?: string;
-  // Audit
-  generatedAt: string;
-  dueReminderSentAt?: string;
-  overdueReminderSentAt?: string;
+  amountDue: number;
+  amountPaid: number;
+  lateFeeApplied: number;
+  balance: number;
+  paidAt?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  // Enriched display names (populated on org-level list queries)
+  tenantName?: string | null;
+  unitName?: string | null;
+  propertyName?: string | null;
 }
 
 export interface LateFee {
