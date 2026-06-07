@@ -317,16 +317,20 @@ async def _get_unit(
     prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> Unit:
     """Load a unit, verifying it belongs to a property in this org."""
-    result = await db.execute(
+    from app.utils.db_filters import org_scope
+
+    q = org_scope(
         select(Unit)
         .join(Property, Unit.property_id == Property.id)
         .where(
             Unit.id == unit_id,
             Unit.property_id == prop_id,
-            Property.organisation_id == org_id,
             Unit.deleted_at.is_(None),          # archived units are not visible
-        )
+        ),
+        Property.organisation_id,
+        org_id,
     )
+    result = await db.execute(q)
     unit = result.scalar_one_or_none()
     if not unit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
@@ -510,15 +514,19 @@ async def restore_unit(
     prop_id: uuid.UUID, unit_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> UnitOut:
     """Restore a soft-deleted unit (superadmin only)."""
-    result = await db.execute(
+    from app.utils.db_filters import org_scope
+
+    q = org_scope(
         select(Unit)
         .join(Property, Unit.property_id == Property.id)
         .where(
             Unit.id == unit_id,
             Unit.property_id == prop_id,
-            Property.organisation_id == org_id,
-        )
+        ),
+        Property.organisation_id,
+        org_id,
     )
+    result = await db.execute(q)
     unit = result.scalar_one_or_none()
     if not unit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
