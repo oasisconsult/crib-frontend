@@ -173,6 +173,9 @@ staging-create-db:
 ## Pull latest + build + start all staging containers
 staging-build: pull clone-deps
 	docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+	@echo "Running Alembic migrations..."
+	docker compose -f docker-compose.staging.yml --env-file .env.staging \
+	  exec backend alembic upgrade head
 
 ## Start staging containers without rebuild
 staging-up:
@@ -245,6 +248,9 @@ prod-grant-rbac:
 ## Pull latest + build + start all production containers
 prod-build: pull clone-deps
 	docker compose -f docker-compose.prod.shared.yml --env-file .env.production up -d --build
+	@echo "Running Alembic migrations..."
+	docker compose -f docker-compose.prod.shared.yml --env-file .env.production \
+	  exec backend alembic upgrade head
 
 ## Start production containers without rebuild
 prod-up:
