@@ -183,6 +183,9 @@ staging-deploy: pull clone-deps
 	@echo "Deploying Crib staging..."
 	docker compose -f docker-compose.staging.yml --env-file .env.staging \
 	  up -d --build --no-deps backend worker
+	@echo "Running Alembic migrations..."
+	docker compose -f docker-compose.staging.yml --env-file .env.staging \
+	  exec backend alembic upgrade head
 	@echo "✓ Staging deployed"
 
 ## Stop and remove staging containers
