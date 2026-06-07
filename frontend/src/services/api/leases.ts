@@ -225,13 +225,13 @@ export const leasesApi = {
 
   // Manager records that a signed paper agreement is on file (imported leases)
   acknowledge: async (id: string) => {
-    const { data: raw } = await apiClient.patch<Record<string, unknown>>(`/leases/${id}/acknowledge`);
+    const raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/acknowledge`);
     return toLeaseModel(raw);
   },
 
   // Tenant confirms they have received and agree to their imported lease terms
   confirmTerms: async (id: string) => {
-    const { data: raw } = await apiClient.patch<Record<string, unknown>>(`/leases/${id}/confirm-terms`);
+    const raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/confirm-terms`);
     return toLeaseModel(raw);
   },
 };
