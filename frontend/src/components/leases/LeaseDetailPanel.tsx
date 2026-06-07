@@ -155,6 +155,20 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         </Alert>
       )}
 
+      {/* ── Imported lease — agreement acknowledged, awaiting tenant confirmation ── */}
+      {!needsConfirmation && lease.state === "active" && lease.paperAgreementAcknowledged && !lease.termsAcceptedAt && (
+        <Alert variant="success">
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>
+            <p className="font-medium text-sm">Offline agreement acknowledged</p>
+            <p className="text-xs text-muted-foreground">
+              A signed paper agreement has been recorded for this lease. The tenant will be
+              prompted to confirm their terms on first portal login.
+            </p>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* ── Notice to vacate banner — lease stays active during notice period ── */}
       {lease.state === "active" && lease.noticeGivenAt && (
         <Alert variant="warning">
