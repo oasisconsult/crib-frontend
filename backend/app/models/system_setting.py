@@ -180,4 +180,10 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "Default number of months rent required in advance during tenant onboarding. "
      "Can be overridden per-property or per-unit via the billing rules.",
      "integer", False, True),
+    ("payments.recent_tenancy_threshold_months", "3", "payments", "Recent Tenancy Threshold (months)",
+     "How many months may pass between a tenancy's start date and the date it was "
+     "entered into Crib before it's treated as an older/migrated tenancy. Tenancies "
+     "within this window are scheduled from their real start date; older ones are "
+     "anchored to the date they were entered, with rent assumed settled up to then.",
+     "integer", False, True),
 ]

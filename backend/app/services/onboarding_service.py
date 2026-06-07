@@ -614,6 +614,18 @@ async def submit_onboarding_payments(
                    f"Accept terms first.",
         )
 
+    # Rent schedules and the deposit record must exist *before* we create/confirm
+    # any payment here — onboarding payments (advance rent, deposit) are confirmed
+    # at this stage of the lifecycle, well before the lease reaches `active` (where
+    # these were previously generated). Without this, advance payments find no
+    # RentSchedule rows to allocate against and get stranded as "overpayment" in
+    # the tenant wallet. Both calls are idempotent, so the later activation-time
+    # calls in _activate_via_onboarding simply become safe no-ops re-runs.
+    from app.services.payment_service import generate_rent_schedules, create_deposit_record
+    await generate_rent_schedules(lease, db)
+    await create_deposit_record(lease, db)
+    await db.flush()
+
     payment_outs = []
     new_payment_ids: list[str] = []
 

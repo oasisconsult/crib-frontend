@@ -804,7 +804,14 @@ async def commit_import(
                 tenant.current_lease_id = lease.id
                 claimed_unit_ids.add(resolved_unit.id)               # type: ignore[union-attr]
                 from app.services.payment_service import generate_rent_schedules
+                from app.services.rent_ledger_engine import resolve_advance_months, backfill_import_settlement
                 await generate_rent_schedules(lease, db)
+                await db.flush()
+                # Imported leases arrive with no live payment trail in Crib — settle
+                # them through the standard allocation engine via one clearly-labelled,
+                # auditable system payment, so they don't surface as fully overdue.
+                advance_months = await resolve_advance_months(lease, resolved_unit, prop_for_rules, db)
+                await backfill_import_settlement(lease, advance_months, db)
 
         # ── Create TenantInvite for profile-only tenants ──────────────────────
         if lease_mode == "profile_only":

@@ -177,10 +177,14 @@ async def get_dashboard_stats(
     monthly_rev = await db.scalar(rev_q) or 0
 
     # Expected rent this month (sum of amount_due for schedules due in current calendar month)
+    # Scoped to active leases — schedules are now generated as early as onboarding,
+    # so unscoped queries would inflate "expected"/"overdue" with tenancies that
+    # haven't actually started yet.
     expected_q = select(
         func.coalesce(func.sum(RentSchedule.amount_due), 0).label("expected"),
     ).where(
         RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
+        RentSchedule.lease_id.in_(select(Lease.id).where(Lease.status == LeaseStatus.active)),
         func.date_trunc("month", RentSchedule.due_date) == func.date_trunc("month", func.current_date()),
     )
     if prop_ids is not None:
@@ -200,6 +204,7 @@ async def get_dashboard_stats(
         ), 0).label("overdue_amount"),
     ).where(
         RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
+        RentSchedule.lease_id.in_(select(Lease.id).where(Lease.status == LeaseStatus.active)),
         or_(
             RentSchedule.status == RentScheduleStatus.overdue,
             (RentSchedule.status == RentScheduleStatus.pending) & (RentSchedule.due_date < date.today()),
@@ -353,8 +358,11 @@ async def get_revenue_series(
     result = []
     for year, month in _months_back(months):
         # Expected = all scheduled rent amounts for that month
+        # Scoped to active leases — schedules now exist as early as onboarding,
+        # so unscoped queries would count rent for tenancies that haven't started.
         expected_q = select(func.coalesce(func.sum(RentSchedule.amount_due), 0)).where(
             RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
+            RentSchedule.lease_id.in_(select(Lease.id).where(Lease.status == LeaseStatus.active)),
             func.extract("year", RentSchedule.due_date) == year,
             func.extract("month", RentSchedule.due_date) == month,
         )
@@ -376,6 +384,7 @@ async def get_revenue_series(
         # Late fees applied that month
         late_fees_q = select(func.coalesce(func.sum(RentSchedule.late_fee_applied), 0)).where(
             RentSchedule.organisation_id == org_id if org_id is not None else sql_true(),
+            RentSchedule.lease_id.in_(select(Lease.id).where(Lease.status == LeaseStatus.active)),
             func.extract("year", RentSchedule.due_date) == year,
             func.extract("month", RentSchedule.due_date) == month,
             RentSchedule.late_fee_applied > 0,

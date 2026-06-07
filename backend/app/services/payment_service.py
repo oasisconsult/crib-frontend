@@ -201,24 +201,28 @@ def _due_date_for_month(year: int, month: int, day_of_month: int) -> date:
     return date(year, month, min(day_of_month, last))
 
 
-def _build_schedules(lease: Lease, up_to: date | None = None) -> list[RentSchedule]:
+def _build_schedules(lease: Lease, up_to: date | None = None, anchor: date | None = None) -> list[RentSchedule]:
     """
     Build RentSchedule objects for a lease.
 
     For fixed-term leases: one schedule per calendar month from start_date to end_date.
-    For rolling leases (end_date=None): generate from start_date up to 3 months ahead
-    of today (or `up_to` if provided), so long-running leases are always covered.
+    For rolling leases (end_date=None): generate from `anchor` (or start_date, if no
+    anchor given) up to 3 months ahead of today (or `up_to` if provided), so
+    long-running leases are always covered.
+
+    `anchor` lets the caller decide where rolling-lease history should start —
+    see rent_ledger_engine.compute_schedule_anchor for the rule that derives it
+    (fresh tenancies anchor to their real start_date; older/migrated ones anchor
+    to the later of start_date and the date they were entered into Crib, so we
+    never generate years of speculative backdated schedules).
     """
     start = lease.start_date
     end = lease.end_date  # None = rolling
 
     if end is None:
         horizon = up_to or _add_months(date.today(), 3)
-        # For rolling leases, start from when the lease was entered in the system
-        # (created_at), not the historical start_date, to avoid generating years of
-        # backdated overdue schedules for leases migrated into Crib mid-tenancy.
-        system_start = lease.created_at.date() if lease.created_at else start
-        start = max(start, system_start)
+        if anchor is not None:
+            start = max(start, anchor)
         end = max(_add_months(start, 12), horizon)
 
     schedules: list[RentSchedule] = []
@@ -330,7 +334,12 @@ async def generate_rent_schedules(lease: Lease, db: AsyncSession) -> int:
     )).scalars().all()
     existing_tags = {d.strftime("%Y%m") for d in existing}
 
-    schedules = _build_schedules(lease)
+    anchor = None
+    if lease.end_date is None:
+        from app.services.rent_ledger_engine import compute_schedule_anchor
+        anchor = await compute_schedule_anchor(lease, db)
+
+    schedules = _build_schedules(lease, anchor=anchor)
     added = 0
     for s in schedules:
         period_tag = s.period_start.strftime("%Y%m")
@@ -353,6 +362,9 @@ async def create_deposit_record(lease: Lease, db: AsyncSession) -> None:
     The deposit_amount on the lease tells us the expected total.
     """
     if not lease.deposit_amount or float(lease.deposit_amount) <= 0:
+        return
+    existing = await db.scalar(select(Deposit).where(Deposit.lease_id == lease.id))
+    if existing:
         return
     deposit = Deposit(
         organisation_id=lease.organisation_id,
