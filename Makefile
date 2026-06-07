@@ -255,6 +255,9 @@ prod-deploy: pull clone-deps
 	@echo "Deploying Crib production..."
 	docker compose -f docker-compose.prod.shared.yml --env-file .env.production \
 	  up -d --build --no-deps backend worker
+	@echo "Running Alembic migrations..."
+	docker compose -f docker-compose.prod.shared.yml --env-file .env.production \
+	  exec backend alembic upgrade head
 	@echo "✓ Production deployed"
 
 ## Stop and remove production containers
