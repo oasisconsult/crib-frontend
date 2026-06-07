@@ -36,6 +36,7 @@ from app.models.tenancy_agreement import TenancyAgreement
 from app.schemas.lease import (
     AdminLeaseOut,
     LeaseBillingRulesPatch,
+    LeaseAdvanceMonthsCorrection,
     LeaseActivate,
     LeaseCreate,
     LeaseNotice,
@@ -347,7 +348,7 @@ async def list_leases(
 
 
 async def update_lease(
-    lease_id: uuid.UUID, body: LeaseUpdate, org_id: uuid.UUID, db: AsyncSession
+    lease_id: uuid.UUID, body: LeaseUpdate, org_id: uuid.UUID | None, db: AsyncSession
 ) -> LeaseOut:
     lease = await _get_lease(lease_id, org_id, db)
     if lease.status != LeaseStatus.draft:
@@ -426,7 +427,56 @@ async def correct_start_date(
     return _lease_out(lease)
 
 
-async def delete_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> None:
+async def correct_advance_months(
+    lease_id: uuid.UUID, body: LeaseAdvanceMonthsCorrection, org_id: uuid.UUID | None, db: AsyncSession
+) -> LeaseOut:
+    """
+    Fix a data-entry mistake in a lease's advance-rent months — owner/manager/superadmin only.
+
+    Only safe before the tenant has accepted terms or any onboarding payment
+    (deposit/advance rent) has been recorded — once either has happened, the
+    figure is part of what the tenant agreed to or paid against, and silently
+    changing it would misrepresent the ledger. In that case the correction
+    must go through support so a human can reconcile it by hand.
+    """
+    lease = await _get_lease(lease_id, org_id, db)
+
+    if lease.terms_accepted_at is not None or lease.onboarding_payment_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Cannot correct advance rent months — the tenant has already "
+                "accepted terms or onboarding payments have been recorded "
+                "against this lease. Please contact support to reconcile by hand."
+            ),
+        )
+
+    old_advance_months = lease.advance_months
+    lease.advance_months = body.advance_months
+
+    # The preview snapshot (if any) was built against the old figure — drop it
+    # so the next preview regenerates with the corrected terms.
+    if lease.agreement_preview_snapshot is not None:
+        lease.agreement_preview_snapshot = None
+        if lease.status == LeaseStatus.agreement_previewed:
+            lease.status = LeaseStatus.onboarding_started
+
+    await db.flush()
+    await db.refresh(
+        lease,
+        attribute_names=["advance_months", "agreement_preview_snapshot", "status", "updated_at"],
+    )
+
+    log.info(
+        "lease.advance_months_corrected",
+        lease_id=str(lease_id),
+        old_advance_months=old_advance_months,
+        new_advance_months=body.advance_months,
+    )
+    return _lease_out(lease)
+
+
+async def delete_lease(lease_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession) -> None:
     lease = await _get_lease(lease_id, org_id, db)
     if lease.status != LeaseStatus.draft:
         raise HTTPException(
@@ -499,7 +549,7 @@ async def tenant_confirm_terms(
 # ── Lifecycle transitions ──────────────────────────────────────────────────────
 
 async def activate_lease(
-    lease_id: uuid.UUID, body: LeaseActivate, org_id: uuid.UUID, db: AsyncSession
+    lease_id: uuid.UUID, body: LeaseActivate, org_id: uuid.UUID | None, db: AsyncSession
 ) -> LeaseOut:
     lease = await _get_lease(lease_id, org_id, db)
 
@@ -589,7 +639,7 @@ async def activate_lease(
 
 
 async def terminate_lease(
-    lease_id: uuid.UUID, body: LeaseTerminate, org_id: uuid.UUID, db: AsyncSession
+    lease_id: uuid.UUID, body: LeaseTerminate, org_id: uuid.UUID | None, db: AsyncSession
 ) -> LeaseOut:
     lease = await _get_lease(lease_id, org_id, db)
 
@@ -802,7 +852,7 @@ async def retract_vacate_notice(
     return _lease_out(lease)
 
 
-async def expire_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession) -> LeaseOut:
+async def expire_lease(lease_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession) -> LeaseOut:
     lease = await _get_lease(lease_id, org_id, db)
 
     if lease.status != LeaseStatus.active:
@@ -819,7 +869,7 @@ async def expire_lease(lease_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession)
 
 
 async def renew_lease(
-    lease_id: uuid.UUID, body: LeaseRenewRequest, org_id: uuid.UUID, db: AsyncSession
+    lease_id: uuid.UUID, body: LeaseRenewRequest, org_id: uuid.UUID | None, db: AsyncSession
 ) -> LeaseOut:
     original = await _get_lease(lease_id, org_id, db)
 

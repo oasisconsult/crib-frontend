@@ -277,7 +277,7 @@ async def recommend_channel(
 async def retry_payment(
     payment_id: uuid.UUID,
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> Payment:
     """
@@ -294,14 +294,11 @@ async def retry_payment(
     """
     from app.models.organisation import Organisation
 
-    # Fetch payment
-    result = await db.execute(
-        select(Payment).where(
-            Payment.id == payment_id,
-            Payment.lease_id == lease_id,
-            Payment.organisation_id == org_id,
-        )
-    )
+    # Fetch payment (org_id is None for superadmins — platform-wide access)
+    _filters = [Payment.id == payment_id, Payment.lease_id == lease_id]
+    if org_id is not None:
+        _filters.append(Payment.organisation_id == org_id)
+    result = await db.execute(select(Payment).where(*_filters))
     p = result.scalar_one_or_none()
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
@@ -315,8 +312,9 @@ async def retry_payment(
             detail=f"Payment is not retryable. Current status: {p.status}",
         )
 
-    # Check max retries
-    org = await db.scalar(select(Organisation).where(Organisation.id == org_id))
+    # Check max retries — resolve settings from the payment's actual org
+    # (not the caller's org_id, which is None for superadmins)
+    org = await db.scalar(select(Organisation).where(Organisation.id == p.organisation_id))
     max_retries = ((org.settings or {}).get("payments", {}).get("maxRetries", 3)) if org else 3
 
     current_retries = p.retry_count or 0

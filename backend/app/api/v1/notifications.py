@@ -18,7 +18,7 @@ import uuid
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, get_current_user
+from app.api.deps import CurrentUser, get_current_user, get_org_id
 from app.core.database import get_db
 from app.schemas.notification import (
     NotificationOut,
@@ -41,7 +41,7 @@ async def list_templates(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await notification_service.list_templates(org_id=current_user.org_id, db=db)
+    return await notification_service.list_templates(org_id=get_org_id(current_user), db=db)
 
 
 @router.post("/notification-templates", response_model=TemplateOut, status_code=201)
@@ -60,7 +60,7 @@ async def get_template(
     db: AsyncSession = Depends(get_db),
 ):
     return await notification_service.get_template(
-        template_id=template_id, org_id=current_user.org_id, db=db
+        template_id=template_id, org_id=get_org_id(current_user), db=db
     )
 
 
@@ -72,7 +72,7 @@ async def update_template(
     db: AsyncSession = Depends(get_db),
 ):
     return await notification_service.update_template(
-        template_id=template_id, body=body, org_id=current_user.org_id, db=db
+        template_id=template_id, body=body, org_id=get_org_id(current_user), db=db
     )
 
 
@@ -83,7 +83,7 @@ async def delete_template(
     db: AsyncSession = Depends(get_db),
 ):
     await notification_service.delete_template(
-        template_id=template_id, org_id=current_user.org_id, db=db
+        template_id=template_id, org_id=get_org_id(current_user), db=db
     )
 
 
@@ -97,7 +97,7 @@ async def preview_template(
     return await notification_service.preview_template(
         template_id=template_id,
         variables=body.variables,
-        org_id=current_user.org_id,
+        org_id=get_org_id(current_user),
         db=db,
     )
 
@@ -117,7 +117,7 @@ async def list_notifications(
 ):
     state_list = [s.strip() for s in states.split(",")] if states else ([state] if state else None)
     return await notification_service.list_notifications(
-        org_id=current_user.org_id,
+        org_id=get_org_id(current_user),
         db=db,
         channel=channel,
         states=state_list,
@@ -143,7 +143,7 @@ async def get_stats(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await notification_service.get_stats(org_id=current_user.org_id, db=db)
+    return await notification_service.get_stats(org_id=get_org_id(current_user), db=db)
 
 
 @router.post("/notifications/{notification_id}/read", response_model=NotificationOut)
@@ -153,5 +153,5 @@ async def mark_read(
     db: AsyncSession = Depends(get_db),
 ):
     return await notification_service.mark_read(
-        notification_id=notification_id, org_id=current_user.org_id, db=db
+        notification_id=notification_id, org_id=get_org_id(current_user), db=db
     )

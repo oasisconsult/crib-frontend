@@ -93,7 +93,7 @@ async def confirm_payment(
     current_user=_write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.confirm_payment_by_org(payment_id, current_user.org_id, db)
+    return await svc.confirm_payment_by_org(payment_id, get_org_id(current_user), db)
 
 
 @payments_router.patch("/{payment_id}/refund", response_model=PaymentOut)
@@ -102,7 +102,7 @@ async def refund_payment(
     current_user=_write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.refund_payment_by_org(payment_id, current_user.org_id, db)
+    return await svc.refund_payment_by_org(payment_id, get_org_id(current_user), db)
 
 
 # ── Rent Schedules ─────────────────────────────────────────────────────────────

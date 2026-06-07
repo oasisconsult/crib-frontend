@@ -15,6 +15,7 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { LeaseWorkflowStepper } from "./WorkflowStepper";
 import { TerminateModal } from "./TerminateModal";
 import { CorrectStartDateModal } from "./CorrectStartDateModal";
+import { CorrectAdvanceMonthsModal } from "./CorrectAdvanceMonthsModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { RecordManualPaymentModal } from "./RecordManualPaymentModal";
@@ -37,6 +38,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [presignOpen, setPresignOpen] = useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [correctStartDateOpen, setCorrectStartDateOpen] = useState(false);
+  const [correctAdvanceMonthsOpen, setCorrectAdvanceMonthsOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [noticeVacateDate, setNoticeVacateDate] = useState("");
   const [noticeReason, setNoticeReason] = useState("");
@@ -385,7 +387,21 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                 <Separator />
                 <DetailRow
                   label="Advance Rent"
-                  value={`${lease.advanceMonths} month${lease.advanceMonths !== 1 ? "s" : ""} (${formatCurrency(lease.terms.monthlyRent * lease.advanceMonths, lease.terms.currency)})`}
+                  value={
+                    <span className="inline-flex items-center gap-1.5">
+                      {`${lease.advanceMonths} month${lease.advanceMonths !== 1 ? "s" : ""} (${formatCurrency(lease.terms.monthlyRent * lease.advanceMonths, lease.terms.currency)})`}
+                      {canManageOrg && (
+                        <button
+                          type="button"
+                          onClick={() => setCorrectAdvanceMonthsOpen(true)}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Correct advance rent months"
+                        >
+                          <Edit className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </span>
+                  }
                 />
               </>
             )}
@@ -544,6 +560,16 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         leaseId={lease.id}
         currentStartDate={lease.terms.startDate}
         endDate={lease.terms.endDate}
+      />
+
+      {/* Correct advance rent months modal */}
+      <CorrectAdvanceMonthsModal
+        open={correctAdvanceMonthsOpen}
+        onOpenChange={setCorrectAdvanceMonthsOpen}
+        leaseId={lease.id}
+        currentAdvanceMonths={lease.advanceMonths ?? 1}
+        monthlyRent={lease.terms.monthlyRent}
+        currency={lease.terms.currency}
       />
 
       {/* Pre-sign agreement modal */}

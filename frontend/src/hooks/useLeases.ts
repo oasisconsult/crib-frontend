@@ -92,6 +92,21 @@ export function useCorrectLeaseStartDate() {
   });
 }
 
+export function useCorrectLeaseAdvanceMonths() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, advanceMonths }: { id: string; advanceMonths: number }) =>
+      leasesApi.correctAdvanceMonths(id, advanceMonths),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.leases.list() });
+      toast.success("Advance rent corrected", "The lease's advance rent terms have been updated");
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.detail ?? "Failed to correct advance rent months"),
+  });
+}
+
 export function useRetractNotice() {
   const qc = useQueryClient();
   return useMutation({

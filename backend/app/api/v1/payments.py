@@ -94,16 +94,7 @@ async def generate_schedules(
     db: AsyncSession = Depends(get_db),
 ):
     """Manually re-generate rent schedules (e.g. after lease extension)."""
-    from app.models.lease import Lease
-    from sqlalchemy import select
-    from fastapi import HTTPException
-
-    result = await db.execute(
-        select(Lease).where(Lease.id == lease_id, Lease.organisation_id == current_user.org_id)
-    )
-    lease = result.scalar_one_or_none()
-    if not lease:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
+    lease = await svc._get_lease_checked(lease_id, get_org_id(current_user), db)
     await svc.generate_rent_schedules(lease, db)
     await db.flush()
 
@@ -137,7 +128,7 @@ async def waive_schedule(
     current_user=_write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.waive_schedule(schedule_id, lease_id, current_user.org_id, db)
+    return await svc.waive_schedule(schedule_id, lease_id, get_org_id(current_user), db)
 
 
 # ── Payments ───────────────────────────────────────────────────────────────────
@@ -195,15 +186,18 @@ async def record_manual_payment(
     """
     from sqlalchemy import select as _select
     from app.models.organisation import Organisation as _Org
+    from app.api.v1.organisations import resolve_org_features
 
     _org_id = get_org_id(current_user)
     if _org_id:
         _org = await db.scalar(_select(_Org).where(_Org.id == _org_id))
-        if _org and not _org.settings.get("features", {}).get("manualPayments", True):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Manual payment recording has been disabled for this organisation",
-            )
+        if _org:
+            _features = await resolve_org_features(_org, db)
+            if not _features.get("manualPayments", True):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Manual payment recording has been disabled for this organisation",
+                )
 
     return await svc.record_manual_payment(lease_id, body, _org_id, db)
 
@@ -238,7 +232,7 @@ async def confirm_payment(
     current_user=_write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.confirm_payment(payment_id, lease_id, current_user.org_id, db)
+    return await svc.confirm_payment(payment_id, lease_id, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/payments/{payment_id}/refund", response_model=PaymentOut)
@@ -248,7 +242,7 @@ async def refund_payment(
     current_user=_write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.refund_payment(payment_id, lease_id, current_user.org_id, db)
+    return await svc.refund_payment(payment_id, lease_id, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/payments/{payment_id}/reject", response_model=PaymentOut)
@@ -272,7 +266,7 @@ async def reject_payment(
     return await svc.reject_payment(
         payment_id,
         lease_id,
-        current_user.org_id,
+        get_org_id(current_user),
         db,
         reason=body.reason,
         rejected_by_profile_id=current_user.profile.id,
@@ -407,7 +401,7 @@ async def retry_payment(
     from app.services.adaptive_payment_service import retry_payment as svc_retry
     from app.services.payment_service import _payment_out
 
-    payment = await svc_retry(payment_id, lease_id, current_user.org_id, db)
+    payment = await svc_retry(payment_id, lease_id, get_org_id(current_user), db)
     return _payment_out(payment)
 
 
@@ -433,7 +427,7 @@ async def apply_late_fee(
     current_user=_write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.apply_late_fee(schedule_id, lease_id, current_user.org_id, db)
+    return await svc.apply_late_fee(schedule_id, lease_id, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/late-fees/{fee_id}/waive", response_model=LateFeeOut)
@@ -444,7 +438,7 @@ async def waive_late_fee(
     current_user=_write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.waive_late_fee(fee_id, lease_id, current_user.org_id, body, db)
+    return await svc.waive_late_fee(fee_id, lease_id, get_org_id(current_user), body, db)
 
 
 # ── Deposit ────────────────────────────────────────────────────────────────────
@@ -465,7 +459,7 @@ async def return_deposit(
     current_user=_write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.return_deposit(lease_id, body, current_user.org_id, db)
+    return await svc.return_deposit(lease_id, body, get_org_id(current_user), db)
 
 
 # ── Ledger ─────────────────────────────────────────────────────────────────────

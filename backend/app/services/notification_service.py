@@ -31,6 +31,7 @@ from app.schemas.notification import (
     TemplateOut,
     TemplateUpdate,
 )
+from app.utils.db_filters import org_scope
 
 
 # ── Serialisers ────────────────────────────────────────────────────────────────
@@ -96,15 +97,14 @@ def render_template(body: str, variables: dict[str, str]) -> str:
 # ── Internal helpers ───────────────────────────────────────────────────────────
 
 async def _get_template(
-    template_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    template_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> NotificationTemplate:
-    result = await db.execute(
-        select(NotificationTemplate).where(
-            NotificationTemplate.id == template_id,
-            NotificationTemplate.organisation_id == org_id,
-            NotificationTemplate.deleted_at.is_(None),
-        )
+    q = select(NotificationTemplate).where(
+        NotificationTemplate.id == template_id,
+        NotificationTemplate.deleted_at.is_(None),
     )
+    q = org_scope(q, NotificationTemplate.organisation_id, org_id)
+    result = await db.execute(q)
     t = result.scalar_one_or_none()
     if not t:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found")
@@ -112,14 +112,11 @@ async def _get_template(
 
 
 async def _get_notification(
-    notification_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    notification_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> Notification:
-    result = await db.execute(
-        select(Notification).where(
-            Notification.id == notification_id,
-            Notification.organisation_id == org_id,
-        )
-    )
+    q = select(Notification).where(Notification.id == notification_id)
+    q = org_scope(q, Notification.organisation_id, org_id)
+    result = await db.execute(q)
     n = result.scalar_one_or_none()
     if not n:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Notification not found")
@@ -128,18 +125,16 @@ async def _get_notification(
 
 # ── Templates ──────────────────────────────────────────────────────────────────
 
-async def list_templates(org_id: uuid.UUID, db: AsyncSession) -> list[TemplateOut]:
-    result = await db.execute(
-        select(NotificationTemplate).where(
-            NotificationTemplate.organisation_id == org_id,
-            NotificationTemplate.deleted_at.is_(None),
-        ).order_by(NotificationTemplate.created_at.desc())
-    )
+async def list_templates(org_id: uuid.UUID | None, db: AsyncSession) -> list[TemplateOut]:
+    q = select(NotificationTemplate).where(NotificationTemplate.deleted_at.is_(None))
+    q = org_scope(q, NotificationTemplate.organisation_id, org_id)
+    q = q.order_by(NotificationTemplate.created_at.desc())
+    result = await db.execute(q)
     return [_tmpl_out(t) for t in result.scalars().all()]
 
 
 async def get_template(
-    template_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    template_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> TemplateOut:
     return _tmpl_out(await _get_template(template_id, org_id, db))
 
@@ -166,7 +161,7 @@ async def create_template(
 async def update_template(
     template_id: uuid.UUID,
     body: TemplateUpdate,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> TemplateOut:
     tmpl = await _get_template(template_id, org_id, db)
@@ -178,7 +173,7 @@ async def update_template(
 
 
 async def delete_template(
-    template_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    template_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> None:
     tmpl = await _get_template(template_id, org_id, db)
     tmpl.deleted_at = datetime.now(timezone.utc)
@@ -188,7 +183,7 @@ async def delete_template(
 async def preview_template(
     template_id: uuid.UUID,
     variables: dict[str, str],
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> dict:
     tmpl = await _get_template(template_id, org_id, db)
@@ -202,7 +197,7 @@ async def preview_template(
 # ── Notifications ──────────────────────────────────────────────────────────────
 
 async def list_notifications(
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
     channel: str | None = None,
     states: list[str] | None = None,
@@ -210,7 +205,7 @@ async def list_notifications(
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
-    q = select(Notification).where(Notification.organisation_id == org_id)
+    q = org_scope(select(Notification), Notification.organisation_id, org_id)
     if channel:
         q = q.where(Notification.channel == channel)
     if states:
@@ -272,7 +267,7 @@ async def send_notification(
 
 
 async def mark_read(
-    notification_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    notification_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> NotificationOut:
     n = await _get_notification(notification_id, org_id, db)
     if n.state == NotificationState.delivered:
@@ -283,8 +278,8 @@ async def mark_read(
     return _notif_out(n)
 
 
-async def get_stats(org_id: uuid.UUID, db: AsyncSession) -> NotificationStatsOut:
-    result = await db.execute(
+async def get_stats(org_id: uuid.UUID | None, db: AsyncSession) -> NotificationStatsOut:
+    stats_q = org_scope(
         select(
             func.count(Notification.id).label("total"),
             func.count(Notification.id).filter(
@@ -299,8 +294,11 @@ async def get_stats(org_id: uuid.UUID, db: AsyncSession) -> NotificationStatsOut
             func.count(Notification.id).filter(
                 Notification.state == NotificationState.failed
             ).label("failed"),
-        ).where(Notification.organisation_id == org_id)
+        ),
+        Notification.organisation_id,
+        org_id,
     )
+    result = await db.execute(stats_q)
     row = result.one()
     total = int(row.total or 0)
     sent = int(row.sent or 0)
@@ -309,11 +307,12 @@ async def get_stats(org_id: uuid.UUID, db: AsyncSession) -> NotificationStatsOut
     failed = int(row.failed or 0)
 
     # Per-channel counts
-    channel_result = await db.execute(
-        select(Notification.channel, func.count(Notification.id).label("cnt"))
-        .where(Notification.organisation_id == org_id)
-        .group_by(Notification.channel)
-    )
+    channel_q = org_scope(
+        select(Notification.channel, func.count(Notification.id).label("cnt")),
+        Notification.organisation_id,
+        org_id,
+    ).group_by(Notification.channel)
+    channel_result = await db.execute(channel_q)
     by_channel = {row.channel: int(row.cnt) for row in channel_result}
 
     return NotificationStatsOut(

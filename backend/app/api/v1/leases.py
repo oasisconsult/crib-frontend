@@ -22,6 +22,7 @@ from app.api.deps import CurrentUser, get_org_id, get_tenant_record, require_org
 from app.core.database import get_db
 from app.schemas.lease import (
     LeaseActivate,
+    LeaseAdvanceMonthsCorrection,
     LeaseCreate,
     LeaseNotice,
     LeaseOut,
@@ -103,7 +104,7 @@ async def update_lease(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.update_lease(lease_id, body, current_user.org_id, db)
+    return await svc.update_lease(lease_id, body, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/start-date", response_model=LeaseOut)
@@ -114,7 +115,18 @@ async def correct_lease_start_date(
     db: AsyncSession = Depends(get_db),
 ):
     """Fix a data-entry mistake in the lease start date — owner/manager/superadmin only."""
-    return await svc.correct_start_date(lease_id, body, current_user.org_id, db)
+    return await svc.correct_start_date(lease_id, body, get_org_id(current_user), db)
+
+
+@router.patch("/{lease_id}/advance-months", response_model=LeaseOut)
+async def correct_lease_advance_months(
+    lease_id: uuid.UUID,
+    body: LeaseAdvanceMonthsCorrection,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """Fix a data-entry mistake in the lease's advance rent months — owner/manager/superadmin only."""
+    return await svc.correct_advance_months(lease_id, body, get_org_id(current_user), db)
 
 
 @router.delete("/{lease_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -123,7 +135,7 @@ async def delete_lease(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    await svc.delete_lease(lease_id, current_user.org_id, db)
+    await svc.delete_lease(lease_id, get_org_id(current_user), db)
 
 
 # ── Lifecycle transitions ──────────────────────────────────────────────────────
@@ -135,7 +147,7 @@ async def activate_lease(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.activate_lease(lease_id, body, current_user.org_id, db)
+    return await svc.activate_lease(lease_id, body, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/terminate", response_model=LeaseOut)
@@ -145,7 +157,7 @@ async def terminate_lease(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.terminate_lease(lease_id, body, current_user.org_id, db)
+    return await svc.terminate_lease(lease_id, body, get_org_id(current_user), db)
 
 
 @router.patch("/{lease_id}/expire", response_model=LeaseOut)
@@ -154,7 +166,7 @@ async def expire_lease(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.expire_lease(lease_id, current_user.org_id, db)
+    return await svc.expire_lease(lease_id, get_org_id(current_user), db)
 
 
 @router.post("/{lease_id}/renew", response_model=LeaseOut, status_code=status.HTTP_201_CREATED)
@@ -164,7 +176,7 @@ async def renew_lease(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.renew_lease(lease_id, body, current_user.org_id, db)
+    return await svc.renew_lease(lease_id, body, get_org_id(current_user), db)
 
 
 @router.post("/{lease_id}/document", response_model=dict)

@@ -589,7 +589,7 @@ async def get_payment(
 async def confirm_payment(
     payment_id: uuid.UUID,
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> PaymentOut:
     """
@@ -797,7 +797,7 @@ async def record_manual_payment(
 async def refund_payment(
     payment_id: uuid.UUID,
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> PaymentOut:
     """
@@ -1116,7 +1116,7 @@ async def list_late_fees(
 async def apply_late_fee(
     schedule_id: uuid.UUID,
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> LateFeeOut:
     lease = await _get_lease_checked(lease_id, org_id, db)
@@ -1170,7 +1170,7 @@ async def apply_late_fee(
 async def waive_late_fee(
     fee_id: uuid.UUID,
     lease_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     body: LateFeeWaive,
     db: AsyncSession,
 ) -> LateFeeOut:
@@ -1216,7 +1216,7 @@ async def get_deposit(
 async def return_deposit(
     lease_id: uuid.UUID,
     body: DepositReturn,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> DepositOut:
     await _get_lease_checked(lease_id, org_id, db)
@@ -1525,11 +1525,11 @@ async def create_payment_flat(
 
 async def confirm_payment_by_org(
     payment_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> PaymentOut:
     p = await db.scalar(
-        select(Payment).where(Payment.id == payment_id, Payment.organisation_id == org_id)
+        org_scope(select(Payment).where(Payment.id == payment_id), Payment.organisation_id, org_id)
     )
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
@@ -1565,11 +1565,11 @@ async def confirm_payment_by_org(
 
 async def refund_payment_by_org(
     payment_id: uuid.UUID,
-    org_id: uuid.UUID,
+    org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> PaymentOut:
     p = await db.scalar(
-        select(Payment).where(Payment.id == payment_id, Payment.organisation_id == org_id)
+        org_scope(select(Payment).where(Payment.id == payment_id), Payment.organisation_id, org_id)
     )
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")

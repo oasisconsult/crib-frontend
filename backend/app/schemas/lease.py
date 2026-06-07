@@ -60,6 +60,11 @@ class LeaseStartDateCorrection(CamelModel):
     start_date: date
 
 
+class LeaseAdvanceMonthsCorrection(CamelModel):
+    """Body for PATCH /leases/{id}/advance-months — fixes a data-entry mistake."""
+    advance_months: int = Field(ge=1, le=12)
+
+
 class LeaseActivate(CamelModel):
     """Optional body for PATCH /leases/{id}/activate."""
     signed_at: datetime | None = None      # defaults to now() in service

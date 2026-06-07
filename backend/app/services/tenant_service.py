@@ -215,7 +215,7 @@ async def get_tenant(
 
 
 async def update_tenant(
-    tenant_id: uuid.UUID, body: TenantUpdate, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, body: TenantUpdate, org_id: uuid.UUID | None, db: AsyncSession
 ) -> TenantOut:
     tenant = await _get_tenant(tenant_id, org_id, db)
     data = body.model_dump(exclude_none=True)
@@ -585,7 +585,7 @@ async def save_onboarding_draft(
 
 
 async def resend_invite(
-    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> TenantInviteOut:
     """
     Generate a fresh invite token for a tenant who has not yet completed
@@ -666,7 +666,7 @@ async def resend_invite(
 # ── Cancel invite ────────────────────────────────────────────────────────────
 
 async def cancel_invite(
-    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> None:
     """
     Cancel all pending invites for a tenant and reset their onboarding state
@@ -703,7 +703,7 @@ async def cancel_invite(
 # ── Resend login credentials ─────────────────────────────────────────────────
 
 async def resend_login_credentials(
-    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> dict:
     """
     (Re-)send login credentials to an activated tenant.
@@ -1092,7 +1092,7 @@ async def _notify_resubmission(
 
 
 async def approve_tenant(
-    tenant_id: uuid.UUID, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> TenantOut:
     tenant = await _get_tenant(tenant_id, org_id, db)
     tenant.onboarding_state = onboarding_sm.transition_or_422(
@@ -1105,7 +1105,7 @@ async def approve_tenant(
 
 
 async def reject_tenant(
-    tenant_id: uuid.UUID, reason: str, org_id: uuid.UUID, db: AsyncSession
+    tenant_id: uuid.UUID, reason: str, org_id: uuid.UUID | None, db: AsyncSession
 ) -> TenantOut:
     tenant = await _get_tenant(tenant_id, org_id, db)
     tenant.onboarding_state = onboarding_sm.transition_or_422(
@@ -1158,7 +1158,7 @@ async def list_documents(
 
 async def upload_document(
     tenant_id: uuid.UUID, body: TenantDocumentCreate,
-    org_id: uuid.UUID, db: AsyncSession
+    org_id: uuid.UUID | None, db: AsyncSession
 ) -> TenantDocumentOut:
     await _get_tenant(tenant_id, org_id, db)
 
@@ -1186,7 +1186,7 @@ async def upload_document(
 
 async def verify_document(
     tenant_id: uuid.UUID, document_id: uuid.UUID,
-    org_id: uuid.UUID, db: AsyncSession
+    org_id: uuid.UUID | None, db: AsyncSession
 ) -> TenantDocumentOut:
     await _get_tenant(tenant_id, org_id, db)
     result = await db.execute(
@@ -1206,7 +1206,7 @@ async def verify_document(
 
 async def delete_document(
     tenant_id: uuid.UUID, document_id: uuid.UUID,
-    org_id: uuid.UUID, db: AsyncSession
+    org_id: uuid.UUID | None, db: AsyncSession
 ) -> None:
     await _get_tenant(tenant_id, org_id, db)
     result = await db.execute(

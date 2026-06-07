@@ -139,7 +139,7 @@ async def update_tenant(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.update_tenant(tenant_id, body, current_user.org_id, db)
+    return await svc.update_tenant(tenant_id, body, get_org_id(current_user), db)
 
 
 @router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -148,7 +148,7 @@ async def delete_tenant(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    await svc.delete_tenant(tenant_id, current_user.org_id, db)
+    await svc.delete_tenant(tenant_id, get_org_id(current_user), db)
 
 
 # ── Approve / Reject ──────────────────────────────────────────────────────────
@@ -159,7 +159,7 @@ async def approve_tenant(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.approve_tenant(tenant_id, current_user.org_id, db)
+    return await svc.approve_tenant(tenant_id, get_org_id(current_user), db)
 
 
 class RejectBody(BaseModel):
@@ -173,7 +173,7 @@ async def reject_tenant(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.reject_tenant(tenant_id, body.reason, current_user.org_id, db)
+    return await svc.reject_tenant(tenant_id, body.reason, get_org_id(current_user), db)
 
 
 # ── Resend invite ─────────────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ async def resend_invite(
     Allowed for onboarding states: invited, started, rejected.
     Blocked for: submitted, approved, activated.
     """
-    return await svc.resend_invite(tenant_id, current_user.org_id, db)
+    return await svc.resend_invite(tenant_id, get_org_id(current_user), db)
 
 
 # ── Cancel invite ─────────────────────────────────────────────────────────────
@@ -206,8 +206,7 @@ async def cancel_invite(
     Cancel all pending invites for this tenant and reset their onboarding state.
     Only valid for invited / started states.
     """
-    assert current_user.org_id is not None
-    await svc.cancel_invite(tenant_id, current_user.org_id, db)
+    await svc.cancel_invite(tenant_id, get_org_id(current_user), db)
 
 
 # ── Resend login credentials ─────────────────────────────────────────────────
@@ -226,7 +225,7 @@ async def resend_login_credentials(
 
     Only allowed for tenants in the 'activated' state.
     """
-    return await svc.resend_login_credentials(tenant_id, current_user.org_id, db)  # type: ignore[arg-type]
+    return await svc.resend_login_credentials(tenant_id, get_org_id(current_user), db)
 
 
 # ── Documents ─────────────────────────────────────────────────────────────────
@@ -251,7 +250,7 @@ async def upload_document(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.upload_document(tenant_id, body, current_user.org_id, db)
+    return await svc.upload_document(tenant_id, body, get_org_id(current_user), db)
 
 
 @router.patch("/{tenant_id}/documents/{document_id}/verify", response_model=TenantDocumentOut)
@@ -261,7 +260,7 @@ async def verify_document(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.verify_document(tenant_id, document_id, current_user.org_id, db)
+    return await svc.verify_document(tenant_id, document_id, get_org_id(current_user), db)
 
 
 @router.delete("/{tenant_id}/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -271,7 +270,7 @@ async def delete_document(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    await svc.delete_document(tenant_id, document_id, current_user.org_id, db)
+    await svc.delete_document(tenant_id, document_id, get_org_id(current_user), db)
 
 
 # ── GDPR ──────────────────────────────────────────────────────────────────────
@@ -284,7 +283,7 @@ async def anonymise_tenant(
 ):
     await svc.anonymise_tenant(
         tenant_id,
-        current_user.org_id,
+        get_org_id(current_user),
         db,
         requested_by_profile_id=current_user.profile.id,
     )

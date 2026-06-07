@@ -135,6 +135,12 @@ export const leasesApi = {
     return toLeaseModel(raw);
   },
 
+  /** Fix a data-entry mistake in the lease's advance rent months — owner/manager/superadmin only. */
+  correctAdvanceMonths: async (id: string, advanceMonths: number) => {
+    const raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/advance-months`, { advanceMonths });
+    return toLeaseModel(raw);
+  },
+
   delete: (id: string) =>
     apiDelete<void>(`/leases/${id}`),
 
