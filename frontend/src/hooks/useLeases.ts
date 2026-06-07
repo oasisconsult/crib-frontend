@@ -77,6 +77,21 @@ export function useTransitionLease() {
   });
 }
 
+export function useCorrectLeaseStartDate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, startDate }: { id: string; startDate: string }) =>
+      leasesApi.correctStartDate(id, startDate),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+      qc.invalidateQueries({ queryKey: queryKeys.leases.list() });
+      toast.success("Start date corrected", "The lease's rent schedule has been updated to match");
+    },
+    onError: (err: any) =>
+      toast.error(err?.response?.data?.detail ?? "Failed to correct start date"),
+  });
+}
+
 export function useRetractNotice() {
   const qc = useQueryClient();
   return useMutation({

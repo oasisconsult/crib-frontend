@@ -129,6 +129,12 @@ export const leasesApi = {
     return toLeaseModel(raw);
   },
 
+  /** Fix a data-entry mistake in the lease start date — owner/manager/superadmin only. */
+  correctStartDate: async (id: string, startDate: string) => {
+    const raw = await apiPatch<Record<string, unknown>>(`/leases/${id}/start-date`, { startDate });
+    return toLeaseModel(raw);
+  },
+
   delete: (id: string) =>
     apiDelete<void>(`/leases/${id}`),
 

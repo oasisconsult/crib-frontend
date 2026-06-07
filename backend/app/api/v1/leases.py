@@ -26,6 +26,7 @@ from app.schemas.lease import (
     LeaseNotice,
     LeaseOut,
     LeaseRenewRequest,
+    LeaseStartDateCorrection,
     LeaseTerminate,
     LeaseUpdate,
 )
@@ -103,6 +104,17 @@ async def update_lease(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.update_lease(lease_id, body, current_user.org_id, db)
+
+
+@router.patch("/{lease_id}/start-date", response_model=LeaseOut)
+async def correct_lease_start_date(
+    lease_id: uuid.UUID,
+    body: LeaseStartDateCorrection,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """Fix a data-entry mistake in the lease start date — owner/manager/superadmin only."""
+    return await svc.correct_start_date(lease_id, body, current_user.org_id, db)
 
 
 @router.delete("/{lease_id}", status_code=status.HTTP_204_NO_CONTENT)

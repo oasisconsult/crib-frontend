@@ -41,6 +41,7 @@ from app.schemas.lease import (
     LeaseNotice,
     LeaseOut,
     LeaseRenewRequest,
+    LeaseStartDateCorrection,
     LeaseTerminate,
     LeaseUpdate,
 )
@@ -358,6 +359,70 @@ async def update_lease(
         setattr(lease, key, val)
     await db.flush()
     await db.refresh(lease, attribute_names=["status", "updated_at"])
+    return _lease_out(lease)
+
+
+async def correct_start_date(
+    lease_id: uuid.UUID, body: LeaseStartDateCorrection, org_id: uuid.UUID | None, db: AsyncSession
+) -> LeaseOut:
+    """
+    Fix a data-entry mistake in a lease's start date — owner/manager/superadmin only.
+
+    Draft leases: the date is simply updated (no schedule exists yet).
+
+    Active/other leases: the rent ledger is anchored to start_date, so the
+    existing RentSchedule rows (generated against the *wrong* date) must be
+    discarded and regenerated against the corrected one. This is only safe
+    while no rent has actually been collected yet — once a tenant has paid
+    against the (wrong) schedule, silently deleting it would destroy that
+    payment trail. In that case the correction must go through support so a
+    human can reconcile the ledger by hand.
+    """
+    from app.models.payment import RentSchedule
+    from app.services.payment_service import generate_rent_schedules
+
+    lease = await _get_lease(lease_id, org_id, db)
+
+    if lease.end_date is not None and body.start_date >= lease.end_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Start date must be before the lease's end date",
+        )
+
+    if lease.status == LeaseStatus.draft:
+        lease.start_date = body.start_date
+    else:
+        schedules = (await db.execute(
+            select(RentSchedule).where(RentSchedule.lease_id == lease.id)
+        )).scalars().all()
+        if any(float(s.amount_paid) > 0 for s in schedules):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Cannot correct the start date — rent has already been "
+                    "collected against this lease's schedule. Please contact "
+                    "support to reconcile the ledger by hand."
+                ),
+            )
+        for s in schedules:
+            await db.delete(s)
+        await db.flush()
+
+        old_start_date = lease.start_date
+        lease.start_date = body.start_date
+        await db.flush()
+        await generate_rent_schedules(lease, db)
+
+        log.info(
+            "lease.start_date_corrected",
+            lease_id=str(lease_id),
+            old_start_date=str(old_start_date),
+            new_start_date=str(body.start_date),
+            schedules_replaced=len(schedules),
+        )
+
+    await db.flush()
+    await db.refresh(lease, attribute_names=["start_date", "updated_at"])
     return _lease_out(lease)
 
 

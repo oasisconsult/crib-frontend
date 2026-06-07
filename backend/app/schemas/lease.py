@@ -55,6 +55,11 @@ class LeaseUpdate(CamelModel):
     notes: str | None = None
 
 
+class LeaseStartDateCorrection(CamelModel):
+    """Body for PATCH /leases/{id}/start-date — fixes a data-entry mistake."""
+    start_date: date
+
+
 class LeaseActivate(CamelModel):
     """Optional body for PATCH /leases/{id}/activate."""
     signed_at: datetime | None = None      # defaults to now() in service

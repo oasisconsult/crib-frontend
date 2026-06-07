@@ -14,12 +14,14 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { LeaseWorkflowStepper } from "./WorkflowStepper";
 import { TerminateModal } from "./TerminateModal";
+import { CorrectStartDateModal } from "./CorrectStartDateModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { RecordManualPaymentModal } from "./RecordManualPaymentModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease } from "@/hooks/useLeases";
 import { useOrganisation } from "@/hooks/useOrganisation";
+import { usePermissions } from "@/hooks/usePermissions";
 import { leasesApi } from "@/services/api/leases";
 import { toast } from "@/store/useUIStore";
 import { canTransition, LEASE_TRANSITIONS } from "@/types/states";
@@ -34,6 +36,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [presignOpen, setPresignOpen] = useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [correctStartDateOpen, setCorrectStartDateOpen] = useState(false);
   const [noticeOpen, setNoticeOpen] = useState(false);
   const [noticeVacateDate, setNoticeVacateDate] = useState("");
   const [noticeReason, setNoticeReason] = useState("");
@@ -50,6 +53,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const { mutate: deleteLease, isPending: deletingLease } = useDeleteLease();
   const { data: org } = useOrganisation();
   const manualPaymentsEnabled = org?.features?.manualPayments !== false;
+  const { canManageOrg } = usePermissions();
 
   // Default vacate date = today + notice period days (editable in the dialog)
   const defaultVacateDate = (() => {
@@ -407,7 +411,24 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <DetailRow label="Period" value={formatDateRange(lease.terms.startDate, lease.terms.endDate)} />
+            <DetailRow
+              label="Period"
+              value={
+                <span className="inline-flex items-center gap-1.5">
+                  {formatDateRange(lease.terms.startDate, lease.terms.endDate)}
+                  {canManageOrg && (
+                    <button
+                      type="button"
+                      onClick={() => setCorrectStartDateOpen(true)}
+                      className="text-muted-foreground hover:text-foreground"
+                      title="Correct start date"
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </span>
+              }
+            />
             <Separator />
             <DetailRow label="Notice Period" value={formatDays(lease.terms.noticePeriodDays)} />
             <DetailRow label="Activated" value={formatDate(lease.activatedAt)} />
@@ -514,6 +535,15 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         open={terminateOpen}
         onOpenChange={setTerminateOpen}
         leaseId={lease.id}
+      />
+
+      {/* Correct start date modal */}
+      <CorrectStartDateModal
+        open={correctStartDateOpen}
+        onOpenChange={setCorrectStartDateOpen}
+        leaseId={lease.id}
+        currentStartDate={lease.terms.startDate}
+        endDate={lease.terms.endDate}
       />
 
       {/* Pre-sign agreement modal */}
