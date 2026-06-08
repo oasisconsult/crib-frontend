@@ -17,6 +17,10 @@ const DAYS   = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 // Static demo time slots (no API needed)
 const DEMO_SLOTS = ["09:00","10:00","11:00","14:00","15:00","16:00"];
 
+// All slot times are in this zone — shown alongside the picked time so visitors
+// aren't confused when their own calendar later displays the converted local time.
+const DEMO_TIMEZONE_LABEL = "EAT";
+
 const PORTFOLIO_SIZES = [
   "1–5 units",
   "6–20 units",
@@ -261,7 +265,7 @@ function InfoPanel({
           <div className="flex items-start gap-2">
             <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[hsl(var(--muted-foreground))]" aria-hidden />
             <span>
-              {to12h(selectedTime)} — {formatDateLong(selectedDate)}
+              {to12h(selectedTime)} {DEMO_TIMEZONE_LABEL} — {formatDateLong(selectedDate)}
             </span>
           </div>
         )}
@@ -367,7 +371,10 @@ function BookingWidget() {
             Demo booked!
           </h3>
           <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-            {to12h(selectedTime)} &mdash; {formatDateLong(selectedDate)}
+            {to12h(selectedTime)} {DEMO_TIMEZONE_LABEL} &mdash; {formatDateLong(selectedDate)}
+          </p>
+          <p className="mt-0.5 text-xs text-[hsl(var(--muted-foreground))]">
+            Your calendar will show this converted to your local time zone.
           </p>
         </div>
         <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-6 py-4 text-center max-w-sm">
