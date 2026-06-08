@@ -1,9 +1,10 @@
 """
 'Book a Demo' endpoints.
 
-POST /public/demo-bookings        — public, no auth (marketing site widget)
-GET  /demo-bookings               — superadmin: list bookings
-PATCH /demo-bookings/{id}/status  — superadmin: change booking status
+POST /public/demo-bookings         — public, no auth (marketing site widget)
+GET  /public/demo-bookings/contact — public, no auth (contact email for the widget)
+GET  /demo-bookings                — superadmin: list bookings
+PATCH /demo-bookings/{id}/status   — superadmin: change booking status
 """
 
 from __future__ import annotations
@@ -21,11 +22,28 @@ from app.schemas.demo_booking import (
     DemoBookingOut,
     DemoBookingPageOut,
     DemoBookingStatusUpdate,
+    DemoContactOut,
 )
-from app.services import demo_booking_service
+from app.services import demo_booking_service, settings_service
+
+_CONTACT_EMAIL_KEY = "notifications.demo_contact_email"
+_CONTACT_EMAIL_DEFAULT = "demo@geoboxafrica.com"
 
 public_router = APIRouter(prefix="/public", tags=["demo-bookings"])
 router = APIRouter(prefix="/demo-bookings", tags=["demo-bookings"])
+
+
+@public_router.get("/demo-bookings/contact", response_model=DemoContactOut)
+async def get_demo_contact_email(db: AsyncSession = Depends(get_db)):
+    """
+    Contact email shown on the 'Book a Demo' widget.
+
+    Superadmin-configurable via the admin settings panel
+    (notifications.demo_contact_email) so the platform team can change it
+    without a code change or deploy.
+    """
+    email = await settings_service.get(_CONTACT_EMAIL_KEY, db, default=_CONTACT_EMAIL_DEFAULT)
+    return DemoContactOut(email=email or _CONTACT_EMAIL_DEFAULT)
 
 
 @public_router.post(

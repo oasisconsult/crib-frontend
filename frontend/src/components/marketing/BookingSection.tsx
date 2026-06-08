@@ -1,12 +1,17 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   ChevronLeft, ChevronRight, Clock, Calendar,
-  CheckCircle, Globe, ArrowLeft, Building2,
+  CheckCircle, Globe, ArrowLeft, Building2, Mail,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
-import { apiPost } from "@/services/api/client";
+import { apiGet, apiPost } from "@/services/api/client";
+
+// Fallback shown until the superadmin-configurable address loads (or if the
+// lookup fails) — kept in sync with notifications.demo_contact_email's seed
+// default in backend/app/models/system_setting.py.
+const FALLBACK_CONTACT_EMAIL = "demo@geoboxafrica.com";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -42,6 +47,12 @@ function to12h(time: string) {
   const ampm = h >= 12 ? "PM" : "AM";
   const h12  = h % 12 || 12;
   return `${h12}:${String(m).padStart(2,"0")} ${ampm}`;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function isValidEmail(value: string) {
+  return EMAIL_RE.test(value.trim());
 }
 
 function formatDateLong(iso: string) {
@@ -291,6 +302,18 @@ function BookingWidget() {
   const [selectedTime, setSelectedTime] = useState("");
   const [submitting,   setSubmitting]   = useState(false);
   const [submitError,  setSubmitError]  = useState("");
+  const [contactEmail, setContactEmail] = useState(FALLBACK_CONTACT_EMAIL);
+
+  // Superadmin-configurable contact address — never rendered as visible text
+  // (see mailtoLink below), just used as the click-to-email target. Falls
+  // back silently to FALLBACK_CONTACT_EMAIL if the lookup fails.
+  useEffect(() => {
+    let cancelled = false;
+    apiGet<{ email: string }>("/public/demo-bookings/contact")
+      .then(res => { if (!cancelled && res?.email) setContactEmail(res.email); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const [form, setForm] = useState({
     firstName:        "",
@@ -317,6 +340,13 @@ function BookingWidget() {
   const handleSelectTime = useCallback((t: string) => setSelectedTime(t), []);
   const handleNext       = useCallback(() => setStep("details"), []);
 
+  const isDetailsValid =
+    form.firstName.trim() !== "" &&
+    form.lastName.trim() !== "" &&
+    isValidEmail(form.email) &&
+    form.phone.trim() !== "" &&
+    form.marketingConsent;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -342,7 +372,7 @@ function BookingWidget() {
       setSubmitError(
         typeof detail === "string"
           ? detail
-          : "Something went wrong. Please try again or email us at hello@crib.ug",
+          : "Something went wrong. Please try again, or use the email link below to reach our team.",
       );
       // The selected slot may have just been taken by someone else — send the
       // visitor back to pick a different time rather than letting them retry blindly.
@@ -384,10 +414,12 @@ function BookingWidget() {
           <p className="text-sm font-semibold text-[hsl(var(--foreground))]">{form.email}</p>
         </div>
         <p className="max-w-sm text-sm leading-relaxed text-[hsl(var(--muted-foreground))]">
-          Our team will be in touch to confirm your session. If you have any questions
-          before then, email us at{" "}
-          <a href="mailto:hello@crib.ug" className="text-[#239487] hover:underline font-medium">
-            hello@crib.ug
+          Our team will be in touch to confirm your session. Have questions before then?{" "}
+          <a
+            href={`mailto:${contactEmail}`}
+            className="inline-flex items-center gap-1 font-medium text-[#239487] hover:underline"
+          >
+            <Mail className="h-3.5 w-3.5" aria-hidden /> Email us
           </a>
         </p>
       </div>
@@ -544,15 +576,22 @@ function BookingWidget() {
             </div>
 
             {submitError && (
-              <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-                {submitError}
-              </p>
+              <div className="space-y-1.5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+                <p>{submitError}</p>
+                <a
+                  href={`mailto:${contactEmail}`}
+                  className="inline-flex items-center gap-1 font-medium underline-offset-2 hover:underline"
+                >
+                  <Mail className="h-3.5 w-3.5" aria-hidden /> Email our team
+                </a>
+              </div>
             )}
 
             <button
               type="submit"
-              disabled={submitting}
-              className="w-full rounded-lg bg-[#239487] py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#1c7a70] disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#239487] focus-visible:ring-offset-2 transition-colors"
+              disabled={submitting || !isDetailsValid}
+              aria-disabled={submitting || !isDetailsValid}
+              className="w-full rounded-lg bg-[#239487] py-3 text-sm font-semibold text-white shadow-sm hover:bg-[#1c7a70] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#239487] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#239487] focus-visible:ring-offset-2 transition-colors"
             >
               {submitting ? "Booking your demo…" : "Confirm demo booking"}
             </button>

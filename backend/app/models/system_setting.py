@@ -148,6 +148,10 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
     ("notifications.demo_booking_email", "hello@crib.ug", "platform", "Demo Booking Notification Email",
      "Address that receives an alert whenever someone books a product demo via "
      "the marketing site (e.g. support@geoboxafrica.com).", "string", False, False),
+    ("notifications.demo_contact_email", "demo@geoboxafrica.com", "platform", "Demo Contact Email",
+     "Email shown to visitors on the 'Book a Demo' page if they have questions "
+     "before their session. Displayed as a click-to-email link, never as plain "
+     "text, to discourage scraping.", "string", False, False),
 
     # ── Agency / Landlord branding ────────────────────────────────────────────
     ("agency.name",          "",  "agency", "Agency / Landlord Name",

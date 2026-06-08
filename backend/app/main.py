@@ -240,13 +240,15 @@ def create_app() -> FastAPI:
         # AppContextMiddleware runs ahead of routing and 401s any request
         # without a resolvable identity, exempting only its hardcoded
         # _BYPASS_PATHS (health/metrics). The framework has no per-app
-        # exemption hook, so anonymous-by-design endpoints — like the
-        # public Book a Demo submission, meant for marketing-site visitors
-        # with no Logto session — must be added to that set directly.
+        # exemption hook, so anonymous-by-design endpoints — like the public
+        # Book a Demo submission and its contact-email lookup, both meant for
+        # marketing-site visitors with no Logto session — must be added to
+        # that set directly.
         # backend/vendor/geobox-rbac is gitignored and re-synced from the
         # upstream repo by `make clone-deps` before every build, so this
         # cannot be patched in the vendored copy; it must live here.
         context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/demo-bookings")
+        context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/demo-bookings/contact")
 
         configure_db_dependency(get_db)
         application.add_middleware(
