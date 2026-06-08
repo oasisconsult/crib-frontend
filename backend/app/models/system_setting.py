@@ -143,6 +143,10 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "Contact email shown to users.", "string", False, False),
     ("platform.support_phone",      "",         "platform","Support Phone",
      "Contact phone shown to users (E.164 format).", "string", False, False),
+    ("platform.support_whatsapp",   "",         "platform","Support WhatsApp Number",
+     "WhatsApp contact number shown on the public site's 'WhatsApp Us' link, "
+     "in international format without '+' or spaces (e.g. 256700000000). "
+     "Leave empty to hide the link.", "string", False, False),
     ("platform.max_upload_mb",      "10",       "platform","Max Upload Size (MB)",
      "Maximum file upload size in megabytes.", "integer", False, True),
     ("notifications.demo_booking_email", "hello@crib.ug", "platform", "Demo Booking Notification Email",

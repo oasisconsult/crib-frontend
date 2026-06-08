@@ -276,7 +276,7 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1 import (
         admin,
-        agency_invites, analytics, demo_bookings, email_templates, health, inspections, landlords, leases, me,
+        agency_invites, analytics, contact_info, demo_bookings, email_templates, health, inspections, landlords, leases, me,
         messages, mobile_money, notifications, onboarding, organisations, payments, properties,
         property_import, rbac, system_settings, tenant_import, tenants, uploads, wallet, webhooks,
     )
@@ -323,6 +323,8 @@ def create_app() -> FastAPI:
     # Book a Demo — public submission endpoint + superadmin management endpoints
     application.include_router(demo_bookings.public_router, prefix=settings.api_prefix)
     application.include_router(demo_bookings.router, prefix=settings.api_prefix)
+    # Public contact info (support email/phone/WhatsApp) shown on the marketing site
+    application.include_router(contact_info.public_router, prefix=settings.api_prefix)
 
     # ── Subscription & Billing ────────────────────────────────────────────────
     from app.api.v1 import subscriptions, billing_payments, invoices, admin_billing

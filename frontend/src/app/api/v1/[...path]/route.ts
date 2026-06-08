@@ -46,6 +46,9 @@ const PUBLIC_PATH_PREFIXES = [
   // Book a Demo — public marketing-site submission (no Logto session exists
   // for an anonymous visitor booking a demo)
   "public/demo-bookings",
+  // Support contact details (email/phone/WhatsApp) shown in the marketing
+  // site footer — no Logto session exists for an anonymous visitor
+  "public/contact-info",
 ];
 
 function isPublicPath(path: string[]): boolean {
