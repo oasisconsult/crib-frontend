@@ -43,6 +43,9 @@ const PUBLIC_PATH_PREFIXES = [
   "upload/presign/onboarding/",
   // Dev-only local storage PUT target (the URL returned by local presign)
   "upload/local/",
+  // Book a Demo — public marketing-site submission (no Logto session exists
+  // for an anonymous visitor booking a demo)
+  "public/demo-bookings",
 ];
 
 function isPublicPath(path: string[]): boolean {
