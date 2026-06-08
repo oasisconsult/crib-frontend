@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronRight, Eye, Loader2, Mail, Send } from "lucide-react";
+import { ArrowLeft, Eye, Loader2, Mail, Send } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { DataTable, type Column } from "@/components/common/DataTable";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PermissionGate } from "@/components/common/PermissionGate";
 import { formatDateTime } from "@/utils/formatters";
@@ -28,6 +29,48 @@ function errorDetail(err: unknown, fallback: string): string {
 
 /* ── List view ──────────────────────────────────────────────────────────── */
 
+const TEMPLATE_COLUMNS: Column<EmailTemplate>[] = [
+  {
+    key: "name",
+    header: "Template",
+    sortable: true,
+    render: (t) => (
+      <div className="min-w-0 max-w-md">
+        <p className="text-sm font-medium text-foreground truncate">{t.name}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground truncate">{t.description}</p>
+      </div>
+    ),
+  },
+  {
+    key: "slug",
+    header: "Slug",
+    render: (t) => <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{t.slug}</code>,
+  },
+  {
+    key: "isActive",
+    header: "Status",
+    render: (t) => (
+      <Badge variant={t.isActive ? "success" : "secondary"} className="text-xs">
+        {t.isActive ? "Custom copy" : "Using default"}
+      </Badge>
+    ),
+  },
+  {
+    key: "updatedAt",
+    header: "Last updated",
+    sortable: true,
+    render: (t) =>
+      t.updatedBy ? (
+        <div className="text-xs text-muted-foreground">
+          <p className="text-foreground">{formatDateTime(t.updatedAt)}</p>
+          <p>by {t.updatedBy}</p>
+        </div>
+      ) : (
+        <span className="text-xs text-muted-foreground">Never edited</span>
+      ),
+  },
+];
+
 function TemplateList({
   templates,
   loading,
@@ -37,50 +80,16 @@ function TemplateList({
   loading: boolean;
   onSelect: (slug: string) => void;
 }) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (templates.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <p className="text-sm text-muted-foreground">No email templates found.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="divide-y divide-border">
-      {templates.map((t) => (
-        <button
-          key={t.slug}
-          type="button"
-          onClick={() => onSelect(t.slug)}
-          className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition-colors hover:bg-muted/50"
-        >
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-foreground truncate">{t.name}</p>
-              <Badge variant={t.isActive ? "success" : "secondary"} className="text-xs">
-                {t.isActive ? "Active" : "Using default"}
-              </Badge>
-            </div>
-            <p className="mt-0.5 text-xs text-muted-foreground truncate">{t.description}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              <code className="rounded bg-muted px-1 py-0.5">{t.slug}</code>
-              {t.updatedBy && (
-                <span> · last edited by {t.updatedBy} on {formatDateTime(t.updatedAt)}</span>
-              )}
-            </p>
-          </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </button>
-      ))}
-    </div>
+    <DataTable
+      data={templates}
+      columns={TEMPLATE_COLUMNS}
+      loading={loading}
+      rowKey={(t) => t.slug}
+      onRowClick={(t) => onSelect(t.slug)}
+      emptyTitle="No email templates found"
+      emptyDescription="The platform's email-template registry will appear here."
+    />
   );
 }
 
@@ -354,11 +363,7 @@ export default function AdminEmailTemplatesPage() {
             }
           />
 
-          <Card>
-            <CardContent className="p-0">
-              <TemplateList templates={templates} loading={loading} onSelect={setSelectedSlug} />
-            </CardContent>
-          </Card>
+          <TemplateList templates={templates} loading={loading} onSelect={setSelectedSlug} />
 
           <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Mail className="h-3.5 w-3.5" />
