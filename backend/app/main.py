@@ -232,9 +232,21 @@ def create_app() -> FastAPI:
     # Phase 3:   shadow_mode=True — deps.py reads request.state.rbac (dual-source).
     # Phase 4:   shadow_mode=False — DB roles authoritative; set RBAC_SHADOW_MODE=false.
     if settings.rbac_database_url:
+        from rbac.middleware import context_middleware
         from rbac.middleware.context_middleware import AppContextMiddleware
         from rbac.dependencies.ownership import configure_db_dependency
         from app.core.redis import get_redis as _get_redis
+
+        # AppContextMiddleware runs ahead of routing and 401s any request
+        # without a resolvable identity, exempting only its hardcoded
+        # _BYPASS_PATHS (health/metrics). The framework has no per-app
+        # exemption hook, so anonymous-by-design endpoints — like the
+        # public Book a Demo submission, meant for marketing-site visitors
+        # with no Logto session — must be added to that set directly.
+        # backend/vendor/geobox-rbac is gitignored and re-synced from the
+        # upstream repo by `make clone-deps` before every build, so this
+        # cannot be patched in the vendored copy; it must live here.
+        context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/demo-bookings")
 
         configure_db_dependency(get_db)
         application.add_middleware(
