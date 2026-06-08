@@ -29,7 +29,7 @@ const FOOTER_LINKS = {
     { label: "Privacy Policy", href: "/privacy-policy" },
     { label: "Terms of Service", href: "/terms-of-service" },
     { label: "Cookie Policy", href: "/cookie-policy" },
-    { label: "GDPR", href: "/gdpr" },
+    { label: "Data Protection", href: "/data-protection" },
   ],
 };
 
@@ -167,7 +167,8 @@ export function MarketingFooter() {
         {/* Bottom row */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-white/30">
-            &copy; {year} Crib. All rights reserved. Built in Uganda 🇺🇬
+            &copy; {year} Crib, a product of GeoBox Digital Services (U) Ltd. All rights
+            reserved. Built in Uganda 🇺🇬
           </p>
           <div className="flex items-center gap-4">
             <a

@@ -12,10 +12,14 @@ export default function PrivacyPolicyPage() {
     <MarketingPageShell eyebrow="Legal" title="Privacy Policy">
       <LegalContent lastUpdated="8 June 2026">
         <p>
-          This Privacy Policy explains how Crib (&ldquo;Crib&rdquo;, &ldquo;we&rdquo;,
-          &ldquo;our&rdquo;, or &ldquo;us&rdquo;) collects, uses, shares, and protects
-          information when you use our property-management platform, marketing site, and
-          related services (together, the &ldquo;Service&rdquo;).
+          Crib is a property-management platform operated by{" "}
+          <strong>GeoBox Digital Services (U) Ltd</strong> (&ldquo;Crib&rdquo;,
+          &ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;), a company based in
+          Kampala, Uganda. This Privacy Policy explains how we collect, use, share, and
+          protect information when you use our property-management platform, marketing site,
+          and related services (together, the &ldquo;Service&rdquo;), in line with
+          Uganda&rsquo;s Data Protection and Privacy Act, 2019 — see our{" "}
+          <a href="/data-protection">Data Protection</a> page for more on your rights.
         </p>
 
         <h2>1. Information we collect</h2>

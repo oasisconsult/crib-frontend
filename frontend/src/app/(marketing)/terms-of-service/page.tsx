@@ -12,9 +12,12 @@ export default function TermsOfServicePage() {
     <MarketingPageShell eyebrow="Legal" title="Terms of Service">
       <LegalContent lastUpdated="8 June 2026">
         <p>
-          These Terms of Service (&ldquo;Terms&rdquo;) govern your access to and use of
-          Crib&rsquo;s property-management platform, marketing site, and related services
-          (together, the &ldquo;Service&rdquo;). By creating an account, accepting an
+          Crib is a property-management platform operated by{" "}
+          <strong>GeoBox Digital Services (U) Ltd</strong> (&ldquo;Crib&rdquo;,
+          &ldquo;we&rdquo;, &ldquo;our&rdquo;, or &ldquo;us&rdquo;), a company based in
+          Kampala, Uganda. These Terms of Service (&ldquo;Terms&rdquo;) govern your access to
+          and use of Crib&rsquo;s property-management platform, marketing site, and related
+          services (together, the &ldquo;Service&rdquo;). By creating an account, accepting an
           invitation, or otherwise using the Service, you agree to these Terms on behalf of
           yourself and, where applicable, the organisation you represent.
         </p>

@@ -23,6 +23,14 @@ const nextConfig: NextConfig = {
   experimental: {
     typedRoutes: true,
   },
+  async redirects() {
+    return [
+      // The "GDPR" legal page was renamed to "Data Protection" to reflect
+      // Uganda's Data Protection and Privacy Act, 2019 (rather than implying
+      // an EU-GDPR-equivalent law by that name).
+      { source: "/gdpr", destination: "/data-protection", permanent: true },
+    ];
+  },
   async headers() {
     const isDev = process.env.NODE_ENV !== "production";
     // Next.js 15 App Router generates inline scripts for React Server Components

@@ -348,6 +348,9 @@ function LoginContent() {
                 )}
                 {loading ? "Redirecting…" : "Sign in to Crib"}
               </Button>
+              <p className="mt-2.5 text-center text-[11px] text-[hsl(var(--muted-foreground))]/70">
+                Powered by GeoBox OAuth
+              </p>
 
               {/* Divider */}
               <div className="relative my-6">
@@ -364,7 +367,7 @@ function LoginContent() {
 
               {/* Trust badges */}
               <div className="grid grid-cols-3 gap-2 mb-8">
-                {["End-to-end encrypted", "GDPR compliant", "SOC 2 ready"].map(
+                {["End-to-end encrypted", "Data protection compliant", "SOC 2 ready"].map(
                   (label) => (
                     <div
                       key={label}
