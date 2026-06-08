@@ -25,9 +25,7 @@ from app.schemas.demo_booking import (
     DemoContactOut,
 )
 from app.services import demo_booking_service, settings_service
-
-_CONTACT_EMAIL_KEY = "notifications.demo_contact_email"
-_CONTACT_EMAIL_DEFAULT = "demo@geoboxafrica.com"
+from app.services.demo_booking_service import _CONTACT_EMAIL_DEFAULT, _CONTACT_EMAIL_KEY
 
 public_router = APIRouter(prefix="/public", tags=["demo-bookings"])
 router = APIRouter(prefix="/demo-bookings", tags=["demo-bookings"])

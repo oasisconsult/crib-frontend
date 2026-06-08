@@ -28,6 +28,7 @@ import {
   ToggleLeft,
   UserCircle,
   CalendarClock,
+  Mail,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -75,6 +76,7 @@ interface NavItem {
 const ADMIN_SETTINGS_CHILDREN: SubNavItem[] = [
   { href: "/settings",             label: "My Preferences",  icon: UserCircle },
   { href: "/admin/demo-bookings",  label: "Demo Bookings",   icon: CalendarClock, roles: ["superadmin"] },
+  { href: "/admin/email-templates",label: "Email Templates", icon: Mail,        roles: ["superadmin"] },
   { href: "/admin/billing",        label: "Billing & Plans",  icon: BillingIcon, roles: ["superadmin"] },
   { href: "/admin/platform",       label: "Platform & Agency",icon: Globe,       roles: ["superadmin"] },
   { href: "/admin/integrations",   label: "Integrations",     icon: Plug,        roles: ["superadmin"] },
@@ -190,6 +192,7 @@ export function Sidebar() {
     if (
       pathname.startsWith("/settings") ||
       pathname.startsWith("/admin/demo-bookings") ||
+      pathname.startsWith("/admin/email-templates") ||
       pathname.startsWith("/admin/billing") ||
       pathname.startsWith("/admin/platform") ||
       pathname.startsWith("/admin/integrations") ||
