@@ -348,9 +348,6 @@ function LoginContent() {
                 )}
                 {loading ? "Redirecting…" : "Sign in to Crib"}
               </Button>
-              <p className="mt-2.5 text-center text-[11px] text-[hsl(var(--muted-foreground))]/70">
-                Powered by GeoBox OAuth
-              </p>
 
               {/* Divider */}
               <div className="relative my-6">
@@ -360,7 +357,7 @@ function LoginContent() {
                 <div className="relative flex justify-center">
                   <span className="flex items-center gap-1.5 bg-[hsl(var(--card))] px-3 text-xs text-[hsl(var(--muted-foreground))]">
                     <ShieldCheck className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
-                    Secured by Crib
+                    Secured by GeoBox OAuth
                   </span>
                 </div>
               </div>
