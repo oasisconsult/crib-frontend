@@ -44,7 +44,9 @@ const TEMPLATE_COLUMNS: Column<EmailTemplate>[] = [
   {
     key: "slug",
     header: "Slug",
-    render: (t) => <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{t.slug}</code>,
+    render: (t) => (
+      <code className="rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 text-xs">{t.slug}</code>
+    ),
   },
   {
     key: "isActive",
@@ -258,10 +260,10 @@ function TemplateEditor({
                     title="Email preview"
                     srcDoc={preview.htmlBody}
                     sandbox=""
-                    className="h-[420px] w-full rounded-md border border-border bg-white"
+                    className="h-[420px] w-full rounded-md border border-[hsl(var(--border))] bg-white"
                   />
                 ) : (
-                  <pre className="max-h-[420px] overflow-auto rounded-md border border-border bg-muted/30 p-3 text-xs whitespace-pre-wrap">
+                  <pre className="max-h-[420px] overflow-auto rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--muted))]/30 p-3 text-xs whitespace-pre-wrap">
                     {preview.textBody}
                   </pre>
                 )}
@@ -275,11 +277,11 @@ function TemplateEditor({
             <CardContent className="pt-5 space-y-2">
               <Label className="text-sm font-medium">Available variables</Label>
               <p className="text-xs text-muted-foreground">
-                Use these inside <code className="rounded bg-muted px-1 py-0.5">{"{{ ... }}"}</code> placeholders.
+                Use these inside <code className="rounded bg-[hsl(var(--muted))] px-1 py-0.5">{"{{ ... }}"}</code> placeholders.
               </p>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {template.availableVariables.map((v) => (
-                  <code key={v} className="rounded bg-muted px-1.5 py-0.5 text-xs">{`{{ ${v} }}`}</code>
+                  <code key={v} className="rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 text-xs">{`{{ ${v} }}`}</code>
                 ))}
               </div>
             </CardContent>
