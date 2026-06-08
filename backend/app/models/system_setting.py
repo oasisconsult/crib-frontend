@@ -145,6 +145,9 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "Contact phone shown to users (E.164 format).", "string", False, False),
     ("platform.max_upload_mb",      "10",       "platform","Max Upload Size (MB)",
      "Maximum file upload size in megabytes.", "integer", False, True),
+    ("notifications.demo_booking_email", "hello@crib.ug", "platform", "Demo Booking Notification Email",
+     "Address that receives an alert whenever someone books a product demo via "
+     "the marketing site (e.g. support@geoboxafrica.com).", "string", False, False),
 
     # ── Agency / Landlord branding ────────────────────────────────────────────
     ("agency.name",          "",  "agency", "Agency / Landlord Name",

@@ -13,6 +13,15 @@ class DeliveryResult:
     failure_reason: str | None = None
 
 
+@dataclass
+class EmailAttachment:
+    """A file to attach to an outgoing email (e.g. a calendar .ics invite)."""
+
+    filename: str
+    content: bytes
+    mime_type: str = "application/octet-stream"
+
+
 class NotificationProvider(ABC):
     """Each channel adapter must implement send()."""
 
@@ -25,5 +34,7 @@ class NotificationProvider(ABC):
         recipient_phone: str | None,
         subject: str | None,
         body: str,
+        html_body: str | None = None,
+        attachments: list[EmailAttachment] | None = None,
     ) -> DeliveryResult:
         ...

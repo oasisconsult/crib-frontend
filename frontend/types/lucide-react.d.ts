@@ -623,6 +623,7 @@ declare module 'lucide-react' {
   export const ToggleRight: any;
   export const Send: any;
   export const CalendarDays: any;
+  export const CalendarClock: any;
   export const Tag: any;
   export const Car: any;
   export const Droplets: any;

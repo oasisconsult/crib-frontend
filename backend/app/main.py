@@ -262,7 +262,7 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1 import (
         admin,
-        agency_invites, analytics, health, inspections, landlords, leases, me, messages,
+        agency_invites, analytics, demo_bookings, health, inspections, landlords, leases, me, messages,
         mobile_money, notifications, onboarding, organisations, payments, properties,
         property_import, rbac, system_settings, tenant_import, tenants, uploads, wallet, webhooks,
     )
@@ -305,6 +305,9 @@ def create_app() -> FastAPI:
     application.include_router(caretaker_invites.router, prefix=settings.api_prefix)
     application.include_router(admin.router, prefix=settings.api_prefix)
     application.include_router(webhooks.router, prefix=settings.api_prefix)
+    # Book a Demo — public submission endpoint + superadmin management endpoints
+    application.include_router(demo_bookings.public_router, prefix=settings.api_prefix)
+    application.include_router(demo_bookings.router, prefix=settings.api_prefix)
 
     # ── Subscription & Billing ────────────────────────────────────────────────
     from app.api.v1 import subscriptions, billing_payments, invoices, admin_billing

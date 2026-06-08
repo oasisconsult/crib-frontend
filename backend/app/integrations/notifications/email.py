@@ -8,11 +8,12 @@ Provider is selected via settings.email_provider:
 
 from __future__ import annotations
 
+import base64
 import logging
 
 import httpx
 
-from app.integrations.notifications.base import DeliveryResult, NotificationProvider
+from app.integrations.notifications.base import DeliveryResult, EmailAttachment, NotificationProvider
 
 log = logging.getLogger(__name__)
 
@@ -30,18 +31,34 @@ class SendGridProvider(NotificationProvider):
         recipient_phone: str | None,
         subject: str | None,
         body: str,
+        html_body: str | None = None,
+        attachments: list[EmailAttachment] | None = None,
     ) -> DeliveryResult:
         if not recipient_email:
             return DeliveryResult(success=False, failure_reason="No email address")
 
-        payload = {
+        content = [{"type": "text/plain", "value": body}]
+        if html_body:
+            content.append({"type": "text/html", "value": html_body})
+
+        payload: dict = {
             "personalizations": [
                 {"to": [{"email": recipient_email, "name": recipient_name}]}
             ],
             "from": {"email": self._from_email},
             "subject": subject or "(no subject)",
-            "content": [{"type": "text/plain", "value": body}],
+            "content": content,
         }
+        if attachments:
+            payload["attachments"] = [
+                {
+                    "content": base64.b64encode(a.content).decode("ascii"),
+                    "filename": a.filename,
+                    "type": a.mime_type,
+                    "disposition": "attachment",
+                }
+                for a in attachments
+            ]
 
         async with httpx.AsyncClient(timeout=15) as client:
             try:
@@ -84,15 +101,32 @@ class SmtpProvider(NotificationProvider):
         recipient_phone: str | None,
         subject: str | None,
         body: str,
+        html_body: str | None = None,
+        attachments: list[EmailAttachment] | None = None,
     ) -> DeliveryResult:
         if not recipient_email:
             return DeliveryResult(success=False, failure_reason="No email address")
 
         try:
             import aiosmtplib
+            from email.mime.application import MIMEApplication
+            from email.mime.multipart import MIMEMultipart
             from email.mime.text import MIMEText
 
-            msg = MIMEText(body, "plain", "utf-8")
+            if html_body or attachments:
+                msg: MIMEMultipart | MIMEText = MIMEMultipart("mixed")
+                alt = MIMEMultipart("alternative")
+                alt.attach(MIMEText(body, "plain", "utf-8"))
+                if html_body:
+                    alt.attach(MIMEText(html_body, "html", "utf-8"))
+                msg.attach(alt)
+                for a in attachments or []:
+                    part = MIMEApplication(a.content, _subtype=a.mime_type.split("/")[-1])
+                    part.add_header("Content-Disposition", "attachment", filename=a.filename)
+                    msg.attach(part)
+            else:
+                msg = MIMEText(body, "plain", "utf-8")
+
             msg["Subject"] = subject or "(no subject)"
             msg["From"] = self._from_email
             msg["To"] = f"{recipient_name} <{recipient_email}>"

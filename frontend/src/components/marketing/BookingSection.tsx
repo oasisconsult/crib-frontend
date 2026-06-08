@@ -6,6 +6,7 @@ import {
   CheckCircle, Globe, ArrowLeft, Building2,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
+import { apiPost } from "@/services/api/client";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -288,18 +289,21 @@ function BookingWidget() {
   const [submitError,  setSubmitError]  = useState("");
 
   const [form, setForm] = useState({
-    firstName:     "",
-    lastName:      "",
-    email:         "",
-    phone:         "",
-    company:       "",
-    portfolioSize: "",
-    message:       "",
+    firstName:        "",
+    lastName:         "",
+    email:            "",
+    phone:            "",
+    company:          "",
+    portfolioSize:    "",
+    message:          "",
+    marketingConsent: false,
+    // Honeypot — left blank by humans, filled in by bots.
+    website:          "",
   });
 
   function ff(key: keyof typeof form) {
     return {
-      value: form[key],
+      value: form[key] as string,
       onChange: (
         e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
       ) => setForm(p => ({ ...p, [key]: e.target.value })),
@@ -314,11 +318,34 @@ function BookingWidget() {
     setSubmitting(true);
     setSubmitError("");
     try {
-      // In production, POST to /api/bookings or an email service
-      await new Promise(r => setTimeout(r, 1200)); // simulate request
+      await apiPost("/public/demo-bookings", {
+        firstName:        form.firstName,
+        lastName:         form.lastName,
+        email:            form.email,
+        phone:            form.phone,
+        company:          form.company || undefined,
+        portfolioSize:    form.portfolioSize || undefined,
+        message:          form.message || undefined,
+        marketingConsent: form.marketingConsent,
+        slotDate:         selectedDate,
+        slotTime:         `${selectedTime}:00`,
+        timezone:         "Africa/Kampala",
+        website:          form.website || undefined,
+      });
       setStep("confirmed");
-    } catch {
-      setSubmitError("Something went wrong. Please try again or email us at hello@crib.ug");
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      setSubmitError(
+        typeof detail === "string"
+          ? detail
+          : "Something went wrong. Please try again or email us at hello@crib.ug",
+      );
+      // The selected slot may have just been taken by someone else — send the
+      // visitor back to pick a different time rather than letting them retry blindly.
+      if (err?.response?.status === 409) {
+        setSelectedTime("");
+        setStep("calendar");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -487,12 +514,26 @@ function BookingWidget() {
                 id="bk-consent"
                 type="checkbox"
                 required
+                checked={form.marketingConsent}
+                onChange={e => setForm(p => ({ ...p, marketingConsent: e.target.checked }))}
                 className="mt-0.5 h-4 w-4 shrink-0 rounded border-[hsl(var(--border))] accent-[#239487]"
               />
               <label htmlFor="bk-consent" className="text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">
                 I agree to receive communications from Crib regarding my demo booking and
                 product updates. You can unsubscribe at any time.
               </label>
+            </div>
+
+            {/* Honeypot — hidden from sighted users and screen readers; bots tend to fill every field */}
+            <div aria-hidden="true" className="absolute -left-[9999px] top-auto h-0 w-0 overflow-hidden">
+              <label htmlFor="bk-website">Website</label>
+              <input
+                id="bk-website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                {...ff("website")}
+              />
             </div>
 
             {submitError && (

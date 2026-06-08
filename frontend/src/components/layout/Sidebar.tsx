@@ -27,6 +27,7 @@ import {
   Plug,
   ToggleLeft,
   UserCircle,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -73,6 +74,7 @@ interface NavItem {
 
 const ADMIN_SETTINGS_CHILDREN: SubNavItem[] = [
   { href: "/settings",             label: "My Preferences",  icon: UserCircle },
+  { href: "/admin/demo-bookings",  label: "Demo Bookings",   icon: CalendarClock, roles: ["superadmin"] },
   { href: "/admin/billing",        label: "Billing & Plans",  icon: BillingIcon, roles: ["superadmin"] },
   { href: "/admin/platform",       label: "Platform & Agency",icon: Globe,       roles: ["superadmin"] },
   { href: "/admin/integrations",   label: "Integrations",     icon: Plug,        roles: ["superadmin"] },
@@ -187,6 +189,7 @@ export function Sidebar() {
     // Also expand Settings group if we're on any admin settings route
     if (
       pathname.startsWith("/settings") ||
+      pathname.startsWith("/admin/demo-bookings") ||
       pathname.startsWith("/admin/billing") ||
       pathname.startsWith("/admin/platform") ||
       pathname.startsWith("/admin/integrations") ||
