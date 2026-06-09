@@ -32,11 +32,11 @@ import structlog
 log = structlog.get_logger(__name__)
 
 _PRODUCTION_BASE = "https://api.geoboxafrica.com/v1"
-_SANDBOX_BASE    = "https://api.sandbox.geoboxafrica.com/v1"
+_STAGING_BASE    = "https://api.staging.geoboxafrica.com/v1"
 _PRODUCTION_TOKEN_URL = "https://api.geoboxafrica.com/billing/auth/clients/token"
-_SANDBOX_TOKEN_URL    = "https://api.sandbox.geoboxafrica.com/billing/auth/clients/token"
+_STAGING_TOKEN_URL    = "https://api.staging.geoboxafrica.com/billing/auth/clients/token"
 _PRODUCTION_RESOURCE  = "https://api.geoboxafrica.com"
-_SANDBOX_RESOURCE     = "https://api.sandbox.geoboxafrica.com/v1"
+_STAGING_RESOURCE     = "https://api.staging.geoboxafrica.com/v1"
 
 _REFRESH_BUFFER_S = 60   # refresh token this many seconds before expiry
 
@@ -63,8 +63,8 @@ async def _get_token(
         return cache.access_token
 
     is_sandbox = environment != "production"
-    token_url = _SANDBOX_TOKEN_URL if is_sandbox else _PRODUCTION_TOKEN_URL
-    resource  = _SANDBOX_RESOURCE  if is_sandbox else _PRODUCTION_RESOURCE
+    token_url = _STAGING_TOKEN_URL if is_sandbox else _PRODUCTION_TOKEN_URL
+    resource  = _STAGING_RESOURCE  if is_sandbox else _PRODUCTION_RESOURCE
 
     resp = await http.post(
         token_url,
@@ -170,7 +170,7 @@ async def get_geobox_client(db):  # type: ignore[no-untyped-def]
         return
 
     environment = config["environment"]
-    base_url    = _SANDBOX_BASE if environment != "production" else _PRODUCTION_BASE
+    base_url    = _STAGING_BASE if environment != "production" else _PRODUCTION_BASE
     # GeoBox's sandbox/staging SSL cert doesn't support SNI from server-to-server
     # connections. Disable verification for non-production only.
     ssl_verify  = environment == "production"

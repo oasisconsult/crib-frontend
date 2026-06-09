@@ -317,7 +317,7 @@ async def test_geobox(db: AsyncSession) -> dict:
     that the stored client_id and client_secret are valid.
 
     Production:  https://api.geoboxafrica.com/billing/auth/clients/token
-    Sandbox:     https://api.sandbox.geoboxafrica.com/billing/auth/clients/token
+    Sandbox:     https://api.staging.geoboxafrica.com/billing/auth/clients/token
     """
     import httpx
 
@@ -334,8 +334,8 @@ async def test_geobox(db: AsyncSession) -> dict:
 
     is_sandbox = environment != "production"
     if is_sandbox:
-        token_url = "https://api.sandbox.geoboxafrica.com/billing/auth/clients/token"
-        resource = "https://api.sandbox.geoboxafrica.com/v1"
+        token_url = "https://api.staging.geoboxafrica.com/billing/auth/clients/token"
+        resource = "https://api.staging.geoboxafrica.com/v1"
     else:
         token_url = "https://api.geoboxafrica.com/billing/auth/clients/token"
         resource = "https://api.geoboxafrica.com"
