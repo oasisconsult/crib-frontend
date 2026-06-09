@@ -131,6 +131,7 @@ class ClientCredentialsAuth(BaseAuth):
     async def _fetch_token(self) -> None:
         """Exchange client credentials for a JWT access token."""
         payload: dict = {
+            "grant_type":    "client_credentials",
             "client_id":     self._client_id,
             "client_secret": self._client_secret,
             "resource":      self._resource,
@@ -139,7 +140,11 @@ class ClientCredentialsAuth(BaseAuth):
             payload["scope"] = self._scope
 
         async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.post(self._token_url, json=payload)
+            resp = await client.post(
+                self._token_url,
+                data=payload,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
             if resp.status_code == 401:
                 raise PermissionError(
                     "Invalid client credentials — check your client_id and client_secret."
