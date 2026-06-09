@@ -24,33 +24,27 @@ _KEY = "notifications.demo_contact_email"
 
 
 def upgrade() -> None:
-    table = sa.table(
-        "system_settings",
-        sa.column("key"),
-        sa.column("value"),
-        sa.column("category"),
-        sa.column("label"),
-        sa.column("description"),
-        sa.column("value_type"),
-        sa.column("is_secret"),
-        sa.column("is_required"),
-    )
-    op.bulk_insert(table, [
-        {
-            "key": _KEY,
-            "value": "demo@geoboxafrica.com",
-            "category": "platform",
-            "label": "Demo Contact Email",
-            "description": (
+    op.execute(
+        sa.text(
+            "INSERT INTO system_settings"
+            " (key, value, category, label, description, value_type, is_secret, is_required)"
+            " VALUES (:key, :value, :category, :label, :description, :value_type, :is_secret, :is_required)"
+            " ON CONFLICT (key) DO NOTHING"
+        ).bindparams(
+            key=_KEY,
+            value="demo@geoboxafrica.com",
+            category="platform",
+            label="Demo Contact Email",
+            description=(
                 "Email shown to visitors on the 'Book a Demo' page if they have "
                 "questions before their session. Displayed as a click-to-email "
                 "link, never as plain text, to discourage scraping."
             ),
-            "value_type": "string",
-            "is_secret": False,
-            "is_required": False,
-        },
-    ])
+            value_type="string",
+            is_secret=False,
+            is_required=False,
+        )
+    )
 
 
 def downgrade() -> None:

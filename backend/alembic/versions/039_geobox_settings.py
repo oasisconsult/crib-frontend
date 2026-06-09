@@ -77,18 +77,15 @@ _ROWS = [
 
 
 def upgrade() -> None:
-    table = sa.table(
-        "system_settings",
-        sa.column("key"),
-        sa.column("value"),
-        sa.column("category"),
-        sa.column("label"),
-        sa.column("description"),
-        sa.column("value_type"),
-        sa.column("is_secret"),
-        sa.column("is_required"),
-    )
-    op.bulk_insert(table, _ROWS)
+    for row in _ROWS:
+        op.execute(
+            sa.text(
+                "INSERT INTO system_settings"
+                " (key, value, category, label, description, value_type, is_secret, is_required)"
+                " VALUES (:key, :value, :category, :label, :description, :value_type, :is_secret, :is_required)"
+                " ON CONFLICT (key) DO NOTHING"
+            ).bindparams(**row)
+        )
 
 
 def downgrade() -> None:

@@ -22,21 +22,28 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("properties", sa.Column("geocode", sa.String(20), nullable=True))
-    op.add_column("units",      sa.Column("geocode", sa.String(20), nullable=True))
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
 
-    op.create_index(
-        "ix_properties_geocode",
-        "properties",
-        ["geocode"],
-        postgresql_where=sa.text("geocode IS NOT NULL"),
-    )
-    op.create_index(
-        "ix_units_geocode",
-        "units",
-        ["geocode"],
-        postgresql_where=sa.text("geocode IS NOT NULL"),
-    )
+    prop_cols = {c["name"] for c in inspector.get_columns("properties")}
+    if "geocode" not in prop_cols:
+        op.add_column("properties", sa.Column("geocode", sa.String(20), nullable=True))
+        op.create_index(
+            "ix_properties_geocode",
+            "properties",
+            ["geocode"],
+            postgresql_where=sa.text("geocode IS NOT NULL"),
+        )
+
+    unit_cols = {c["name"] for c in inspector.get_columns("units")}
+    if "geocode" not in unit_cols:
+        op.add_column("units", sa.Column("geocode", sa.String(20), nullable=True))
+        op.create_index(
+            "ix_units_geocode",
+            "units",
+            ["geocode"],
+            postgresql_where=sa.text("geocode IS NOT NULL"),
+        )
 
 
 def downgrade() -> None:

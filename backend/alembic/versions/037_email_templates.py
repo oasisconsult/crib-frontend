@@ -25,40 +25,39 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "email_templates",
-        sa.Column("slug", sa.String(80), primary_key=True),
-        sa.Column("name", sa.String(255), nullable=False),
-        sa.Column("description", sa.Text(), nullable=False, server_default=""),
-        sa.Column("subject", sa.String(500), nullable=False, server_default=""),
-        sa.Column("html_body", sa.Text(), nullable=False, server_default=""),
-        sa.Column("text_body", sa.Text(), nullable=False, server_default=""),
-        sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
-        sa.Column("updated_by", sa.String(100), nullable=True),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-    )
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
 
-    table = sa.table(
-        "email_templates",
-        sa.column("slug"),
-        sa.column("name"),
-        sa.column("description"),
-        sa.column("subject"),
-        sa.column("html_body"),
-        sa.column("text_body"),
-    )
-    op.bulk_insert(table, [
-        {
-            "slug": row["slug"],
-            "name": row["name"],
-            "description": row["description"],
-            "subject": row["subject"],
-            "html_body": row["html_body"],
-            "text_body": row["text_body"],
-        }
-        for row in EMAIL_TEMPLATE_DEFAULTS
-    ])
+    if not inspector.has_table("email_templates"):
+        op.create_table(
+            "email_templates",
+            sa.Column("slug", sa.String(80), primary_key=True),
+            sa.Column("name", sa.String(255), nullable=False),
+            sa.Column("description", sa.Text(), nullable=False, server_default=""),
+            sa.Column("subject", sa.String(500), nullable=False, server_default=""),
+            sa.Column("html_body", sa.Text(), nullable=False, server_default=""),
+            sa.Column("text_body", sa.Text(), nullable=False, server_default=""),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+            sa.Column("updated_by", sa.String(100), nullable=True),
+            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        )
+
+    for row in EMAIL_TEMPLATE_DEFAULTS:
+        op.execute(
+            sa.text(
+                "INSERT INTO email_templates (slug, name, description, subject, html_body, text_body)"
+                " VALUES (:slug, :name, :description, :subject, :html_body, :text_body)"
+                " ON CONFLICT (slug) DO NOTHING"
+            ).bindparams(
+                slug=row["slug"],
+                name=row["name"],
+                description=row["description"],
+                subject=row["subject"],
+                html_body=row["html_body"],
+                text_body=row["text_body"],
+            )
+        )
 
 
 def downgrade() -> None:

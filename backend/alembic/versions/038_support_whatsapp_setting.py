@@ -24,33 +24,27 @@ _KEY = "platform.support_whatsapp"
 
 
 def upgrade() -> None:
-    table = sa.table(
-        "system_settings",
-        sa.column("key"),
-        sa.column("value"),
-        sa.column("category"),
-        sa.column("label"),
-        sa.column("description"),
-        sa.column("value_type"),
-        sa.column("is_secret"),
-        sa.column("is_required"),
-    )
-    op.bulk_insert(table, [
-        {
-            "key": _KEY,
-            "value": "",
-            "category": "platform",
-            "label": "Support WhatsApp Number",
-            "description": (
+    op.execute(
+        sa.text(
+            "INSERT INTO system_settings"
+            " (key, value, category, label, description, value_type, is_secret, is_required)"
+            " VALUES (:key, :value, :category, :label, :description, :value_type, :is_secret, :is_required)"
+            " ON CONFLICT (key) DO NOTHING"
+        ).bindparams(
+            key=_KEY,
+            value="",
+            category="platform",
+            label="Support WhatsApp Number",
+            description=(
                 "WhatsApp contact number shown on the public site's 'WhatsApp Us' "
                 "link, in international format without '+' or spaces "
                 "(e.g. 256700000000). Leave empty to hide the link."
             ),
-            "value_type": "string",
-            "is_secret": False,
-            "is_required": False,
-        },
-    ])
+            value_type="string",
+            is_secret=False,
+            is_required=False,
+        )
+    )
 
 
 def downgrade() -> None:
