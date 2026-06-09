@@ -44,7 +44,7 @@ from app.schemas.system_setting import SettingOut, SettingsByCategoryOut
 
 log = structlog.get_logger(__name__)
 
-_CATEGORIES = ("storage", "email", "sms", "whatsapp", "platform", "features")
+_CATEGORIES = ("storage", "email", "sms", "whatsapp", "geobox", "platform", "features")
 
 
 # ── Serialiser ────────────────────────────────────────────────────────────────
@@ -296,6 +296,74 @@ async def test_email(recipient: str, db: AsyncSession) -> dict:
     except Exception as exc:
         log.warning("email.test_failed", error=str(exc))
         return {"success": False, "channel": "email", "message": str(exc)}
+
+
+async def get_geobox_config(db: AsyncSession) -> dict[str, Any]:
+    """Return GeoBox API config dict for the integration client."""
+    return {
+        "environment": await get("geobox.environment", db, "sandbox"),
+        "client_id": await get("geobox.client_id", db),
+        "client_secret": await get("geobox.client_secret", db),
+        "geocoding_enabled": await get_bool("geobox.geocoding_enabled", db, True),
+    }
+
+
+async def test_geobox(db: AsyncSession) -> dict:
+    """
+    Attempt an OAuth 2.0 client credentials token exchange against GeoBox to verify
+    that the stored client_id and client_secret are valid.
+
+    Production:  https://api.geoboxafrica.com/billing/auth/clients/token
+    Sandbox:     https://api.sandbox.geoboxafrica.com/billing/auth/clients/token
+    """
+    import httpx
+
+    config = await get_geobox_config(db)
+    environment = config["environment"]
+    client_id = config["client_id"]
+    client_secret = config["client_secret"]
+
+    if not config["geocoding_enabled"]:
+        return {"success": False, "environment": environment, "message": "GeoBox geocoding is disabled"}
+
+    if not client_id or not client_secret:
+        return {"success": False, "environment": environment, "message": "GeoBox credentials not configured"}
+
+    is_sandbox = environment != "production"
+    if is_sandbox:
+        token_url = "https://api.sandbox.geoboxafrica.com/billing/auth/clients/token"
+        resource = "https://api.sandbox.geoboxafrica.com/v1"
+    else:
+        token_url = "https://api.geoboxafrica.com/billing/auth/clients/token"
+        resource = "https://api.geoboxafrica.com"
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                token_url,
+                data={
+                    "grant_type": "client_credentials",
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "resource": resource,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+            )
+
+        if resp.status_code == 401:
+            return {"success": False, "environment": environment, "message": "Unauthorized — check client_id and client_secret"}
+        if resp.status_code >= 400:
+            return {"success": False, "environment": environment, "message": f"Token endpoint returned HTTP {resp.status_code}"}
+
+        body = resp.json()
+        if not body.get("access_token"):
+            return {"success": False, "environment": environment, "message": "Token response missing access_token"}
+
+        return {"success": True, "environment": environment, "message": f"Connected — environment: {environment}"}
+
+    except Exception as exc:
+        log.warning("geobox.test_failed", error=str(exc))
+        return {"success": False, "environment": environment, "message": str(exc)}
 
 
 async def test_sms(recipient: str, db: AsyncSession) -> dict:

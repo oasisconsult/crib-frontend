@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Save, Loader2, Mail, MessageSquare, HardDrive, FlaskConical, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Mail, MessageSquare, HardDrive, MapPin, FlaskConical, CheckCircle2, XCircle, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PermissionGate } from "@/components/common/PermissionGate";
-import { settingsApi, type SystemSetting, type SettingsByCategory } from "@/services/api/settings";
+import { settingsApi, type SystemSetting, type SettingsByCategory, type GeoBoxTestResult } from "@/services/api/settings";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 
@@ -106,13 +106,28 @@ function TestButton({ label, onTest }: { label: string; onTest: () => Promise<{ 
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
+function GeoBoxEnvironmentBadge({ environment }: { environment: string }) {
+  const isSandbox = environment !== "production";
+  return (
+    <span className={cn(
+      "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+      isSandbox
+        ? "border-amber-400 bg-amber-50 text-amber-700"
+        : "border-emerald-500 bg-emerald-50 text-emerald-700",
+    )}>
+      {isSandbox ? "Sandbox" : "Production"}
+    </span>
+  );
+}
+
 export default function AdminIntegrationsPage() {
-  const [data, setData] = useState<Pick<SettingsByCategory, "storage" | "email" | "sms"> | null>(null);
+  const [data, setData] = useState<Pick<SettingsByCategory, "storage" | "email" | "sms" | "geobox"> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [geoboxTestResult, setGeoboxTestResult] = useState<GeoBoxTestResult | null>(null);
 
   useEffect(() => {
     settingsApi.getAll()
-      .then(all => setData({ storage: all.storage ?? [], email: all.email ?? [], sms: all.sms ?? [] }))
+      .then(all => setData({ storage: all.storage ?? [], email: all.email ?? [], sms: all.sms ?? [], geobox: all.geobox ?? [] }))
       .catch(() => toast.error("Failed to load settings"))
       .finally(() => setLoading(false));
   }, []);
@@ -136,7 +151,7 @@ export default function AdminIntegrationsPage() {
       <div className="space-y-6 max-w-4xl">
         <PageHeader
           title="Integrations"
-          description="Configure email, SMS, and file storage providers."
+          description="Configure email, SMS, file storage, and GeoBox Smart Addressing."
           actions={
             <Button asChild variant="ghost" size="sm">
               <Link href="/settings"><ArrowLeft className="h-3.5 w-3.5" /> Back</Link>
@@ -150,6 +165,59 @@ export default function AdminIntegrationsPage() {
           </div>
         ) : data ? (
           <div className="space-y-6">
+
+            {/* GeoBox Smart Addressing */}
+            {(() => {
+              const envSetting = data.geobox.find(s => s.key === "geobox.environment");
+              const environment = envSetting?.value ?? "sandbox";
+              return (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-primary" />
+                            GeoBox Smart Addressing
+                            <GeoBoxEnvironmentBadge environment={environment} />
+                          </CardTitle>
+                          <CardDescription className="text-xs">
+                            Geocodes, village search, and tenant navigation for Uganda.
+                          </CardDescription>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {geoboxTestResult && (
+                          <div className="flex items-center gap-1.5">
+                            {geoboxTestResult.success
+                              ? <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                              : <XCircle className="h-4 w-4 text-destructive shrink-0" />}
+                            <span className="text-xs text-muted-foreground hidden sm:inline max-w-[200px] truncate">
+                              {geoboxTestResult.message}
+                            </span>
+                          </div>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8"
+                          onClick={async () => {
+                            const result = await settingsApi.testGeobox();
+                            if (result) setGeoboxTestResult(result);
+                          }}
+                        >
+                          <FlaskConical className="h-3.5 w-3.5 mr-1" />
+                          Test Connection
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {data.geobox.map(s => <SettingRow key={s.key} setting={s} onSave={handleSave} />)}
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
             {/* Email */}
             <Card>

@@ -48,7 +48,7 @@ const DEFAULTS: SystemSetting[] = [
 const store = new Map<string, SystemSetting>(DEFAULTS.map((s) => [s.key, { ...s }]));
 
 function grouped(): SettingsByCategory {
-  const g: SettingsByCategory = { storage: [], email: [], sms: [], whatsapp: [], platform: [], features: [], agency: [], payments: [] };
+  const g: SettingsByCategory = { storage: [], email: [], sms: [], whatsapp: [], geobox: [], platform: [], features: [], agency: [], payments: [] };
   store.forEach((s) => {
     const cat = s.category as keyof SettingsByCategory;
     if (cat in g) g[cat].push(s);

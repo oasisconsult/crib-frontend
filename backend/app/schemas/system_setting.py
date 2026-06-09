@@ -34,8 +34,15 @@ class SettingsByCategoryOut(CamelModel):
     email: list[SettingOut]
     sms: list[SettingOut]
     whatsapp: list[SettingOut]
+    geobox: list[SettingOut]
     platform: list[SettingOut]
     features: list[SettingOut]
+
+
+class GeoBoxTestResult(CamelModel):
+    success: bool
+    environment: str
+    message: str
 
 
 class StorageTestResult(CamelModel):

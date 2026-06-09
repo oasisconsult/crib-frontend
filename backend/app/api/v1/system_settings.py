@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_superadmin
 from app.core.database import get_db
 from app.schemas.system_setting import (
+    GeoBoxTestResult,
     NotificationTestRequest,
     NotificationTestResult,
     SettingOut,
@@ -114,3 +115,13 @@ async def test_sms(
     """Send a test SMS to verify SMS provider credentials."""
     result = await settings_service.test_sms(body.recipient, db)
     return NotificationTestResult(**result)
+
+
+@router.post("/test/geobox", response_model=GeoBoxTestResult)
+async def test_geobox(
+    _: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """Attempt a GeoBox OAuth token exchange to verify client_id and client_secret."""
+    result = await settings_service.test_geobox(db)
+    return GeoBoxTestResult(**result)

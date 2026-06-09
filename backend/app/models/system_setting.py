@@ -13,6 +13,7 @@ Categories:
   email     — transactional email provider and credentials
   sms       — SMS provider and credentials
   whatsapp  — WhatsApp Business API credentials
+  geobox    — GeoBox Smart Addressing integration credentials
   platform  — business defaults (currency, timezone, limits)
   features  — feature flags (booleans)
 """
@@ -156,6 +157,20 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "Email shown to visitors on the 'Book a Demo' page if they have questions "
      "before their session. Displayed as a click-to-email link, never as plain "
      "text, to discourage scraping.", "string", False, False),
+
+    # ── GeoBox ────────────────────────────────────────────────────────────────
+    ("geobox.environment",       "sandbox",  "geobox",  "GeoBox Environment",
+     "Active environment: 'sandbox' (testing) or 'production'. Controls which credential pair is used.",
+     "string", False, True),
+    ("geobox.client_id",         "",         "geobox",  "GeoBox App Client ID",
+     "Client ID issued when you create the Crib app in the GeoBox developer portal. Not a secret.",
+     "string", False, False),
+    ("geobox.client_secret",     "",         "geobox",  "GeoBox App Client Secret",
+     "Client secret issued once at app creation. Stored encrypted; never re-displayed after save.",
+     "string", True, False),
+    ("geobox.geocoding_enabled", "true",     "geobox",  "GeoBox Geocoding Enabled",
+     "Master switch. Set to 'false' to disable all GeoBox calls without removing credentials.",
+     "boolean", False, True),
 
     # ── Agency / Landlord branding ────────────────────────────────────────────
     ("agency.name",          "",  "agency", "Agency / Landlord Name",
