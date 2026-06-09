@@ -124,6 +124,7 @@ export default function AdminIntegrationsPage() {
   const [data, setData] = useState<Pick<SettingsByCategory, "storage" | "email" | "sms" | "geobox"> | null>(null);
   const [loading, setLoading] = useState(true);
   const [geoboxTestResult, setGeoboxTestResult] = useState<GeoBoxTestResult | null>(null);
+  const [geoboxTesting, setGeoboxTesting] = useState(false);
 
   useEffect(() => {
     settingsApi.getAll()
@@ -206,12 +207,20 @@ export default function AdminIntegrationsPage() {
                           size="sm"
                           variant="outline"
                           className="h-8"
+                          disabled={geoboxTesting}
                           onClick={async () => {
-                            const result = await settingsApi.testGeobox();
-                            if (result) setGeoboxTestResult(result);
+                            setGeoboxTesting(true);
+                            try {
+                              const result = await settingsApi.testGeobox();
+                              if (result) setGeoboxTestResult(result);
+                            } catch (err: unknown) {
+                              setGeoboxTestResult({ success: false, environment: "", message: (err as Error)?.message ?? "Connection failed" });
+                            } finally {
+                              setGeoboxTesting(false);
+                            }
                           }}
                         >
-                          <FlaskConical className="h-3.5 w-3.5 mr-1" />
+                          {geoboxTesting ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <FlaskConical className="h-3.5 w-3.5 mr-1" />}
                           Test Connection
                         </Button>
                       </div>
