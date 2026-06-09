@@ -107,15 +107,15 @@ function TestButton({ label, onTest }: { label: string; onTest: () => Promise<{ 
 // ── Page ───────────────────────────────────────────────────────────────────
 
 function GeoBoxEnvironmentBadge({ environment }: { environment: string }) {
-  const isSandbox = environment !== "production";
+  const isProduction = environment === "production";
   return (
     <span className={cn(
       "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-      isSandbox
-        ? "border-amber-400 bg-amber-50 text-amber-700"
-        : "border-emerald-500 bg-emerald-50 text-emerald-700",
+      isProduction
+        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+        : "border-amber-400 bg-amber-50 text-amber-700",
     )}>
-      {isSandbox ? "Sandbox" : "Production"}
+      {isProduction ? "Production" : environment}
     </span>
   );
 }

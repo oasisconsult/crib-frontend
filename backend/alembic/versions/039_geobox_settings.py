@@ -23,11 +23,11 @@ depends_on = None
 _ROWS = [
     {
         "key": "geobox.environment",
-        "value": "sandbox",
+        "value": "staging",
         "category": "geobox",
         "label": "GeoBox Environment",
         "description": (
-            "Active GeoBox environment: 'sandbox' (testing) or 'production'. "
+            "Active GeoBox environment: 'staging' (testing) or 'production'. "
             "Controls which credential pair is used for all API calls."
         ),
         "value_type": "string",

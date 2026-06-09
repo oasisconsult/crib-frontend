@@ -304,7 +304,7 @@ async def test_email(recipient: str, db: AsyncSession) -> dict:
 async def get_geobox_config(db: AsyncSession) -> dict[str, Any]:
     """Return GeoBox API config dict for the integration client."""
     return {
-        "environment": await get("geobox.environment", db, "sandbox"),
+        "environment": await get("geobox.environment", db, "staging"),
         "client_id": await get("geobox.client_id", db),
         "client_secret": await get("geobox.client_secret", db),
         "geocoding_enabled": await get_bool("geobox.geocoding_enabled", db, True),

@@ -159,8 +159,8 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "text, to discourage scraping.", "string", False, False),
 
     # ── GeoBox ────────────────────────────────────────────────────────────────
-    ("geobox.environment",       "sandbox",  "geobox",  "GeoBox Environment",
-     "Active environment: 'sandbox' (testing) or 'production'. Controls which credential pair is used.",
+    ("geobox.environment",       "staging",  "geobox",  "GeoBox Environment",
+     "Active environment: 'staging' (testing) or 'production'. Controls which credential pair is used.",
      "string", False, True),
     ("geobox.client_id",         "",         "geobox",  "GeoBox App Client ID",
      "Client ID issued when you create the Crib app in the GeoBox developer portal. Not a secret.",
