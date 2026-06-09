@@ -70,7 +70,7 @@ function SettingRow({ setting, onSave }: { setting: SystemSetting; onSave: (key:
                 {showSecret ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </button>
             )}
-            <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => setEditing(true)}>Edit</Button>
+            <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={() => { if (isSecret) setValue(""); setEditing(true); }}>Edit</Button>
           </div>
         )}
       </div>
@@ -133,14 +133,19 @@ export default function AdminIntegrationsPage() {
   }, []);
 
   const handleSave = useCallback(async (key: string, value: string) => {
-    const updated = await settingsApi.update(key, value);
-    setData(prev => {
-      if (!prev) return prev;
-      const cat = updated.category as keyof typeof prev;
-      if (!(cat in prev)) return prev;
-      return { ...prev, [cat]: (prev[cat] as SystemSetting[]).map(s => s.key === key ? updated : s) };
-    });
-    toast.success(`${updated.label} updated`);
+    try {
+      const updated = await settingsApi.update(key, value);
+      setData(prev => {
+        if (!prev) return prev;
+        const cat = updated.category as keyof typeof prev;
+        if (!(cat in prev)) return prev;
+        return { ...prev, [cat]: (prev[cat] as SystemSetting[]).map(s => s.key === key ? updated : s) };
+      });
+      toast.success(`${updated.label} updated`);
+    } catch (err: unknown) {
+      toast.error(`Failed to save: ${(err as Error)?.message ?? "Unknown error"}`);
+      throw err;
+    }
   }, []);
 
   return (

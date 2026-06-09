@@ -78,7 +78,10 @@ async def get(key: str, db: AsyncSession, default: str = "") -> str:
     setting = result.scalar_one_or_none()
     if not setting or not setting.value:
         return default
-    if setting.is_secret and is_encrypted(setting.value):
+    if setting.is_secret:
+        if not is_encrypted(setting.value):
+            log.warning("system_setting.unencrypted_secret", key=key)
+            return default
         try:
             return decrypt(setting.value)
         except ValueError:
