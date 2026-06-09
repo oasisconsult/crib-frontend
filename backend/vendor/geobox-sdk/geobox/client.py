@@ -106,6 +106,7 @@ class GeoBoxClient:
         client_secret:  Optional[str]      = None,
         auth:           Optional[BaseAuth] = None,
         sandbox:        bool               = False,
+        scope:          str                = "",
         base_url:       Optional[str]      = None,
         timeout:        float              = 30.0,
         max_retries:    int                = 3,
@@ -124,6 +125,7 @@ class GeoBoxClient:
                 client_id=client_id,
                 client_secret=client_secret,
                 sandbox=sandbox,
+                scope=scope,
             )
 
         # Resolve base URL

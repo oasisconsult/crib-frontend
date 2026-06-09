@@ -54,6 +54,7 @@ async def get_geobox_client(db):  # type: ignore[no-untyped-def]
             client_id=config["client_id"],
             client_secret=config["client_secret"],
             sandbox=sandbox,
+            scope="address:search address:read address:verify areas:read",
         ) as client:
             yield client
     except Exception as exc:

@@ -337,6 +337,7 @@ async def test_geobox(db: AsyncSession) -> dict:
             client_id=client_id,
             client_secret=client_secret,
             sandbox=sandbox,
+            scope="address:search address:read address:verify areas:read",
         ) as client:
             await client.ping()
         return {"success": True, "environment": environment, "message": f"Connected — environment: {environment}"}
