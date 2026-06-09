@@ -52,7 +52,7 @@ from .services.verification import VerificationService
 from .services.webhooks     import WebhookHandler
 
 _PRODUCTION_URL = "https://api.geoboxafrica.com/v1"
-_SANDBOX_URL    = "https://api.staging.geoboxafrica.com/v1"
+_SANDBOX_URL    = "https://api.staging.geoboxafrica.com/v1/developer"
 
 
 class GeoBoxClient:
