@@ -36,6 +36,9 @@ RUN git config --global \
     url."file:///app/vendor/geobox-rbac".insteadOf \
     "https://github.com/oasisconsult/geobox-rbac.git"
 
+# GeoBox Python SDK — vendored path dependency (no git redirect needed).
+COPY vendor/geobox-sdk ./vendor/geobox-sdk
+
 # Copy manifests first — layer is cached unless deps change
 COPY pyproject.toml poetry.lock* ./
 

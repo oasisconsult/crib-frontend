@@ -23,8 +23,8 @@ async def resolve(geocode: str, db) -> dict[str, Any] | None:  # type: ignore[no
     """
     Resolve a GeoBox geocode to its structured address data.
 
-    Returns a dict with the following keys (all optional from GeoBox — may be None):
-      full_address, landmark_description, access_instructions,
+    Returns a dict with the following keys (all optional — may be None):
+      geocode, full_address, landmark_description, access_instructions,
       delivery_notes, nav_url, coordinates
 
     Returns None when:
@@ -32,18 +32,24 @@ async def resolve(geocode: str, db) -> dict[str, Any] | None:  # type: ignore[no
       - The geocode is not found (404 from GeoBox)
       - Any network or authentication error
     """
+    from geobox.exceptions import GeoBoxNotFoundError
+
     async with get_geobox_client(db) as client:
         if client is None:
             return None
-        raw = await client.geocoding.lookup(geocode)
-        if raw is None:
+        try:
+            result = await client.geocoding.lookup(geocode)
+        except GeoBoxNotFoundError:
+            return None
+        except Exception as exc:
+            log.warning("geobox.geocoding.lookup_failed", geocode=geocode, error=str(exc))
             return None
         return {
-            "geocode":               raw.get("geocode", geocode),
-            "full_address":          raw.get("full_address") or raw.get("address"),
-            "landmark_description":  raw.get("landmark_description"),
-            "access_instructions":   raw.get("access_instructions"),
-            "delivery_notes":        raw.get("delivery_notes"),
-            "nav_url":               raw.get("nav_url"),
-            "coordinates":           raw.get("coordinates"),
+            "geocode":               result.geocode or geocode,
+            "full_address":          result.full_address,
+            "landmark_description":  result.landmark,
+            "access_instructions":   result.access_instructions,
+            "delivery_notes":        result.delivery_notes,
+            "nav_url":               result.nav_url,
+            "coordinates":           None,
         }

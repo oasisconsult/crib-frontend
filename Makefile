@@ -3,7 +3,7 @@
 # Quick reference
 # ───────────────────────────────────────────────────────────────────────────────
 # Shared:
-#   make clone-deps            Sync geobox-rbac into backend/vendor/ (run first)
+#   make clone-deps            Sync geobox-rbac + geobox-sdk into backend/vendor/ (run first)
 #   make pull                  Pull latest from origin/main
 #
 # Local dev:
@@ -50,14 +50,21 @@
         prod-logs prod-logs-backend prod-logs-frontend \
         prod-shell-backend prod-migrate prod-migrate-rbac
 
-# ── geobox-rbac vendor path ───────────────────────────────────────────────────
-# Checked in this order: production server → staging server → local WSL dev
+# ── vendor paths ─────────────────────────────────────────────────────────────
+# Checked in this order: production server → local WSL dev
+
 GEOBOX_RBAC_UPSTREAM ?= $(shell \
   if   [ -d /srv/apps/geobox-rbac ]; then echo /srv/apps/geobox-rbac; \
   elif [ -d /home/belac/projects/geobox-rbac ]; then echo /home/belac/projects/geobox-rbac; \
   else echo ""; fi)
 
-VENDOR_DIR := backend/vendor/geobox-rbac
+GEOBOX_SDK_UPSTREAM ?= $(shell \
+  if   [ -d /srv/apps/geobox-backend/sdk/python ]; then echo /srv/apps/geobox-backend/sdk/python; \
+  elif [ -d /home/belac/projects/geobox-backend/sdk/python ]; then echo /home/belac/projects/geobox-backend/sdk/python; \
+  else echo ""; fi)
+
+VENDOR_DIR     := backend/vendor/geobox-rbac
+SDK_VENDOR_DIR := backend/vendor/geobox-sdk
 
 # ── Internal: create a named database on the shared Postgres container ────────
 # Usage: $(call _create_db,<dbname>)
@@ -83,7 +90,7 @@ endef
 # Shared
 # ═══════════════════════════════════════════════════════════════════════════════
 
-## Sync geobox-rbac into backend/vendor/ (required before any docker build)
+## Sync vendor deps into backend/vendor/ (required before any docker build)
 clone-deps:
 	@if [ -z "$(GEOBOX_RBAC_UPSTREAM)" ]; then \
 	  if [ -d "$(VENDOR_DIR)/.git" ]; then \
@@ -104,6 +111,20 @@ clone-deps:
 	  rsync -a --delete $(GEOBOX_RBAC_UPSTREAM)/ $(VENDOR_DIR)/; \
 	fi
 	@echo "✓ geobox-rbac ready at $(VENDOR_DIR)"
+	@if [ -z "$(GEOBOX_SDK_UPSTREAM)" ]; then \
+	  echo "WARNING: GeoBox SDK not found at /srv/apps/geobox-backend/sdk/python or /home/belac/projects/geobox-backend/sdk/python"; \
+	  echo "         Set GEOBOX_SDK_UPSTREAM to the sdk/python directory of the geobox-backend repo."; \
+	  if [ ! -d "$(SDK_VENDOR_DIR)" ]; then exit 1; fi; \
+	  echo "         Using existing $(SDK_VENDOR_DIR)."; \
+	elif [ ! -d "$(SDK_VENDOR_DIR)" ]; then \
+	  echo "Copying geobox-sdk from $(GEOBOX_SDK_UPSTREAM)..."; \
+	  mkdir -p backend/vendor; \
+	  cp -r $(GEOBOX_SDK_UPSTREAM) $(SDK_VENDOR_DIR); \
+	else \
+	  echo "Syncing geobox-sdk from $(GEOBOX_SDK_UPSTREAM)..."; \
+	  rsync -a --delete $(GEOBOX_SDK_UPSTREAM)/ $(SDK_VENDOR_DIR)/; \
+	fi
+	@echo "✓ geobox-sdk ready at $(SDK_VENDOR_DIR)"
 
 ## Pull latest from origin/main (safe even with locally-modified files)
 pull:

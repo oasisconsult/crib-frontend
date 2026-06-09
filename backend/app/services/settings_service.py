@@ -313,13 +313,11 @@ async def get_geobox_config(db: AsyncSession) -> dict[str, Any]:
 
 async def test_geobox(db: AsyncSession) -> dict:
     """
-    Attempt an OAuth 2.0 client credentials token exchange against GeoBox to verify
-    that the stored client_id and client_secret are valid.
-
-    Production:  https://api.geoboxafrica.com/billing/auth/clients/token
-    Sandbox:     https://api.staging.geoboxafrica.com/billing/auth/clients/token
+    Verify GeoBox credentials by making a health-check ping via the official
+    GeoBox Python SDK (which handles OAuth 2.0 token exchange transparently).
     """
-    import httpx
+    from geobox import GeoBoxClient
+    from geobox.exceptions import GeoBoxAuthError
 
     config = await get_geobox_config(db)
     environment = config["environment"]
@@ -332,38 +330,18 @@ async def test_geobox(db: AsyncSession) -> dict:
     if not client_id or not client_secret:
         return {"success": False, "environment": environment, "message": "GeoBox credentials not configured"}
 
-    is_sandbox = environment != "production"
-    if is_sandbox:
-        token_url = "https://api.staging.geoboxafrica.com/billing/auth/clients/token"
-        resource = "https://api.staging.geoboxafrica.com/v1"
-    else:
-        token_url = "https://api.geoboxafrica.com/billing/auth/clients/token"
-        resource = "https://api.geoboxafrica.com"
+    sandbox = environment != "production"
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(
-                token_url,
-                data={
-                    "grant_type": "client_credentials",
-                    "client_id": client_id,
-                    "client_secret": client_secret,
-                    "resource": resource,
-                },
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-            )
-
-        if resp.status_code == 401:
-            return {"success": False, "environment": environment, "message": "Unauthorized — check client_id and client_secret"}
-        if resp.status_code >= 400:
-            return {"success": False, "environment": environment, "message": f"Token endpoint returned HTTP {resp.status_code}"}
-
-        body = resp.json()
-        if not body.get("access_token"):
-            return {"success": False, "environment": environment, "message": "Token response missing access_token"}
-
+        async with GeoBoxClient(
+            client_id=client_id,
+            client_secret=client_secret,
+            sandbox=sandbox,
+        ) as client:
+            await client.ping()
         return {"success": True, "environment": environment, "message": f"Connected — environment: {environment}"}
-
+    except GeoBoxAuthError:
+        return {"success": False, "environment": environment, "message": "Unauthorized — check client_id and client_secret"}
     except Exception as exc:
         log.warning("geobox.test_failed", error=str(exc))
         return {"success": False, "environment": environment, "message": str(exc)}
