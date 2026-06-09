@@ -340,8 +340,12 @@ async def test_geobox(db: AsyncSession) -> dict:
         token_url = "https://api.geoboxafrica.com/billing/auth/clients/token"
         resource = "https://api.geoboxafrica.com"
 
+    # GeoBox sandbox/staging SSL cert doesn't support SNI from server-to-server
+    # connections. Disable verification for non-production only.
+    ssl_verify = not is_sandbox
+
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=ssl_verify) as client:
             resp = await client.post(
                 token_url,
                 data={

@@ -171,8 +171,11 @@ async def get_geobox_client(db):  # type: ignore[no-untyped-def]
 
     environment = config["environment"]
     base_url    = _SANDBOX_BASE if environment != "production" else _PRODUCTION_BASE
+    # GeoBox's sandbox/staging SSL cert doesn't support SNI from server-to-server
+    # connections. Disable verification for non-production only.
+    ssl_verify  = environment == "production"
 
-    async with httpx.AsyncClient(timeout=20.0) as http:
+    async with httpx.AsyncClient(timeout=20.0, verify=ssl_verify) as http:
         try:
             token = await _get_token(
                 config["client_id"],
