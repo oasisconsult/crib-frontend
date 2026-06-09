@@ -87,7 +87,7 @@ class ClientCredentialsAuth(BaseAuth):
     """
 
     _SANDBOX_TOKEN_URL = "https://api.staging.geoboxafrica.com/billing/auth/clients/token"
-    _SANDBOX_RESOURCE  = "https://api.staging.geoboxafrica.com"
+    _SANDBOX_RESOURCE  = "https://api.geoboxafrica.com"
 
     def __init__(
         self,
