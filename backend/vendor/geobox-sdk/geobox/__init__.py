@@ -17,7 +17,7 @@ Quick start::
 """
 
 from .client import GeoBoxClient
-from .auth import ApiKeyAuth, BearerAuth, OAuth2Auth
+from .auth import ApiKeyAuth, BearerTokenAuth, ClientCredentialsAuth
 from .models import (
     Address,
     AddressCreateResponse,
@@ -45,8 +45,8 @@ __version__ = "1.0.0"
 __all__ = [
     "GeoBoxClient",
     "ApiKeyAuth",
-    "BearerAuth",
-    "OAuth2Auth",
+    "BearerTokenAuth",
+    "ClientCredentialsAuth",
     # Models
     "Address",
     "AddressCreateResponse",
