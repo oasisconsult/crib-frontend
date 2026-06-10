@@ -230,7 +230,7 @@ async def _waive_pre_system_schedules_async() -> dict:
 def apply_late_fees_task(self) -> dict:
     """
     Daily cron: apply late fees to overdue schedules that don't have one yet.
-    Only runs per org if autoApplyLateFees=True (default False).
+    Runs per org unless autoApplyLateFees=False. Respects lease.grace_period_days.
     """
     try:
         return _run(_apply_late_fees_async())
@@ -240,6 +240,7 @@ def apply_late_fees_task(self) -> dict:
 
 
 async def _apply_late_fees_async() -> dict:
+    from datetime import timedelta
     from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
     from sqlalchemy.pool import NullPool
 
@@ -257,6 +258,8 @@ async def _apply_late_fees_async() -> dict:
     try:
         async with AsyncSession(engine, expire_on_commit=False) as db:
             async with db.begin():
+                today = date.today()
+
                 # Overdue schedules that have no late fee yet
                 existing_fees = select(LateFee.rent_schedule_id)
                 result = await db.execute(
@@ -273,19 +276,19 @@ async def _apply_late_fees_async() -> dict:
                 for s in schedules:
                     org_id = str(s.organisation_id)
 
-                    # Check org setting
+                    # Check org setting — default True so fees apply automatically
                     if org_id not in org_cache:
                         org = await db.scalar(
                             select(Organisation).where(Organisation.id == s.organisation_id)
                         )
                         payment_settings = (org.settings or {}).get("payments", {}) if org else {}
-                        org_cache[org_id] = payment_settings.get("autoApplyLateFees", False)
+                        org_cache[org_id] = payment_settings.get("autoApplyLateFees", True)
 
                     if not org_cache[org_id]:
                         skipped += 1
                         continue
 
-                    # Load lease for fee config
+                    # Load lease for fee config and grace period
                     lease_id = str(s.lease_id)
                     if lease_id not in lease_cache:
                         lease = await db.scalar(
@@ -295,6 +298,12 @@ async def _apply_late_fees_async() -> dict:
 
                     lease = lease_cache[lease_id]
                     if not lease or not lease.late_fee_value:
+                        skipped += 1
+                        continue
+
+                    # Respect the lease's grace period — don't charge until it has elapsed
+                    grace_days = int(lease.grace_period_days or 0)
+                    if today < s.due_date + timedelta(days=grace_days):
                         skipped += 1
                         continue
 
