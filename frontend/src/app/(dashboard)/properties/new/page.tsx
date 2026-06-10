@@ -269,6 +269,7 @@ export default function NewPropertyPage() {
   const [line1,        setLine1]        = useState("");
   const [city,         setCity]         = useState("Kampala");
   const [region,       setRegion]       = useState("Central Region");
+  const [geocode,      setGeocode]      = useState("");
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
   const [genCount,       setGenCount]       = useState(10);
@@ -333,6 +334,7 @@ export default function NewPropertyPage() {
         type: propType as "flat",
         status: propStatus as "active",
         address: { line1, city, state: region, postcode: "00256", country: "Uganda" },
+        geocode: geocode || undefined,
         rules: DEFAULT_RULES,
         landlordId: "landlord-1",
         totalUnits: isSingleUnit ? 1 : units.length,
@@ -472,6 +474,20 @@ export default function NewPropertyPage() {
                   <Label htmlFor="region">Region</Label>
                   <Input id="region" value={region} onChange={(e) => setRegion(e.target.value)} />
                 </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="geocode">GeoBox Geocode</Label>
+                <Input
+                  id="geocode"
+                  value={geocode}
+                  onChange={(e) => setGeocode(e.target.value.toUpperCase())}
+                  placeholder="e.g. UGKAN-JF5"
+                  maxLength={20}
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional. Used for tenant navigation in the portal.
+                </p>
               </div>
             </CardContent>
           </Card>

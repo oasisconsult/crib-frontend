@@ -109,6 +109,7 @@ function EditForm({
   const [city,     setCity]     = useState(property.address.city);
   const [region,   setRegion]   = useState(property.address.state);
   const [postcode, setPostcode] = useState(property.address.postcode ?? "");
+  const [geocode,  setGeocode]  = useState(property.geocode ?? "");
   // Amenities & tags
   const [amenities, setAmenities] = useState<string[]>(property.amenities ?? []);
   const [tagsInput, setTagsInput] = useState((property.tags ?? []).join(", "));
@@ -141,6 +142,7 @@ function EditForm({
             state: region,
             postcode,
           },
+          geocode: geocode || undefined,
           amenities,
           tags,
         },
@@ -246,6 +248,20 @@ function EditForm({
                 onChange={(e) => setRegion(e.target.value)}
               />
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="geocode">GeoBox Geocode</Label>
+            <Input
+              id="geocode"
+              value={geocode}
+              onChange={(e) => setGeocode(e.target.value.toUpperCase())}
+              placeholder="e.g. UGKAN-JF5"
+              maxLength={20}
+              className="font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              Optional. Used for tenant navigation in the portal.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -544,6 +560,15 @@ export default function PropertyDetailPage({ params }: Props) {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Postcode</span>
                       <span>{property.address.postcode}</span>
+                    </div>
+                  </>
+                )}
+                {property.geocode && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Geocode</span>
+                      <code className="font-mono text-sm tracking-wider">{property.geocode}</code>
                     </div>
                   </>
                 )}
