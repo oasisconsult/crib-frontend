@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, require_superadmin
 from app.core.database import get_db
 from app.schemas.system_setting import (
+    GeoBoxTestResult,
     NotificationTestRequest,
     NotificationTestResult,
     SettingOut,
@@ -114,3 +115,48 @@ async def test_sms(
     """Send a test SMS to verify SMS provider credentials."""
     result = await settings_service.test_sms(body.recipient, db)
     return NotificationTestResult(**result)
+
+
+@router.post("/test/geobox", response_model=GeoBoxTestResult)
+async def test_geobox(
+    _: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """Attempt a GeoBox OAuth token exchange to verify client_id and client_secret."""
+    result = await settings_service.test_geobox(db)
+    return GeoBoxTestResult(**result)
+
+
+# ── Public settings ────────────────────────────────────────────────────────────
+# A small allowlist of non-secret settings that any authenticated user may read.
+# Add keys here only when the value is non-sensitive and needed client-side.
+
+from app.api.deps import get_current_user  # noqa: E402 — appended block
+
+PUBLIC_SETTING_KEYS: frozenset[str] = frozenset({
+    "geobox.whatsapp_number",
+    "agency.name",
+    "agency.contact_phone",
+    "agency.contact_email",
+})
+
+public_router = APIRouter(prefix="/settings", tags=["settings"])
+
+
+@public_router.get("/public", response_model=dict[str, str])
+async def get_public_settings(
+    _: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return the allowlisted non-secret settings for any authenticated user."""
+    from sqlalchemy import select as _select
+    from app.models.system_setting import SystemSetting as _SM
+
+    result = await db.execute(
+        _select(_SM).where(_SM.key.in_(PUBLIC_SETTING_KEYS))
+    )
+    rows = result.scalars().all()
+    found = {row.key: row.value for row in rows}
+    # Fill missing keys with defaults so callers always get every key
+    defaults = {k: "" for k in PUBLIC_SETTING_KEYS}
+    return {**defaults, **found}

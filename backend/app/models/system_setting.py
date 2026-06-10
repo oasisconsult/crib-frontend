@@ -13,6 +13,7 @@ Categories:
   email     — transactional email provider and credentials
   sms       — SMS provider and credentials
   whatsapp  — WhatsApp Business API credentials
+  geobox    — GeoBox Smart Addressing integration credentials
   platform  — business defaults (currency, timezone, limits)
   features  — feature flags (booleans)
 """
@@ -143,11 +144,37 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "Contact email shown to users.", "string", False, False),
     ("platform.support_phone",      "",         "platform","Support Phone",
      "Contact phone shown to users (E.164 format).", "string", False, False),
+    ("platform.support_whatsapp",   "",         "platform","Support WhatsApp Number",
+     "WhatsApp contact number shown on the public site's 'WhatsApp Us' link, "
+     "in international format without '+' or spaces (e.g. 256700000000). "
+     "Leave empty to hide the link.", "string", False, False),
     ("platform.max_upload_mb",      "10",       "platform","Max Upload Size (MB)",
      "Maximum file upload size in megabytes.", "integer", False, True),
     ("notifications.demo_booking_email", "hello@crib.ug", "platform", "Demo Booking Notification Email",
      "Address that receives an alert whenever someone books a product demo via "
      "the marketing site (e.g. support@geoboxafrica.com).", "string", False, False),
+    ("notifications.demo_contact_email", "demo@geoboxafrica.com", "platform", "Demo Contact Email",
+     "Email shown to visitors on the 'Book a Demo' page if they have questions "
+     "before their session. Displayed as a click-to-email link, never as plain "
+     "text, to discourage scraping.", "string", False, False),
+
+    # ── GeoBox ────────────────────────────────────────────────────────────────
+    ("geobox.environment",       "sandbox",  "geobox",  "GeoBox Environment",
+     "Active environment: 'sandbox' (testing) or 'production'. Controls which credential pair is used.",
+     "string", False, True),
+    ("geobox.client_id",         "",         "geobox",  "GeoBox App Client ID",
+     "Client ID issued when you create the Crib app in the GeoBox developer portal. Not a secret.",
+     "string", False, False),
+    ("geobox.client_secret",     "",         "geobox",  "GeoBox App Client Secret",
+     "Client secret issued once at app creation. Stored encrypted; never re-displayed after save.",
+     "string", True, False),
+    ("geobox.geocoding_enabled", "true",     "geobox",  "GeoBox Geocoding Enabled",
+     "Master switch. Set to 'false' to disable all GeoBox calls without removing credentials.",
+     "boolean", False, True),
+
+    ("geobox.whatsapp_number", "+256767171092", "geobox", "GeoBox WhatsApp Bot Number",
+     "WhatsApp number for the GeoBox directions bot (E.164 format). Shown to tenants on the portal.",
+     "string", False, False),
 
     # ── Agency / Landlord branding ────────────────────────────────────────────
     ("agency.name",          "",  "agency", "Agency / Landlord Name",

@@ -232,9 +232,23 @@ def create_app() -> FastAPI:
     # Phase 3:   shadow_mode=True — deps.py reads request.state.rbac (dual-source).
     # Phase 4:   shadow_mode=False — DB roles authoritative; set RBAC_SHADOW_MODE=false.
     if settings.rbac_database_url:
+        from rbac.middleware import context_middleware
         from rbac.middleware.context_middleware import AppContextMiddleware
         from rbac.dependencies.ownership import configure_db_dependency
         from app.core.redis import get_redis as _get_redis
+
+        # AppContextMiddleware runs ahead of routing and 401s any request
+        # without a resolvable identity, exempting only its hardcoded
+        # _BYPASS_PATHS (health/metrics). The framework has no per-app
+        # exemption hook, so anonymous-by-design endpoints — like the public
+        # Book a Demo submission and its contact-email lookup, both meant for
+        # marketing-site visitors with no Logto session — must be added to
+        # that set directly.
+        # backend/vendor/geobox-rbac is gitignored and re-synced from the
+        # upstream repo by `make clone-deps` before every build, so this
+        # cannot be patched in the vendored copy; it must live here.
+        context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/demo-bookings")
+        context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/demo-bookings/contact")
 
         configure_db_dependency(get_db)
         application.add_middleware(
@@ -262,8 +276,8 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1 import (
         admin,
-        agency_invites, analytics, demo_bookings, health, inspections, landlords, leases, me, messages,
-        mobile_money, notifications, onboarding, organisations, payments, properties,
+        agency_invites, analytics, contact_info, demo_bookings, email_templates, health, inspections, landlords, leases, me,
+        messages, mobile_money, notifications, onboarding, organisations, payments, properties,
         property_import, rbac, system_settings, tenant_import, tenants, uploads, wallet, webhooks,
     )
     from app.api.v1.flat_payments import (
@@ -292,6 +306,8 @@ def create_app() -> FastAPI:
     application.include_router(analytics.router, prefix=settings.api_prefix)
     application.include_router(notifications.router, prefix=settings.api_prefix)
     application.include_router(system_settings.router, prefix=settings.api_prefix)
+    application.include_router(system_settings.public_router, prefix=settings.api_prefix)
+    application.include_router(email_templates.router, prefix=settings.api_prefix)
     application.include_router(rbac.router, prefix=settings.api_prefix)
     application.include_router(uploads.router, prefix=settings.api_prefix)
     application.include_router(wallet.router, prefix=settings.api_prefix)
@@ -308,6 +324,8 @@ def create_app() -> FastAPI:
     # Book a Demo — public submission endpoint + superadmin management endpoints
     application.include_router(demo_bookings.public_router, prefix=settings.api_prefix)
     application.include_router(demo_bookings.router, prefix=settings.api_prefix)
+    # Public contact info (support email/phone/WhatsApp) shown on the marketing site
+    application.include_router(contact_info.public_router, prefix=settings.api_prefix)
 
     # ── Subscription & Billing ────────────────────────────────────────────────
     from app.api.v1 import subscriptions, billing_payments, invoices, admin_billing
