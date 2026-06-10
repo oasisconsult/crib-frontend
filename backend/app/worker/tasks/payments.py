@@ -261,19 +261,30 @@ async def _apply_late_fees_async() -> dict:
             async with db.begin():
                 today = date.today()
 
-                # Overdue schedules not yet charged today — allows daily accrual
                 from sqlalchemy import func as sa_func
-                already_today = (
-                    select(LateFee.rent_schedule_id)
-                    .where(sa_func.date(LateFee.applied_at) == today)
-                )
-                result = await db.execute(
+
+                # All overdue schedules
+                rows = await db.execute(
                     select(RentSchedule).where(
-                        RentSchedule.status == RentScheduleStatus.overdue,
-                        RentSchedule.id.notin_(already_today),
+                        RentSchedule.status == RentScheduleStatus.overdue
                     )
                 )
-                schedules = result.scalars().all()
+                schedules = rows.scalars().all()
+
+                if not schedules:
+                    return {"applied": 0, "skipped": 0}
+
+                # Preload existing fee dates per schedule in one query
+                sched_ids = [s.id for s in schedules]
+                fee_dates_result = await db.execute(
+                    select(
+                        LateFee.rent_schedule_id,
+                        sa_func.date(LateFee.applied_at).label("fee_date"),
+                    ).where(LateFee.rent_schedule_id.in_(sched_ids))
+                )
+                fee_dates_by_sched: dict = {}
+                for row in fee_dates_result.all():
+                    fee_dates_by_sched.setdefault(str(row.rent_schedule_id), set()).add(row.fee_date)
 
                 org_cache: dict = {}
                 lease_cache: dict = {}
@@ -306,32 +317,41 @@ async def _apply_late_fees_async() -> dict:
                         skipped += 1
                         continue
 
-                    # Respect the lease's grace period — don't charge until it has elapsed
+                    # First fee day = due_date + grace_period_days
+                    # e.g. due June 1, grace 5 days → fees start June 6
                     grace_days = int(lease.grace_period_days or 0)
-                    if today < s.due_date + timedelta(days=grace_days):
+                    first_fee_date = s.due_date + timedelta(days=grace_days)
+                    if today < first_fee_date:
                         skipped += 1
                         continue
 
-                    # Calculate amount
+                    # Calculate per-day fee amount
                     amount_due = float(s.amount_due)
                     if lease.late_fee_type in ("percent", "percentage"):
                         fee_amount = round(float(lease.late_fee_value) / 100 * amount_due, 2)
                     else:
                         fee_amount = float(lease.late_fee_value)
 
-                    now = datetime.now(timezone.utc)
-                    fee = LateFee(
-                        organisation_id=s.organisation_id,
-                        lease_id=s.lease_id,
-                        rent_schedule_id=s.id,
-                        fee_type=lease.late_fee_type,
-                        calculated_amount=fee_amount,
-                        applied_at=now,
-                        waived=False,
-                    )
-                    db.add(fee)
-                    s.late_fee_applied = float(s.late_fee_applied) + fee_amount
-                    applied += 1
+                    # Backfill one LateFee per missing date from first_fee_date to today
+                    already_charged = fee_dates_by_sched.get(str(s.id), set())
+                    total_days = (today - first_fee_date).days + 1
+                    for day_offset in range(total_days):
+                        fee_date = first_fee_date + timedelta(days=day_offset)
+                        if fee_date in already_charged:
+                            continue
+                        fee_dt = datetime(fee_date.year, fee_date.month, fee_date.day, tzinfo=timezone.utc)
+                        fee = LateFee(
+                            organisation_id=s.organisation_id,
+                            lease_id=s.lease_id,
+                            rent_schedule_id=s.id,
+                            fee_type=lease.late_fee_type,
+                            calculated_amount=fee_amount,
+                            applied_at=fee_dt,
+                            waived=False,
+                        )
+                        db.add(fee)
+                        s.late_fee_applied = round(float(s.late_fee_applied) + fee_amount, 2)
+                        applied += 1
 
     finally:
         await engine.dispose()
