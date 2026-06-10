@@ -20,7 +20,7 @@ import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment } from "@/hooks/usePayments";
 import { useLeases, useLease, useGenerateLeaseDocument, useConfirmLeaseTerms } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
-import { useProperty } from "@/hooks/useProperties";
+import { useProperty, usePropertyGeocode } from "@/hooks/useProperties";
 import { usePublicSettings } from "@/hooks/useSettings";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { useAppStore } from "@/store/useAppStore";
@@ -940,10 +940,14 @@ function InspectionsTab({ unitId, propertyId }: { unitId: string; propertyId: st
 
 // ─── How to Find Us ───────────────────────────────────────────────────────────
 
-function HowToFindUsCard({ geocode, address, whatsappNumber }: {
+function HowToFindUsCard({ geocode, address, whatsappNumber, navUrl, landmarkDescription, accessInstructions, deliveryNotes }: {
   geocode?: string;
   address: { line1: string; line2?: string; city: string; state: string; country: string; lat?: number; lng?: number };
   whatsappNumber?: string;
+  navUrl?: string;
+  landmarkDescription?: string;
+  accessInstructions?: string;
+  deliveryNotes?: string;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -1019,15 +1023,39 @@ function HowToFindUsCard({ geocode, address, whatsappNumber }: {
               </button>
             </div>
 
-            {/* Instruction */}
-            <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
-              Share this code with anyone who needs to find you, or tap the button below —
-              WhatsApp will open with the message already typed. Just hit <strong>Send</strong>.
-            </p>
+            {/* Resolved address details from GeoBox */}
+            {landmarkDescription && (
+              <p className="text-xs text-emerald-800 dark:text-emerald-200 leading-relaxed">
+                📍 {landmarkDescription}
+              </p>
+            )}
+            {accessInstructions && (
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                <span className="font-medium">Access:</span> {accessInstructions}
+              </p>
+            )}
+            {deliveryNotes && (
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                <span className="font-medium">Delivery notes:</span> {deliveryNotes}
+              </p>
+            )}
 
-            {/* WhatsApp CTA */}
+            {/* Open Navigation — primary CTA when nav_url is available */}
+            {navUrl && (
+              <a
+                href={navUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-emerald-700 dark:bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 dark:hover:bg-emerald-500 active:scale-[0.98] transition-all"
+              >
+                <Navigation className="h-4 w-4" />
+                Open Navigation
+              </a>
+            )}
+
+            {/* WhatsApp — share code with the GeoBox bot */}
             <a
-              href={waUrl}
+              href={waUrl!}
               target="_blank"
               rel="noopener noreferrer"
               className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d] active:scale-[0.98] transition-all"
@@ -1063,14 +1091,42 @@ function HowToFindUsCard({ geocode, address, whatsappNumber }: {
               </button>
             </div>
 
-            {/* Explanation */}
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              This short code uniquely identifies your home. Share it with delivery drivers,
-              taxis, or anyone who needs to find you — they can use it on GeoBox to get
-              directions straight to your door.
-            </p>
+            {/* Resolved address details */}
+            {landmarkDescription && (
+              <p className="text-xs text-muted-foreground leading-relaxed">📍 {landmarkDescription}</p>
+            )}
+            {accessInstructions && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">Access:</span> {accessInstructions}
+              </p>
+            )}
+            {deliveryNotes && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">Delivery notes:</span> {deliveryNotes}
+              </p>
+            )}
 
-            {/* Generic WhatsApp share — opens WA with the code pre-typed, tenant picks the contact */}
+            {!landmarkDescription && !accessInstructions && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                This short code uniquely identifies your home. Share it with delivery drivers,
+                taxis, or anyone who needs to find you.
+              </p>
+            )}
+
+            {/* Open Navigation */}
+            {navUrl && (
+              <a
+                href={navUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all"
+              >
+                <Navigation className="h-4 w-4" />
+                Open Navigation
+              </a>
+            )}
+
+            {/* Generic WhatsApp share */}
             <a
               href={`https://wa.me/?text=${encodeURIComponent(`My GeoBox address code is *${geocode}*. Send "Find ${geocode}" on WhatsApp to get directions to my home.`)}`}
               target="_blank"
@@ -1114,6 +1170,10 @@ export default function TenantPortalPage() {
 
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
   const { data: propertyData } = useProperty(myLease?.propertyId ?? "");
+  const { data: geocodeData } = usePropertyGeocode(
+    myLease?.propertyId ?? "",
+    !!myLease?.propertyId && !!propertyData?.geocode,
+  );
   const { data: publicSettings } = usePublicSettings();
   const { mutate: generateDoc, isPending: generatingDoc } = useGenerateLeaseDocument();
   const { mutate: confirmTerms, isPending: confirmingTerms } = useConfirmLeaseTerms();
@@ -1382,6 +1442,10 @@ export default function TenantPortalPage() {
                 geocode={propertyData.geocode}
                 address={propertyData.address}
                 whatsappNumber={publicSettings?.["geobox.whatsapp_number"]}
+                navUrl={geocodeData?.navUrl}
+                landmarkDescription={geocodeData?.landmarkDescription}
+                accessInstructions={geocodeData?.accessInstructions}
+                deliveryNotes={geocodeData?.deliveryNotes}
               />
             )}
 

@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { propertiesApi } from "@/services/api/properties";
+import type { ResolvedGeocode } from "@/services/api/properties";
 import { toast } from "@/store/useUIStore";
 import type { Property, Unit, PropertyRules, QueryParams } from "@/types";
 
@@ -19,6 +20,15 @@ export function useProperty(id: string) {
     queryKey: queryKeys.properties.detail(id),
     queryFn: () => propertiesApi.get(id),
     enabled: !!id,
+  });
+}
+
+export function usePropertyGeocode(propertyId: string, enabled = true) {
+  return useQuery<ResolvedGeocode>({
+    queryKey: [...queryKeys.properties.detail(propertyId), "geocode"],
+    queryFn: () => propertiesApi.getGeocode(propertyId),
+    enabled: !!propertyId && enabled,
+    staleTime: 10 * 60_000, // GeoBox data changes rarely
   });
 }
 
