@@ -104,26 +104,22 @@ const MOBILE_MONEY_IDS = new Set(["mtn_momo", "airtel_money"]);
 type PayStep = "method" | "form" | "pending" | "confirm" | "success";
 
 interface PayDialogProps {
-  lease: { id: string; terms: { monthlyRent: number; currency: string } };
+  lease: { id: string; reference?: string; terms: { monthlyRent: number; currency: string } };
   balance: number;
   lateFeeApplied: number;
   userPhone?: string;
   mobileMoneyProvider?: string | null;
   mobileMoneyNumber?: string | null;
-  propertyName?: string | null;
-  unitName?: string | null;
   onClose: () => void;
 }
 
-function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvider, mobileMoneyNumber, propertyName, unitName, onClose }: PayDialogProps) {
+function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvider, mobileMoneyNumber, onClose }: PayDialogProps) {
   const [step, setStep] = useState<PayStep>("method");
   const [selectedMethod, setSelectedMethod] = useState<PayMethod | null>(null);
   const [phone, setPhone] = useState(userPhone ?? "");
   const [amount, setAmount] = useState(balance > 0 ? String(Math.round(balance)) : "");
 
-  // Build a readable default reference from property + unit (e.g. "Kiwatule Homes - House 3")
-  const defaultReference = [propertyName, unitName].filter(Boolean).join(" - ");
-  const [reference, setReference] = useState(defaultReference);
+  const [reference, setReference] = useState(lease.reference ?? "");
 
   // Sync amount if balance loads after mount
   useEffect(() => {
@@ -386,11 +382,11 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
               type="text"
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              placeholder="e.g. Kiwatule Homes - House 3"
+              placeholder="e.g. LSE-ABC123"
               autoFocus
             />
             <p className="text-xs text-muted-foreground">
-              Use your property and unit name as the reference so your payment is identified quickly.
+              Use this reference as the bank narration so your payment is matched automatically.
             </p>
           </div>
 
@@ -1858,8 +1854,6 @@ export default function TenantPortalPage() {
               userPhone={user?.phone}
               mobileMoneyProvider={user?.mobileMoneyProvider}
               mobileMoneyNumber={user?.mobileMoneyNumber}
-              propertyName={propertyData?.name}
-              unitName={(myLease as any).unitName}
               onClose={closeDialog}
             />
           </DialogOverlay>
