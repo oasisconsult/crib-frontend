@@ -245,7 +245,8 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
   // ── Multi-step form ───────────────────────────────────────────────────────────
 
   function backStep() {
-    setStep("method");
+    if (step === "confirm") setStep("form");
+    else setStep("method");
   }
 
   return (
@@ -264,7 +265,7 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
           <h3 className="font-semibold text-foreground">
             {step === "method" && "Pay Rent"}
             {step === "form" && selectedMethod?.label}
-
+            {step === "confirm" && "Upload Receipt"}
           </h3>
         </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
@@ -313,6 +314,24 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
             </div>
           )}
 
+          {/* Reference shown here for bank/cash so tenant can use it as narration */}
+          {!isMobileMoney() && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Payment Reference
+              </Label>
+              <Input
+                type="text"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="e.g. LSE-ABC123"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use this reference as your bank narration so your payment is matched automatically.
+              </p>
+            </div>
+          )}
+
           {selectedMethod.requiresPhone && (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -344,7 +363,6 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
           </div>
 
           {isMobileMoney() ? (
-            /* Mobile money: submit immediately → STK push → check phone */
             <Button
               className="w-full"
               onClick={handleMobileMoneySubmit}
@@ -354,67 +372,75 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
               {isPending ? "Sending request…" : "Send Payment Request"}
             </Button>
           ) : (
-            /* Cash / bank: reference + receipt shown inline, submit directly */
-            <>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Payment Reference
-                </Label>
-                <Input
-                  type="text"
-                  value={reference}
-                  onChange={(e) => setReference(e.target.value)}
-                  placeholder="e.g. LSE-ABC123"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Use this as your bank narration so your payment is matched automatically.
-                </p>
-              </div>
-
-              {/* Receipt upload */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Proof of Payment <span className="normal-case font-normal">(photo or PDF)</span>
-                </Label>
-                {receiptUrl ? (
-                  <div className="flex items-center gap-2 rounded-[6px] border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
-                    <Paperclip className="h-4 w-4 shrink-0" />
-                    <span className="truncate flex-1">{receiptName}</span>
-                    <button onClick={() => { setReceiptUrl(null); setReceiptName(null); }} className="text-muted-foreground hover:text-foreground">
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <label className={cn(
-                    "flex items-center gap-2 rounded-[6px] border border-dashed border-border px-3 py-2.5 cursor-pointer",
-                    "text-sm text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all",
-                    uploadingReceipt && "opacity-60 pointer-events-none",
-                  )}>
-                    {uploadingReceipt
-                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading…</>
-                      : <><Paperclip className="h-4 w-4" /> Tap to attach receipt / payslip photo</>
-                    }
-                    <input
-                      type="file"
-                      accept="image/*,application/pdf"
-                      capture="environment"
-                      className="sr-only"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }}
-                    />
-                  </label>
-                )}
-              </div>
-
-              <Button
-                className="w-full"
-                disabled={!reference.trim() || isPending || uploadingReceipt || parseFloat(amount) < balance}
-                onClick={handleCashBankSubmit}
-              >
-                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-                {isPending ? "Submitting…" : "Submit Payment"}
-              </Button>
-            </>
+            <Button
+              className="w-full"
+              onClick={() => setStep("confirm")}
+              disabled={!reference.trim() || parseFloat(amount) < balance}
+            >
+              <CreditCard className="h-4 w-4" />
+              I&apos;ve Made Payment
+            </Button>
           )}
+        </div>
+      )}
+
+      {/* Step: upload receipt (cash / bank only) */}
+      {step === "confirm" && selectedMethod && (
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Take a photo of your receipt or upload a PDF / image as proof of payment.
+          </p>
+
+          {receiptUrl ? (
+            <div className="flex items-center gap-2 rounded-[6px] border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+              <Paperclip className="h-4 w-4 shrink-0" />
+              <span className="truncate flex-1">{receiptName}</span>
+              <button
+                onClick={() => { setReceiptUrl(null); setReceiptName(null); }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <label className={cn(
+              "flex flex-col items-center gap-2 rounded-[6px] border border-dashed border-border px-4 py-8 cursor-pointer text-center",
+              "text-sm text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all",
+              uploadingReceipt && "opacity-60 pointer-events-none",
+            )}>
+              {uploadingReceipt ? (
+                <>
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span>Uploading…</span>
+                </>
+              ) : (
+                <>
+                  <Paperclip className="h-6 w-6" />
+                  <span className="font-medium">Tap to take a photo or upload</span>
+                  <span className="text-xs">JPEG, PNG or PDF accepted</span>
+                </>
+              )}
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                capture="environment"
+                className="sr-only"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }}
+              />
+            </label>
+          )}
+
+          <Button
+            className="w-full"
+            disabled={isPending || uploadingReceipt}
+            onClick={handleCashBankSubmit}
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+            {isPending ? "Submitting…" : "Submit Payment"}
+          </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            Receipt is optional but helps resolve disputes faster.
+          </p>
         </div>
       )}
     </div>
