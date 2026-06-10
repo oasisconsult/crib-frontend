@@ -107,22 +107,37 @@ interface PayDialogProps {
   balance: number;
   lateFeeApplied: number;
   userPhone?: string;
+  mobileMoneyProvider?: string | null;
+  mobileMoneyNumber?: string | null;
   onClose: () => void;
 }
 
-function PayDialog({ lease, balance, lateFeeApplied, userPhone, onClose }: PayDialogProps) {
+function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvider, mobileMoneyNumber, onClose }: PayDialogProps) {
   const [step, setStep] = useState<PayStep>("method");
   const [selectedMethod, setSelectedMethod] = useState<PayMethod | null>(null);
   const [phone, setPhone] = useState(userPhone ?? "");
-  const [amount, setAmount] = useState(String(balance));
+  const [amount, setAmount] = useState(balance > 0 ? String(Math.round(balance)) : "");
+
+  // Sync amount if balance loads after mount
+  useEffect(() => {
+    if (balance > 0) setAmount(String(Math.round(balance)));
+  }, [balance]);
+
+  // Auto-populate phone from tenant's saved mobile money number when method is selected
+  function handleMethodSelect(m: PayMethod) {
+    setSelectedMethod(m);
+    if (MOBILE_MONEY_IDS.has(m.id) && mobileMoneyNumber) {
+      const providerMatches =
+        (m.id === "mtn_momo" && mobileMoneyProvider === "mtn") ||
+        (m.id === "airtel_money" && mobileMoneyProvider === "airtel");
+      if (providerMatches) setPhone(mobileMoneyNumber);
+    }
+    setStep("form");
+  }
   const [reference, setReference] = useState("");
   const [pendingMessage, setPendingMessage] = useState("");
   const { mutate, isPending } = useRecordPayment();
 
-  function handleMethodSelect(m: PayMethod) {
-    setSelectedMethod(m);
-    setStep("form");
-  }
 
   function isMobileMoney() {
     return selectedMethod ? MOBILE_MONEY_IDS.has(selectedMethod.id) : false;
@@ -1765,8 +1780,8 @@ export default function TenantPortalPage() {
       {dialog === "pay" && myLease && (() => {
         const schedules = schedulesData?.data ?? [];
         const dueSchedule =
-          schedules.find((s) => s.state === "overdue") ??
-          schedules.find((s) => s.state === "pending") ??
+          schedules.find((s) => s.status === "overdue" || s.state === "overdue") ??
+          schedules.find((s) => s.status === "pending" || s.state === "pending") ??
           null;
         const balance = dueSchedule?.balance ?? (myLease as any).terms?.monthlyRent ?? 0;
         const lateFeeApplied = dueSchedule?.lateFeeApplied ?? 0;
@@ -1777,6 +1792,8 @@ export default function TenantPortalPage() {
               balance={balance}
               lateFeeApplied={lateFeeApplied}
               userPhone={user?.phone}
+              mobileMoneyProvider={user?.mobileMoneyProvider}
+              mobileMoneyNumber={user?.mobileMoneyNumber}
               onClose={closeDialog}
             />
           </DialogOverlay>
