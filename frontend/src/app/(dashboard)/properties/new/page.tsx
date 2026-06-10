@@ -57,6 +57,8 @@ const UNIT_TYPES: { value: UnitType; label: string }[] = [
 
 const UG_CITIES = ["Kampala", "Entebbe", "Jinja", "Mbarara", "Gulu", "Mbale", "Kasese"];
 
+const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/;
+
 const DEFAULT_RULES = {
   gracePeriodDays: 5,
   lateFeeType: "flat" as const,
@@ -324,9 +326,13 @@ export default function NewPropertyPage() {
     }]);
   }
 
+  const geocodeError = geocode && !GEOCODE_RE.test(geocode)
+    ? "Must be uppercase letters/digits with a hyphen (e.g. UGKAN-JF5)"
+    : null;
+
   // ── Submit ────────────────────────────────────────────────────────────────
   function handleSubmit() {
-    if (!propName || !line1) return;
+    if (!propName || !line1 || geocodeError) return;
 
     createProperty(
       {
@@ -483,11 +489,12 @@ export default function NewPropertyPage() {
                   onChange={(e) => setGeocode(e.target.value.toUpperCase())}
                   placeholder="e.g. UGKAN-JF5"
                   maxLength={20}
-                  className="font-mono"
+                  className={cn("font-mono", geocodeError && "border-destructive focus-visible:ring-destructive")}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Optional. Used for tenant navigation in the portal.
-                </p>
+                {geocodeError
+                  ? <p className="text-xs text-destructive">{geocodeError}</p>
+                  : <p className="text-xs text-muted-foreground">Optional. Used for tenant navigation in the portal.</p>
+                }
               </div>
             </CardContent>
           </Card>
@@ -547,7 +554,7 @@ export default function NewPropertyPage() {
             {isSingleUnit ? (
               <Button
                 onClick={handleSubmit}
-                disabled={!propName || !line1 || isSubmitting}
+                disabled={!propName || !line1 || !!geocodeError || isSubmitting}
               >
                 {isSubmitting ? "Creating…" : "Create Property"}
                 <CheckCircle2 className="h-4 w-4" aria-hidden />
@@ -555,7 +562,7 @@ export default function NewPropertyPage() {
             ) : (
               <Button
                 onClick={() => setStep(2)}
-                disabled={!propName || !line1}
+                disabled={!propName || !line1 || !!geocodeError}
               >
                 Next: Configure Units
                 <ArrowRight className="h-4 w-4" />

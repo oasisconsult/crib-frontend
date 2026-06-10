@@ -45,6 +45,8 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/;
+
 const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
   { value: "flat",       label: "Flat / Apartment" },
   { value: "house",      label: "House"             },
@@ -114,6 +116,10 @@ function EditForm({
   const [amenities, setAmenities] = useState<string[]>(property.amenities ?? []);
   const [tagsInput, setTagsInput] = useState((property.tags ?? []).join(", "));
 
+  const geocodeError = geocode && !GEOCODE_RE.test(geocode)
+    ? "Must be uppercase letters/digits with a hyphen (e.g. UGKAN-JF5)"
+    : null;
+
   function toggleAmenity(a: string) {
     setAmenities((prev) =>
       prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a],
@@ -122,6 +128,7 @@ function EditForm({
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (geocodeError) return;
     const tags = tagsInput
       .split(",")
       .map((t) => t.trim())
@@ -257,11 +264,12 @@ function EditForm({
               onChange={(e) => setGeocode(e.target.value.toUpperCase())}
               placeholder="e.g. UGKAN-JF5"
               maxLength={20}
-              className="font-mono"
+              className={cn("font-mono", geocodeError && "border-destructive focus-visible:ring-destructive")}
             />
-            <p className="text-xs text-muted-foreground">
-              Optional. Used for tenant navigation in the portal.
-            </p>
+            {geocodeError
+              ? <p className="text-xs text-destructive">{geocodeError}</p>
+              : <p className="text-xs text-muted-foreground">Optional. Used for tenant navigation in the portal.</p>
+            }
           </div>
         </CardContent>
       </Card>
@@ -313,7 +321,7 @@ function EditForm({
           <X className="h-4 w-4" />
           Cancel
         </Button>
-        <Button type="submit" loading={isPending}>
+        <Button type="submit" loading={isPending} disabled={!!geocodeError}>
           <Save className="h-4 w-4" />
           Save Changes
         </Button>
