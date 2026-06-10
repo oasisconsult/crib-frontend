@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment } from "@/hooks/usePayments";
+import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment, useTenantWallet } from "@/hooks/usePayments";
 import { useLeases, useLease, useGenerateLeaseDocument, useConfirmLeaseTerms } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
 import { useProperty, usePropertyGeocode } from "@/hooks/useProperties";
@@ -1278,6 +1278,8 @@ export default function TenantPortalPage() {
   const { data: myLease } = useLease(leaseStub?.id ?? "");
 
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
+  const { data: walletData } = useTenantWallet(userId ?? "");
+  const walletBalance = walletData?.balance ?? 0;
   const { data: propertyData } = useProperty(myLease?.propertyId ?? "");
   const { data: geocodeData } = usePropertyGeocode(
     myLease?.propertyId ?? "",
@@ -1530,6 +1532,28 @@ export default function TenantPortalPage() {
                     >
                       Pay Now
                     </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Wallet / credit balance — shown when tenant has overpayment credit */}
+            {walletBalance > 0 && myLease && (
+              <Card className="border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Wallet Credit</p>
+                      </div>
+                      <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300">
+                        {formatCurrency(walletBalance, walletData?.currency ?? myLease.terms?.currency ?? "UGX")}
+                      </p>
+                      <p className="text-xs text-emerald-700/70 dark:text-emerald-400">
+                        Credit from overpayment — will be applied automatically to your next rent.
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
