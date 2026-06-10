@@ -19,7 +19,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import CurrentUser, require_superadmin
+from app.api.deps import CurrentUser, get_current_user, require_superadmin
 from app.core.database import get_db
 from app.schemas.system_setting import (
     GeoBoxTestResult,
@@ -125,14 +125,9 @@ async def test_geobox(
     """Attempt a GeoBox OAuth token exchange to verify client_id and client_secret."""
     result = await settings_service.test_geobox(db)
     return GeoBoxTestResult(**result)
-<<<<<<< HEAD
 
 
-# ── Public settings ────────────────────────────────────────────────────────────
-# A small allowlist of non-secret settings that any authenticated user may read.
-# Add keys here only when the value is non-sensitive and needed client-side.
-
-from app.api.deps import get_current_user  # noqa: E402 — appended block
+# ── Public (authenticated, any role) ─────────────────────────────────────────
 
 PUBLIC_SETTING_KEYS: frozenset[str] = frozenset({
     "geobox.whatsapp_number",
@@ -158,8 +153,5 @@ async def get_public_settings(
     )
     rows = result.scalars().all()
     found = {row.key: row.value for row in rows}
-    # Fill missing keys with defaults so callers always get every key
     defaults = {k: "" for k in PUBLIC_SETTING_KEYS}
     return {**defaults, **found}
-=======
->>>>>>> c5b456736fe5b4d2905d6e5582a5cb3aad64eac6
