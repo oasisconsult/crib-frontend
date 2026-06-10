@@ -5,7 +5,7 @@ import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download,
   Smartphone, Building2, Banknote, Calendar, MessageCircle,
-  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip,
+  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -402,32 +402,37 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
+          ) : uploadingReceipt ? (
+            <div className="flex flex-col items-center gap-2 rounded-[6px] border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span>Uploading…</span>
+            </div>
           ) : (
-            <label className={cn(
-              "flex flex-col items-center gap-2 rounded-[6px] border border-dashed border-border px-4 py-8 cursor-pointer text-center",
-              "text-sm text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all",
-              uploadingReceipt && "opacity-60 pointer-events-none",
-            )}>
-              {uploadingReceipt ? (
-                <>
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                  <span>Uploading…</span>
-                </>
-              ) : (
-                <>
-                  <Paperclip className="h-6 w-6" />
-                  <span className="font-medium">Tap to take a photo or upload</span>
-                  <span className="text-xs">JPEG, PNG or PDF accepted</span>
-                </>
-              )}
-              <input
-                type="file"
-                accept="image/*,application/pdf"
-                capture="environment"
-                className="sr-only"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }}
-              />
-            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {/* Camera — opens directly to camera on mobile */}
+              <label className="flex flex-col items-center gap-2 rounded-[6px] border border-dashed border-border px-3 py-6 cursor-pointer text-center text-sm text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all">
+                <Camera className="h-6 w-6" />
+                <span className="font-medium text-xs">Take Photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="sr-only"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }}
+                />
+              </label>
+              {/* File picker — gallery, files, or PDF */}
+              <label className="flex flex-col items-center gap-2 rounded-[6px] border border-dashed border-border px-3 py-6 cursor-pointer text-center text-sm text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all">
+                <Upload className="h-6 w-6" />
+                <span className="font-medium text-xs">Upload File</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="sr-only"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }}
+                />
+              </label>
+            </div>
           )}
 
           <Button
