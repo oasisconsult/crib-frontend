@@ -1391,14 +1391,17 @@ export default function TenantPortalPage() {
                   value: hasOverdueRent ? "Overdue" : "Up to date",
                   color: hasOverdueRent ? "text-destructive" : "text-emerald-600",
                   icon: hasOverdueRent ? AlertCircle : CheckCircle2,
-                  cardClass: hasOverdueRent
-                    ? "border-destructive/40 bg-destructive/5 dark:border-destructive/30 dark:bg-destructive/10"
-                    : "",
                 },
-                { label: "Next Payment", value: nextPaymentDate, color: "text-foreground", icon: Clock, cardClass: "" },
-                { label: "Open Requests", value: String(openRequests.length), color: "text-foreground", icon: Wrench, cardClass: "" },
+                { label: "Next Payment", value: nextPaymentDate, color: "text-foreground", icon: Clock },
+                { label: "Open Requests", value: String(openRequests.length), color: "text-foreground", icon: Wrench },
               ].map((s) => (
-                <Card key={s.label} className={s.cardClass}>
+                <Card
+                  key={s.label}
+                  className={cn(
+                    s.label === "Rent Status" && hasOverdueRent &&
+                      "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30"
+                  )}
+                >
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-center gap-2 mb-1">
                       <s.icon className={cn("h-4 w-4", s.color)} />
@@ -1406,7 +1409,7 @@ export default function TenantPortalPage() {
                     </div>
                     <p className={cn("text-lg font-bold", s.color)}>{s.value}</p>
                     {s.label === "Rent Status" && hasOverdueRent && (
-                      <p className="text-xs text-destructive/70 mt-1">Please pay to avoid late fees</p>
+                      <p className="text-xs text-destructive mt-1">Please pay to avoid late fees</p>
                     )}
                   </CardContent>
                 </Card>
