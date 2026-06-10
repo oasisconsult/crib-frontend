@@ -1295,7 +1295,11 @@ export default function TenantPortalPage() {
     !myLease?.paperAgreementAcknowledged;
 
   const myPayments = allPayments.filter((p) => !myLease || p.leaseId === myLease.id);
-  const hasOverdueRent = (schedulesData?.data ?? []).some((s) => s.state === "overdue");
+  const schedules = schedulesData?.data ?? [];
+  const overdueSchedule = schedules.find((s) => s.status === "overdue" || s.state === "overdue") ?? null;
+  const hasOverdueRent = overdueSchedule !== null;
+  const overdueBalance = overdueSchedule?.balance ?? 0;
+  const overdueLateFee = overdueSchedule?.lateFeeApplied ?? 0;
   const myMaintenance = allMaintenance.filter((m) => (m as any).reportedById === userId || (m as any).reportedBy === userId);
   const openRequests = myMaintenance.filter((m) => !["resolved", "closed"].includes(m.state));
 
@@ -1518,7 +1522,17 @@ export default function TenantPortalPage() {
                     </div>
                     <p className={cn("text-lg font-bold", s.color)}>{s.value}</p>
                     {s.label === "Rent Status" && hasOverdueRent && (
-                      <p className="text-xs text-destructive mt-1">Please pay to avoid late fees</p>
+                      <div className="mt-1.5 space-y-0.5">
+                        <p className="text-xl font-extrabold text-destructive">
+                          {formatCurrency(overdueBalance, myLease?.terms?.currency ?? "UGX")}
+                        </p>
+                        {overdueLateFee > 0 && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            Includes {formatCurrency(overdueLateFee, myLease?.terms?.currency ?? "UGX")} late fee
+                          </p>
+                        )}
+                        <p className="text-xs text-destructive/80">Pay now to stop further charges</p>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
@@ -1855,9 +1869,8 @@ export default function TenantPortalPage() {
 
       {/* ── Dialogs ───────────────────────────────────────────────── */}
       {dialog === "pay" && myLease && (() => {
-        const schedules = schedulesData?.data ?? [];
         const dueSchedule =
-          schedules.find((s) => s.status === "overdue" || s.state === "overdue") ??
+          overdueSchedule ??
           schedules.find((s) => s.status === "pending" || s.state === "pending") ??
           null;
         const balance = dueSchedule?.balance ?? (myLease as any).terms?.monthlyRent ?? 0;
