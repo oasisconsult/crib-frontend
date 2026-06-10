@@ -110,14 +110,20 @@ interface PayDialogProps {
   userPhone?: string;
   mobileMoneyProvider?: string | null;
   mobileMoneyNumber?: string | null;
+  propertyName?: string | null;
+  unitName?: string | null;
   onClose: () => void;
 }
 
-function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvider, mobileMoneyNumber, onClose }: PayDialogProps) {
+function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvider, mobileMoneyNumber, propertyName, unitName, onClose }: PayDialogProps) {
   const [step, setStep] = useState<PayStep>("method");
   const [selectedMethod, setSelectedMethod] = useState<PayMethod | null>(null);
   const [phone, setPhone] = useState(userPhone ?? "");
   const [amount, setAmount] = useState(balance > 0 ? String(Math.round(balance)) : "");
+
+  // Build a readable default reference from property + unit (e.g. "Kiwatule Homes - House 3")
+  const defaultReference = [propertyName, unitName].filter(Boolean).join(" - ");
+  const [reference, setReference] = useState(defaultReference);
 
   // Sync amount if balance loads after mount
   useEffect(() => {
@@ -135,7 +141,6 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
     }
     setStep("form");
   }
-  const [reference, setReference] = useState("");
   const [pendingMessage, setPendingMessage] = useState("");
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const [receiptName, setReceiptName] = useState<string | null>(null);
@@ -375,15 +380,18 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
 
           <div className="space-y-1.5">
             <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Transaction / Receipt Reference
+              Payment Reference
             </Label>
             <Input
               type="text"
               value={reference}
               onChange={(e) => setReference(e.target.value)}
-              placeholder="e.g. TXN123456789"
+              placeholder="e.g. Kiwatule Homes - House 3"
               autoFocus
             />
+            <p className="text-xs text-muted-foreground">
+              Use your property and unit name as the reference so your payment is identified quickly.
+            </p>
           </div>
 
           {/* Receipt upload */}
@@ -1850,6 +1858,8 @@ export default function TenantPortalPage() {
               userPhone={user?.phone}
               mobileMoneyProvider={user?.mobileMoneyProvider}
               mobileMoneyNumber={user?.mobileMoneyNumber}
+              propertyName={propertyData?.name}
+              unitName={(myLease as any).unitName}
               onClose={closeDialog}
             />
           </DialogOverlay>
