@@ -37,6 +37,7 @@ import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency } from "@/utils/formatters";
 import { useProperty, useUpdateProperty, useDeleteProperty } from "@/hooks/useProperties";
 import { LocationSearch } from "@/components/ui/location-search";
+import { geoboxApi } from "@/services/api/geobox";
 import { uploadsApi } from "@/services/api/uploads";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
@@ -106,11 +107,34 @@ function EditForm({
   const [status,      setStatus]      = useState<PropertyStatus>(property.status);
   const [description, setDescription] = useState(property.description ?? "");
   // Address
-  const [line1,    setLine1]    = useState(property.address.line1);
-  const [city,     setCity]     = useState(property.address.city);
-  const [region,   setRegion]   = useState(property.address.state);
-  const [postcode, setPostcode] = useState(property.address.postcode ?? "");
-  const [geocode,  setGeocode]  = useState(property.geocode ?? "");
+  const [line1,     setLine1]     = useState(property.address.line1);
+  const [city,      setCity]      = useState(property.address.city);
+  const [region,    setRegion]    = useState(property.address.state);
+  const [postcode,  setPostcode]  = useState(property.address.postcode ?? "");
+  const [geocode,   setGeocode]   = useState(property.geocode ?? "");
+  // GeoBox admin hierarchy — autofilled from village search or geocode lookup
+  const [village,   setVillage]   = useState(property.address.village   ?? "");
+  const [parish,    setParish]    = useState(property.address.parish    ?? "");
+  const [subCounty, setSubCounty] = useState(property.address.subCounty ?? "");
+  const [county,    setCounty]    = useState(property.address.county    ?? "");
+  const [district,  setDistrict]  = useState(property.address.district  ?? "");
+
+  function applyHierarchy(h: string[]) {
+    if (h[0]) setDistrict(h[0]);
+    if (h[1]) setCounty(h[1]);
+    if (h[2]) setSubCounty(h[2]);
+    if (h[3]) setParish(h[3]);
+    if (h[4]) setVillage(h[4]);
+  }
+
+  async function handleGeocodeBlur() {
+    const clean = geocode.trim().toUpperCase();
+    if (!GEOCODE_RE.test(clean)) return;
+    try {
+      const data = await geoboxApi.resolveGeocode(clean);
+      if (data.hierarchy) applyHierarchy(data.hierarchy);
+    } catch { /* GeoBox unavailable — silent */ }
+  }
   // Amenities & tags
   const [amenities, setAmenities] = useState<string[]>(property.amenities ?? []);
   const [tagsInput, setTagsInput] = useState((property.tags ?? []).join(", "));
@@ -147,6 +171,11 @@ function EditForm({
             city,
             state: region,
             postcode,
+            village:   village   || undefined,
+            parish:    parish    || undefined,
+            subCounty: subCounty || undefined,
+            county:    county    || undefined,
+            district:  district  || undefined,
           },
           geocode: geocode || undefined,
           amenities,
@@ -234,10 +263,36 @@ function EditForm({
               required
             />
           </div>
+          {/* GeoBox Geocode — when entered, hierarchy auto-fills on blur */}
+          <div className="space-y-1.5">
+            <Label htmlFor="geocode">GeoBox Geocode</Label>
+            <Input
+              id="geocode"
+              value={geocode}
+              onChange={(e) => setGeocode(e.target.value.toUpperCase())}
+              onBlur={handleGeocodeBlur}
+              placeholder="e.g. UGKAN-JF5"
+              maxLength={20}
+              className={cn("font-mono", geocodeError && "border-destructive focus-visible:ring-destructive")}
+            />
+            {geocodeError
+              ? <p className="text-xs text-destructive">{geocodeError}</p>
+              : <p className="text-xs text-muted-foreground">Enter a GeoBox code to auto-fill the address hierarchy below.</p>
+            }
+          </div>
+          {/* Village / Area search — selecting from GeoBox results also fills hierarchy */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="city">City</Label>
-              <LocationSearch id="city" value={city} onChange={setCity} />
+              <Label htmlFor="city">Village / Area</Label>
+              <LocationSearch
+                id="city"
+                value={city}
+                onChange={(val, hierarchy) => {
+                  setCity(val);
+                  if (hierarchy) applyHierarchy(hierarchy);
+                }}
+                placeholder="e.g. Ntinda, Kampala"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="region">Region</Label>
@@ -248,20 +303,26 @@ function EditForm({
               />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="geocode">GeoBox Geocode</Label>
-            <Input
-              id="geocode"
-              value={geocode}
-              onChange={(e) => setGeocode(e.target.value.toUpperCase())}
-              placeholder="e.g. UGKAN-JF5"
-              maxLength={20}
-              className={cn("font-mono", geocodeError && "border-destructive focus-visible:ring-destructive")}
-            />
-            {geocodeError
-              ? <p className="text-xs text-destructive">{geocodeError}</p>
-              : <p className="text-xs text-muted-foreground">Optional. Used for tenant navigation in the portal.</p>
-            }
+          {/* Admin hierarchy — auto-filled from GeoBox; editable */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="parish">Parish</Label>
+              <Input id="parish" value={parish} onChange={(e) => setParish(e.target.value)} placeholder="e.g. Ntinda" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="subCounty">Sub-county / Division</Label>
+              <Input id="subCounty" value={subCounty} onChange={(e) => setSubCounty(e.target.value)} placeholder="e.g. Nakawa Division" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="county">County</Label>
+              <Input id="county" value={county} onChange={(e) => setCounty(e.target.value)} placeholder="e.g. Kampala City" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="district">District</Label>
+              <Input id="district" value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="e.g. Kampala" />
+            </div>
           </div>
         </CardContent>
       </Card>

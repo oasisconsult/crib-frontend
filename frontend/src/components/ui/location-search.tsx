@@ -12,7 +12,8 @@ import { geoboxApi } from "@/services/api/geobox";
 interface LocationSearchProps {
   id?: string;
   value: string;
-  onChange: (value: string) => void;
+  /** Called on every change; hierarchy is passed when a GeoBox result is selected. */
+  onChange: (value: string, hierarchy?: string[]) => void;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -22,7 +23,7 @@ export function LocationSearch({
   value,
   onChange,
   disabled,
-  placeholder = "e.g. Kampala",
+  placeholder = "e.g. Ntinda, Kampala",
 }: LocationSearchProps) {
   const [open, setOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState(value);
@@ -55,13 +56,19 @@ export function LocationSearch({
 
   // What to show in the dropdown
   const showApiResults = debouncedQuery.length >= 2 && apiResults.length > 0;
-  const items: Array<{ id: string; label: string; sub?: string }> = showApiResults
-    ? apiResults.map((a) => ({ id: a.id, label: a.name, sub: a.parentName }))
-    : filteredCities.map((c) => ({ id: c, label: c }));
+  const items: Array<{ id: string; label: string; sub?: string; hierarchy?: string[] }> =
+    showApiResults
+      ? apiResults.map((a) => ({
+          id: a.id,
+          label: a.name,
+          sub: a.parentName,
+          hierarchy: a.hierarchy?.length ? a.hierarchy : undefined,
+        }))
+      : filteredCities.map((c) => ({ id: c, label: c }));
 
-  function handleSelect(label: string) {
+  function handleSelect(label: string, hierarchy?: string[]) {
     setInputValue(label);
-    onChange(label);
+    onChange(label, hierarchy);
     setOpen(false);
     inputRef.current?.focus();
   }
@@ -69,13 +76,12 @@ export function LocationSearch({
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const v = e.target.value;
     setInputValue(v);
-    onChange(v); // free-text is always valid
+    onChange(v); // free-text — no hierarchy
     setOpen(true);
     setGpsError(null);
   }
 
   function handleBlur() {
-    // Small delay so click on option registers first
     setTimeout(() => setOpen(false), 150);
   }
 
@@ -86,10 +92,10 @@ export function LocationSearch({
         const area = res.areas[0];
         const label = area.parentName ? `${area.name}, ${area.parentName}` : area.name;
         setInputValue(label);
-        onChange(label);
+        onChange(label, area.hierarchy?.length ? area.hierarchy : undefined);
       }
     } catch {
-      // Silently fall through — GPS obtained but lookup failed
+      // GPS obtained but lookup failed — silently fall through
     } finally {
       setGpsLoading(false);
     }
@@ -174,8 +180,8 @@ export function LocationSearch({
                   role="option"
                   aria-selected={inputValue === item.label}
                   onMouseDown={(e) => {
-                    e.preventDefault(); // prevent input blur before selection
-                    handleSelect(item.label);
+                    e.preventDefault();
+                    handleSelect(item.label, item.hierarchy);
                   }}
                   className={cn(
                     "flex cursor-pointer flex-col px-3 py-2 text-sm",

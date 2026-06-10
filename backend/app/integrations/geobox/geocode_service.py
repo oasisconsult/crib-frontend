@@ -55,4 +55,7 @@ async def resolve(geocode: str, db) -> dict[str, Any] | None:  # type: ignore[no
             "delivery_notes":        result.delivery_notes,
             "nav_url":               result.nav_url,
             "coordinates":           None,
+            # [district, county, division, parish, village] — None when GeoBox
+            # didn't return hierarchy data for this geocode
+            "admin_hierarchy":       result.admin_hierarchy,
         }

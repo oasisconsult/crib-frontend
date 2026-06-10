@@ -32,11 +32,13 @@ _NEARBY_TTL  = 86400     # 24 hours — geography is stable
 
 
 def _area_to_dict(area: Any) -> dict[str, Any]:
-    """Strip all coordinate fields — return only what the UI needs."""
+    """Strip coordinate fields; keep admin hierarchy for address autofill."""
     return {
         "id":         area.id,
         "name":       area.name,
         "parentName": area.parent_name,
+        # [district, county, division, parish, village] — may be empty list
+        "hierarchy":  area.hierarchy if area.hierarchy else [],
     }
 
 

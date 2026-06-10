@@ -18,13 +18,16 @@ DPPA 2019 — nearby endpoint:
 
 from __future__ import annotations
 
+import json
+
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_org_access
 from app.core.database import get_db
-from app.integrations.geobox import search_service
+from app.core.redis import get_redis
+from app.integrations.geobox import geocode_service, search_service
 from app.schemas.common import CamelModel
 
 log = structlog.get_logger(__name__)
@@ -46,11 +49,18 @@ class AreaOut(CamelModel):
     id: str
     name: str
     parent_name: str | None = None
+    # [district, county, division, parish, village] — empty when GeoBox didn't return it
+    hierarchy: list[str] = []
 
 
 class AreaSearchResponse(CamelModel):
     areas: list[AreaOut]
     total: int
+
+
+class HierarchyResponse(CamelModel):
+    # [district, county, division, parish, village] or None when code not found
+    hierarchy: list[str] | None = None
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -101,3 +111,37 @@ async def areas_nearby(
     lng = round(lng, 3)
     areas = await search_service.find_nearby(lat, lng, limit, db)
     return AreaSearchResponse(areas=[AreaOut(**a) for a in areas], total=len(areas))
+
+
+@router.get("/geocode/hierarchy", response_model=HierarchyResponse)
+async def geocode_hierarchy(
+    code: str = Query(..., min_length=3, max_length=30, description="GeoBox geocode"),
+    _: object = _auth,
+    db: AsyncSession = Depends(get_db),
+) -> HierarchyResponse:
+    """
+    Resolve a GeoBox geocode to its 5-level Uganda admin hierarchy.
+
+    Returns { hierarchy: [district, county, division, parish, village] } on success,
+    or { hierarchy: null } when the code is not found or GeoBox is unconfigured.
+
+    Cached for 24 hours — geocodes map to fixed locations.
+    """
+    clean = code.strip().upper()
+    redis = get_redis()
+    cache_key = f"geobox:hierarchy:{clean}"
+
+    cached = await redis.get(cache_key)
+    if cached:
+        try:
+            return HierarchyResponse(hierarchy=json.loads(cached))
+        except Exception:
+            pass
+
+    result = await geocode_service.resolve(clean, db)
+    hierarchy = result.get("admin_hierarchy") if result else None
+
+    if hierarchy:
+        await redis.setex(cache_key, 86400, json.dumps(hierarchy))
+
+    return HierarchyResponse(hierarchy=hierarchy)

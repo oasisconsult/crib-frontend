@@ -10,6 +10,12 @@ export interface PropertyAddress {
   country: string;
   lat?: number;
   lng?: number;
+  // GeoBox admin hierarchy — autofilled from geocode or village search
+  village?:   string;
+  parish?:    string;
+  subCounty?: string;  // division / sub-county / town council
+  county?:    string;
+  district?:  string;
 }
 
 export interface PropertyRules {
