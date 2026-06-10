@@ -21,6 +21,7 @@ import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment } from
 import { useLeases, useLease, useGenerateLeaseDocument, useConfirmLeaseTerms } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
 import { useProperty } from "@/hooks/useProperties";
+import { usePublicSettings } from "@/hooks/useSettings";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/utils/cn";
@@ -939,9 +940,10 @@ function InspectionsTab({ unitId, propertyId }: { unitId: string; propertyId: st
 
 // ─── How to Find Us ───────────────────────────────────────────────────────────
 
-function HowToFindUsCard({ geocode, address }: {
+function HowToFindUsCard({ geocode, address, whatsappNumber }: {
   geocode?: string;
   address: { line1: string; line2?: string; city: string; state: string; country: string; lat?: number; lng?: number };
+  whatsappNumber?: string;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -952,8 +954,9 @@ function HowToFindUsCard({ geocode, address }: {
     ? `https://www.google.com/maps?q=${address.lat},${address.lng}`
     : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${addrLine}, ${cityLine}`)}`;
 
-  const waUrl = geocode
-    ? `https://wa.me/256700000000?text=${encodeURIComponent(`Find ${geocode}`)}`
+  const botNumber = whatsappNumber?.replace(/\D/g, "") ?? "";
+  const waUrl = geocode && botNumber
+    ? `https://wa.me/${botNumber}?text=${encodeURIComponent(`Find ${geocode}`)}`
     : null;
 
   function handleCopy() {
@@ -972,51 +975,86 @@ function HowToFindUsCard({ geocode, address }: {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="text-sm space-y-0.5">
-          {addrLine && <p className="font-medium">{addrLine}</p>}
-          {cityLine && <p className="text-muted-foreground">{cityLine}</p>}
+        {/* Address + Maps link */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-sm space-y-0.5">
+            {addrLine && <p className="font-medium">{addrLine}</p>}
+            {cityLine && <p className="text-muted-foreground">{cityLine}</p>}
+          </div>
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Navigation className="h-3 w-3" />
+            Google Maps
+          </a>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {geocode && (
-            <div className="flex items-center gap-1.5">
-              <code className="rounded bg-primary/10 px-2 py-0.5 text-sm font-mono font-semibold text-primary tracking-wider">
+        {/* GeoBox directions panel — only when geocode + bot number are set */}
+        {waUrl && geocode && (
+          <div className="rounded-[8px] border border-emerald-200 bg-emerald-50/60 p-3.5 space-y-3 dark:border-emerald-800 dark:bg-emerald-950/20">
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Get directions via GeoBox
+              </p>
+            </div>
+
+            {/* Geocode chip + copy */}
+            <div className="flex items-center gap-2">
+              <code className="rounded-[5px] bg-white dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-700 px-3 py-1 text-sm font-mono font-bold text-emerald-700 dark:text-emerald-300 tracking-widest shadow-sm">
                 {geocode}
               </code>
               <button
                 onClick={handleCopy}
-                className="text-muted-foreground hover:text-foreground transition-colors"
+                className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors"
                 title="Copy geocode"
               >
                 {copied
-                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                  : <Copy className="h-3.5 w-3.5" />}
+                  ? <><CheckCircle2 className="h-3.5 w-3.5" /> Copied</>
+                  : <><Copy className="h-3.5 w-3.5" /> Copy</>}
               </button>
             </div>
-          )}
-          <div className="flex items-center gap-2 ml-auto">
+
+            {/* Instruction */}
+            <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
+              Share this code with anyone who needs to find you, or tap the button below —
+              WhatsApp will open with the message already typed. Just hit <strong>Send</strong>.
+            </p>
+
+            {/* WhatsApp CTA */}
             <a
-              href={mapsUrl}
+              href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-[6px] border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+              className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d] active:scale-[0.98] transition-all"
             >
-              <Navigation className="h-3.5 w-3.5" />
-              Google Maps
+              <MessageCircle className="h-4 w-4" />
+              Send to GeoBox on WhatsApp
             </a>
-            {waUrl && (
-              <a
-                href={waUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-[6px] border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
-              >
-                <MessageCircle className="h-3.5 w-3.5" />
-                Get Directions
-              </a>
-            )}
           </div>
-        </div>
+        )}
+
+        {/* Geocode-only fallback: has geocode but no bot number configured yet */}
+        {geocode && !waUrl && (
+          <div className="flex items-center gap-2">
+            <code className="rounded bg-primary/10 px-2 py-0.5 text-sm font-mono font-semibold text-primary tracking-wider">
+              {geocode}
+            </code>
+            <button
+              onClick={handleCopy}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title="Copy geocode"
+            >
+              {copied
+                ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                : <Copy className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -1049,6 +1087,7 @@ export default function TenantPortalPage() {
 
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
   const { data: propertyData } = useProperty(myLease?.propertyId ?? "");
+  const { data: publicSettings } = usePublicSettings();
   const { mutate: generateDoc, isPending: generatingDoc } = useGenerateLeaseDocument();
   const { mutate: confirmTerms, isPending: confirmingTerms } = useConfirmLeaseTerms();
   const [termsChecked, setTermsChecked] = useState(false);
@@ -1309,6 +1348,7 @@ export default function TenantPortalPage() {
               <HowToFindUsCard
                 geocode={propertyData.geocode}
                 address={propertyData.address}
+                whatsappNumber={publicSettings?.["geobox.whatsapp_number"]}
               />
             )}
 
