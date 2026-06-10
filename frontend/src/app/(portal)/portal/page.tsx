@@ -1112,6 +1112,9 @@ function HowToFindUsCard({ geocode, address, whatsappNumber, navUrl, landmarkDes
                 Get directions via GeoBox
               </p>
             </div>
+            <p className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
+              This is your property&apos;s unique GeoBox address code. Share it with visitors, delivery drivers, or anyone coming to your home — they can tap <strong>Send to GeoBox on WhatsApp</strong> below to get turn-by-turn directions straight to your door.
+            </p>
 
             {/* Geocode chip + copy */}
             <div className="flex items-center gap-2">
