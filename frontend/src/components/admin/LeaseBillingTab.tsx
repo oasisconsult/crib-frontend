@@ -168,13 +168,13 @@ function EditDialog({ lease, open, onClose }: EditDialogProps) {
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="flat">Flat (UGX)</SelectItem>
-                  <SelectItem value="percent">Percentage (%)</SelectItem>
+                  <SelectItem value="percentage">Percentage (%)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-medium">
-                Late Fee Value <span className="text-muted-foreground font-normal">({form.lateFeeType === "percent" ? "%" : "UGX"})</span>
+                Late Fee Value <span className="text-muted-foreground font-normal">({form.lateFeeType === "percentage" ? "%" : "UGX"})</span>
               </Label>
               <Input type="number" min={0} value={form.lateFeeValue}
                 onChange={e => setForm(f => ({ ...f, lateFeeValue: e.target.value }))}
@@ -374,7 +374,7 @@ function LeaseTable({
                           </span>
                         ) : (
                           <span className="text-sm font-medium">
-                            {lease.lateFeeType === "percent"
+                            {lease.lateFeeType === "percentage"
                               ? `${lease.lateFeeValue}%`
                               : `UGX ${lease.lateFeeValue.toLocaleString()}`}
                           </span>

@@ -309,7 +309,7 @@ async def _apply_late_fees_async() -> dict:
 
                     # Calculate amount
                     amount_due = float(s.amount_due)
-                    if lease.late_fee_type == "percent":
+                    if lease.late_fee_type in ("percent", "percentage"):
                         fee_amount = round(float(lease.late_fee_value) / 100 * amount_due, 2)
                     else:
                         fee_amount = float(lease.late_fee_value)
