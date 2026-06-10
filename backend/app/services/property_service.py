@@ -65,6 +65,7 @@ async def _property_out(prop: Property, db: AsyncSession) -> PropertyOut:
         tags=prop.tags or [],
         amenities=prop.amenities or [],
         currency=prop.currency,
+        geocode=prop.geocode,
         total_units=total,
         occupied_units=occupied,
         occupancy_rate=occupancy_rate,
@@ -92,6 +93,7 @@ def _unit_out(unit: Unit) -> UnitOut:
         images=unit.images or [],
         notes=unit.notes,
         rules=unit.rules,
+        geocode=unit.geocode,
         current_tenant_id=str(unit.current_tenant_id) if unit.current_tenant_id else None,
         current_lease_id=str(unit.current_lease_id) if unit.current_lease_id else None,
         last_inspection_date=unit.last_inspection_date,
@@ -198,6 +200,7 @@ async def create_property(body: PropertyCreate, org_id: uuid.UUID | None, db: As
         tags=body.tags,
         amenities=body.amenities,
         currency=body.currency,
+        geocode=body.geocode,
     )
     db.add(prop)
     await db.flush()
@@ -397,6 +400,7 @@ async def create_unit(
         notes=body.notes,
         rules=body.rules.model_dump(by_alias=True) if body.rules else None,
         reference=ref,
+        geocode=body.geocode,
     )
     db.add(unit)
     await db.flush()

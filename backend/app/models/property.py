@@ -81,6 +81,7 @@ class Property(TimestampedBase):
     tags: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     amenities: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="UGX")
+    geocode: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Soft-delete — NULL = active, non-NULL = archived (recoverable by superadmin)
     # Blocked when any unit is occupied or has an active lease.
@@ -129,6 +130,7 @@ class Unit(TimestampedBase):
     amenities: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     images: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    geocode: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     # Per-unit rule overrides; NULL means inherit from property
     rules: Mapped[dict | None] = mapped_column(JSONB, nullable=True)

@@ -12,6 +12,10 @@ python = "^3.12"
 # build via git url.insteadOf (see Dockerfile.dev).  No GitHub credentials needed.
 geobox-rbac = {git = "https://github.com/oasisconsult/geobox-rbac.git"}
 
+# Official GeoBox Python SDK — vendored locally for Docker compatibility.
+# Source is in vendor/geobox-sdk/ (copied from geobox-backend/sdk/python).
+geobox-sdk = {path = "vendor/geobox-sdk"}
+
 # Web framework
 fastapi = "0.115.6"
 uvicorn = {version = "0.32.1", extras = ["standard"]}

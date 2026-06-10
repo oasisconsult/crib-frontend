@@ -19,10 +19,17 @@ export interface SettingsByCategory {
   email: SystemSetting[];
   sms: SystemSetting[];
   whatsapp: SystemSetting[];
+  geobox: SystemSetting[];
   platform: SystemSetting[];
   features: SystemSetting[];
   agency: SystemSetting[];
   payments: SystemSetting[];
+}
+
+export interface GeoBoxTestResult {
+  success: boolean;
+  environment: string;
+  message: string;
 }
 
 export interface ConnectionTestResult {
@@ -46,4 +53,7 @@ export const settingsApi = {
 
   testSms: (recipient: string) =>
     apiPost<ConnectionTestResult>("/admin/settings/test/sms", { recipient }),
+
+  testGeobox: () =>
+    apiPost<GeoBoxTestResult>("/admin/settings/test/geobox"),
 };

@@ -20,6 +20,9 @@ Endpoints:
   PATCH  /properties/{id}/units/{unit_id}/rules
   PATCH  /properties/{id}/units/bulk
   DELETE /properties/{id}/units/{unit_id}
+
+  GET    /properties/{id}/geocode                       — resolve stored property geocode
+  GET    /properties/{id}/units/{unit_id}/geocode       — resolve stored unit geocode
 """
 
 import uuid
@@ -327,3 +330,56 @@ async def restore_unit(
     """Restore a soft-archived unit (superadmin only)."""
     assert get_org_id(current_user) is not None
     return await svc.restore_unit(property_id, unit_id, get_org_id(current_user), db)
+
+
+# ── GeoBox geocode resolution ─────────────────────────────────────────────────
+# These endpoints proxy the stored geocode to GeoBox and return structured
+# address data. They never raise on GeoBox failure — callers degrade gracefully.
+
+@router.get("/{property_id}/geocode")
+async def get_property_geocode(
+    property_id: uuid.UUID,
+    current_user: CurrentUser = _read,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Resolve the stored geocode for a property.
+
+    Returns the GeoBox address data (full_address, landmark_description, nav_url,
+    coordinates, etc.) or {"geocode": null} when no geocode is set or GeoBox is
+    unreachable. Never 404.
+    """
+    from app.integrations.geobox.geocode_service import resolve as resolve_geocode
+
+    prop = await svc.get_property(property_id, get_org_id(current_user), db)
+    if not prop.geocode:
+        return {"geocode": None}
+
+    resolved = await resolve_geocode(prop.geocode, db)
+    if resolved is None:
+        return {"geocode": prop.geocode}
+    return resolved
+
+
+@router.get("/{property_id}/units/{unit_id}/geocode")
+async def get_unit_geocode(
+    property_id: uuid.UUID,
+    unit_id: uuid.UUID,
+    current_user: CurrentUser = _read,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Resolve the stored geocode for a unit.
+
+    Returns GeoBox address data or {"geocode": null}. Never 404.
+    """
+    from app.integrations.geobox.geocode_service import resolve as resolve_geocode
+
+    unit = await svc.get_unit(property_id, unit_id, get_org_id(current_user), db)
+    if not unit.geocode:
+        return {"geocode": None}
+
+    resolved = await resolve_geocode(unit.geocode, db)
+    if resolved is None:
+        return {"geocode": unit.geocode}
+    return resolved

@@ -57,6 +57,7 @@ class PropertyCreate(CamelModel):
     tags: list[str] = Field(default_factory=list)
     amenities: list[str] = Field(default_factory=list)
     currency: str = Field(default="UGX", min_length=3, max_length=3)
+    geocode: str | None = Field(default=None, max_length=20)
 
 
 class PropertyUpdate(CamelModel):
@@ -71,6 +72,7 @@ class PropertyUpdate(CamelModel):
     tags: list[str] | None = None
     amenities: list[str] | None = None
     currency: str | None = None
+    geocode: str | None = Field(default=None, max_length=20)
 
 
 class PropertyOut(CamelModel):
@@ -87,6 +89,7 @@ class PropertyOut(CamelModel):
     tags: list[str]
     amenities: list[str]
     currency: str
+    geocode: str | None = None
     total_units: int
     occupied_units: int
     occupancy_rate: float
@@ -111,6 +114,7 @@ class UnitCreate(CamelModel):
     images: list[str] = Field(default_factory=list)
     notes: str | None = None
     rules: PropertyRulesSchema | None = None
+    geocode: str | None = Field(default=None, max_length=20)
 
 
 class UnitUpdate(CamelModel):
@@ -126,6 +130,7 @@ class UnitUpdate(CamelModel):
     amenities: list[str] | None = None
     images: list[str] | None = None
     notes: str | None = None
+    geocode: str | None = Field(default=None, max_length=20)
 
 
 class UnitRulesUpdate(CamelModel):
@@ -161,6 +166,7 @@ class UnitOut(CamelModel):
     images: list[str]
     notes: str | None
     rules: dict[str, Any] | None
+    geocode: str | None = None
     current_tenant_id: str | None
     current_lease_id: str | None
     last_inspection_date: str | None

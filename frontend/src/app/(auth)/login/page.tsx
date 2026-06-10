@@ -357,14 +357,14 @@ function LoginContent() {
                 <div className="relative flex justify-center">
                   <span className="flex items-center gap-1.5 bg-[hsl(var(--card))] px-3 text-xs text-[hsl(var(--muted-foreground))]">
                     <ShieldCheck className="h-3.5 w-3.5 text-[hsl(var(--success))]" />
-                    Secured by Crib
+                    Secured by GeoBox OAuth
                   </span>
                 </div>
               </div>
 
               {/* Trust badges */}
               <div className="grid grid-cols-3 gap-2 mb-8">
-                {["End-to-end encrypted", "GDPR compliant", "SOC 2 ready"].map(
+                {["End-to-end encrypted", "Data protection compliant", "SOC 2 ready"].map(
                   (label) => (
                     <div
                       key={label}

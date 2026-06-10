@@ -9,6 +9,8 @@ Flow:
      notifications.demo_booking_email system setting) and send the booker a
      confirmation email with a .ics calendar invite + "Add to Google Calendar" link.
   4. Superadmins manage bookings (list, change status) from the admin UI.
+     Confirming or cancelling a booking emails both the booker and the
+     platform team — re-applying the same status is a no-op (no resends).
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.demo_booking import DemoBooking, DemoBookingStatus
 from app.schemas.common import PaginatedResponse
 from app.schemas.demo_booking import DemoBookingCreate, DemoBookingOut, DemoBookingPageOut
-from app.services import settings_service
+from app.services import email_template_service, settings_service
 from app.utils.calendar_invite import build_google_calendar_link, build_ics
 
 log = structlog.get_logger(__name__)
@@ -39,6 +41,14 @@ _VALID_STATUSES = {
     DemoBookingStatus.COMPLETED,
 }
 _SLOT_TAKEN_MESSAGE = "That time slot has just been booked. Please choose another."
+
+_CONTACT_EMAIL_KEY = "notifications.demo_contact_email"
+_CONTACT_EMAIL_DEFAULT = "demo@geoboxafrica.com"
+
+
+async def _contact_email(db: AsyncSession) -> str:
+    email = await settings_service.get(_CONTACT_EMAIL_KEY, db, default=_CONTACT_EMAIL_DEFAULT)
+    return email or _CONTACT_EMAIL_DEFAULT
 
 
 def _out(b: DemoBooking) -> DemoBookingOut:
@@ -173,9 +183,18 @@ async def update_status(booking_id: uuid.UUID, new_status: str, db: AsyncSession
         raise HTTPException(status_code=422, detail=f"Invalid status: {new_status!r}")
 
     booking = await _get_booking(booking_id, db)
+    previous_status = booking.status
     booking.status = new_status
     await db.commit()
     await db.refresh(booking)
+
+    # Only notify on an actual transition — re-confirming an already-confirmed
+    # (or re-cancelling an already-cancelled) booking shouldn't resend emails.
+    if new_status != previous_status:
+        notify = _STATUS_TRANSITION_EMAILS.get(new_status)
+        if notify:
+            await notify(booking, db, new_status)
+
     return _out(booking)
 
 
@@ -205,19 +224,19 @@ async def _send_team_alert(booking: DemoBooking, db: AsyncSession) -> None:
             details.append(f"Message: {booking.message}")
         details.append(f"Marketing consent: {'yes' if booking.marketing_consent else 'no'}")
 
-        subject = f"New demo booking — {name} ({when})"
-        body = (
-            "A new product demo has been booked via the marketing site.\n\n"
-            f"Requested slot: {when}\n\n" + "\n".join(details) + "\n\n"
-            "— Crib"
+        rendered = await email_template_service.render(
+            "demo_booking_team_new",
+            {"name": name, "when": when, "details": "\n".join(details)},
+            db,
         )
 
         result = await get_email_provider().send(
             recipient_name="Crib Team",
             recipient_email=recipient,
             recipient_phone=None,
-            subject=subject,
-            body=body,
+            subject=rendered.subject,
+            body=rendered.text_body,
+            html_body=rendered.html_body or None,
         )
         if result.success:
             log.info("demo_booking.team_alert_sent", booking_id=str(booking.id))
@@ -236,6 +255,7 @@ async def _send_booker_confirmation(booking: DemoBooking, db: AsyncSession) -> N
     try:
         s = get_settings()
         from_address = s.email_from or "hello@crib.ug"
+        contact_email = await _contact_email(db)
 
         name = f"{booking.first_name} {booking.last_name}".strip()
         slot_dt = _slot_datetime(booking)
@@ -267,38 +287,24 @@ async def _send_booker_confirmation(booking: DemoBooking, db: AsyncSession) -> N
             location="Online — link will be shared by email before the demo",
         )
 
-        subject = "Your Crib demo is booked!"
-        body = (
-            f"Hi {booking.first_name},\n\n"
-            f"Thanks for booking a demo with Crib. We've scheduled it for:\n\n"
-            f"  {when}\n\n"
-            "We've attached a calendar invite (.ics) — open it to add the event "
-            "to your calendar. You can also add it to Google Calendar here:\n\n"
-            f"  {gcal_link}\n\n"
-            "If you need to reschedule or have any questions before then, just "
-            "reply to this email or reach us at hello@crib.ug.\n\n"
-            "See you soon,\n"
-            "— The Crib Team"
-        )
-        html_body = (
-            f"<p>Hi {booking.first_name},</p>"
-            f"<p>Thanks for booking a demo with Crib. We've scheduled it for:</p>"
-            f"<p><strong>{when}</strong></p>"
-            "<p>We've attached a calendar invite (.ics) — open it to add the event "
-            "to your calendar, or use the link below:</p>"
-            f'<p><a href="{gcal_link}">Add to Google Calendar</a></p>'
-            "<p>If you need to reschedule or have any questions before then, just "
-            "reply to this email or reach us at hello@crib.ug.</p>"
-            "<p>See you soon,<br/>— The Crib Team</p>"
+        rendered = await email_template_service.render(
+            "demo_booking_created",
+            {
+                "first_name": booking.first_name,
+                "when": when,
+                "gcal_link": gcal_link,
+                "contact_email": contact_email,
+            },
+            db,
         )
 
         result = await get_email_provider().send(
             recipient_name=name,
             recipient_email=booking.email,
             recipient_phone=None,
-            subject=subject,
-            body=body,
-            html_body=html_body,
+            subject=rendered.subject,
+            body=rendered.text_body,
+            html_body=rendered.html_body or None,
             attachments=[
                 EmailAttachment(filename="crib-demo.ics", content=ics_bytes, mime_type="text/calendar")
             ],
@@ -309,3 +315,92 @@ async def _send_booker_confirmation(booking: DemoBooking, db: AsyncSession) -> N
             log.warning("demo_booking.confirmation_failed", reason=result.failure_reason)
     except Exception:
         log.warning("demo_booking.confirmation_exception", exc_info=True)
+
+
+_STATUS_VERB = {
+    DemoBookingStatus.CONFIRMED: "confirmed",
+    DemoBookingStatus.CANCELLED: "cancelled",
+}
+
+
+async def _notify_status_transition(booking: DemoBooking, db: AsyncSession, new_status: str) -> None:
+    """On confirm/cancel, tell both the booker and the platform team."""
+    await _send_booker_status_email(booking, db, new_status)
+    await _send_team_status_alert(booking, db, new_status)
+
+
+async def _send_booker_status_email(booking: DemoBooking, db: AsyncSession, new_status: str) -> None:
+    """Let the booker know their demo slot was confirmed or cancelled."""
+    from app.integrations.notifications.email import get_email_provider
+
+    try:
+        contact_email = await _contact_email(db)
+        name = f"{booking.first_name} {booking.last_name}".strip()
+        slot_dt = _slot_datetime(booking)
+        when = slot_dt.strftime("%A, %d %B %Y at %H:%M (%Z)")
+
+        slug = "demo_booking_confirmed" if new_status == DemoBookingStatus.CONFIRMED else "demo_booking_cancelled"
+        rendered = await email_template_service.render(
+            slug,
+            {"first_name": booking.first_name, "when": when, "contact_email": contact_email},
+            db,
+        )
+
+        result = await get_email_provider().send(
+            recipient_name=name,
+            recipient_email=booking.email,
+            recipient_phone=None,
+            subject=rendered.subject,
+            body=rendered.text_body,
+            html_body=rendered.html_body or None,
+        )
+        if result.success:
+            log.info("demo_booking.status_email_sent", booking_id=str(booking.id), status=new_status)
+        else:
+            log.warning("demo_booking.status_email_failed", reason=result.failure_reason, status=new_status)
+    except Exception:
+        log.warning("demo_booking.status_email_exception", exc_info=True, status=new_status)
+
+
+async def _send_team_status_alert(booking: DemoBooking, db: AsyncSession, new_status: str) -> None:
+    """Let the platform team know a booking was confirmed or cancelled."""
+    from app.integrations.notifications.email import get_email_provider
+
+    try:
+        recipient = await settings_service.get(
+            "notifications.demo_booking_email", db, default="hello@crib.ug"
+        )
+        if not recipient:
+            return
+
+        name = f"{booking.first_name} {booking.last_name}".strip()
+        slot_dt = _slot_datetime(booking)
+        when = slot_dt.strftime("%A, %d %B %Y at %H:%M (%Z)")
+        verb = _STATUS_VERB[new_status]
+
+        rendered = await email_template_service.render(
+            "demo_booking_team_status",
+            {"name": name, "email": booking.email, "when": when, "verb": verb},
+            db,
+        )
+
+        result = await get_email_provider().send(
+            recipient_name="Crib Team",
+            recipient_email=recipient,
+            recipient_phone=None,
+            subject=rendered.subject,
+            body=rendered.text_body,
+            html_body=rendered.html_body or None,
+        )
+        if result.success:
+            log.info("demo_booking.team_status_alert_sent", booking_id=str(booking.id), status=new_status)
+        else:
+            log.warning("demo_booking.team_status_alert_failed", reason=result.failure_reason, status=new_status)
+    except Exception:
+        log.warning("demo_booking.team_status_alert_exception", exc_info=True, status=new_status)
+
+
+_STATUS_TRANSITION_EMAILS = {
+    DemoBookingStatus.CONFIRMED: _notify_status_transition,
+    DemoBookingStatus.CANCELLED: _notify_status_transition,
+}

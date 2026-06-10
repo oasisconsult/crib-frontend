@@ -10,6 +10,12 @@ from pydantic import EmailStr, Field
 from app.schemas.common import CamelModel, PaginatedResponse
 
 
+class DemoContactOut(CamelModel):
+    """Public contact email shown on the 'Book a Demo' marketing page."""
+
+    email: str
+
+
 class DemoBookingCreate(CamelModel):
     first_name: str = Field(min_length=1, max_length=100)
     last_name: str = Field(min_length=1, max_length=100)
