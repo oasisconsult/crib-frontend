@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateProperty, useBulkCreateUnits } from "@/hooks/useProperties";
+import { LocationSearch } from "@/components/ui/location-search";
 import { cn } from "@/utils/cn";
 import type { UnitType } from "@/types";
 
@@ -54,8 +55,6 @@ const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "ensuite", label: "En-suite"},
   { value: "shared",  label: "Shared"  },
 ];
-
-const UG_CITIES = ["Kampala", "Entebbe", "Jinja", "Mbarara", "Gulu", "Mbale", "Kasese"];
 
 const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/;
 
@@ -469,12 +468,7 @@ export default function NewPropertyPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="city">City *</Label>
-                  <Select value={city} onValueChange={setCity}>
-                    <SelectTrigger id="city"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {UG_CITIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <LocationSearch id="city" value={city} onChange={setCity} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="region">Region</Label>

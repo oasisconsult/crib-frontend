@@ -276,7 +276,7 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1 import (
         admin,
-        agency_invites, analytics, contact_info, demo_bookings, email_templates, health, inspections, landlords, leases, me,
+        agency_invites, analytics, contact_info, demo_bookings, email_templates, geobox, health, inspections, landlords, leases, me,
         messages, mobile_money, notifications, onboarding, organisations, payments, properties,
         property_import, rbac, system_settings, tenant_import, tenants, uploads, wallet, webhooks,
     )
@@ -288,6 +288,7 @@ def create_app() -> FastAPI:
     application.include_router(me.router, prefix=settings.api_prefix)
     application.include_router(organisations.router, prefix=settings.api_prefix)
     application.include_router(properties.router, prefix=settings.api_prefix)
+    application.include_router(geobox.router, prefix=settings.api_prefix)
     application.include_router(tenants.router, prefix=settings.api_prefix)
     # Onboarding payment flow — must be registered BEFORE tenants router catch-all
     # but uses the same /tenants/onboarding/{token}/... prefix so order matters.

@@ -36,6 +36,7 @@ import {
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency } from "@/utils/formatters";
 import { useProperty, useUpdateProperty, useDeleteProperty } from "@/hooks/useProperties";
+import { LocationSearch } from "@/components/ui/location-search";
 import { uploadsApi } from "@/services/api/uploads";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
@@ -60,8 +61,6 @@ const STATUS_OPTIONS: { value: PropertyStatus; label: string }[] = [
   { value: "inactive",    label: "Inactive"    },
   { value: "maintenance", label: "Maintenance" },
 ];
-
-const UG_CITIES = ["Kampala", "Entebbe", "Jinja", "Mbarara", "Gulu", "Mbale", "Kasese"];
 
 const COMMON_AMENITIES = [
   "WiFi", "Parking", "CCTV", "Generator", "Water Tank", "Lift",
@@ -238,14 +237,7 @@ function EditForm({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="city">City</Label>
-              <Select value={city} onValueChange={setCity}>
-                <SelectTrigger id="city"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {UG_CITIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <LocationSearch id="city" value={city} onChange={setCity} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="region">Region</Label>
