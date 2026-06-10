@@ -25,64 +25,61 @@ _SETTING_KEY = "notifications.demo_booking_email"
 
 
 def upgrade() -> None:
-    op.create_table(
-        "demo_bookings",
-        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+    conn = op.get_bind()
+    inspector = sa.inspect(conn)
 
-        sa.Column("first_name", sa.String(100), nullable=False),
-        sa.Column("last_name", sa.String(100), nullable=False),
-        sa.Column("email", sa.String(255), nullable=False),
-        sa.Column("phone", sa.String(50), nullable=False),
+    if not inspector.has_table("demo_bookings"):
+        op.create_table(
+            "demo_bookings",
+            sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
 
-        sa.Column("company", sa.String(255), nullable=True),
-        sa.Column("portfolio_size", sa.String(50), nullable=True),
-        sa.Column("message", sa.Text(), nullable=True),
+            sa.Column("first_name", sa.String(100), nullable=False),
+            sa.Column("last_name", sa.String(100), nullable=False),
+            sa.Column("email", sa.String(255), nullable=False),
+            sa.Column("phone", sa.String(50), nullable=False),
 
-        sa.Column("marketing_consent", sa.Boolean(), nullable=False, server_default=sa.text("false")),
-        sa.Column("consent_given_at", sa.DateTime(timezone=True), nullable=True),
+            sa.Column("company", sa.String(255), nullable=True),
+            sa.Column("portfolio_size", sa.String(50), nullable=True),
+            sa.Column("message", sa.Text(), nullable=True),
 
-        sa.Column("slot_date", sa.Date(), nullable=False),
-        sa.Column("slot_time", sa.Time(), nullable=False),
-        sa.Column("timezone", sa.String(50), nullable=False, server_default="Africa/Kampala"),
+            sa.Column("marketing_consent", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+            sa.Column("consent_given_at", sa.DateTime(timezone=True), nullable=True),
 
-        sa.Column("status", sa.String(20), nullable=False, server_default="pending"),
-    )
-    op.create_index("ix_demo_bookings_email", "demo_bookings", ["email"])
-    op.create_index("ix_demo_bookings_slot_date", "demo_bookings", ["slot_date"])
-    op.create_index("ix_demo_bookings_status", "demo_bookings", ["status"])
-    # Prevents two bookings landing on the same slot (race-safe at the DB level).
-    op.create_unique_constraint(
-        "uq_demo_bookings_slot", "demo_bookings", ["slot_date", "slot_time"],
-    )
+            sa.Column("slot_date", sa.Date(), nullable=False),
+            sa.Column("slot_time", sa.Time(), nullable=False),
+            sa.Column("timezone", sa.String(50), nullable=False, server_default="Africa/Kampala"),
 
-    table = sa.table(
-        "system_settings",
-        sa.column("key"),
-        sa.column("value"),
-        sa.column("category"),
-        sa.column("label"),
-        sa.column("description"),
-        sa.column("value_type"),
-        sa.column("is_secret"),
-        sa.column("is_required"),
-    )
-    op.bulk_insert(table, [
-        {
-            "key": _SETTING_KEY,
-            "value": "hello@crib.ug",
-            "category": "platform",
-            "label": "Demo Booking Notification Email",
-            "description": (
+            sa.Column("status", sa.String(20), nullable=False, server_default="pending"),
+        )
+        op.create_index("ix_demo_bookings_email", "demo_bookings", ["email"])
+        op.create_index("ix_demo_bookings_slot_date", "demo_bookings", ["slot_date"])
+        op.create_index("ix_demo_bookings_status", "demo_bookings", ["status"])
+        op.create_unique_constraint(
+            "uq_demo_bookings_slot", "demo_bookings", ["slot_date", "slot_time"],
+        )
+
+    op.execute(
+        sa.text(
+            "INSERT INTO system_settings"
+            " (key, value, category, label, description, value_type, is_secret, is_required)"
+            " VALUES (:key, :value, :category, :label, :description, :value_type, :is_secret, :is_required)"
+            " ON CONFLICT (key) DO NOTHING"
+        ).bindparams(
+            key=_SETTING_KEY,
+            value="hello@crib.ug",
+            category="platform",
+            label="Demo Booking Notification Email",
+            description=(
                 "Address that receives an alert whenever someone books a product "
                 "demo via the marketing site (e.g. support@geoboxafrica.com)."
             ),
-            "value_type": "string",
-            "is_secret": False,
-            "is_required": False,
-        },
-    ])
+            value_type="string",
+            is_secret=False,
+            is_required=False,
+        )
+    )
 
 
 def downgrade() -> None:

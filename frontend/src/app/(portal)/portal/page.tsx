@@ -5,7 +5,7 @@ import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download,
   Smartphone, Building2, Banknote, Calendar, MessageCircle,
-  Send, RefreshCw, Ban, XCircle,
+  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,8 @@ import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment } from "@/hooks/usePayments";
 import { useLeases, useLease, useGenerateLeaseDocument, useConfirmLeaseTerms } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
+import { useProperty } from "@/hooks/useProperties";
+import { usePublicSettings } from "@/hooks/useSettings";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/utils/cn";
@@ -936,6 +938,128 @@ function InspectionsTab({ unitId, propertyId }: { unitId: string; propertyId: st
   );
 }
 
+// ─── How to Find Us ───────────────────────────────────────────────────────────
+
+function HowToFindUsCard({ geocode, address, whatsappNumber }: {
+  geocode?: string;
+  address: { line1: string; line2?: string; city: string; state: string; country: string; lat?: number; lng?: number };
+  whatsappNumber?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const addrLine = [address.line1, address.line2].filter(Boolean).join(", ");
+  const cityLine = [address.city, address.state, address.country].filter(Boolean).join(", ");
+
+  const mapsUrl = address.lat && address.lng
+    ? `https://www.google.com/maps?q=${address.lat},${address.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${addrLine}, ${cityLine}`)}`;
+
+  const botNumber = whatsappNumber?.replace(/\D/g, "") ?? "";
+  const waUrl = geocode && botNumber
+    ? `https://wa.me/${botNumber}?text=${encodeURIComponent(`Find ${geocode}`)}`
+    : null;
+
+  function handleCopy() {
+    if (!geocode) return;
+    navigator.clipboard.writeText(geocode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-primary" />
+          How to Find Us
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Address + Maps link */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-sm space-y-0.5">
+            {addrLine && <p className="font-medium">{addrLine}</p>}
+            {cityLine && <p className="text-muted-foreground">{cityLine}</p>}
+          </div>
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Navigation className="h-3 w-3" />
+            Google Maps
+          </a>
+        </div>
+
+        {/* GeoBox directions panel — only when geocode + bot number are set */}
+        {waUrl && geocode && (
+          <div className="rounded-[8px] border border-emerald-200 bg-emerald-50/60 p-3.5 space-y-3 dark:border-emerald-800 dark:bg-emerald-950/20">
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+                Get directions via GeoBox
+              </p>
+            </div>
+
+            {/* Geocode chip + copy */}
+            <div className="flex items-center gap-2">
+              <code className="rounded-[5px] bg-white dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-700 px-3 py-1 text-sm font-mono font-bold text-emerald-700 dark:text-emerald-300 tracking-widest shadow-sm">
+                {geocode}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors"
+                title="Copy geocode"
+              >
+                {copied
+                  ? <><CheckCircle2 className="h-3.5 w-3.5" /> Copied</>
+                  : <><Copy className="h-3.5 w-3.5" /> Copy</>}
+              </button>
+            </div>
+
+            {/* Instruction */}
+            <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
+              Share this code with anyone who needs to find you, or tap the button below —
+              WhatsApp will open with the message already typed. Just hit <strong>Send</strong>.
+            </p>
+
+            {/* WhatsApp CTA */}
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d] active:scale-[0.98] transition-all"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Send to GeoBox on WhatsApp
+            </a>
+          </div>
+        )}
+
+        {/* Geocode-only fallback: has geocode but no bot number configured yet */}
+        {geocode && !waUrl && (
+          <div className="flex items-center gap-2">
+            <code className="rounded bg-primary/10 px-2 py-0.5 text-sm font-mono font-semibold text-primary tracking-wider">
+              {geocode}
+            </code>
+            <button
+              onClick={handleCopy}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+              title="Copy geocode"
+            >
+              {copied
+                ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                : <Copy className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 type Dialog = "pay" | "maintenance" | null;
@@ -962,6 +1086,8 @@ export default function TenantPortalPage() {
   const { data: myLease } = useLease(leaseStub?.id ?? "");
 
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
+  const { data: propertyData } = useProperty(myLease?.propertyId ?? "");
+  const { data: publicSettings } = usePublicSettings();
   const { mutate: generateDoc, isPending: generatingDoc } = useGenerateLeaseDocument();
   const { mutate: confirmTerms, isPending: confirmingTerms } = useConfirmLeaseTerms();
   const [termsChecked, setTermsChecked] = useState(false);
@@ -1217,6 +1343,14 @@ export default function TenantPortalPage() {
                 ))}
               </CardContent>
             </Card>
+
+            {propertyData?.address && (
+              <HowToFindUsCard
+                geocode={propertyData.geocode}
+                address={propertyData.address}
+                whatsappNumber={publicSettings?.["geobox.whatsapp_number"]}
+              />
+            )}
 
             {myPayments.length > 0 && (
               <Card>

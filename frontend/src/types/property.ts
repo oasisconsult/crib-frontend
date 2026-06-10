@@ -36,6 +36,7 @@ export interface Property {
   type: PropertyType;
   status: PropertyStatus;
   address: PropertyAddress;
+  geocode?: string;
   rules: PropertyRules;
   landlordId: string;
   coverImage?: string;

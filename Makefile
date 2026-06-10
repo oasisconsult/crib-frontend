@@ -50,8 +50,11 @@
         prod-logs prod-logs-backend prod-logs-frontend \
         prod-shell-backend prod-migrate prod-migrate-rbac
 
-# ── geobox-rbac vendor path ───────────────────────────────────────────────────
-# Checked in this order: production server → staging server → local WSL dev
+# ── vendor paths ─────────────────────────────────────────────────────────────
+# Checked in this order: production server → local WSL dev
+# Note: geobox-sdk is committed to git (exception in .gitignore) so it does
+# not need to be synced by clone-deps — only geobox-rbac requires this.
+
 GEOBOX_RBAC_UPSTREAM ?= $(shell \
   if   [ -d /srv/apps/geobox-rbac ]; then echo /srv/apps/geobox-rbac; \
   elif [ -d /home/belac/projects/geobox-rbac ]; then echo /home/belac/projects/geobox-rbac; \
@@ -84,6 +87,7 @@ endef
 # ═══════════════════════════════════════════════════════════════════════════════
 
 ## Sync geobox-rbac into backend/vendor/ (required before any docker build)
+## Note: geobox-sdk is committed to git so it does not need to be synced here.
 clone-deps:
 	@if [ -z "$(GEOBOX_RBAC_UPSTREAM)" ]; then \
 	  if [ -d "$(VENDOR_DIR)/.git" ]; then \

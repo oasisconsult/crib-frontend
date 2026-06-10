@@ -45,6 +45,8 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/;
+
 const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
   { value: "flat",       label: "Flat / Apartment" },
   { value: "house",      label: "House"             },
@@ -109,9 +111,14 @@ function EditForm({
   const [city,     setCity]     = useState(property.address.city);
   const [region,   setRegion]   = useState(property.address.state);
   const [postcode, setPostcode] = useState(property.address.postcode ?? "");
+  const [geocode,  setGeocode]  = useState(property.geocode ?? "");
   // Amenities & tags
   const [amenities, setAmenities] = useState<string[]>(property.amenities ?? []);
   const [tagsInput, setTagsInput] = useState((property.tags ?? []).join(", "));
+
+  const geocodeError = geocode && !GEOCODE_RE.test(geocode)
+    ? "Must be uppercase letters/digits with a hyphen (e.g. UGKAN-JF5)"
+    : null;
 
   function toggleAmenity(a: string) {
     setAmenities((prev) =>
@@ -121,6 +128,7 @@ function EditForm({
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    if (geocodeError) return;
     const tags = tagsInput
       .split(",")
       .map((t) => t.trim())
@@ -141,6 +149,7 @@ function EditForm({
             state: region,
             postcode,
           },
+          geocode: geocode || undefined,
           amenities,
           tags,
         },
@@ -247,6 +256,21 @@ function EditForm({
               />
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="geocode">GeoBox Geocode</Label>
+            <Input
+              id="geocode"
+              value={geocode}
+              onChange={(e) => setGeocode(e.target.value.toUpperCase())}
+              placeholder="e.g. UGKAN-JF5"
+              maxLength={20}
+              className={cn("font-mono", geocodeError && "border-destructive focus-visible:ring-destructive")}
+            />
+            {geocodeError
+              ? <p className="text-xs text-destructive">{geocodeError}</p>
+              : <p className="text-xs text-muted-foreground">Optional. Used for tenant navigation in the portal.</p>
+            }
+          </div>
         </CardContent>
       </Card>
 
@@ -297,7 +321,7 @@ function EditForm({
           <X className="h-4 w-4" />
           Cancel
         </Button>
-        <Button type="submit" loading={isPending}>
+        <Button type="submit" loading={isPending} disabled={!!geocodeError}>
           <Save className="h-4 w-4" />
           Save Changes
         </Button>
@@ -544,6 +568,15 @@ export default function PropertyDetailPage({ params }: Props) {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Postcode</span>
                       <span>{property.address.postcode}</span>
+                    </div>
+                  </>
+                )}
+                {property.geocode && (
+                  <>
+                    <Separator />
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Geocode</span>
+                      <code className="font-mono text-sm tracking-wider">{property.geocode}</code>
                     </div>
                   </>
                 )}

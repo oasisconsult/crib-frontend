@@ -42,6 +42,8 @@ export interface ConnectionTestResult {
 export const settingsApi = {
   getAll: () => apiGet<SettingsByCategory>("/admin/settings"),
 
+  getPublic: () => apiGet<Record<string, string>>("/settings/public"),
+
   update: (key: string, value: string) =>
     apiPut<SystemSetting>(`/admin/settings/${key}`, { value }),
 

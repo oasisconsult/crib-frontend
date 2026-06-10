@@ -2,6 +2,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { settingsApi } from "@/services/api/settings";
 import { toast } from "@/store/useUIStore";
 
+export function usePublicSettings() {
+  return useQuery({
+    queryKey: ["settings-public"],
+    queryFn: () => settingsApi.getPublic(),
+    staleTime: 5 * 60_000, // cache for 5 min — changes infrequently
+  });
+}
+
 export function useSystemSettings() {
   return useQuery({
     queryKey: ["system-settings"],

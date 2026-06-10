@@ -30,6 +30,9 @@ WORKDIR /app
 # vendor/ is populated by `make clone-deps` before docker compose build.
 COPY vendor/geobox-rbac ./vendor/geobox-rbac
 
+# GeoBox Python SDK — vendored path dependency.
+COPY vendor/geobox-sdk ./vendor/geobox-sdk
+
 # Redirect any git clone of the GitHub URL to our local copy.
 # Poetry uses git clone internally for git deps; this makes it use the
 # local vendor copy instead of authenticating to a private GitHub repo.

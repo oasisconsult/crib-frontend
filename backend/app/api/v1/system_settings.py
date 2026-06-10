@@ -125,6 +125,7 @@ async def test_geobox(
     """Attempt a GeoBox OAuth token exchange to verify client_id and client_secret."""
     result = await settings_service.test_geobox(db)
     return GeoBoxTestResult(**result)
+<<<<<<< HEAD
 
 
 # ── Public settings ────────────────────────────────────────────────────────────
@@ -160,3 +161,5 @@ async def get_public_settings(
     # Fill missing keys with defaults so callers always get every key
     defaults = {k: "" for k in PUBLIC_SETTING_KEYS}
     return {**defaults, **found}
+=======
+>>>>>>> c5b456736fe5b4d2905d6e5582a5cb3aad64eac6

@@ -57,6 +57,8 @@ const UNIT_TYPES: { value: UnitType; label: string }[] = [
 
 const UG_CITIES = ["Kampala", "Entebbe", "Jinja", "Mbarara", "Gulu", "Mbale", "Kasese"];
 
+const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/;
+
 const DEFAULT_RULES = {
   gracePeriodDays: 5,
   lateFeeType: "flat" as const,
@@ -269,6 +271,7 @@ export default function NewPropertyPage() {
   const [line1,        setLine1]        = useState("");
   const [city,         setCity]         = useState("Kampala");
   const [region,       setRegion]       = useState("Central Region");
+  const [geocode,      setGeocode]      = useState("");
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
   const [genCount,       setGenCount]       = useState(10);
@@ -323,9 +326,13 @@ export default function NewPropertyPage() {
     }]);
   }
 
+  const geocodeError = geocode && !GEOCODE_RE.test(geocode)
+    ? "Must be uppercase letters/digits with a hyphen (e.g. UGKAN-JF5)"
+    : null;
+
   // ── Submit ────────────────────────────────────────────────────────────────
   function handleSubmit() {
-    if (!propName || !line1) return;
+    if (!propName || !line1 || geocodeError) return;
 
     createProperty(
       {
@@ -333,6 +340,7 @@ export default function NewPropertyPage() {
         type: propType as "flat",
         status: propStatus as "active",
         address: { line1, city, state: region, postcode: "00256", country: "Uganda" },
+        geocode: geocode || undefined,
         rules: DEFAULT_RULES,
         landlordId: "landlord-1",
         totalUnits: isSingleUnit ? 1 : units.length,
@@ -473,6 +481,21 @@ export default function NewPropertyPage() {
                   <Input id="region" value={region} onChange={(e) => setRegion(e.target.value)} />
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="geocode">GeoBox Geocode</Label>
+                <Input
+                  id="geocode"
+                  value={geocode}
+                  onChange={(e) => setGeocode(e.target.value.toUpperCase())}
+                  placeholder="e.g. UGKAN-JF5"
+                  maxLength={20}
+                  className={cn("font-mono", geocodeError && "border-destructive focus-visible:ring-destructive")}
+                />
+                {geocodeError
+                  ? <p className="text-xs text-destructive">{geocodeError}</p>
+                  : <p className="text-xs text-muted-foreground">Optional. Used for tenant navigation in the portal.</p>
+                }
+              </div>
             </CardContent>
           </Card>
 
@@ -531,7 +554,7 @@ export default function NewPropertyPage() {
             {isSingleUnit ? (
               <Button
                 onClick={handleSubmit}
-                disabled={!propName || !line1 || isSubmitting}
+                disabled={!propName || !line1 || !!geocodeError || isSubmitting}
               >
                 {isSubmitting ? "Creating…" : "Create Property"}
                 <CheckCircle2 className="h-4 w-4" aria-hidden />
@@ -539,7 +562,7 @@ export default function NewPropertyPage() {
             ) : (
               <Button
                 onClick={() => setStep(2)}
-                disabled={!propName || !line1}
+                disabled={!propName || !line1 || !!geocodeError}
               >
                 Next: Configure Units
                 <ArrowRight className="h-4 w-4" />
