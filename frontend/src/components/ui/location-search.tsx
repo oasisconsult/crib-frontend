@@ -132,7 +132,7 @@ export function LocationSearch({
             <button
               type="button"
               disabled={disabled || gpsLoading}
-              onClick={() => setShowGpsConsent(true)}
+              onClick={() => { setOpen(false); setShowGpsConsent(true); }}
               className={cn(
                 "absolute right-2.5 flex items-center text-muted-foreground hover:text-foreground transition-colors",
                 (disabled || gpsLoading) && "pointer-events-none opacity-50",
@@ -155,7 +155,7 @@ export function LocationSearch({
             sideOffset={4}
             className={cn(
               "z-50 w-[var(--radix-popover-trigger-width)] rounded-[var(--radius-md)]",
-              "border border-border bg-popover shadow-md",
+              "border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[0_4px_16px_rgba(15,23,42,0.10)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.4)]",
               "max-h-60 overflow-y-auto",
               "data-[state=open]:animate-in data-[state=closed]:animate-out",
               "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
