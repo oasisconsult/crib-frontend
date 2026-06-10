@@ -47,6 +47,7 @@ class PaymentCreate(CamelModel):
     method: str = "cash"
     phone: str | None = None            # mobile money: triggers STK push
     reference: str | None = None
+    receipt_url: str | None = None      # bank transfer / cash proof of payment
     idempotency_key: str | None = None
     paid_at: datetime | None = None     # defaults to now() in service
     notes: str | None = None
@@ -78,6 +79,7 @@ class PaymentCreateFlat(CamelModel):
     method: str = "cash"
     phone: str | None = None            # mobile money: triggers STK push
     reference: str | None = None
+    receipt_url: str | None = None      # bank transfer / cash proof of payment
     idempotency_key: str | None = None
     paid_at: datetime | None = None
     notes: str | None = None

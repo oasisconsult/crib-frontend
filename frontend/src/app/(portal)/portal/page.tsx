@@ -5,7 +5,7 @@ import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download,
   Smartphone, Building2, Banknote, Calendar, MessageCircle,
-  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation,
+  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +24,7 @@ import { useProperty, usePropertyGeocode } from "@/hooks/useProperties";
 import { usePublicSettings } from "@/hooks/useSettings";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { useAppStore } from "@/store/useAppStore";
+import { uploadsApi } from "@/services/api/uploads";
 import { cn } from "@/utils/cn";
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { WalletBalanceCard } from "@/components/payments/WalletBalanceCard";
@@ -136,7 +137,27 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
   }
   const [reference, setReference] = useState("");
   const [pendingMessage, setPendingMessage] = useState("");
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptName, setReceiptName] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const { mutate, isPending } = useRecordPayment();
+
+  async function handleReceiptUpload(file: File) {
+    setUploadingReceipt(true);
+    try {
+      const result = await uploadsApi.uploadFile(file, {
+        category: "payment_receipt",
+        leaseId: lease.id,
+      });
+      setReceiptUrl(result.url);
+      setReceiptName(result.name);
+    } catch {
+      // toast is handled by the catch — surface it to user
+      alert("Upload failed. Please try again.");
+    } finally {
+      setUploadingReceipt(false);
+    }
+  }
 
 
   function isMobileMoney() {
@@ -178,6 +199,7 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
         amount: parseFloat(amount) || balance,
         currency: lease.terms.currency,
         reference: reference.trim(),
+        receiptUrl: receiptUrl ?? undefined,
       } as Omit<Payment, "id" | "createdAt" | "updatedAt">,
       { onSuccess: () => setStep("success") },
     );
@@ -364,9 +386,43 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
             />
           </div>
 
+          {/* Receipt upload */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Proof of Payment <span className="normal-case font-normal">(photo or PDF)</span>
+            </Label>
+            {receiptUrl ? (
+              <div className="flex items-center gap-2 rounded-[6px] border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                <Paperclip className="h-4 w-4 shrink-0" />
+                <span className="truncate flex-1">{receiptName}</span>
+                <button onClick={() => { setReceiptUrl(null); setReceiptName(null); }} className="text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : (
+              <label className={cn(
+                "flex items-center gap-2 rounded-[6px] border border-dashed border-border px-3 py-2.5 cursor-pointer",
+                "text-sm text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all",
+                uploadingReceipt && "opacity-60 pointer-events-none",
+              )}>
+                {uploadingReceipt
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading…</>
+                  : <><Paperclip className="h-4 w-4" /> Tap to attach receipt / payslip photo</>
+                }
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  capture="environment"
+                  className="sr-only"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }}
+                />
+              </label>
+            )}
+          </div>
+
           <Button
             className="w-full"
-            disabled={!reference.trim() || isPending}
+            disabled={!reference.trim() || isPending || uploadingReceipt}
             onClick={handleCashBankSubmit}
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}

@@ -492,6 +492,7 @@ async def create_payment(
         category=body.category,
         method=body.method,
         reference=body.reference,
+        receipt_url=getattr(body, "receipt_url", None),
         idempotency_key=body.idempotency_key,
         status=PaymentStatus.initiated,   # v4: all payments start at initiated
         paid_at=body.paid_at or now,
