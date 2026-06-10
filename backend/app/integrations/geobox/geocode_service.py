@@ -32,7 +32,10 @@ async def resolve(geocode: str, db) -> dict[str, Any] | None:  # type: ignore[no
       - The geocode is not found (404 from GeoBox)
       - Any network or authentication error
     """
-    from geobox.exceptions import GeoBoxNotFoundError
+    try:
+        from geobox.exceptions import GeoBoxNotFoundError
+    except ModuleNotFoundError:
+        return None
 
     async with get_geobox_client(db) as client:
         if client is None:

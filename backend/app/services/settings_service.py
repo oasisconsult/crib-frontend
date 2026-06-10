@@ -316,9 +316,6 @@ async def test_geobox(db: AsyncSession) -> dict:
     Verify GeoBox credentials by making a health-check ping via the official
     GeoBox Python SDK (which handles OAuth 2.0 token exchange transparently).
     """
-    from geobox import GeoBoxClient
-    from geobox.exceptions import GeoBoxAuthError
-
     config = await get_geobox_config(db)
     environment = config["environment"]
     client_id = config["client_id"]
@@ -329,6 +326,9 @@ async def test_geobox(db: AsyncSession) -> dict:
 
     if not client_id or not client_secret:
         return {"success": False, "environment": environment, "message": "GeoBox credentials not configured"}
+
+    from geobox import GeoBoxClient
+    from geobox.exceptions import GeoBoxAuthError
 
     sandbox = environment != "production"
 

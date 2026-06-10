@@ -159,7 +159,7 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "text, to discourage scraping.", "string", False, False),
 
     # ── GeoBox ────────────────────────────────────────────────────────────────
-    ("geobox.environment",       "staging",  "geobox",  "GeoBox Environment",
+    ("geobox.environment",       "sandbox",  "geobox",  "GeoBox Environment",
      "Active environment: 'staging' (testing) or 'production'. Controls which credential pair is used.",
      "string", False, True),
     ("geobox.client_id",         "",         "geobox",  "GeoBox App Client ID",
