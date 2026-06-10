@@ -1497,46 +1497,75 @@ export default function TenantPortalPage() {
 
           {/* ── Overview ────────────────────────────────────────────── */}
           <TabsContent value="overview" className="mt-4 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {[
-                {
-                  label: "Rent Status",
-                  value: hasOverdueRent ? "Overdue" : "Up to date",
-                  color: hasOverdueRent ? "text-destructive" : "text-emerald-600",
-                  icon: hasOverdueRent ? AlertCircle : CheckCircle2,
-                },
-                { label: "Next Payment", value: nextPaymentDate, color: "text-foreground", icon: Clock },
-                { label: "Open Requests", value: String(openRequests.length), color: "text-foreground", icon: Wrench },
-              ].map((s) => (
-                <Card
-                  key={s.label}
-                  className={cn(
-                    s.label === "Rent Status" && hasOverdueRent &&
-                      "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30"
-                  )}
-                >
+
+            {/* Balance Due banner — shown when rent is overdue */}
+            {hasOverdueRent && myLease && (
+              <Card className="border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                        <p className="text-sm font-medium text-destructive">Balance Due</p>
+                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive uppercase tracking-wide">
+                          Overdue
+                        </span>
+                      </div>
+                      <p className="text-3xl font-extrabold text-destructive tracking-tight">
+                        {formatCurrency(overdueBalance, myLease.terms?.currency ?? "UGX")}
+                      </p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>Base rent: {formatCurrency(overdueBalance - overdueLateFee, myLease.terms?.currency ?? "UGX")}</span>
+                        {overdueLateFee > 0 && (
+                          <span className="text-amber-600 dark:text-amber-400 font-medium">
+                            + {formatCurrency(overdueLateFee, myLease.terms?.currency ?? "UGX")} late fee
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0 mt-1"
+                      onClick={() => setDialog("pay")}
+                    >
+                      Pay Now
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Secondary stat cards — 3-col when current, 2-col when overdue banner is shown */}
+            <div className={cn("grid gap-3", hasOverdueRent ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-3")}>
+              {!hasOverdueRent && (
+                <Card>
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <s.icon className={cn("h-4 w-4", s.color)} />
-                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <p className="text-xs text-muted-foreground">Rent Status</p>
                     </div>
-                    <p className={cn("text-lg font-bold", s.color)}>{s.value}</p>
-                    {s.label === "Rent Status" && hasOverdueRent && (
-                      <div className="mt-1.5 space-y-0.5">
-                        <p className="text-xl font-extrabold text-destructive">
-                          {formatCurrency(overdueBalance, myLease?.terms?.currency ?? "UGX")}
-                        </p>
-                        {overdueLateFee > 0 && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400">
-                            Includes {formatCurrency(overdueLateFee, myLease?.terms?.currency ?? "UGX")} late fee
-                          </p>
-                        )}
-                        <p className="text-xs text-destructive/80">Pay now to stop further charges</p>
-                      </div>
-                    )}
+                    <p className="text-lg font-bold text-emerald-600">Up to date</p>
                   </CardContent>
                 </Card>
-              ))}
+              )}
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Next Payment</p>
+                  </div>
+                  <p className="text-lg font-bold text-foreground">{nextPaymentDate}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wrench className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Open Requests</p>
+                  </div>
+                  <p className="text-lg font-bold text-foreground">{openRequests.length}</p>
+                </CardContent>
+              </Card>
             </div>
 
             <Card>
