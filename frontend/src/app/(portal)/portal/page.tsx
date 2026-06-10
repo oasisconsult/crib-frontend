@@ -1038,21 +1038,48 @@ function HowToFindUsCard({ geocode, address, whatsappNumber }: {
           </div>
         )}
 
-        {/* Geocode-only fallback: has geocode but no bot number configured yet */}
+        {/* Geocode-only panel: shown when geocode exists but no bot number is configured */}
         {geocode && !waUrl && (
-          <div className="flex items-center gap-2">
-            <code className="rounded bg-primary/10 px-2 py-0.5 text-sm font-mono font-semibold text-primary tracking-wider">
-              {geocode}
-            </code>
-            <button
-              onClick={handleCopy}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              title="Copy geocode"
+          <div className="rounded-[8px] border border-primary/20 bg-primary/5 p-3.5 space-y-3 dark:border-primary/15 dark:bg-primary/5">
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary shrink-0" />
+              <p className="text-sm font-semibold text-foreground">Your GeoBox Address Code</p>
+            </div>
+
+            {/* Geocode chip + copy */}
+            <div className="flex items-center gap-2">
+              <code className="rounded-[5px] bg-white dark:bg-background border border-primary/20 px-3 py-1 text-sm font-mono font-bold text-primary tracking-widest shadow-sm">
+                {geocode}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+                title="Copy geocode"
+              >
+                {copied
+                  ? <><CheckCircle2 className="h-3.5 w-3.5" /> Copied</>
+                  : <><Copy className="h-3.5 w-3.5" /> Copy</>}
+              </button>
+            </div>
+
+            {/* Explanation */}
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              This short code uniquely identifies your home. Share it with delivery drivers,
+              taxis, or anyone who needs to find you — they can use it on GeoBox to get
+              directions straight to your door.
+            </p>
+
+            {/* Generic WhatsApp share — opens WA with the code pre-typed, tenant picks the contact */}
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`My GeoBox address code is *${geocode}*. Send "Find ${geocode}" on WhatsApp to get directions to my home.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d] active:scale-[0.98] transition-all"
             >
-              {copied
-                ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                : <Copy className="h-3.5 w-3.5" />}
-            </button>
+              <MessageCircle className="h-4 w-4" />
+              Share my address code via WhatsApp
+            </a>
           </div>
         )}
       </CardContent>
@@ -1304,17 +1331,23 @@ export default function TenantPortalPage() {
                   value: hasOverdueRent ? "Overdue" : "Up to date",
                   color: hasOverdueRent ? "text-destructive" : "text-emerald-600",
                   icon: hasOverdueRent ? AlertCircle : CheckCircle2,
+                  cardClass: hasOverdueRent
+                    ? "border-destructive/40 bg-destructive/5 dark:border-destructive/30 dark:bg-destructive/10"
+                    : "",
                 },
-                { label: "Next Payment", value: nextPaymentDate, color: "text-foreground", icon: Clock },
-                { label: "Open Requests", value: String(openRequests.length), color: "text-foreground", icon: Wrench },
+                { label: "Next Payment", value: nextPaymentDate, color: "text-foreground", icon: Clock, cardClass: "" },
+                { label: "Open Requests", value: String(openRequests.length), color: "text-foreground", icon: Wrench, cardClass: "" },
               ].map((s) => (
-                <Card key={s.label}>
+                <Card key={s.label} className={s.cardClass}>
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-center gap-2 mb-1">
                       <s.icon className={cn("h-4 w-4", s.color)} />
                       <p className="text-xs text-muted-foreground">{s.label}</p>
                     </div>
                     <p className={cn("text-lg font-bold", s.color)}>{s.value}</p>
+                    {s.label === "Rent Status" && hasOverdueRent && (
+                      <p className="text-xs text-destructive/70 mt-1">Please pay to avoid late fees</p>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -1479,6 +1512,11 @@ export default function TenantPortalPage() {
                         ["Security deposit", formatCurrency(myLease.terms.depositAmount, myLease.terms.currency)],
                         ["Notice period", `${myLease.terms.noticePeriodDays} days`],
                         ["Grace period", `${myLease.terms.gracePeriodDays} days`],
+                        ["Late fees", myLease.terms.lateFeeType === "flat"
+                          ? formatCurrency(myLease.terms.lateFeeValue, myLease.terms.currency)
+                          : myLease.terms.lateFeeType === "percentage"
+                            ? `${myLease.terms.lateFeeValue}% of outstanding rent`
+                            : "—"],
                       ].map(([label, value]) => (
                         <div key={label as string}>
                           <dt className="text-xs text-muted-foreground">{label}</dt>

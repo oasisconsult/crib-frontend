@@ -171,6 +171,9 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
     ("geobox.geocoding_enabled", "true",     "geobox",  "GeoBox Geocoding Enabled",
      "Master switch. Set to 'false' to disable all GeoBox calls without removing credentials.",
      "boolean", False, True),
+    ("geobox.whatsapp_number",  "",         "geobox",  "GeoBox Bot WhatsApp Number",
+     "The WhatsApp number tenants message to get directions via GeoBox. Include country code, e.g. +256700123456.",
+     "string", False, False),
 
     # ── Agency / Landlord branding ────────────────────────────────────────────
     ("agency.name",          "",  "agency", "Agency / Landlord Name",

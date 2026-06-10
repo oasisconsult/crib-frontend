@@ -135,6 +135,14 @@ async def get_one_masked(key: str, db: AsyncSession) -> SettingOut:
     return _out(await get_setting_or_404(key, db))
 
 
+async def get_public(keys: frozenset[str], db: AsyncSession) -> dict[str, str]:
+    """Return plain string values for a whitelisted set of non-secret keys."""
+    result = await db.execute(
+        select(SystemSetting).where(SystemSetting.key.in_(keys))
+    )
+    return {s.key: s.value for s in result.scalars().all()}
+
+
 async def get_setting_or_404(key: str, db: AsyncSession) -> SystemSetting:
     result = await db.execute(
         select(SystemSetting).where(SystemSetting.key == key)
