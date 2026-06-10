@@ -104,15 +104,17 @@ type PayStep = "method" | "form" | "pending" | "confirm" | "success";
 
 interface PayDialogProps {
   lease: { id: string; terms: { monthlyRent: number; currency: string } };
+  balance: number;
+  lateFeeApplied: number;
   userPhone?: string;
   onClose: () => void;
 }
 
-function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
+function PayDialog({ lease, balance, lateFeeApplied, userPhone, onClose }: PayDialogProps) {
   const [step, setStep] = useState<PayStep>("method");
   const [selectedMethod, setSelectedMethod] = useState<PayMethod | null>(null);
   const [phone, setPhone] = useState(userPhone ?? "");
-  const [amount, setAmount] = useState(String(lease.terms.monthlyRent));
+  const [amount, setAmount] = useState(String(balance));
   const [reference, setReference] = useState("");
   const [pendingMessage, setPendingMessage] = useState("");
   const { mutate, isPending } = useRecordPayment();
@@ -134,7 +136,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
         category: "rent",
         method: METHOD_BACKEND_MAP[selectedMethod.id] as Payment["method"],
         leaseId: lease.id,
-        amount: parseFloat(amount) || lease.terms.monthlyRent,
+        amount: parseFloat(amount) || balance,
         currency: lease.terms.currency,
         phone: phone.trim() || undefined,
       } as any,
@@ -158,7 +160,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
         category: "rent",
         method: METHOD_BACKEND_MAP[selectedMethod.id] as Payment["method"],
         leaseId: lease.id,
-        amount: parseFloat(amount) || lease.terms.monthlyRent,
+        amount: parseFloat(amount) || balance,
         currency: lease.terms.currency,
         reference: reference.trim(),
       } as Omit<Payment, "id" | "createdAt" | "updatedAt">,
@@ -234,9 +236,17 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
       </div>
 
       {/* Amount pill */}
-      <div className="rounded-[6px] bg-primary/5 border border-primary/15 px-4 py-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground/70">Amount due</span>
-        <span className="text-lg font-bold text-foreground">{formatCurrency(lease.terms.monthlyRent, lease.terms.currency)}</span>
+      <div className="rounded-[6px] bg-primary/5 border border-primary/15 px-4 py-3 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground/70">Amount due</span>
+          <span className="text-lg font-bold text-foreground">{formatCurrency(balance, lease.terms.currency)}</span>
+        </div>
+        {lateFeeApplied > 0 && (
+          <div className="flex items-center justify-between text-xs text-amber-700 dark:text-amber-400">
+            <span>Includes late fee</span>
+            <span>+{formatCurrency(lateFeeApplied, lease.terms.currency)}</span>
+          </div>
+        )}
       </div>
 
       {/* Step: select method */}
@@ -1745,15 +1755,26 @@ export default function TenantPortalPage() {
       </div>
 
       {/* ── Dialogs ───────────────────────────────────────────────── */}
-      {dialog === "pay" && myLease && (
-        <DialogOverlay onClose={closeDialog}>
-          <PayDialog
-            lease={myLease as any}
-            userPhone={user?.phone}
-            onClose={closeDialog}
-          />
-        </DialogOverlay>
-      )}
+      {dialog === "pay" && myLease && (() => {
+        const schedules = schedulesData?.data ?? [];
+        const dueSchedule =
+          schedules.find((s) => s.state === "overdue") ??
+          schedules.find((s) => s.state === "pending") ??
+          null;
+        const balance = dueSchedule?.balance ?? (myLease as any).terms?.monthlyRent ?? 0;
+        const lateFeeApplied = dueSchedule?.lateFeeApplied ?? 0;
+        return (
+          <DialogOverlay onClose={closeDialog}>
+            <PayDialog
+              lease={myLease as any}
+              balance={balance}
+              lateFeeApplied={lateFeeApplied}
+              userPhone={user?.phone}
+              onClose={closeDialog}
+            />
+          </DialogOverlay>
+        );
+      })()}
 
       {dialog === "maintenance" && myLease && (
         <DialogOverlay onClose={closeDialog}>
