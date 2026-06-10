@@ -296,8 +296,14 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, onClose }: PayDi
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              min={1}
+              min={balance}
+              className={cn(parseFloat(amount) < balance && amount !== "" && "border-destructive focus-visible:ring-destructive")}
             />
+            {parseFloat(amount) < balance && amount !== "" && (
+              <p className="text-xs text-destructive">
+                Amount cannot be less than {formatCurrency(balance, lease.terms.currency)} due.
+              </p>
+            )}
           </div>
 
           {isMobileMoney() ? (
@@ -305,7 +311,7 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, onClose }: PayDi
             <Button
               className="w-full"
               onClick={handleMobileMoneySubmit}
-              disabled={!phone.trim() || isPending}
+              disabled={!phone.trim() || isPending || parseFloat(amount) < balance}
             >
               {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
               {isPending ? "Sending request…" : "Send Payment Request"}
@@ -315,6 +321,7 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, onClose }: PayDi
             <Button
               className="w-full"
               onClick={() => setStep("confirm")}
+              disabled={parseFloat(amount) < balance}
             >
               I&apos;ve Made Payment
             </Button>
