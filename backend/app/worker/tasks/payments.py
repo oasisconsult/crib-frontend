@@ -229,8 +229,9 @@ async def _waive_pre_system_schedules_async() -> dict:
 )
 def apply_late_fees_task(self) -> dict:
     """
-    Daily cron: apply late fees to overdue schedules that don't have one yet.
-    Runs per org unless autoApplyLateFees=False. Respects lease.grace_period_days.
+    Daily cron: apply a late fee charge to every overdue schedule that hasn't
+    been charged today. Fees accrue daily from the day after grace period expires.
+    Runs per org unless autoApplyLateFees=False.
     """
     try:
         return _run(_apply_late_fees_async())
@@ -260,12 +261,16 @@ async def _apply_late_fees_async() -> dict:
             async with db.begin():
                 today = date.today()
 
-                # Overdue schedules that have no late fee yet
-                existing_fees = select(LateFee.rent_schedule_id)
+                # Overdue schedules not yet charged today — allows daily accrual
+                from sqlalchemy import func as sa_func
+                already_today = (
+                    select(LateFee.rent_schedule_id)
+                    .where(sa_func.date(LateFee.applied_at) == today)
+                )
                 result = await db.execute(
                     select(RentSchedule).where(
                         RentSchedule.status == RentScheduleStatus.overdue,
-                        RentSchedule.id.notin_(existing_fees),
+                        RentSchedule.id.notin_(already_today),
                     )
                 )
                 schedules = result.scalars().all()
