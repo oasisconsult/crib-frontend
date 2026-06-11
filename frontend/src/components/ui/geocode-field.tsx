@@ -33,6 +33,7 @@ export function GeocodeField({
   hierarchyNotFoundMessage = "Code found but address hierarchy is unavailable — please fill in the fields below manually.",
 }: GeocodeFieldProps) {
   const [lookupState, setLookupState] = React.useState<"idle" | "loading" | "found" | "not_found" | "error">("idle");
+  const popupRef = React.useRef<Window | null>(null);
 
   React.useEffect(() => { setLookupState("idle"); }, [value]);
 
@@ -42,11 +43,10 @@ export function GeocodeField({
 
   const canLookup = GEOCODE_RE.test(value.trim());
 
-  async function handleLookup() {
-    if (!canLookup) return;
+  async function handleLookupFor(geocode: string) {
     setLookupState("loading");
     try {
-      const data = await geoboxApi.resolveGeocode(value.trim().toUpperCase());
+      const data = await geoboxApi.resolveGeocode(geocode);
       if (data.hierarchy && data.hierarchy.length > 0) {
         onHierarchyFound(data.hierarchy);
         setLookupState("found");
@@ -58,6 +58,37 @@ export function GeocodeField({
     }
   }
 
+  async function handleLookup() {
+    if (!canLookup) return;
+    await handleLookupFor(value.trim().toUpperCase());
+  }
+
+  // Keep a stable ref to handleLookupFor so the message listener below never
+  // captures a stale closure without needing to be re-registered.
+  const handleLookupForRef = React.useRef(handleLookupFor);
+  React.useEffect(() => { handleLookupForRef.current = handleLookupFor; });
+
+  // Listen for the geocode postMessage from the GeoBox portal popup.
+  React.useEffect(() => {
+    let portalOrigin: string;
+    try { portalOrigin = new URL(portalUrl).origin; }
+    catch { portalOrigin = portalUrl; }
+
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== portalOrigin) return;
+      if (e.data?.type !== "geobox:address_created") return;
+      const newGeocode = String(e.data.geocode || "").toUpperCase().trim();
+      if (!newGeocode) return;
+      popupRef.current?.close();
+      popupRef.current = null;
+      onChange(newGeocode);
+      handleLookupForRef.current(newGeocode);
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [portalUrl, onChange]);
+
   function handleGetCode() {
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     if (isMobile) {
@@ -67,9 +98,21 @@ export function GeocodeField({
         "_blank",
         "noopener,noreferrer",
       );
-    } else {
-      window.open(portalUrl, "_blank", "noopener,noreferrer");
+      return;
     }
+    // Desktop: open GeoBox portal as a sized popup with postMessage callback.
+    // Note: intentionally no "noopener" — window.opener must work in the portal.
+    const createUrl = new URL("/create-address", portalUrl);
+    createUrl.searchParams.set("callback", "postmessage");
+    createUrl.searchParams.set("origin", window.location.origin);
+    const w = 640, h = 780;
+    const left = Math.max(0, (screen.width - w) / 2);
+    const top = Math.max(0, (screen.height - h) / 2);
+    popupRef.current = window.open(
+      createUrl.toString(),
+      "geobox-create",
+      `width=${w},height=${h},left=${left},top=${top}`,
+    );
   }
 
   return (
