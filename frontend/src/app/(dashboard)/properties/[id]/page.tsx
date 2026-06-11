@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -37,7 +37,8 @@ import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency } from "@/utils/formatters";
 import { useProperty, useUpdateProperty, useDeleteProperty } from "@/hooks/useProperties";
 import { LocationSearch } from "@/components/ui/location-search";
-import { geoboxApi } from "@/services/api/geobox";
+import { GeocodeField } from "@/components/ui/geocode-field";
+import { settingsApi } from "@/services/api/settings";
 import { uploadsApi } from "@/services/api/uploads";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
@@ -47,7 +48,7 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/;
+const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/; // used for submit validation
 
 const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
   { value: "flat",       label: "Flat / Apartment" },
@@ -118,6 +119,11 @@ function EditForm({
   const [subCounty, setSubCounty] = useState(property.address.subCounty ?? "");
   const [county,    setCounty]    = useState(property.address.county    ?? "");
   const [district,  setDistrict]  = useState(property.address.district  ?? "");
+  const [geoboxSettings, setGeoboxSettings] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    settingsApi.getPublic().then(setGeoboxSettings).catch(() => {});
+  }, []);
 
   function applyHierarchy(h: string[]) {
     if (h[0]) setDistrict(h[0]);
@@ -127,21 +133,11 @@ function EditForm({
     if (h[4]) setVillage(h[4]);
   }
 
-  async function handleGeocodeBlur() {
-    const clean = geocode.trim().toUpperCase();
-    if (!GEOCODE_RE.test(clean)) return;
-    try {
-      const data = await geoboxApi.resolveGeocode(clean);
-      if (data.hierarchy) applyHierarchy(data.hierarchy);
-    } catch { /* GeoBox unavailable — silent */ }
-  }
   // Amenities & tags
   const [amenities, setAmenities] = useState<string[]>(property.amenities ?? []);
   const [tagsInput, setTagsInput] = useState((property.tags ?? []).join(", "));
 
-  const geocodeError = geocode && !GEOCODE_RE.test(geocode)
-    ? "Must be uppercase letters/digits with a hyphen (e.g. UGKAN-JF5)"
-    : null;
+  const geocodeInvalid = geocode ? !GEOCODE_RE.test(geocode) : false;
 
   function toggleAmenity(a: string) {
     setAmenities((prev) =>
@@ -151,7 +147,7 @@ function EditForm({
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (geocodeError) return;
+    if (geocodeInvalid) return;
     const tags = tagsInput
       .split(",")
       .map((t) => t.trim())
@@ -263,22 +259,19 @@ function EditForm({
               required
             />
           </div>
-          {/* GeoBox Geocode — when entered, hierarchy auto-fills on blur */}
+          {/* GeoBox Geocode — look up to auto-fill hierarchy, or create one on GeoBox */}
           <div className="space-y-1.5">
             <Label htmlFor="geocode">GeoBox Geocode</Label>
-            <Input
+            <GeocodeField
               id="geocode"
               value={geocode}
-              onChange={(e) => setGeocode(e.target.value.toUpperCase())}
-              onBlur={handleGeocodeBlur}
-              placeholder="e.g. UGKAN-JF5"
-              maxLength={20}
-              className={cn("font-mono", geocodeError && "border-destructive focus-visible:ring-destructive")}
+              onChange={setGeocode}
+              onHierarchyFound={applyHierarchy}
+              portalUrl={geoboxSettings["geobox.portal_url"]}
+              whatsappNumber={geoboxSettings["geobox.whatsapp_number"]}
+              whatsappCreateMessage={geoboxSettings["geobox.whatsapp_create_message"]}
+              hierarchyNotFoundMessage={geoboxSettings["geobox.hierarchy_not_found_message"]}
             />
-            {geocodeError
-              ? <p className="text-xs text-destructive">{geocodeError}</p>
-              : <p className="text-xs text-muted-foreground">Enter a GeoBox code to auto-fill the address hierarchy below.</p>
-            }
           </div>
           {/* Village / Area search — selecting from GeoBox results also fills hierarchy */}
           <div className="grid grid-cols-2 gap-4">
@@ -374,7 +367,7 @@ function EditForm({
           <X className="h-4 w-4" />
           Cancel
         </Button>
-        <Button type="submit" loading={isPending} disabled={!!geocodeError}>
+        <Button type="submit" loading={isPending} disabled={geocodeInvalid}>
           <Save className="h-4 w-4" />
           Save Changes
         </Button>

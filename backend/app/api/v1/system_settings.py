@@ -44,6 +44,9 @@ _super = Depends(require_superadmin())
 # Only non-secret, tenant-facing values belong here.
 PUBLIC_SETTING_KEYS: frozenset[str] = frozenset({
     "geobox.whatsapp_number",
+    "geobox.portal_url",
+    "geobox.whatsapp_create_message",
+    "geobox.hierarchy_not_found_message",
     "agency.name",
     "agency.contact_phone",
     "agency.contact_email",

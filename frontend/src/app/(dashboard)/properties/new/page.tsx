@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -29,7 +29,8 @@ import {
 } from "@/components/ui/select";
 import { useCreateProperty, useBulkCreateUnits } from "@/hooks/useProperties";
 import { LocationSearch } from "@/components/ui/location-search";
-import { geoboxApi } from "@/services/api/geobox";
+import { GeocodeField } from "@/components/ui/geocode-field";
+import { settingsApi } from "@/services/api/settings";
 import { cn } from "@/utils/cn";
 import type { UnitType } from "@/types";
 
@@ -57,7 +58,7 @@ const UNIT_TYPES: { value: UnitType; label: string }[] = [
   { value: "shared",  label: "Shared"  },
 ];
 
-const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/;
+const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/; // also used for submit validation
 
 const DEFAULT_RULES = {
   gracePeriodDays: 5,
@@ -281,6 +282,11 @@ export default function NewPropertyPage() {
   const [subCounty,    setSubCounty]    = useState("");
   const [county,       setCounty]       = useState("");
   const [district,     setDistrict]     = useState("");
+  const [geoboxSettings, setGeoboxSettings] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    settingsApi.getPublic().then(setGeoboxSettings).catch(() => {});
+  }, []);
 
   function applyHierarchy(h: string[]) {
     // GeoBox hierarchy order: [district, county, division, parish, village]
@@ -289,15 +295,6 @@ export default function NewPropertyPage() {
     if (h[2]) setSubCounty(h[2]);
     if (h[3]) setParish(h[3]);
     if (h[4]) setVillage(h[4]);
-  }
-
-  async function handleGeocodeBlur() {
-    const clean = geocode.trim().toUpperCase();
-    if (!GEOCODE_RE.test(clean)) return;
-    try {
-      const data = await geoboxApi.resolveGeocode(clean);
-      if (data.hierarchy) applyHierarchy(data.hierarchy);
-    } catch { /* GeoBox unavailable — silent */ }
   }
 
   // ── Step 2 state ──────────────────────────────────────────────────────────
@@ -353,13 +350,11 @@ export default function NewPropertyPage() {
     }]);
   }
 
-  const geocodeError = geocode && !GEOCODE_RE.test(geocode)
-    ? "Must be uppercase letters/digits with a hyphen (e.g. UGKAN-JF5)"
-    : null;
+  const geocodeInvalid = geocode ? !GEOCODE_RE.test(geocode) : false;
 
   // ── Submit ────────────────────────────────────────────────────────────────
   function handleSubmit() {
-    if (!propName || !line1 || geocodeError) return;
+    if (!propName || !line1 || geocodeInvalid) return;
 
     createProperty(
       {
@@ -500,22 +495,19 @@ export default function NewPropertyPage() {
                   placeholder="e.g. Plot 24, Acacia Avenue"
                 />
               </div>
-              {/* GeoBox Geocode — when entered, hierarchy auto-fills on blur */}
+              {/* GeoBox Geocode — look up to auto-fill hierarchy, or create one on GeoBox */}
               <div className="space-y-1.5">
                 <Label htmlFor="geocode">GeoBox Geocode</Label>
-                <Input
+                <GeocodeField
                   id="geocode"
                   value={geocode}
-                  onChange={(e) => setGeocode(e.target.value.toUpperCase())}
-                  onBlur={handleGeocodeBlur}
-                  placeholder="e.g. UGKAN-JF5"
-                  maxLength={20}
-                  className={cn("font-mono", geocodeError && "border-destructive focus-visible:ring-destructive")}
+                  onChange={setGeocode}
+                  onHierarchyFound={applyHierarchy}
+                  portalUrl={geoboxSettings["geobox.portal_url"]}
+                  whatsappNumber={geoboxSettings["geobox.whatsapp_number"]}
+                  whatsappCreateMessage={geoboxSettings["geobox.whatsapp_create_message"]}
+                  hierarchyNotFoundMessage={geoboxSettings["geobox.hierarchy_not_found_message"]}
                 />
-                {geocodeError
-                  ? <p className="text-xs text-destructive">{geocodeError}</p>
-                  : <p className="text-xs text-muted-foreground">Enter a GeoBox code to auto-fill the address hierarchy below.</p>
-                }
               </div>
               {/* Village / Area search — selecting from GeoBox results also fills hierarchy */}
               <div className="grid grid-cols-2 gap-4">
@@ -615,7 +607,7 @@ export default function NewPropertyPage() {
             {isSingleUnit ? (
               <Button
                 onClick={handleSubmit}
-                disabled={!propName || !line1 || !!geocodeError || isSubmitting}
+                disabled={!propName || !line1 || geocodeInvalid || isSubmitting}
               >
                 {isSubmitting ? "Creating…" : "Create Property"}
                 <CheckCircle2 className="h-4 w-4" aria-hidden />
@@ -623,7 +615,7 @@ export default function NewPropertyPage() {
             ) : (
               <Button
                 onClick={() => setStep(2)}
-                disabled={!propName || !line1 || !!geocodeError}
+                disabled={!propName || !line1 || geocodeInvalid}
               >
                 Next: Configure Units
                 <ArrowRight className="h-4 w-4" />
