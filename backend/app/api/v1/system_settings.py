@@ -60,8 +60,17 @@ async def get_public_settings(
     _: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Return a small set of non-secret settings that authenticated tenants need."""
-    return await settings_service.get_public(PUBLIC_SETTING_KEYS, db)
+    """Return the allowlisted non-secret settings for any authenticated user."""
+    from sqlalchemy import select as _select
+    from app.models.system_setting import SystemSetting as _SM
+
+    result = await db.execute(
+        _select(_SM).where(_SM.key.in_(PUBLIC_SETTING_KEYS))
+    )
+    rows = result.scalars().all()
+    found = {row.key: row.value for row in rows}
+    defaults = {k: "" for k in PUBLIC_SETTING_KEYS}
+    return {**defaults, **found}
 
 
 # ── Read ───────────────────────────────────────────────────────────────────────
@@ -152,31 +161,3 @@ async def test_geobox(
     return GeoBoxTestResult(**result)
 
 
-# ── Public (authenticated, any role) ─────────────────────────────────────────
-
-PUBLIC_SETTING_KEYS: frozenset[str] = frozenset({
-    "geobox.whatsapp_number",
-    "agency.name",
-    "agency.contact_phone",
-    "agency.contact_email",
-})
-
-public_router = APIRouter(prefix="/settings", tags=["settings"])
-
-
-@public_router.get("/public", response_model=dict[str, str])
-async def get_public_settings(
-    _: CurrentUser = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Return the allowlisted non-secret settings for any authenticated user."""
-    from sqlalchemy import select as _select
-    from app.models.system_setting import SystemSetting as _SM
-
-    result = await db.execute(
-        _select(_SM).where(_SM.key.in_(PUBLIC_SETTING_KEYS))
-    )
-    rows = result.scalars().all()
-    found = {row.key: row.value for row in rows}
-    defaults = {k: "" for k in PUBLIC_SETTING_KEYS}
-    return {**defaults, **found}
