@@ -1,5 +1,5 @@
 """
-041 — GeoBox UX settings for geocode field
+045 — GeoBox UX settings for geocode field
 
 Adds three system_settings rows used by the property form geocode UI:
   geobox.portal_url                — web destination for "Get a GeoBox code" on desktop
@@ -10,16 +10,16 @@ All three are non-secret strings editable by superadmins via the Integrations
 settings page. They appear in the GeoBox card automatically (the card renders
 all geobox.* rows).
 
-Revision ID: 041
-Revises: 040
+Revision ID: 045
+Revises: 044
 """
 from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
 
-revision = "041"
-down_revision = "040"
+revision = "045"
+down_revision = "044"
 branch_labels = None
 depends_on = None
 
