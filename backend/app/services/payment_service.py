@@ -1529,39 +1529,14 @@ async def confirm_payment_by_org(
     org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> PaymentOut:
+    # Verify the payment belongs to this org, then delegate to the canonical
+    # confirm_payment() which runs allocation + ledger + wallet credit.
     p = await db.scalar(
         org_scope(select(Payment).where(Payment.id == payment_id), Payment.organisation_id, org_id)
     )
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
-
-    from app.services.payment_state_machine import can_be_confirmed, advance_to_completed, is_success as _is_success
-    _current = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
-    if _is_success(_current):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Payment is already confirmed (status: '{p.status}')",
-        )
-    if not can_be_confirmed(_current):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot confirm a payment with status '{p.status}'",
-        )
-
-    if not p.paid_at:
-        p.paid_at = datetime.now(timezone.utc)
-        await db.flush()
-
-    if p.rent_schedule_id:
-        schedule = await _get_schedule(p.rent_schedule_id, p.lease_id, db)
-        schedule.amount_paid = float(schedule.amount_paid) + float(p.amount)
-        if float(schedule.amount_paid) >= float(schedule.amount_due) + float(schedule.late_fee_applied):
-            schedule.status = RentScheduleStatus.paid
-            schedule.paid_at = datetime.now(timezone.utc)
-
-    await advance_to_completed(p, db)
-    await db.refresh(p, attribute_names=["status", "updated_at"])
-    return _payment_out(p)
+    return await confirm_payment(payment_id, p.lease_id, org_id, db)
 
 
 async def refund_payment_by_org(
