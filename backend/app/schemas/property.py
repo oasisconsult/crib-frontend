@@ -21,6 +21,12 @@ class PropertyAddressSchema(CamelModel):
     country: str
     lat: float | None = None
     lng: float | None = None
+    # GeoBox administrative hierarchy — populated via geocode lookup
+    village: str | None = None
+    parish: str | None = None
+    sub_county: str | None = None
+    county: str | None = None
+    district: str | None = None
 
 
 # ── Rules ─────────────────────────────────────────────────────────────────────
