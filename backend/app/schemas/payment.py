@@ -371,3 +371,10 @@ class BulkConfirmFailure(CamelModel):
 class BulkConfirmResult(CamelModel):
     confirmed: list[PaymentOut]
     failed: list[BulkConfirmFailure]
+
+
+# ── Wallet credit ──────────────────────────────────────────────────────────────
+
+class WalletCreditRequest(CamelModel):
+    amount: float = Field(..., gt=0, description="Amount to credit (positive, in org currency)")
+    description: str | None = Field(None, max_length=255)

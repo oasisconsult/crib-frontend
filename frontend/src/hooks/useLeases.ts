@@ -178,6 +178,19 @@ export function usePresignAgreement() {
   });
 }
 
+export function useCountersignAgreement() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, signatureDataUrl }: { id: string; signatureDataUrl: string }) =>
+      leasesApi.countersignAgreement(id, signatureDataUrl),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.leases.detail(id) });
+      toast.success("Agreement counter-signed — lease is now fully executed");
+    },
+    onError: () => toast.error("Failed to counter-sign agreement"),
+  });
+}
+
 export function useGenerateLeaseDocument() {
   return useMutation({
     mutationFn: (id: string) => leasesApi.generateDocument(id),

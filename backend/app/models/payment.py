@@ -123,6 +123,7 @@ class RentSchedule(TimestampedBase):
     )
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
     # Relationships
     payments: Mapped[list["Payment"]] = relationship(

@@ -24,6 +24,7 @@ celery_app = Celery(
         "app.worker.tasks.notifications",
         "app.worker.tasks.payments",
         "app.worker.tasks.subscriptions",
+        "app.worker.tasks.mobile_money",
     ],
 )
 
@@ -88,6 +89,13 @@ celery_app.conf.update(
         "poll-airtel-transactions-every-5min": {
             "task": "app.worker.tasks.payments.poll_airtel_transactions",
             "schedule": 300,
+        },
+        # ── Mobile money reconciliation ───────────────────────────────────────
+        # Runs after the nightly polling window — flags any 'received' txns
+        # that are still unmatched after 24 h so admins can investigate.
+        "reconcile-unmatched-mobile-money-daily": {
+            "task": "app.worker.tasks.mobile_money.reconcile_unmatched_transactions",
+            "schedule": crontab(hour="1", minute="0"),   # 04:00 EAT
         },
     },
 )

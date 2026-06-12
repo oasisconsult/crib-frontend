@@ -389,7 +389,10 @@ async def list_schedules(
 ) -> dict:
     await _get_lease_checked(lease_id, org_id, db)
 
-    q = select(RentSchedule).where(RentSchedule.lease_id == lease_id)
+    q = select(RentSchedule).where(
+        RentSchedule.lease_id == lease_id,
+        RentSchedule.deleted_at.is_(None),
+    )
     if status_filter:
         if status_filter == RentScheduleStatus.overdue or status_filter == RentScheduleStatus.overdue.value:
             q = q.where(
@@ -1578,7 +1581,9 @@ async def list_schedules_org(
     page: int = 1,
     page_size: int = 24,
 ) -> dict:
-    q = org_scope(select(RentSchedule), RentSchedule.organisation_id, org_id)
+    q = org_scope(select(RentSchedule), RentSchedule.organisation_id, org_id).where(
+        RentSchedule.deleted_at.is_(None)
+    )
     if status_filter:
         if status_filter == RentScheduleStatus.overdue or status_filter == RentScheduleStatus.overdue.value:
             q = q.where(
