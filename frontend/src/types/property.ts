@@ -1,5 +1,14 @@
-export type PropertyType = "flat" | "house" | "hostel" | "commercial" | "villa";
+export type PropertyType =
+  | "flat" | "house" | "hostel" | "commercial" | "villa"
+  | "bungalow" | "maisonette" | "townhouse" | "bedsitter_block";
+
 export type PropertyStatus = "active" | "inactive" | "maintenance";
+
+export type FurnishedStatus = "unfurnished" | "semi_furnished" | "furnished";
+export type WaterSource = "municipal" | "borehole" | "tank" | "multiple";
+export type BackupPower = "none" | "solar" | "generator" | "both";
+export type InternetType = "none" | "wifi" | "fibre";
+export type CompoundType = "private" | "shared";
 
 export interface PropertyAddress {
   line1: string;
@@ -58,16 +67,33 @@ export interface Property {
   /**
    * When true this property is rented as a whole (no individual units).
    * The backend auto-creates a single virtual unit "Main Property".
-   * All lease/payment/tenant logic operates on that virtual unit unchanged.
-   * Can be converted to multi-unit via property settings at any time.
    */
   isSingleUnit?: boolean;
+  // Uganda property features
+  totalFloors?: number;
+  yearBuilt?: number;
+  landSizeAcres?: number;
+  hasPerimeterWall?: boolean;
+  hasGate?: boolean;
+  hasGuard?: boolean;
+  hasCctv?: boolean;
+  totalParkingSpaces?: number;
+  waterSource?: WaterSource;
+  backupPower?: BackupPower;
+  internetType?: InternetType;
+  compoundType?: CompoundType;
   createdAt: string;
   updatedAt: string;
 }
 
 export type UnitStatus = "available" | "occupied" | "reserved" | "maintenance";
-export type UnitType = "single" | "double" | "studio" | "ensuite" | "shared";
+
+// Current Uganda bedroom-count labels (preferred for new units)
+export type UnitType =
+  | "studio" | "bedsitter"
+  | "one_bed" | "two_bed" | "three_bed" | "four_bed_plus"
+  // Legacy values — still valid in DB but not shown in new-unit dropdowns
+  | "single" | "double" | "ensuite" | "shared";
 
 export interface Unit {
   id: string;
@@ -89,6 +115,16 @@ export interface Unit {
   notes?: string;
   // Per-unit rule overrides; when absent the property-level rules apply
   rules?: PropertyRules;
+  // Uganda unit features
+  sittingRooms?: number;
+  toilets?: number;
+  isSelfContained?: boolean;
+  hasKitchen?: boolean;
+  hasStore?: boolean;
+  hasDomesticQuarters?: boolean;
+  parkingSpaces?: number;
+  furnishedStatus?: FurnishedStatus;
+  waterSource?: WaterSource;
   createdAt: string;
   updatedAt: string;
 }

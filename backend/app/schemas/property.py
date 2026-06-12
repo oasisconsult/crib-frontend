@@ -49,11 +49,30 @@ class PropertyRulesSchema(CamelModel):
     maintenance_window_hours: int = Field(default=24, ge=1, le=168)
 
 
+# ── Unit schema (forward-declared for use in PropertyCreate) ──────────────────
+
+class SingleUnitOverrides(CamelModel):
+    """Optional unit details when creating a whole-property (is_single_unit=True) property."""
+    bedrooms: int = Field(default=1, ge=0, le=20)
+    bathrooms: int = Field(default=1, ge=0, le=20)
+    sitting_rooms: int = Field(default=1, ge=0, le=20)
+    toilets: int = Field(default=1, ge=0, le=20)
+    is_self_contained: bool = True
+    has_kitchen: bool = True
+    has_store: bool = False
+    has_domestic_quarters: bool = False
+    parking_spaces: int = Field(default=0, ge=0)
+    furnished_status: str = Field(default="unfurnished", pattern="^(unfurnished|semi_furnished|furnished)$")
+    area: float | None = None
+
+
 # ── Property ──────────────────────────────────────────────────────────────────
 
 class PropertyCreate(CamelModel):
     name: str = Field(min_length=1, max_length=255)
-    type: str = Field(pattern="^(flat|house|hostel|commercial|villa)$")
+    type: str = Field(
+        pattern="^(flat|house|hostel|commercial|villa|bungalow|maisonette|townhouse|bedsitter_block)$"
+    )
     status: str = Field(default="active", pattern="^(active|inactive|maintenance)$")
     address: PropertyAddressSchema
     rules: PropertyRulesSchema = Field(default_factory=PropertyRulesSchema)
@@ -65,6 +84,33 @@ class PropertyCreate(CamelModel):
     currency: str = Field(default="UGX", min_length=3, max_length=3)
     geocode: str | None = Field(default=None, max_length=20)
     is_single_unit: bool = False
+    # Optional unit details for whole-property path
+    single_unit_overrides: SingleUnitOverrides | None = None
+    # Uganda property features
+    total_floors: int = Field(default=1, ge=1, le=200)
+    year_built: int | None = Field(default=None, ge=1800, le=2100)
+    land_size_acres: float | None = Field(default=None, ge=0)
+    has_perimeter_wall: bool = False
+    has_gate: bool = False
+    has_guard: bool = False
+    has_cctv: bool = False
+    total_parking_spaces: int = Field(default=0, ge=0)
+    water_source: str = Field(
+        default="municipal",
+        pattern="^(municipal|borehole|tank|multiple)$",
+    )
+    backup_power: str = Field(
+        default="none",
+        pattern="^(none|solar|generator|both)$",
+    )
+    internet_type: str = Field(
+        default="none",
+        pattern="^(none|wifi|fibre)$",
+    )
+    compound_type: str = Field(
+        default="private",
+        pattern="^(private|shared)$",
+    )
 
 
 class PropertyUpdate(CamelModel):
@@ -81,6 +127,19 @@ class PropertyUpdate(CamelModel):
     currency: str | None = None
     geocode: str | None = Field(default=None, max_length=20)
     is_single_unit: bool | None = None
+    # Uganda property features
+    total_floors: int | None = Field(default=None, ge=1, le=200)
+    year_built: int | None = Field(default=None, ge=1800, le=2100)
+    land_size_acres: float | None = Field(default=None, ge=0)
+    has_perimeter_wall: bool | None = None
+    has_gate: bool | None = None
+    has_guard: bool | None = None
+    has_cctv: bool | None = None
+    total_parking_spaces: int | None = Field(default=None, ge=0)
+    water_source: str | None = None
+    backup_power: str | None = None
+    internet_type: str | None = None
+    compound_type: str | None = None
 
 
 class PropertyOut(CamelModel):
@@ -99,6 +158,19 @@ class PropertyOut(CamelModel):
     currency: str
     geocode: str | None = None
     is_single_unit: bool = False
+    # Uganda property features
+    total_floors: int = 1
+    year_built: int | None = None
+    land_size_acres: float | None = None
+    has_perimeter_wall: bool = False
+    has_gate: bool = False
+    has_guard: bool = False
+    has_cctv: bool = False
+    total_parking_spaces: int = 0
+    water_source: str = "municipal"
+    backup_power: str = "none"
+    internet_type: str = "none"
+    compound_type: str = "private"
     total_units: int
     occupied_units: int
     occupancy_rate: float
@@ -111,7 +183,12 @@ class PropertyOut(CamelModel):
 
 class UnitCreate(CamelModel):
     name: str = Field(min_length=1, max_length=100)
-    type: str = Field(pattern="^(single|double|studio|ensuite|shared)$")
+    type: str = Field(
+        pattern=(
+            "^(single|double|studio|ensuite|shared"
+            "|bedsitter|one_bed|two_bed|three_bed|four_bed_plus)$"
+        )
+    )
     status: str = Field(default="available", pattern="^(available|occupied|reserved|maintenance)$")
     floor: int | None = None
     area: float | None = None
@@ -124,6 +201,22 @@ class UnitCreate(CamelModel):
     notes: str | None = None
     rules: PropertyRulesSchema | None = None
     geocode: str | None = Field(default=None, max_length=20)
+    # Uganda unit features
+    sitting_rooms: int = Field(default=1, ge=0, le=20)
+    toilets: int = Field(default=1, ge=0, le=20)
+    is_self_contained: bool = True
+    has_kitchen: bool = True
+    has_store: bool = False
+    has_domestic_quarters: bool = False
+    parking_spaces: int = Field(default=0, ge=0)
+    furnished_status: str = Field(
+        default="unfurnished",
+        pattern="^(unfurnished|semi_furnished|furnished)$",
+    )
+    water_source: str | None = Field(
+        default=None,
+        pattern="^(municipal|borehole|tank|multiple)$",
+    )
 
 
 class UnitUpdate(CamelModel):
@@ -140,6 +233,16 @@ class UnitUpdate(CamelModel):
     images: list[str] | None = None
     notes: str | None = None
     geocode: str | None = Field(default=None, max_length=20)
+    # Uganda unit features
+    sitting_rooms: int | None = None
+    toilets: int | None = None
+    is_self_contained: bool | None = None
+    has_kitchen: bool | None = None
+    has_store: bool | None = None
+    has_domestic_quarters: bool | None = None
+    parking_spaces: int | None = None
+    furnished_status: str | None = None
+    water_source: str | None = None
 
 
 class UnitRulesUpdate(CamelModel):
@@ -176,6 +279,16 @@ class UnitOut(CamelModel):
     notes: str | None
     rules: dict[str, Any] | None
     geocode: str | None = None
+    # Uganda unit features
+    sitting_rooms: int = 1
+    toilets: int = 1
+    is_self_contained: bool = True
+    has_kitchen: bool = True
+    has_store: bool = False
+    has_domestic_quarters: bool = False
+    parking_spaces: int = 0
+    furnished_status: str = "unfurnished"
+    water_source: str | None = None
     current_tenant_id: str | None
     current_lease_id: str | None
     last_inspection_date: str | None

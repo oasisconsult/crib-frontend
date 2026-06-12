@@ -47,7 +47,7 @@ import { useTenant } from "@/hooks/useTenants";
 import { useLease } from "@/hooks/useLeases";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
-import type { Unit, UnitStatus, UnitType } from "@/types";
+import type { Unit, UnitStatus, UnitType, FurnishedStatus, WaterSource } from "@/types";
 
 interface Props {
   params: Promise<{ id: string; unitId: string }>;
@@ -63,11 +63,26 @@ const STATUS_CONFIG: Record<UnitStatus, { label: string; color: string; bg: stri
 };
 
 const UNIT_TYPES: { value: UnitType; label: string }[] = [
-  { value: "single",  label: "Single"   },
-  { value: "double",  label: "Double"   },
-  { value: "studio",  label: "Studio"   },
-  { value: "ensuite", label: "En-suite" },
-  { value: "shared",  label: "Shared"   },
+  { value: "studio",        label: "Studio (0-bed)"   },
+  { value: "bedsitter",     label: "Bedsitter"        },
+  { value: "one_bed",       label: "1-Bedroom"        },
+  { value: "two_bed",       label: "2-Bedroom"        },
+  { value: "three_bed",     label: "3-Bedroom"        },
+  { value: "four_bed_plus", label: "4-Bedroom+"       },
+];
+
+const FURNISHED_OPTIONS: { value: FurnishedStatus; label: string }[] = [
+  { value: "unfurnished",    label: "Unfurnished"    },
+  { value: "semi_furnished", label: "Semi-furnished" },
+  { value: "furnished",      label: "Furnished"      },
+];
+
+const WATER_SOURCE_OPTIONS: { value: WaterSource | "inherit"; label: string }[] = [
+  { value: "inherit",   label: "Inherit from property" },
+  { value: "municipal", label: "NWSC / Municipal"       },
+  { value: "borehole",  label: "Borehole"               },
+  { value: "tank",      label: "Water Tank"             },
+  { value: "multiple",  label: "Multiple Sources"       },
 ];
 
 const UNIT_STATUSES: { value: UnitStatus; label: string }[] = [
@@ -159,6 +174,16 @@ function EditForm({
   const [area,        setArea]        = useState<string>(unit.area !== undefined ? String(unit.area) : "");
   const [amenities,   setAmenities]   = useState<string[]>(unit.amenities ?? []);
   const [notes,       setNotes]       = useState(unit.notes ?? "");
+  // Uganda features
+  const [sittingRooms,       setSittingRooms]       = useState(unit.sittingRooms ?? 1);
+  const [toilets,            setToilets]            = useState(unit.toilets ?? 1);
+  const [isSelfContained,    setIsSelfContained]    = useState(unit.isSelfContained ?? true);
+  const [hasKitchen,         setHasKitchen]         = useState(unit.hasKitchen ?? true);
+  const [hasStore,           setHasStore]           = useState(unit.hasStore ?? false);
+  const [hasDomesticQuarters,setHasDomesticQuarters]= useState(unit.hasDomesticQuarters ?? false);
+  const [parkingSpaces,      setParkingSpaces]      = useState(unit.parkingSpaces ?? 0);
+  const [furnishedStatus,    setFurnishedStatus]    = useState<FurnishedStatus>(unit.furnishedStatus ?? "unfurnished");
+  const [waterSource,        setWaterSource]        = useState<WaterSource | "inherit">(unit.waterSource ?? "inherit");
 
   function toggleAmenity(a: string) {
     setAmenities((prev) => prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]);
@@ -181,7 +206,16 @@ function EditForm({
           area:   area  !== "" ? parseFloat(area)  : undefined,
           amenities,
           notes:  notes || undefined,
-        },
+          sittingRooms,
+          toilets,
+          isSelfContained,
+          hasKitchen,
+          hasStore,
+          hasDomesticQuarters,
+          parkingSpaces,
+          furnishedStatus,
+          waterSource: waterSource === "inherit" ? undefined : waterSource,
+        } as any,
       },
       { onSuccess: onCancel },
     );
@@ -325,6 +359,67 @@ function EditForm({
                 checked={amenities.includes(a)}
                 onToggle={() => toggleAmenity(a)}
               />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Uganda Features ───────────────────── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Uganda Features</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="sittingRooms">Sitting Rooms</Label>
+              <Input id="sittingRooms" type="number" min={0} max={20}
+                value={sittingRooms} onChange={(e) => setSittingRooms(parseInt(e.target.value) || 0)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="toilets">Toilets</Label>
+              <Input id="toilets" type="number" min={0} max={20}
+                value={toilets} onChange={(e) => setToilets(parseInt(e.target.value) || 0)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="parkingSpaces">Parking Spaces</Label>
+              <Input id="parkingSpaces" type="number" min={0}
+                value={parkingSpaces} onChange={(e) => setParkingSpaces(parseInt(e.target.value) || 0)} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Furnished Status</Label>
+              <Select value={furnishedStatus} onValueChange={(v) => setFurnishedStatus(v as FurnishedStatus)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FURNISHED_OPTIONS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Water Source</Label>
+              <Select value={waterSource} onValueChange={(v) => setWaterSource(v as WaterSource | "inherit")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {WATER_SOURCE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            {[
+              { label: "Self-contained",          value: isSelfContained,    set: setIsSelfContained    },
+              { label: "Separate kitchen",         value: hasKitchen,         set: setHasKitchen         },
+              { label: "Store room",               value: hasStore,           set: setHasStore           },
+              { label: "Domestic quarters (BQ)",   value: hasDomesticQuarters, set: setHasDomesticQuarters },
+            ].map(({ label, value, set }) => (
+              <label key={label} className="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" checked={value} onChange={(e) => set(e.target.checked)} className="rounded border-border" />
+                {label}
+              </label>
             ))}
           </div>
         </CardContent>
@@ -624,6 +719,63 @@ export default function UnitDetailPage({ params }: Props) {
               </CardContent>
             </Card>
           </div>
+
+          {/* ── Uganda Features ────────────────────────── */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Uganda Features</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {/* SC badge + furnished badge */}
+              <div className="flex flex-wrap gap-2">
+                {unit.isSelfContained && (
+                  <span className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    Self-contained
+                  </span>
+                )}
+                {unit.hasDomesticQuarters && (
+                  <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium bg-muted/40">
+                    Domestic Quarters (BQ)
+                  </span>
+                )}
+                {unit.hasStore && (
+                  <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium bg-muted/40">
+                    Store Room
+                  </span>
+                )}
+                {(unit.furnishedStatus && unit.furnishedStatus !== "unfurnished") && (
+                  <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium bg-muted/40 capitalize">
+                    {unit.furnishedStatus.replace("_", " ")}
+                  </span>
+                )}
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Sitting Rooms</span>
+                  <span>{unit.sittingRooms ?? 1}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Toilets</span>
+                  <span>{unit.toilets ?? 1}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Parking</span>
+                  <span>{unit.parkingSpaces ?? 0} space{(unit.parkingSpaces ?? 0) !== 1 ? "s" : ""}</span>
+                </div>
+                {unit.waterSource && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Water Source</span>
+                    <span className="capitalize">{unit.waterSource}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Kitchen</span>
+                  <span>{unit.hasKitchen ? "Yes" : "No"}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* ── Amenities ──────────────────────────────── */}
           {unit.amenities.length > 0 && (

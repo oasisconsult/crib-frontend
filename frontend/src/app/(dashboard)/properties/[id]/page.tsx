@@ -19,6 +19,7 @@ import {
   Trash2,
   Loader2,
   CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +44,7 @@ import { settingsApi } from "@/services/api/settings";
 import { uploadsApi } from "@/services/api/uploads";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
-import type { Property, PropertyType, PropertyStatus } from "@/types";
+import type { Property, PropertyType, PropertyStatus, WaterSource, BackupPower, InternetType, CompoundType } from "@/types";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -52,11 +53,40 @@ interface Props {
 const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/; // used for submit validation
 
 const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
-  { value: "flat",       label: "Flat / Apartment" },
-  { value: "house",      label: "House"             },
-  { value: "hostel",     label: "Hostel / Lodge"    },
-  { value: "commercial", label: "Commercial"        },
-  { value: "villa",      label: "Villa"             },
+  { value: "flat",            label: "Flat / Apartment"       },
+  { value: "house",           label: "House"                  },
+  { value: "bungalow",        label: "Bungalow"               },
+  { value: "maisonette",      label: "Maisonette"             },
+  { value: "townhouse",       label: "Townhouse"              },
+  { value: "villa",           label: "Villa"                  },
+  { value: "bedsitter_block", label: "Bedsitter Block / Lodge"},
+  { value: "hostel",          label: "Hostel"                 },
+  { value: "commercial",      label: "Commercial"             },
+];
+
+const WATER_SOURCE_OPTIONS: { value: WaterSource; label: string }[] = [
+  { value: "municipal", label: "NWSC / Municipal" },
+  { value: "borehole",  label: "Borehole"         },
+  { value: "tank",      label: "Water Tank"       },
+  { value: "multiple",  label: "Multiple Sources" },
+];
+
+const BACKUP_POWER_OPTIONS: { value: BackupPower; label: string }[] = [
+  { value: "none",      label: "None"              },
+  { value: "solar",     label: "Solar"             },
+  { value: "generator", label: "Generator"         },
+  { value: "both",      label: "Solar + Generator" },
+];
+
+const INTERNET_TYPE_OPTIONS: { value: InternetType; label: string }[] = [
+  { value: "none",  label: "None"  },
+  { value: "wifi",  label: "Wi-Fi" },
+  { value: "fibre", label: "Fibre" },
+];
+
+const COMPOUND_TYPE_OPTIONS: { value: CompoundType; label: string }[] = [
+  { value: "private", label: "Private Compound" },
+  { value: "shared",  label: "Shared Compound"  },
 ];
 
 const STATUS_OPTIONS: { value: PropertyStatus; label: string }[] = [
@@ -109,6 +139,19 @@ function EditForm({
   const [status,        setStatus]        = useState<PropertyStatus>(property.status);
   const [description,   setDescription]   = useState(property.description ?? "");
   const [isSingleUnit,  setIsSingleUnit]  = useState(property.isSingleUnit ?? false);
+  // Uganda property features
+  const [totalFloors,        setTotalFloors]        = useState(property.totalFloors ?? 1);
+  const [yearBuilt,          setYearBuilt]          = useState(property.yearBuilt ? String(property.yearBuilt) : "");
+  const [landSizeAcres,      setLandSizeAcres]      = useState(property.landSizeAcres ? String(property.landSizeAcres) : "");
+  const [waterSource,        setWaterSource]        = useState<WaterSource>(property.waterSource ?? "municipal");
+  const [backupPower,        setBackupPower]        = useState<BackupPower>(property.backupPower ?? "none");
+  const [internetType,       setInternetType]       = useState<InternetType>(property.internetType ?? "none");
+  const [compoundType,       setCompoundType]       = useState<CompoundType>(property.compoundType ?? "private");
+  const [hasPerimeterWall,   setHasPerimeterWall]   = useState(property.hasPerimeterWall ?? false);
+  const [hasGate,            setHasGate]            = useState(property.hasGate ?? false);
+  const [hasGuard,           setHasGuard]           = useState(property.hasGuard ?? false);
+  const [hasCctv,            setHasCctv]            = useState(property.hasCctv ?? false);
+  const [totalParkingSpaces, setTotalParkingSpaces] = useState(property.totalParkingSpaces ?? 0);
   // Address
   const [line1,     setLine1]     = useState(property.address.line1);
   const [city,      setCity]      = useState(property.address.city);
@@ -179,7 +222,19 @@ function EditForm({
           amenities,
           tags,
           isSingleUnit,
-        },
+          totalFloors,
+          yearBuilt:          yearBuilt ? parseInt(yearBuilt) : undefined,
+          landSizeAcres:      landSizeAcres ? parseFloat(landSizeAcres) : undefined,
+          waterSource,
+          backupPower,
+          internetType,
+          compoundType,
+          hasPerimeterWall,
+          hasGate,
+          hasGuard,
+          hasCctv,
+          totalParkingSpaces,
+        } as any,
       },
       { onSuccess: onCancel },
     );
@@ -378,6 +433,135 @@ function EditForm({
                 onToggle={() => toggleAmenity(a)}
               />
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Property Features ─────────────────── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Property Features
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Structure */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="totalFloors">Floors</Label>
+              <Input
+                id="totalFloors"
+                type="number"
+                min={1}
+                max={200}
+                value={totalFloors}
+                onChange={(e) => setTotalFloors(parseInt(e.target.value) || 1)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="yearBuilt">Year Built <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input
+                id="yearBuilt"
+                type="number"
+                min={1800}
+                max={2100}
+                value={yearBuilt}
+                onChange={(e) => setYearBuilt(e.target.value)}
+                placeholder="e.g. 2015"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="landSize">Land (acres) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input
+                id="landSize"
+                type="number"
+                min={0}
+                step={0.01}
+                value={landSizeAcres}
+                onChange={(e) => setLandSizeAcres(e.target.value)}
+                placeholder="e.g. 0.5"
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Utilities */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Water Source</Label>
+              <Select value={waterSource} onValueChange={(v) => setWaterSource(v as WaterSource)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {WATER_SOURCE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Backup Power</Label>
+              <Select value={backupPower} onValueChange={(v) => setBackupPower(v as BackupPower)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {BACKUP_POWER_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Internet</Label>
+              <Select value={internetType} onValueChange={(v) => setInternetType(v as InternetType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {INTERNET_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Compound</Label>
+              <Select value={compoundType} onValueChange={(v) => setCompoundType(v as CompoundType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMPOUND_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Security */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Security &amp; Access</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              {[
+                { label: "Perimeter Wall", value: hasPerimeterWall, set: setHasPerimeterWall },
+                { label: "Gate",           value: hasGate,          set: setHasGate          },
+                { label: "Guard / Watchman", value: hasGuard,       set: setHasGuard         },
+                { label: "CCTV",           value: hasCctv,          set: setHasCctv          },
+              ].map(({ label, value, set }) => (
+                <label key={label} className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={value}
+                    onChange={(e) => set(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="parking">Total Parking Spaces</Label>
+            <Input
+              id="parking"
+              type="number"
+              min={0}
+              className="w-32"
+              value={totalParkingSpaces}
+              onChange={(e) => setTotalParkingSpaces(parseInt(e.target.value) || 0)}
+            />
           </div>
         </CardContent>
       </Card>
