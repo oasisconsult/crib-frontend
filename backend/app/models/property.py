@@ -82,6 +82,7 @@ class Property(TimestampedBase):
     amenities: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="UGX")
     geocode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    is_single_unit: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     # Soft-delete — NULL = active, non-NULL = archived (recoverable by superadmin)
     # Blocked when any unit is occupied or has an active lease.

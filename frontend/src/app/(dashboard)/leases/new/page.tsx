@@ -153,9 +153,11 @@ export default function NewLeasePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isWholeProperty, availableUnits]);
 
-  // When a unit is selected auto-fill rent and recalculate deposit from rules
+  // When a unit is selected auto-fill rent and recalculate deposit from rules.
+  // Skip auto-fill for whole-property virtual units that have no rent set yet
+  // (monthlyRent === 0) — the user enters it manually in the financial terms.
   useEffect(() => {
-    if (selectedUnit) {
+    if (selectedUnit && selectedUnit.monthlyRent > 0) {
       setMonthlyRent(selectedUnit.monthlyRent);
       setCurrency(selectedUnit.currency ?? "UGX");
       // Deposit = depositMonths × monthly rent (from property rules, default 1)

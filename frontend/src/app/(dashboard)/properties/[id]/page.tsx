@@ -18,6 +18,7 @@ import {
   ImageIcon,
   Trash2,
   Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -103,10 +104,11 @@ function EditForm({
 }) {
   const { mutate: update, isPending } = useUpdateProperty();
 
-  const [name,        setName]        = useState(property.name);
-  const [type,        setType]        = useState<PropertyType>(property.type);
-  const [status,      setStatus]      = useState<PropertyStatus>(property.status);
-  const [description, setDescription] = useState(property.description ?? "");
+  const [name,          setName]          = useState(property.name);
+  const [type,          setType]          = useState<PropertyType>(property.type);
+  const [status,        setStatus]        = useState<PropertyStatus>(property.status);
+  const [description,   setDescription]   = useState(property.description ?? "");
+  const [isSingleUnit,  setIsSingleUnit]  = useState(property.isSingleUnit ?? false);
   // Address
   const [line1,     setLine1]     = useState(property.address.line1);
   const [city,      setCity]      = useState(property.address.city);
@@ -176,6 +178,7 @@ function EditForm({
           geocode: geocode || undefined,
           amenities,
           tags,
+          isSingleUnit,
         },
       },
       { onSuccess: onCancel },
@@ -237,6 +240,43 @@ function EditForm({
               placeholder="Brief description of the property..."
               rows={3}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Whole-property toggle ── */}
+      <Card
+        className={cn(
+          "cursor-pointer border-2 transition-colors",
+          isSingleUnit
+            ? "border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
+            : "border-border hover:border-primary/40",
+        )}
+        onClick={() => setIsSingleUnit((v) => !v)}
+        role="checkbox"
+        aria-checked={isSingleUnit}
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") setIsSingleUnit((v) => !v); }}
+      >
+        <CardContent className="py-4 flex items-start gap-3">
+          <div className={cn(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 mt-0.5 transition-colors",
+            isSingleUnit
+              ? "border-emerald-500 bg-emerald-500"
+              : "border-border bg-background",
+          )}>
+            {isSingleUnit && <CheckCircle2 className="h-3.5 w-3.5 text-white" aria-hidden />}
+          </div>
+          <div>
+            <p className={cn(
+              "text-sm font-semibold",
+              isSingleUnit ? "text-emerald-800 dark:text-emerald-300" : "text-foreground",
+            )}>
+              This property is rented as a whole
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+              Enabling this on a property with no units will create a single virtual unit so you can create a lease for the entire property.
+            </p>
           </div>
         </CardContent>
       </Card>

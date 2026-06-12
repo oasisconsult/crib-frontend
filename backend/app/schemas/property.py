@@ -64,6 +64,7 @@ class PropertyCreate(CamelModel):
     amenities: list[str] = Field(default_factory=list)
     currency: str = Field(default="UGX", min_length=3, max_length=3)
     geocode: str | None = Field(default=None, max_length=20)
+    is_single_unit: bool = False
 
 
 class PropertyUpdate(CamelModel):
@@ -79,6 +80,7 @@ class PropertyUpdate(CamelModel):
     amenities: list[str] | None = None
     currency: str | None = None
     geocode: str | None = Field(default=None, max_length=20)
+    is_single_unit: bool | None = None
 
 
 class PropertyOut(CamelModel):
@@ -96,6 +98,7 @@ class PropertyOut(CamelModel):
     amenities: list[str]
     currency: str
     geocode: str | None = None
+    is_single_unit: bool = False
     total_units: int
     occupied_units: int
     occupancy_rate: float

@@ -16,7 +16,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.landlord_invite import LandlordPropertyAccess
-from app.models.property import Property, Unit, UnitStatus
+from app.models.property import Property, Unit, UnitStatus, UnitType
 from app.utils.references import build_ref, next_seq
 from app.schemas.property import (
     BatchUnitCreate,
@@ -66,6 +66,7 @@ async def _property_out(prop: Property, db: AsyncSession) -> PropertyOut:
         amenities=prop.amenities or [],
         currency=prop.currency,
         geocode=prop.geocode,
+        is_single_unit=prop.is_single_unit,
         total_units=total,
         occupied_units=occupied,
         occupancy_rate=occupancy_rate,
@@ -201,9 +202,26 @@ async def create_property(body: PropertyCreate, org_id: uuid.UUID | None, db: As
         amenities=body.amenities,
         currency=body.currency,
         geocode=body.geocode,
+        is_single_unit=body.is_single_unit,
     )
     db.add(prop)
     await db.flush()
+
+    if body.is_single_unit:
+        db.add(Unit(
+            property_id=prop.id,
+            name="Main Property",
+            type=UnitType.single,
+            status=UnitStatus.available,
+            monthly_rent=0.0,
+            currency=prop.currency,
+            bedrooms=1,
+            bathrooms=1,
+            amenities=[],
+            images=[],
+        ))
+        await db.flush()
+
     await db.refresh(prop)
     return await _property_out(prop, db)
 
@@ -221,10 +239,38 @@ async def update_property(
     if body.rules is not None:
         updates["rules"] = body.rules.model_dump(by_alias=True)
 
+    transitioning_to_single = (
+        body.is_single_unit is True and not prop.is_single_unit
+    )
+
     for key, val in updates.items():
         setattr(prop, key, val)
 
     await db.flush()
+
+    # If the property is being converted to single-unit and has no units yet,
+    # auto-create the virtual "Main Property" unit.
+    if transitioning_to_single:
+        unit_count = await db.scalar(
+            select(func.count(Unit.id)).where(
+                Unit.property_id == prop.id, Unit.deleted_at.is_(None)
+            )
+        ) or 0
+        if unit_count == 0:
+            db.add(Unit(
+                property_id=prop.id,
+                name="Main Property",
+                type=UnitType.single,
+                status=UnitStatus.available,
+                monthly_rent=0.0,
+                currency=prop.currency,
+                bedrooms=1,
+                bathrooms=1,
+                amenities=[],
+                images=[],
+            ))
+            await db.flush()
+
     await db.refresh(prop)
     return await _property_out(prop, db)
 
