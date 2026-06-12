@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -349,3 +350,24 @@ class MobileMoneyTransactionOut(CamelModel):
 
 
 MobileMoneyPageOut = PaginatedResponse[MobileMoneyTransactionOut]
+
+
+# ── Bulk confirm ───────────────────────────────────────────────────────────────
+
+class BulkConfirmRequest(CamelModel):
+    payment_ids: list[uuid.UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="IDs of payments to confirm. Max 50 per request.",
+    )
+
+
+class BulkConfirmFailure(CamelModel):
+    id: uuid.UUID
+    reason: str
+
+
+class BulkConfirmResult(CamelModel):
+    confirmed: list[PaymentOut]
+    failed: list[BulkConfirmFailure]

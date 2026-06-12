@@ -23,6 +23,7 @@ from app.models.organisation import Organisation
 from app.models.profile import Profile
 from app.models.property import Property
 from app.schemas.common import CamelModel
+from app.services.subscription_limits import check_user_limit
 
 log = structlog.get_logger(__name__)
 settings = get_settings()
@@ -92,6 +93,9 @@ async def create_invite(
     body: CreateLandlordInviteRequest,
 ) -> LandlordInviteOut:
     """Create a landlord invite and return it."""
+    # Enforce plan user-count limit before issuing an invite that would exceed it
+    await check_user_limit(organisation_id, db)
+
     # Validate properties belong to the org
     prop_ids = [uuid.UUID(pid) for pid in body.property_ids]
     if prop_ids:
