@@ -87,7 +87,7 @@ class PropertyCreate(CamelModel):
     # Optional unit details for whole-property path
     single_unit_overrides: SingleUnitOverrides | None = None
     # Uganda property features
-    total_floors: int = Field(default=1, ge=1, le=200)
+    total_floors: int = Field(default=1, ge=0, le=200)
     year_built: int | None = Field(default=None, ge=1800, le=2100)
     land_size_acres: float | None = Field(default=None, ge=0)
     has_perimeter_wall: bool = False
@@ -128,7 +128,7 @@ class PropertyUpdate(CamelModel):
     geocode: str | None = Field(default=None, max_length=20)
     is_single_unit: bool | None = None
     # Uganda property features
-    total_floors: int | None = Field(default=None, ge=1, le=200)
+    total_floors: int | None = Field(default=None, ge=0, le=200)
     year_built: int | None = Field(default=None, ge=1800, le=2100)
     land_size_acres: float | None = Field(default=None, ge=0)
     has_perimeter_wall: bool | None = None

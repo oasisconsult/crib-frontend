@@ -706,10 +706,10 @@ export default function NewPropertyPage() {
                   <Input
                     id="totalFloors"
                     type="number"
-                    min={1}
+                    min={0}
                     max={200}
                     value={totalFloors}
-                    onChange={(e) => setTotalFloors(parseInt(e.target.value) || 1)}
+                    onChange={(e) => setTotalFloors(parseInt(e.target.value) || 0)}
                   />
                 </div>
                 <div className="space-y-1.5">
