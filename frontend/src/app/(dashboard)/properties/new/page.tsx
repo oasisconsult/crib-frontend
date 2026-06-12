@@ -497,7 +497,7 @@ export default function NewPropertyPage() {
               </div>
               {/* GeoBox Geocode — look up to auto-fill hierarchy, or create one on GeoBox */}
               <div className="space-y-1.5">
-                <Label htmlFor="geocode">GeoBox Geocode</Label>
+                <Label htmlFor="geocode">GeoBox Geocode <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
                 <GeocodeField
                   id="geocode"
                   value={geocode}
