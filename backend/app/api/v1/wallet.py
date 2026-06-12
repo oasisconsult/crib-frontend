@@ -101,6 +101,7 @@ async def credit_tenant_wallet(
         reference_type="manual_credit",
         description=body.description,
     )
+    await db.refresh(wallet)
     return _fmt_wallet(wallet)
 
 
