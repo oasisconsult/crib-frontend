@@ -281,6 +281,7 @@ async def create_inspection(
 
     # Auto-link to the active lease for this unit when lease_id is not explicit
     resolved_lease_id: uuid.UUID | None = uuid.UUID(body.lease_id) if body.lease_id else None
+    resolved_tenant_id: uuid.UUID | None = uuid.UUID(body.tenant_id) if body.tenant_id else None
     if resolved_lease_id is None and body.unit_id:
         active_lease = await db.scalar(
             select(Lease).where(
@@ -290,13 +291,20 @@ async def create_inspection(
         )
         if active_lease:
             resolved_lease_id = active_lease.id
+            if resolved_tenant_id is None:
+                resolved_tenant_id = active_lease.tenant_id
+    elif resolved_lease_id is not None and resolved_tenant_id is None:
+        # lease_id supplied explicitly but no tenant_id: pull from the lease
+        linked_lease = await db.scalar(select(Lease).where(Lease.id == resolved_lease_id))
+        if linked_lease:
+            resolved_tenant_id = linked_lease.tenant_id
 
     inspection = Inspection(
         organisation_id=org_id,
         property_id=uuid.UUID(body.property_id),
         unit_id=uuid.UUID(body.unit_id) if body.unit_id else None,
         lease_id=resolved_lease_id,
-        tenant_id=uuid.UUID(body.tenant_id) if body.tenant_id else None,
+        tenant_id=resolved_tenant_id,
         inspector_id=uuid.UUID(body.inspector_id) if body.inspector_id else None,
         inspector_name=body.inspector_name,
         type=body.type,
@@ -555,6 +563,13 @@ async def send_for_tenant_signing(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Landlord must sign the report before sending it to the tenant",
         )
+
+    # Backfill tenant_id from lease when missing (inspections created before this fix)
+    if not i.tenant_id and i.lease_id:
+        linked_lease = await db.scalar(select(Lease).where(Lease.id == i.lease_id))
+        if linked_lease and linked_lease.tenant_id:
+            i.tenant_id = linked_lease.tenant_id
+            await db.flush()
 
     if not i.tenant_id:
         raise HTTPException(
