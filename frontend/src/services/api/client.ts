@@ -201,3 +201,19 @@ export async function apiDelete<T>(url: string): Promise<T> {
   const { data } = await apiClient.delete<T>(url);
   return data;
 }
+
+export async function apiPostForm<T>(
+  url: string,
+  formData: FormData,
+  onProgress?: (percent: number) => void,
+): Promise<T> {
+  const { data } = await apiClient.post<T>(url, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    onUploadProgress: onProgress
+      ? (e) => {
+          if (e.total) onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      : undefined,
+  });
+  return data;
+}

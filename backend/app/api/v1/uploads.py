@@ -3,15 +3,14 @@ File upload endpoints.
 
 POST /upload/presign                       — presigned PUT URL (authenticated staff/tenant)
 POST /upload/presign/onboarding/{token}    — presigned PUT URL for unauthenticated onboarding flow
+POST /upload/file                          — proxy upload: backend streams file to storage
 PUT  /upload/local/{key:path}              — dev-only: accept the PUT and write to disk
 GET  /upload/local/{key:path}              — dev-only: serve a locally stored file
 
-The presign endpoint calls the active storage provider (configured via system settings).
-When the provider is 'local' (default in development), the presigned URL points to the
-/upload/local/ path below so local development works without any cloud credentials.
-
-For S3 / R2 / MinIO, the presigned URL is a direct pre-authenticated PUT URL from the
-provider — the file never passes through this server.
+The proxy endpoint (/upload/file) is the preferred path when the storage backend
+(MinIO) is not directly reachable from the browser. The file is uploaded to the
+backend and forwarded to storage using the internal network endpoint, avoiding the
+need to expose MinIO's S3 API port publicly or configure CORS on the bucket.
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from __future__ import annotations
 import os
 import uuid as _uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import Field
 from sqlalchemy import select
@@ -147,6 +146,58 @@ async def presign_upload(
       to cloud storage without passing through this server.
     """
     return await _do_presign(body, db)
+
+
+# ── Proxy upload endpoint ─────────────────────────────────────────────────────
+
+@router.post("/file", response_model=PresignResponse)
+async def upload_file_proxy(
+    file: UploadFile = File(...),
+    category: str = Form(...),
+    tenant_id: str | None = Form(default=None),
+    lease_id: str | None = Form(default=None),
+    inspection_id: str | None = Form(default=None),
+    _: object = _staff,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Upload a file through the backend to storage.
+
+    Use instead of /presign when the storage backend (MinIO) is not
+    directly reachable from the browser. The backend forwards the file
+    to storage over the internal network — no public MinIO API port or
+    bucket CORS configuration required.
+    """
+    if category not in _VALID_CATEGORIES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid category. Must be one of: {', '.join(sorted(_VALID_CATEGORIES))}",
+        )
+
+    config = await settings_service.get_storage_config(db)
+    try:
+        provider = get_storage_provider(config, local_base_url=get_settings().storage_local_base_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    key = _build_key(
+        category,
+        file.filename or "upload",
+        tenant_id=tenant_id,
+        lease_id=lease_id,
+        inspection_id=inspection_id,
+    )
+    data = await file.read()
+    mime = file.content_type or "application/octet-stream"
+    public = await provider.upload(key, data, mime)
+
+    return PresignResponse(
+        upload_url="",
+        public_url=public,
+        key=key,
+        expires_in=0,
+        provider=config.get("provider", "local"),
+    )
 
 
 # ── Presign endpoint (authenticated tenant — payment receipts only) ────────

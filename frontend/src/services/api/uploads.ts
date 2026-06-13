@@ -1,4 +1,4 @@
-import { apiPost } from "./client";
+import { apiPost, apiPostForm } from "./client";
 
 interface PresignedUrl {
   uploadUrl: string;
@@ -41,35 +41,18 @@ export const uploadsApi = {
     options: UploadOptions,
     onProgress?: (percent: number) => void,
   ): Promise<UploadResult> {
-    const { uploadUrl, publicUrl, key } = await uploadsApi.getPresignedUrl(
-      file.name,
-      file.type,
-      options,
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("category", options.category);
+    if (options.tenantId) formData.append("tenant_id", options.tenantId);
+    if (options.leaseId) formData.append("lease_id", options.leaseId);
+    if (options.inspectionId) formData.append("inspection_id", options.inspectionId);
+
+    const { publicUrl, key } = await apiPostForm<PresignedUrl>(
+      "/upload/file",
+      formData,
+      onProgress,
     );
-
-    await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("PUT", uploadUrl);
-      xhr.setRequestHeader("Content-Type", file.type);
-
-      if (onProgress) {
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            onProgress(Math.round((e.loaded / e.total) * 100));
-          }
-        };
-      }
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-        } else {
-          reject(new Error(`Upload failed: ${xhr.statusText}`));
-        }
-      };
-      xhr.onerror = () => reject(new Error("Upload network error"));
-      xhr.send(file);
-    });
 
     return {
       url: publicUrl,

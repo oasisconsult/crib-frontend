@@ -34,7 +34,7 @@ from typing import Any
 
 
 class StorageProvider(ABC):
-    """Shared interface — all providers must implement these three methods."""
+    """Shared interface — all providers must implement these methods."""
 
     @abstractmethod
     async def presign_upload(
@@ -44,6 +44,10 @@ class StorageProvider(ABC):
         expires_in: int = 900,
     ) -> str:
         """Return a pre-signed PUT URL the client can upload to directly."""
+
+    @abstractmethod
+    async def upload(self, key: str, data: bytes, mime_type: str) -> str:
+        """Upload bytes server-side and return the public read URL."""
 
     @abstractmethod
     def public_url(self, key: str) -> str:
@@ -83,19 +87,7 @@ class S3CompatibleProvider(StorageProvider):
         self._region = region
         self._endpoint_url = endpoint_url
         self._public_base_url = public_base_url
-        # Presigned URLs must use a browser-reachable host. When the internal
-        # endpoint is a Docker-network hostname (e.g. geobox-minio:9000), the
-        # presign client uses the public-facing URL instead so PUT URLs work
-        # from the browser. Priority: explicit presign_endpoint_url → scheme+netloc
-        # extracted from public_base_url → fall back to endpoint_url.
-        if presign_endpoint_url:
-            self._presign_endpoint_url = presign_endpoint_url
-        elif public_base_url:
-            from urllib.parse import urlparse
-            _p = urlparse(public_base_url)
-            self._presign_endpoint_url = f"{_p.scheme}://{_p.netloc}"
-        else:
-            self._presign_endpoint_url = endpoint_url
+        self._presign_endpoint_url = presign_endpoint_url or endpoint_url
         self._access_key = access_key_id
         self._secret_key = secret_access_key
         self._credentials = {
@@ -146,6 +138,21 @@ class S3CompatibleProvider(StorageProvider):
         if self._endpoint_url:
             return f"{self._endpoint_url.rstrip('/')}/{self._bucket}/{key}"
         return f"https://{self._bucket}.s3.{self._region}.amazonaws.com/{key}"
+
+    async def upload(self, key: str, data: bytes, mime_type: str) -> str:
+        import asyncio
+        import functools
+        import io as _io
+
+        client = self._client()  # always uses internal endpoint — no public access needed
+        fn = functools.partial(
+            client.put_object,
+            self._bucket, key,
+            _io.BytesIO(data), len(data),
+            content_type=mime_type,
+        )
+        await asyncio.get_event_loop().run_in_executor(None, fn)
+        return self.public_url(key)
 
     async def delete(self, key: str) -> None:
         import asyncio
@@ -215,6 +222,13 @@ class LocalStorageProvider(StorageProvider):
 
     def public_url(self, key: str) -> str:
         return self._url(key)
+
+    async def upload(self, key: str, data: bytes, mime_type: str = "") -> str:
+        dest = os.path.join(self._upload_dir, key.replace("/", os.sep))
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        with open(dest, "wb") as f:
+            f.write(data)
+        return self.public_url(key)
 
     async def delete(self, key: str) -> None:
         path = os.path.join(self._upload_dir, key.replace("/", os.sep))
