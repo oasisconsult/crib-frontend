@@ -298,6 +298,8 @@ def create_app() -> FastAPI:
     application.include_router(leases.router, prefix=settings.api_prefix)
     from app.features.rent_increase.router import router as rent_increase_router
     application.include_router(rent_increase_router, prefix=settings.api_prefix)
+    from app.features.eviction_notice.router import router as eviction_notice_router
+    application.include_router(eviction_notice_router, prefix=settings.api_prefix)
     application.include_router(messages.router, prefix=settings.api_prefix)
     application.include_router(messages.flat_router, prefix=settings.api_prefix)
     application.include_router(payments.router, prefix=settings.api_prefix)

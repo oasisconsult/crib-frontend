@@ -20,6 +20,7 @@ import { PresignAgreementModal } from "./PresignAgreementModal";
 import { CountersignAgreementModal } from "./CountersignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { IncreaseHistoryPanel } from "@/features/rent-increase/components/IncreaseHistoryPanel";
+import { EvictionNoticePanel } from "@/features/eviction-notice/components/EvictionNoticePanel";
 import { RecordManualPaymentModal } from "./RecordManualPaymentModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease, useCountersignAgreement } from "@/hooks/useLeases";
@@ -560,6 +561,12 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         leaseId={lease.id}
         currentRent={lease.terms.monthlyRent}
         currency={lease.terms.currency}
+        leaseStatus={lease.state}
+      />
+
+      {/* Eviction Notices */}
+      <EvictionNoticePanel
+        leaseId={lease.id}
         leaseStatus={lease.state}
       />
 

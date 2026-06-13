@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eviction Notice</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 12pt;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 40pt 50pt;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2pt solid #1a1a1a;
+      padding-bottom: 16pt;
+      margin-bottom: 24pt;
+    }
+    .org-name { font-size: 16pt; font-weight: 700; }
+    .doc-title {
+      text-align: right;
+      font-size: 11pt;
+      color: #555;
+    }
+    .doc-title strong { display: block; font-size: 13pt; color: #1a1a1a; }
+    .reference { font-size: 9pt; color: #777; margin-top: 4pt; }
+    section { margin-bottom: 20pt; }
+    h2 {
+      font-size: 11pt;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #555;
+      border-bottom: 1pt solid #ddd;
+      padding-bottom: 4pt;
+      margin-bottom: 10pt;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 5pt 8pt; vertical-align: top; }
+    td:first-child { width: 45%; color: #555; font-size: 10.5pt; }
+    td:last-child { font-weight: 600; }
+    .notice-type-box {
+      background: #1a1a1a;
+      color: #fff;
+      text-align: center;
+      padding: 14pt;
+      margin: 16pt 0;
+    }
+    .notice-type-box .label { font-size: 9.5pt; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; }
+    .notice-type-box .value { font-size: 14pt; font-weight: 700; margin-top: 4pt; }
+    .vacate-date-box {
+      background: #f5f5f5;
+      border-left: 3pt solid #c00;
+      padding: 12pt 16pt;
+      margin: 16pt 0;
+    }
+    .vacate-date-box .label { font-size: 10pt; color: #555; }
+    .vacate-date-box .date { font-size: 16pt; font-weight: 700; color: #c00; margin-top: 4pt; }
+    p { margin-bottom: 10pt; }
+    .legal-text { font-size: 9.5pt; color: #555; line-height: 1.5; }
+    .rights-box {
+      border: 1pt solid #ddd;
+      padding: 12pt;
+      margin: 16pt 0;
+      background: #fafafa;
+    }
+    .rights-box h3 { font-size: 10pt; margin-bottom: 6pt; }
+    .rights-box ul { padding-left: 16pt; font-size: 9.5pt; color: #444; }
+    .rights-box li { margin-bottom: 4pt; }
+    .sig-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30pt;
+      gap: 40pt;
+    }
+    .sig-block { flex: 1; }
+    .sig-line { border-top: 1pt solid #1a1a1a; margin-top: 40pt; padding-top: 4pt; font-size: 9pt; color: #555; }
+    .footer {
+      margin-top: 40pt;
+      font-size: 8pt;
+      color: #aaa;
+      text-align: center;
+      border-top: 1pt solid #eee;
+      padding-top: 10pt;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="org-name">{{ org_name }}</div>
+      {% if org_address %}<div style="font-size:9.5pt;color:#555;margin-top:4pt;">{{ org_address }}</div>{% endif %}
+    </div>
+    <div class="doc-title">
+      <strong>Notice to Vacate</strong>
+      Uganda Landlord &amp; Tenant Act 2022, § 74-77
+      <div class="reference">Ref: EN-{{ notice_ref }}</div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Notice Details</h2>
+    <table>
+      <tr><td>Date of Notice</td><td>{{ issued_date }}</td></tr>
+      <tr><td>Property</td><td>{{ property_name }}</td></tr>
+      <tr><td>Unit</td><td>{{ unit_name }}</td></tr>
+      <tr><td>Property Address</td><td>{{ property_address }}</td></tr>
+      {% if court_reference %}<tr><td>Court Reference</td><td>{{ court_reference }}</td></tr>{% endif %}
+    </table>
+  </section>
+
+  <section>
+    <h2>Tenant</h2>
+    <table>
+      <tr><td>Name</td><td>{{ tenant_name }}</td></tr>
+      {% if tenant_email %}<tr><td>Email</td><td>{{ tenant_email }}</td></tr>{% endif %}
+      {% if tenant_phone %}<tr><td>Phone</td><td>{{ tenant_phone }}</td></tr>{% endif %}
+    </table>
+  </section>
+
+  <section>
+    <h2>Notice Grounds</h2>
+
+    <div class="notice-type-box">
+      <div class="label">Notice Type</div>
+      <div class="value">{{ notice_type }}</div>
+    </div>
+
+    <p><strong>Reason:</strong></p>
+    <p>{{ reason }}</p>
+
+    <div class="vacate-date-box">
+      <div class="label">You are required to vacate the premises by</div>
+      <div class="date">{{ effective_date }}</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Notice to Tenant</h2>
+    <p>Dear {{ tenant_name }},</p>
+    <p>
+      Please be informed that your tenancy at the above-mentioned premises is hereby terminated
+      and you are required to vacate by <strong>{{ effective_date }}</strong>.
+    </p>
+    <p class="legal-text">
+      This notice is issued under the Landlord and Tenant Act, 2022 (Uganda).
+      A minimum notice period of {{ min_notice_days }} days applies to this category of notice.
+      Failure to vacate by the date specified may result in legal proceedings.
+    </p>
+    {% if notes %}
+    <p style="margin-top:10pt;"><em>Additional notes:</em><br>{{ notes }}</p>
+    {% endif %}
+  </section>
+
+  <div class="rights-box">
+    <h3>Your Rights Under Uganda LTA 2022</h3>
+    <ul>
+      <li>You have the right to dispute this notice with the Rent Restriction Tribunal.</li>
+      <li>You may seek free legal advice from the Uganda Law Society or Legal Aid Project.</li>
+      <li>Landlords must obtain a court order before physically removing you from the premises.</li>
+      <li>Self-help eviction (lock change, removal of belongings without court order) is illegal.</li>
+    </ul>
+  </div>
+
+  <div style="margin-top:30pt;border-top:1pt solid #ddd;padding-top:20pt;">
+    <h2>Service Record</h2>
+    <div class="sig-row">
+      <div class="sig-block">
+        <div class="sig-line">Issued by (Landlord / Agent)</div>
+        <div style="margin-top:4pt;font-size:9pt;">{{ issued_by_name }}</div>
+        <div style="font-size:8pt;color:#777;">Date: {{ issued_date }}</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line">Served by (Witness)</div>
+        <div style="font-size:9pt;margin-top:4pt;">______________________________</div>
+        <div style="font-size:8pt;color:#777;">Date served: ______________________</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line">Received by (Tenant)</div>
+        <div style="font-size:9pt;margin-top:4pt;">{{ tenant_name }}</div>
+        <div style="font-size:8pt;color:#777;">Date received: ______________________</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Generated by Crib Property Management &bull; {{ issued_date }} &bull; Ref EN-{{ notice_ref }}
+  </div>
+
+</body>
+</html>

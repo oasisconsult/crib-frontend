@@ -110,6 +110,9 @@ async def test_engine():
             "DO $$ BEGIN CREATE TYPE backup_power_enum AS ENUM ('none','solar','generator','both'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE internet_type_enum AS ENUM ('none','wifi','fibre'); EXCEPTION WHEN duplicate_object THEN null; END $$",
             "DO $$ BEGIN CREATE TYPE compound_type_enum AS ENUM ('private','shared'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE rent_increase_status_enum AS ENUM ('pending_ack','acknowledged','applied','withdrawn'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE eviction_notice_type_enum AS ENUM ('non_payment','breach','end_of_term','redevelopment'); EXCEPTION WHEN duplicate_object THEN null; END $$",
+            "DO $$ BEGIN CREATE TYPE eviction_notice_status_enum AS ENUM ('issued','served','disputed','withdrawn','executed'); EXCEPTION WHEN duplicate_object THEN null; END $$",
         ]:
             await conn.execute(sa.text(stmt))
 
