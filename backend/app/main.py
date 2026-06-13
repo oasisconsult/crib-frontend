@@ -276,7 +276,7 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1 import (
         admin,
-        agency_invites, analytics, contact_info, demo_bookings, email_templates, health, inspections, landlords, leases, me,
+        agency_invites, analytics, contact_info, demo_bookings, email_templates, geobox, health, inspections, landlords, leases, me,
         messages, mobile_money, notifications, onboarding, organisations, payments, properties,
         property_import, rbac, system_settings, tenant_import, tenants, uploads, wallet, webhooks,
     )
@@ -288,6 +288,7 @@ def create_app() -> FastAPI:
     application.include_router(me.router, prefix=settings.api_prefix)
     application.include_router(organisations.router, prefix=settings.api_prefix)
     application.include_router(properties.router, prefix=settings.api_prefix)
+    application.include_router(geobox.router, prefix=settings.api_prefix)
     application.include_router(tenants.router, prefix=settings.api_prefix)
     # Onboarding payment flow — must be registered BEFORE tenants router catch-all
     # but uses the same /tenants/onboarding/{token}/... prefix so order matters.
@@ -295,6 +296,10 @@ def create_app() -> FastAPI:
     # routes are registered here, before any catch-all tenant routes.
     application.include_router(onboarding.router, prefix=settings.api_prefix)
     application.include_router(leases.router, prefix=settings.api_prefix)
+    from app.features.rent_increase.router import router as rent_increase_router
+    application.include_router(rent_increase_router, prefix=settings.api_prefix)
+    from app.features.eviction_notice.router import router as eviction_notice_router
+    application.include_router(eviction_notice_router, prefix=settings.api_prefix)
     application.include_router(messages.router, prefix=settings.api_prefix)
     application.include_router(messages.flat_router, prefix=settings.api_prefix)
     application.include_router(payments.router, prefix=settings.api_prefix)

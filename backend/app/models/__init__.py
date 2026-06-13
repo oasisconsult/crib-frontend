@@ -22,3 +22,5 @@ from app.models import (  # noqa: F401
 )
 from app.models.caretaker_invite import CaretakerInvite  # noqa: F401
 from app.models.gdpr import GdprRequest  # noqa: F401
+from app.features.rent_increase.model import RentIncrease  # noqa: F401
+from app.features.eviction_notice.model import EvictionNotice  # noqa: F401

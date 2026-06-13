@@ -2,6 +2,7 @@ import { apiGet, apiPatch, apiPost } from "./client";
 
 export interface OrgFeatures {
   manualPayments?: boolean;
+  rentIncreaseCapOverride?: boolean;
   [key: string]: boolean | undefined;
 }
 

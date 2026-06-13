@@ -17,10 +17,13 @@ import { TerminateModal } from "./TerminateModal";
 import { CorrectStartDateModal } from "./CorrectStartDateModal";
 import { CorrectAdvanceMonthsModal } from "./CorrectAdvanceMonthsModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
+import { CountersignAgreementModal } from "./CountersignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
+import { IncreaseHistoryPanel } from "@/features/rent-increase/components/IncreaseHistoryPanel";
+import { EvictionNoticePanel } from "@/features/eviction-notice/components/EvictionNoticePanel";
 import { RecordManualPaymentModal } from "./RecordManualPaymentModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
-import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease } from "@/hooks/useLeases";
+import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease, useCountersignAgreement } from "@/hooks/useLeases";
 import { useOrganisation } from "@/hooks/useOrganisation";
 import { usePermissions } from "@/hooks/usePermissions";
 import { leasesApi } from "@/services/api/leases";
@@ -36,6 +39,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [terminateOpen, setTerminateOpen] = useState(false);
   const [presignOpen, setPresignOpen] = useState(false);
+  const [countersignOpen, setCountersignOpen] = useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [correctStartDateOpen, setCorrectStartDateOpen] = useState(false);
   const [correctAdvanceMonthsOpen, setCorrectAdvanceMonthsOpen] = useState(false);
@@ -301,7 +305,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
             {canGiveNotice && !lease.noticeGivenAt && (
               <Button size="sm" variant="warning" onClick={openNoticeDialog}>
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Give Notice
+                Notice to Vacate
               </Button>
             )}
             {canGiveNotice && lease.noticeGivenAt && (
@@ -478,41 +482,62 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         </Card>
 
         {/* Signatures */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              Signatures
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(lease.signatures.length > 0
-              ? lease.signatures
-              : [
-                  { party: "tenant" as const, name: lease.tenantName ?? (lease.tenantId ? "Tenant" : "—"), status: "pending" as const, signedAt: undefined },
-                  { party: "landlord" as const, name: "Landlord / Manager", status: "pending" as const, signedAt: undefined },
-                ]
-            ).map((sig) => (
-              <div key={sig.party} className="flex items-center justify-between text-sm">
-                <div>
-                  <p className="font-medium capitalize">{sig.party}</p>
-                  {sig.name && <p className="text-xs text-muted-foreground">{sig.name}</p>}
-                  {sig.signedAt && (
-                    <p className="text-xs text-muted-foreground">{formatDate(sig.signedAt)}</p>
-                  )}
-                </div>
-                <Badge
-                  variant={
-                    sig.status === "signed" ? "success" :
-                    sig.status === "declined" ? "destructive" : "secondary"
-                  }
-                >
-                  {sig.status}
-                </Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+        {(() => {
+          const displaySigs = lease.signatures.length > 0
+            ? lease.signatures
+            : [
+                { party: "tenant" as const, name: lease.tenantName ?? (lease.tenantId ? "Tenant" : "—"), status: "pending" as const, signedAt: undefined },
+                { party: "landlord" as const, name: "Landlord / Manager", status: "pending" as const, signedAt: undefined },
+              ];
+          const tenantSig = displaySigs.find((s) => s.party === "tenant");
+          const landlordSig = displaySigs.find((s) => s.party === "landlord");
+          const canCountersign =
+            canManageOrg &&
+            tenantSig?.status === "signed" &&
+            landlordSig?.status !== "signed";
+          return (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  Signatures
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {displaySigs.map((sig) => (
+                  <div key={sig.party} className="flex items-center justify-between text-sm">
+                    <div>
+                      <p className="font-medium capitalize">{sig.party}</p>
+                      {sig.name && <p className="text-xs text-muted-foreground">{sig.name}</p>}
+                      {sig.signedAt && (
+                        <p className="text-xs text-muted-foreground">{formatDate(sig.signedAt)}</p>
+                      )}
+                    </div>
+                    <Badge
+                      variant={
+                        sig.status === "signed" ? "success" :
+                        sig.status === "declined" ? "destructive" : "secondary"
+                      }
+                    >
+                      {sig.status}
+                    </Badge>
+                  </div>
+                ))}
+                {canCountersign && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full mt-1"
+                    onClick={() => setCountersignOpen(true)}
+                  >
+                    <Edit className="h-3.5 w-3.5" />
+                    Counter-sign Agreement
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Reference */}
         <Card>
@@ -530,6 +555,21 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Rent Increases */}
+      <IncreaseHistoryPanel
+        leaseId={lease.id}
+        currentRent={lease.terms.monthlyRent}
+        currency={lease.terms.currency}
+        leaseStatus={lease.state}
+        allowCapOverride={org?.features?.rentIncreaseCapOverride === true}
+      />
+
+      {/* Eviction Notices */}
+      <EvictionNoticePanel
+        leaseId={lease.id}
+        leaseStatus={lease.state}
+      />
 
       {/* Messages */}
       <LeaseMessagesPanel leaseId={lease.id} />
@@ -591,6 +631,13 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         leaseId={lease.id}
         open={presignOpen}
         onOpenChange={setPresignOpen}
+      />
+
+      {/* Counter-sign agreement modal — landlord signs after tenant */}
+      <CountersignAgreementModal
+        leaseId={lease.id}
+        open={countersignOpen}
+        onOpenChange={setCountersignOpen}
       />
 
       {/* Give Notice dialog — records notice_given_at + notice_vacate_date,

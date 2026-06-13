@@ -39,6 +39,26 @@
   }
 }
 
+/* ── Semantic surface utilities ──────────────────────────────────────────────
+   Use these instead of raw bg-muted for informational / hint boxes so that
+   the treatment is consistent and can be updated in one place.
+
+   surface-info  — neutral hint box (replaces bg-muted on white cards)
+   surface-warn  — amber advisory box (e.g. LTA cap warning)
+   surface-brand — on-brand whisper-teal box (context-sensitive info)
+   ─────────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  .surface-info {
+    @apply rounded-md border border-border bg-background px-4 py-3 text-sm;
+  }
+  .surface-warn {
+    @apply rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm;
+  }
+  .surface-brand {
+    @apply rounded-md border border-primary/20 bg-accent px-4 py-3 text-sm;
+  }
+}
+
 /* WCAG 2.3.3 — respect user's motion preferences */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
