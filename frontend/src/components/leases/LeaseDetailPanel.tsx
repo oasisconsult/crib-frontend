@@ -19,6 +19,7 @@ import { CorrectAdvanceMonthsModal } from "./CorrectAdvanceMonthsModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
 import { CountersignAgreementModal } from "./CountersignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
+import { IncreaseHistoryPanel } from "@/features/rent-increase/components/IncreaseHistoryPanel";
 import { RecordManualPaymentModal } from "./RecordManualPaymentModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease, useCountersignAgreement } from "@/hooks/useLeases";
@@ -553,6 +554,14 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Rent Increases */}
+      <IncreaseHistoryPanel
+        leaseId={lease.id}
+        currentRent={lease.terms.monthlyRent}
+        currency={lease.terms.currency}
+        leaseStatus={lease.state}
+      />
 
       {/* Messages */}
       <LeaseMessagesPanel leaseId={lease.id} />

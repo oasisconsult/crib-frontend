@@ -202,6 +202,9 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
     # ── Features ─────────────────────────────────────────────────────────────
     ("features.esignature_enabled", "true",     "features","E-Signature Enabled",
      "Enable the DocuSign-style e-signature flow for lease signing.", "boolean", False, True),
+    ("features.efris_enabled",      "false",    "features","EFRIS Integration",
+     "Enable URA EFRIS tax receipt integration. Requires efris.* credentials to be configured. "
+     "When disabled, EFRIS calls are logged but no receipts are issued.", "boolean", False, True),
     ("features.maintenance_portal", "true",     "features","Tenant Maintenance Portal",
      "Allow tenants to submit maintenance requests from the tenant portal.", "boolean", False, True),
     ("features.onboarding_enabled", "true",     "features","Tenant Onboarding",
