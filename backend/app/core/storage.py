@@ -77,11 +77,19 @@ class S3CompatibleProvider(StorageProvider):
         region: str = "us-east-1",
         endpoint_url: str | None = None,
         public_base_url: str | None = None,
+        presign_endpoint_url: str | None = None,
     ) -> None:
         self._bucket = bucket
         self._region = region
         self._endpoint_url = endpoint_url
         self._public_base_url = public_base_url
+        # Presigned URLs must use a browser-reachable host. When the internal
+        # endpoint is a Docker-network hostname (e.g. geobox-minio:9000), set
+        # presign_endpoint_url to the public-facing MinIO URL so the generated
+        # presigned PUT URLs work from the browser.
+        self._presign_endpoint_url = presign_endpoint_url or endpoint_url
+        self._access_key = access_key_id
+        self._secret_key = secret_access_key
         self._credentials = {
             "aws_access_key_id": access_key_id,
             "aws_secret_access_key": secret_access_key,
@@ -90,14 +98,15 @@ class S3CompatibleProvider(StorageProvider):
         if endpoint_url:
             self._credentials["endpoint_url"] = endpoint_url
 
-    def _client(self):
+    def _client(self, endpoint_url: str | None = None):
         from minio import Minio
-        secure = self._endpoint_url.startswith("https://")
-        endpoint = self._endpoint_url.replace("https://", "").replace("http://", "").rstrip("/")
+        url = endpoint_url or self._endpoint_url
+        secure = url.startswith("https://")
+        endpoint = url.replace("https://", "").replace("http://", "").rstrip("/")
         return Minio(
             endpoint=endpoint,
-            access_key=self._credentials["aws_access_key_id"],
-            secret_key=self._credentials["aws_secret_access_key"],
+            access_key=self._access_key,
+            secret_key=self._secret_key,
             secure=secure,
         )
 
@@ -112,7 +121,8 @@ class S3CompatibleProvider(StorageProvider):
 
         from datetime import timedelta
 
-        client = self._client()
+        # Use the public endpoint so the browser-facing presigned URL is reachable
+        client = self._client(self._presign_endpoint_url)
         fn = functools.partial(
             client.presigned_put_object,
             self._bucket,
@@ -248,6 +258,7 @@ def get_storage_provider(
             region=config.get("region", "us-east-1"),
             endpoint_url=config.get("endpoint_url"),
             public_base_url=config.get("public_base_url"),
+            presign_endpoint_url=config.get("presign_endpoint_url"),
         )
 
     raise ValueError(

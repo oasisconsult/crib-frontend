@@ -200,6 +200,7 @@ async def get_storage_config(db: AsyncSession) -> dict[str, Any]:
         "region": await get("storage.s3.region", db, "us-east-1"),
         "endpoint_url": await get("storage.s3.endpoint_url", db) or None,
         "public_base_url": await get("storage.s3.public_base_url", db) or None,
+        "presign_endpoint_url": await get("storage.s3.presign_endpoint_url", db) or None,
         "access_key_id": await get("storage.s3.access_key_id", db),
         "secret_access_key": await get("storage.s3.secret_access_key", db),
     }
