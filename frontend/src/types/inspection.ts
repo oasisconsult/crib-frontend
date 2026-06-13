@@ -41,6 +41,11 @@ export interface Inspection {
   // Signatures
   tenantSignedAt?: string;
   landlordSignedAt?: string;
+  landlordSignedBy?: string;
+  // Report
+  reportPdfUrl?: string;
+  signToken?: string;
+  signTokenExpiresAt?: string;
   // Linked
   leaseId?: string;
   maintenanceIssueIds: string[];

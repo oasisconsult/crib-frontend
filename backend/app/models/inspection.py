@@ -147,6 +147,11 @@ class Inspection(TimestampedBase):
     tenant_signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     landlord_signed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    sign_token: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True, index=True)
+    sign_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    landlord_signed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    report_pdf_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     def __repr__(self) -> str:
         return f"<Inspection property={self.property_id} type={self.type} state={self.state}>"
 

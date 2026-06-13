@@ -13,12 +13,18 @@ Maintenance state machine:
 
 from __future__ import annotations
 
+import base64
+import logging
+import os
+import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+log = logging.getLogger(__name__)
 
 from app.models.inspection import (
     Inspection,
@@ -35,6 +41,7 @@ from app.utils.db_filters import org_scope
 from app.schemas.inspection import (
     InspectionCreate,
     InspectionOut,
+    InspectionPublicOut,
     InspectionUpdate,
     MaintenanceCreate,
     MaintenanceOut,
@@ -77,6 +84,10 @@ def _insp_out(i: Inspection, unit_name: str | None = None, property_name: str | 
         maintenance_issue_ids=i.maintenance_issue_ids or [],
         tenant_signed_at=_s(i.tenant_signed_at),
         landlord_signed_at=_s(i.landlord_signed_at),
+        landlord_signed_by=i.landlord_signed_by,
+        report_pdf_url=i.report_pdf_url,
+        sign_token=i.sign_token,
+        sign_token_expires_at=_s(i.sign_token_expires_at),
         created_at=i.created_at.isoformat(),
         updated_at=i.updated_at.isoformat(),
         unit_name=unit_name,
@@ -349,6 +360,377 @@ async def add_inspection_photos(
     await db.flush()
     await db.refresh(i)
     return _insp_out(i)
+
+
+# ── Report & signing ───────────────────────────────────────────────────────────
+
+_TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "features", "inspections", "templates")
+
+
+def _b64_from_url(url: str) -> str | None:
+    """Read a local upload URL and return base64-encoded bytes."""
+    try:
+        # URL format: /api/v1/upload/local/<path>
+        rel = url.split("/upload/local/", 1)[-1]
+        abs_path = os.path.join(os.getcwd(), "uploads", rel)
+        if not os.path.isfile(abs_path):
+            return None
+        with open(abs_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except Exception:
+        return None
+
+
+async def generate_report_pdf(
+    inspection_id: uuid.UUID,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+) -> InspectionOut:
+    i = await _get_inspection(inspection_id, org_id, db)
+
+    if i.state not in (InspectionState.completed, InspectionState.approved):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Report can only be generated once the inspection is completed or approved",
+        )
+
+    try:
+        from jinja2 import Environment, FileSystemLoader, select_autoescape
+        from weasyprint import HTML as WPHtml
+
+        from app.models.organisation import Organisation
+        from app.models.property import Property, Unit
+        from app.models.tenant import Tenant
+
+        org  = await db.scalar(select(Organisation).where(Organisation.id == i.organisation_id))
+        prop = await db.scalar(select(Property).where(Property.id == i.property_id)) if i.property_id else None
+        unit = await db.scalar(select(Unit).where(Unit.id == i.unit_id)) if i.unit_id else None
+
+        tenant = None
+        if i.tenant_id:
+            from app.models.tenant import Tenant
+            tenant = await db.scalar(select(Tenant).where(Tenant.id == i.tenant_id))
+
+        prop_address = ""
+        if prop and prop.address:
+            addr = prop.address if isinstance(prop.address, dict) else {}
+            parts = [addr.get("line1"), addr.get("city"), addr.get("state"), addr.get("country")]
+            prop_address = ", ".join(p for p in parts if p)
+
+        tenant_name = "Tenant"
+        if tenant:
+            tenant_name = f"{tenant.first_name or ''} {tenant.last_name or ''}".strip() or tenant.email
+
+        now_dt = datetime.now(timezone.utc)
+
+        def _fmt_sig(dt) -> str | None:
+            if dt is None:
+                return None
+            return dt.strftime("%d %B %Y at %H:%M UTC") if hasattr(dt, "strftime") else str(dt)
+
+        # Build checklist with max 3 photos per item embedded as base64
+        checklist_ctx = []
+        for item in (i.checklist or []):
+            item_photos = item.get("photo_urls") or item.get("photoUrls") or []
+            photo_data = [d for d in (_b64_from_url(u) for u in item_photos[:3]) if d]
+            checklist_ctx.append({
+                "area":        item.get("area", ""),
+                "description": item.get("description", ""),
+                "condition":   item.get("condition"),
+                "notes":       item.get("notes", ""),
+                "photo_data":  photo_data,
+            })
+
+        # General photos (all), up to 9 shown in PDF
+        general_photos = [d for d in (_b64_from_url(u) for u in (i.photo_urls or [])[:9]) if d]
+
+        ctx = {
+            "inspection_ref":    i.reference or str(i.id)[:8].upper(),
+            "org_name":          org.name if org else "Property Management",
+            "org_address":       "",
+            "property_name":     prop.name if prop else "—",
+            "unit_name":         unit.name if unit else None,
+            "property_address":  prop_address,
+            "tenant_name":       tenant_name,
+            "tenant_email":      tenant.email if tenant else "",
+            "inspector_name":    i.inspector_name or "—",
+            "scheduled_date":    str(i.scheduled_date),
+            "scheduled_time_slot": i.scheduled_time_slot,
+            "overall_condition": i.overall_condition,
+            "summary":           i.summary,
+            "recommendations":   i.recommendations,
+            "checklist":         checklist_ctx,
+            "general_photos":    general_photos,
+            "landlord_signed_at":  _fmt_sig(i.landlord_signed_at),
+            "landlord_signed_by":  i.landlord_signed_by,
+            "tenant_signed_at":    _fmt_sig(i.tenant_signed_at),
+            "generated_at":      now_dt.strftime("%d %B %Y at %H:%M UTC"),
+        }
+
+        jinja = Environment(
+            loader=FileSystemLoader(_TEMPLATE_DIR),
+            autoescape=select_autoescape(["html"]),
+        )
+        html_str = jinja.get_template("report.html").render(**ctx)
+
+        upload_dir = os.path.join(
+            os.getcwd(), "uploads", "documents", "inspection_reports", str(i.id)
+        )
+        os.makedirs(upload_dir, exist_ok=True)
+        pdf_path = os.path.join(upload_dir, "report.pdf")
+        WPHtml(string=html_str).write_pdf(pdf_path)
+
+        pdf_url = f"/api/v1/upload/local/documents/inspection_reports/{i.id}/report.pdf"
+        i.report_pdf_url = pdf_url
+        await db.flush()
+        await db.refresh(i)
+        return _insp_out(i)
+
+    except HTTPException:
+        raise
+    except Exception:
+        log.warning("inspection.report_pdf.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate inspection report PDF",
+        )
+
+
+async def sign_landlord(
+    inspection_id: uuid.UUID,
+    signed_by: str,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+) -> InspectionOut:
+    i = await _get_inspection(inspection_id, org_id, db)
+
+    if i.state not in (InspectionState.completed, InspectionState.approved):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Inspection must be completed or approved before signing",
+        )
+
+    i.landlord_signed_at = datetime.now(timezone.utc)
+    i.landlord_signed_by = signed_by
+    await db.flush()
+    await db.refresh(i)
+
+    # Regenerate the PDF to include the landlord's signature block
+    try:
+        updated = await generate_report_pdf(inspection_id, org_id, db)
+        return updated
+    except Exception:
+        return _insp_out(i)
+
+
+async def send_for_tenant_signing(
+    inspection_id: uuid.UUID,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+) -> InspectionOut:
+    i = await _get_inspection(inspection_id, org_id, db)
+
+    if not i.landlord_signed_at:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Landlord must sign the report before sending it to the tenant",
+        )
+
+    if not i.tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No tenant is linked to this inspection",
+        )
+
+    from app.models.tenant import Tenant
+    tenant = await db.scalar(select(Tenant).where(Tenant.id == i.tenant_id))
+    if not tenant or not tenant.email:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Tenant has no email address on file",
+        )
+
+    # Issue a fresh token (or reuse unexpired one)
+    now = datetime.now(timezone.utc)
+    if not i.sign_token or (i.sign_token_expires_at and i.sign_token_expires_at < now):
+        i.sign_token = secrets.token_urlsafe(32)
+        i.sign_token_expires_at = now + timedelta(days=14)
+
+    await db.flush()
+
+    tenant_name = f"{tenant.first_name or ''} {tenant.last_name or ''}".strip() or tenant.email
+
+    from app.models.organisation import Organisation
+    org = await db.scalar(select(Organisation).where(Organisation.id == i.organisation_id))
+    from app.models.property import Property
+    prop = await db.scalar(select(Property).where(Property.id == i.property_id)) if i.property_id else None
+
+    # Build sign URL — the tenant clicks this to review and sign
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+    sign_url = f"{frontend_url}/inspect/sign/{i.sign_token}"
+    expires_str = i.sign_token_expires_at.strftime("%d %B %Y")
+
+    subject = f"Inspection Report Ready — Please Review and Sign"
+    body = (
+        f"Dear {tenant_name},\n\n"
+        f"Your move-in inspection report for "
+        f"{prop.name if prop else 'your property'} "
+        f"{'(Unit ' + (await db.scalar(select(Property).where(Property.id == i.property_id))).name + ')' if False else ''}"
+        f"is ready for your review and signature.\n\n"
+        f"The landlord/property manager has already reviewed and signed the report. "
+        f"Please click the link below to view the full report and add your signature:\n\n"
+        f"    {sign_url}\n\n"
+        f"This link expires on {expires_str}. After that date you will need to contact "
+        f"your property manager to request a new link.\n\n"
+        f"Once you sign, both parties will have a fully executed copy of the move-in inspection report.\n\n"
+        f"Best regards,\n{org.name if org else 'Crib Property Management'}"
+    )
+
+    try:
+        from app.models.notification import Notification, NotificationState
+        notif = Notification(
+            organisation_id=i.organisation_id,
+            channel="email",
+            state=NotificationState.queued,
+            recipient_id=i.tenant_id,
+            recipient_email=tenant.email,
+            subject=subject,
+            body=body,
+        )
+        db.add(notif)
+        await db.flush()
+
+        from app.worker.tasks.notifications import deliver_notification
+        deliver_notification.delay(str(notif.id))
+    except Exception:
+        log.warning("inspection.sign_email.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
+
+    await db.refresh(i)
+    return _insp_out(i)
+
+
+async def get_by_sign_token(token: str, db: AsyncSession) -> InspectionPublicOut:
+    """Public — no org scope; validates token freshness."""
+    i = await db.scalar(select(Inspection).where(Inspection.sign_token == token))
+    if not i:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sign link not found")
+
+    now = datetime.now(timezone.utc)
+    if i.sign_token_expires_at and i.sign_token_expires_at < now:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="This sign link has expired")
+
+    from app.models.property import Property, Unit
+    prop = await db.scalar(select(Property).where(Property.id == i.property_id)) if i.property_id else None
+    unit = await db.scalar(select(Unit).where(Unit.id == i.unit_id)) if i.unit_id else None
+
+    def _s(v) -> str | None:
+        if v is None:
+            return None
+        return v.isoformat() if hasattr(v, "isoformat") else str(v)
+
+    return InspectionPublicOut(
+        id=str(i.id),
+        type=i.type if isinstance(i.type, str) else i.type.value,
+        state=i.state if isinstance(i.state, str) else i.state.value,
+        scheduled_date=str(i.scheduled_date),
+        property_name=prop.name if prop else None,
+        unit_name=unit.name if unit else None,
+        overall_condition=i.overall_condition,
+        summary=i.summary,
+        checklist_count=len(i.checklist or []),
+        photo_count=len(i.photo_urls or []),
+        landlord_signed_at=_s(i.landlord_signed_at),
+        landlord_signed_by=i.landlord_signed_by,
+        tenant_signed_at=_s(i.tenant_signed_at),
+        sign_token_expires_at=_s(i.sign_token_expires_at),
+        report_pdf_url=i.report_pdf_url,
+    )
+
+
+async def sign_tenant(token: str, full_name: str, db: AsyncSession) -> InspectionPublicOut:
+    """Public — tenant signs via token link."""
+    i = await db.scalar(select(Inspection).where(Inspection.sign_token == token))
+    if not i:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sign link not found")
+
+    now = datetime.now(timezone.utc)
+    if i.sign_token_expires_at and i.sign_token_expires_at < now:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="This sign link has expired")
+
+    if i.tenant_signed_at:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="The tenant has already signed this report",
+        )
+
+    i.tenant_signed_at = now
+    # Invalidate the token after use
+    i.sign_token = None
+    i.sign_token_expires_at = None
+    await db.flush()
+
+    # Regenerate PDF with both signatures
+    try:
+        await generate_report_pdf(i.id, None, db)
+        await db.refresh(i)
+    except Exception:
+        log.warning("inspection.sign_tenant_pdf.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
+
+    # Notify the org/landlord that the tenant has signed
+    try:
+        if i.organisation_id:
+            from app.models.notification import Notification, NotificationState
+            from app.models.organisation import Organisation
+            from app.models.property import Property
+            org  = await db.scalar(select(Organisation).where(Organisation.id == i.organisation_id))
+            prop = await db.scalar(select(Property).where(Property.id == i.property_id)) if i.property_id else None
+            if org and org.email:
+                notif = Notification(
+                    organisation_id=i.organisation_id,
+                    channel="email",
+                    state=NotificationState.queued,
+                    recipient_email=org.email,
+                    subject="Tenant Signed the Inspection Report",
+                    body=(
+                        f"The tenant has signed the move-in inspection report for "
+                        f"{prop.name if prop else 'a property'}.\n\n"
+                        f"Both signatures are now on file. "
+                        f"{'The sealed PDF is available at: ' + i.report_pdf_url if i.report_pdf_url else ''}"
+                    ),
+                )
+                db.add(notif)
+                await db.flush()
+                from app.worker.tasks.notifications import deliver_notification
+                deliver_notification.delay(str(notif.id))
+    except Exception:
+        log.warning("inspection.sign_tenant_notify.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
+
+    from app.models.property import Property, Unit
+    prop = await db.scalar(select(Property).where(Property.id == i.property_id)) if i.property_id else None
+    unit = await db.scalar(select(Unit).where(Unit.id == i.unit_id)) if i.unit_id else None
+
+    def _s(v) -> str | None:
+        if v is None:
+            return None
+        return v.isoformat() if hasattr(v, "isoformat") else str(v)
+
+    return InspectionPublicOut(
+        id=str(i.id),
+        type=i.type if isinstance(i.type, str) else i.type.value,
+        state=i.state if isinstance(i.state, str) else i.state.value,
+        scheduled_date=str(i.scheduled_date),
+        property_name=prop.name if prop else None,
+        unit_name=unit.name if unit else None,
+        overall_condition=i.overall_condition,
+        summary=i.summary,
+        checklist_count=len(i.checklist or []),
+        photo_count=len(i.photo_urls or []),
+        landlord_signed_at=_s(i.landlord_signed_at),
+        landlord_signed_by=i.landlord_signed_by,
+        tenant_signed_at=_s(i.tenant_signed_at),
+        sign_token_expires_at=None,  # token consumed
+        report_pdf_url=i.report_pdf_url,
+    )
 
 
 # ── Maintenance CRUD ───────────────────────────────────────────────────────────

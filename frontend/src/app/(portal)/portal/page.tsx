@@ -5,7 +5,7 @@ import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download,
   Smartphone, Building2, Banknote, Calendar, MessageCircle,
-  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload,
+  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload, PenLine,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -1276,6 +1276,9 @@ export default function TenantPortalPage() {
   // Find tenant's lease from list (for IDs), then fetch detail (for signatures)
   const leaseStub = allLeases.find((l) => l.tenantId === userId) ?? allLeases[0];
   const { data: myLease } = useLease(leaseStub?.id ?? "");
+  const { data: inspectionsData } = useInspections(
+    myLease?.unitId ? { unitId: myLease.unitId } as any : undefined,
+  );
 
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
   const { data: walletData } = useTenantWallet(userId ?? "");
@@ -1304,6 +1307,9 @@ export default function TenantPortalPage() {
   const overdueLateFee = overdueSchedule?.lateFeeApplied ?? 0;
   const myMaintenance = allMaintenance.filter((m) => (m as any).reportedById === userId || (m as any).reportedBy === userId);
   const openRequests = myMaintenance.filter((m) => !["resolved", "closed"].includes(m.state));
+  const pendingSignTasks = (inspectionsData?.data ?? []).filter(
+    (i: any) => i.landlordSignedAt && !i.tenantSignedAt && i.signToken,
+  );
 
   const nextPaymentDate = myLease?.terms
     ? (() => {
@@ -1490,6 +1496,9 @@ export default function TenantPortalPage() {
             <TabsTrigger value="inspections" className="gap-1.5">
               <Calendar className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Inspections</span>
+              {pendingSignTasks.length > 0 && (
+                <span className="ml-1 flex h-2 w-2 rounded-full bg-amber-500" />
+              )}
             </TabsTrigger>
             <TabsTrigger value="messages" className="gap-1.5">
               <MessageCircle className="h-3.5 w-3.5" />
@@ -1532,6 +1541,46 @@ export default function TenantPortalPage() {
                     >
                       Pay Now
                     </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pending tasks — shown when there are inspection reports awaiting tenant signature */}
+            {pendingSignTasks.length > 0 && (
+              <Card className="border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-start gap-3">
+                    <PenLine className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                          You have {pendingSignTasks.length === 1 ? "a pending task" : `${pendingSignTasks.length} pending tasks`}
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                          {pendingSignTasks.length === 1
+                            ? "An inspection report is ready for your signature."
+                            : "Inspection reports are ready for your signature."}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        {pendingSignTasks.map((insp: any) => (
+                          <a
+                            key={insp.id}
+                            href={`/inspect/sign/${insp.signToken}`}
+                            className="flex items-center justify-between rounded-[6px] border border-amber-200 dark:border-amber-700 bg-white/60 dark:bg-amber-950/40 px-3 py-2 text-xs hover:bg-white dark:hover:bg-amber-900/30 transition-colors"
+                          >
+                            <span className="font-medium capitalize text-amber-900 dark:text-amber-200">
+                              {insp.type?.replace(/_/g, " ")} inspection
+                              {insp.propertyName ? ` · ${insp.propertyName}` : ""}
+                            </span>
+                            <span className="text-amber-600 dark:text-amber-400 font-medium">
+                              Sign now →
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

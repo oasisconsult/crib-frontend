@@ -24,12 +24,15 @@ from app.schemas.inspection import (
     InspectionCreate,
     InspectionOut,
     InspectionPhotos,
+    InspectionPublicOut,
+    InspectionSignLandlord,
     InspectionTransition,
     InspectionUpdate,
     MaintenanceCreate,
     MaintenanceOut,
     MaintenanceTransition,
     MaintenanceUpdate,
+    TenantSignRequest,
 )
 from app.services import inspection_service
 
@@ -119,6 +122,59 @@ async def add_inspection_photos(
     return await inspection_service.add_inspection_photos(
         inspection_id, body.urls, get_org_id(current_user), db
     )
+
+
+@router.post("/inspections/{inspection_id}/report", response_model=InspectionOut)
+async def generate_report(
+    inspection_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await inspection_service.generate_report_pdf(
+        inspection_id, get_org_id(current_user), db
+    )
+
+
+@router.post("/inspections/{inspection_id}/sign/landlord", response_model=InspectionOut)
+async def sign_landlord(
+    inspection_id: uuid.UUID,
+    body: InspectionSignLandlord,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await inspection_service.sign_landlord(
+        inspection_id, body.signed_by, get_org_id(current_user), db
+    )
+
+
+@router.post("/inspections/{inspection_id}/send-for-signing", response_model=InspectionOut)
+async def send_for_tenant_signing(
+    inspection_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await inspection_service.send_for_tenant_signing(
+        inspection_id, get_org_id(current_user), db
+    )
+
+
+# ── Public sign endpoints (no auth) ───────────────────────────────────────────
+
+@router.get("/inspections/sign/{token}", response_model=InspectionPublicOut)
+async def get_inspection_by_sign_token(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return await inspection_service.get_by_sign_token(token, db)
+
+
+@router.post("/inspections/sign/{token}", response_model=InspectionPublicOut)
+async def tenant_sign_inspection(
+    token: str,
+    body: TenantSignRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    return await inspection_service.sign_tenant(token, body.full_name, db)
 
 
 # ── Maintenance ────────────────────────────────────────────────────────────────

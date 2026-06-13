@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import {
   ClipboardList, ExternalLink, Plus,
-  CheckCircle2, Clock, AlertCircle, Loader2,
+  CheckCircle2, Clock, AlertCircle, Loader2, FileDown, PenLine,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,14 +101,49 @@ function InspectionCard({ inspection }: { inspection: Inspection }) {
         </p>
       )}
 
-      {(inspection.photoUrls.length > 0 || inspection.tenantSignedAt || inspection.landlordSignedAt) && (
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-          {inspection.photoUrls.length > 0 && (
-            <span>{inspection.photoUrls.length} photo{inspection.photoUrls.length !== 1 ? "s" : ""}</span>
+      {/* Photos count */}
+      {inspection.photoUrls.length > 0 && (
+        <p className="text-[10px] text-muted-foreground">
+          {inspection.photoUrls.length} photo{inspection.photoUrls.length !== 1 ? "s" : ""}
+        </p>
+      )}
+
+      {/* Signature status chips */}
+      {(inspection.landlordSignedAt || inspection.tenantSignedAt) && (
+        <div className="flex flex-wrap gap-1.5">
+          {inspection.landlordSignedAt && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-medium">
+              <PenLine className="h-2.5 w-2.5" />
+              Landlord signed
+            </span>
           )}
-          {inspection.tenantSignedAt && <span>· Tenant signed</span>}
-          {inspection.landlordSignedAt && <span>· Landlord signed</span>}
+          {inspection.tenantSignedAt && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-medium">
+              <PenLine className="h-2.5 w-2.5" />
+              Tenant signed
+            </span>
+          )}
+          {inspection.landlordSignedAt && !inspection.tenantSignedAt && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-[10px] font-medium">
+              <Clock className="h-2.5 w-2.5" />
+              Awaiting tenant
+            </span>
+          )}
         </div>
+      )}
+
+      {/* Report download */}
+      {(inspection as any).reportPdfUrl && (
+        <a
+          href={(inspection as any).reportPdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <FileDown className="h-3 w-3" />
+          {inspection.landlordSignedAt && inspection.tenantSignedAt ? "Sealed Report" : "Draft Report"}
+        </a>
       )}
     </div>
   );
