@@ -35,6 +35,7 @@ from app.models.inspection import (
     MAINTENANCE_TRANSITIONS,
 )
 from app.models.landlord_invite import LandlordPropertyAccess
+from app.models.lease import Lease, LeaseStatus
 from app.models.property import Property, Unit
 from app.utils.references import build_ref, next_seq
 from app.utils.db_filters import org_scope
@@ -278,11 +279,23 @@ async def create_inspection(
     seq = await next_seq(db, Inspection, year=year)
     ref = build_ref("INS", seq, str(year))
 
+    # Auto-link to the active lease for this unit when lease_id is not explicit
+    resolved_lease_id: uuid.UUID | None = uuid.UUID(body.lease_id) if body.lease_id else None
+    if resolved_lease_id is None and body.unit_id:
+        active_lease = await db.scalar(
+            select(Lease).where(
+                Lease.unit_id == uuid.UUID(body.unit_id),
+                Lease.status == LeaseStatus.active,
+            )
+        )
+        if active_lease:
+            resolved_lease_id = active_lease.id
+
     inspection = Inspection(
         organisation_id=org_id,
         property_id=uuid.UUID(body.property_id),
         unit_id=uuid.UUID(body.unit_id) if body.unit_id else None,
-        lease_id=uuid.UUID(body.lease_id) if body.lease_id else None,
+        lease_id=resolved_lease_id,
         tenant_id=uuid.UUID(body.tenant_id) if body.tenant_id else None,
         inspector_id=uuid.UUID(body.inspector_id) if body.inspector_id else None,
         inspector_name=body.inspector_name,
