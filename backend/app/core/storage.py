@@ -84,10 +84,18 @@ class S3CompatibleProvider(StorageProvider):
         self._endpoint_url = endpoint_url
         self._public_base_url = public_base_url
         # Presigned URLs must use a browser-reachable host. When the internal
-        # endpoint is a Docker-network hostname (e.g. geobox-minio:9000), set
-        # presign_endpoint_url to the public-facing MinIO URL so the generated
-        # presigned PUT URLs work from the browser.
-        self._presign_endpoint_url = presign_endpoint_url or endpoint_url
+        # endpoint is a Docker-network hostname (e.g. geobox-minio:9000), the
+        # presign client uses the public-facing URL instead so PUT URLs work
+        # from the browser. Priority: explicit presign_endpoint_url → scheme+netloc
+        # extracted from public_base_url → fall back to endpoint_url.
+        if presign_endpoint_url:
+            self._presign_endpoint_url = presign_endpoint_url
+        elif public_base_url:
+            from urllib.parse import urlparse
+            _p = urlparse(public_base_url)
+            self._presign_endpoint_url = f"{_p.scheme}://{_p.netloc}"
+        else:
+            self._presign_endpoint_url = endpoint_url
         self._access_key = access_key_id
         self._secret_key = secret_access_key
         self._credentials = {
