@@ -7,7 +7,6 @@ Create Date: 2026-06-12
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import UUID
 
 revision = "049"
 down_revision = "048"
@@ -16,33 +15,49 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(sa.text("CREATE TYPE rent_increase_status_enum AS ENUM ('pending_ack','acknowledged','applied','withdrawn')"))
+    # Create enum idempotently — op.create_table emits its own CREATE TYPE even with
+    # create_type=False, so we use raw SQL for both objects to stay fully idempotent
+    # across container restarts and partial failures.
+    op.execute(sa.text(
+        "DO $$ BEGIN "
+        "CREATE TYPE rent_increase_status_enum AS ENUM "
+        "('pending_ack','acknowledged','applied','withdrawn'); "
+        "EXCEPTION WHEN duplicate_object THEN null; "
+        "END $$"
+    ))
 
-    op.create_table(
-        "rent_increases",
-        sa.Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("organisation_id", UUID(as_uuid=True), sa.ForeignKey("organisations.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("lease_id", UUID(as_uuid=True), sa.ForeignKey("leases.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("property_id", UUID(as_uuid=True), sa.ForeignKey("properties.id", ondelete="SET NULL"), nullable=True, index=True),
-        sa.Column("unit_id", UUID(as_uuid=True), sa.ForeignKey("units.id", ondelete="SET NULL"), nullable=True, index=True),
-        sa.Column("tenant_id", UUID(as_uuid=True), sa.ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True, index=True),
-        sa.Column("issued_by", sa.String(255), nullable=False),
-        sa.Column("status", sa.Enum("pending_ack", "acknowledged", "applied", "withdrawn", name="rent_increase_status_enum", create_type=False), nullable=False, server_default="pending_ack"),
-        sa.Column("current_rent", sa.Numeric(12, 2), nullable=False),
-        sa.Column("new_rent", sa.Numeric(12, 2), nullable=False),
-        sa.Column("increase_pct", sa.Numeric(5, 2), nullable=False),
-        sa.Column("effective_date", sa.Date, nullable=False),
-        sa.Column("issued_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("acknowledged_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("applied_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("withdrawn_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("notice_pdf_url", sa.String(500), nullable=True),
-        sa.Column("notes", sa.Text, nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), onupdate=sa.text("now()"), nullable=False),
-    )
+    op.execute(sa.text("""
+        CREATE TABLE IF NOT EXISTS rent_increases (
+            id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+            organisation_id   UUID        NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
+            lease_id          UUID        NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+            property_id       UUID        REFERENCES properties(id) ON DELETE SET NULL,
+            unit_id           UUID        REFERENCES units(id) ON DELETE SET NULL,
+            tenant_id         UUID        REFERENCES tenants(id) ON DELETE SET NULL,
+            issued_by         VARCHAR(255) NOT NULL,
+            status            rent_increase_status_enum NOT NULL DEFAULT 'pending_ack',
+            current_rent      NUMERIC(12,2) NOT NULL,
+            new_rent          NUMERIC(12,2) NOT NULL,
+            increase_pct      NUMERIC(5,2)  NOT NULL,
+            effective_date    DATE          NOT NULL,
+            issued_at         TIMESTAMPTZ   NOT NULL,
+            acknowledged_at   TIMESTAMPTZ,
+            applied_at        TIMESTAMPTZ,
+            withdrawn_at      TIMESTAMPTZ,
+            notice_pdf_url    VARCHAR(500),
+            notes             TEXT,
+            created_at        TIMESTAMPTZ   NOT NULL DEFAULT now(),
+            updated_at        TIMESTAMPTZ   NOT NULL DEFAULT now()
+        )
+    """))
+
+    # Indexes (IF NOT EXISTS guards against re-runs)
+    for col in ("organisation_id", "lease_id", "property_id", "unit_id", "tenant_id", "status"):
+        op.execute(sa.text(
+            f"CREATE INDEX IF NOT EXISTS ix_rent_increases_{col} ON rent_increases ({col})"
+        ))
 
 
 def downgrade() -> None:
-    op.drop_table("rent_increases")
+    op.execute(sa.text("DROP TABLE IF EXISTS rent_increases"))
     op.execute(sa.text("DROP TYPE IF EXISTS rent_increase_status_enum"))
