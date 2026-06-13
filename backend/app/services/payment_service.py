@@ -389,7 +389,10 @@ async def list_schedules(
 ) -> dict:
     await _get_lease_checked(lease_id, org_id, db)
 
-    q = select(RentSchedule).where(RentSchedule.lease_id == lease_id)
+    q = select(RentSchedule).where(
+        RentSchedule.lease_id == lease_id,
+        RentSchedule.deleted_at.is_(None),
+    )
     if status_filter:
         if status_filter == RentScheduleStatus.overdue or status_filter == RentScheduleStatus.overdue.value:
             q = q.where(
@@ -492,6 +495,7 @@ async def create_payment(
         category=body.category,
         method=body.method,
         reference=body.reference,
+        receipt_url=getattr(body, "receipt_url", None),
         idempotency_key=body.idempotency_key,
         status=PaymentStatus.initiated,   # v4: all payments start at initiated
         paid_at=body.paid_at or now,
@@ -1528,39 +1532,14 @@ async def confirm_payment_by_org(
     org_id: uuid.UUID | None,
     db: AsyncSession,
 ) -> PaymentOut:
+    # Verify the payment belongs to this org, then delegate to the canonical
+    # confirm_payment() which runs allocation + ledger + wallet credit.
     p = await db.scalar(
         org_scope(select(Payment).where(Payment.id == payment_id), Payment.organisation_id, org_id)
     )
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
-
-    from app.services.payment_state_machine import can_be_confirmed, advance_to_completed, is_success as _is_success
-    _current = p.status if isinstance(p.status, PaymentStatus) else PaymentStatus(p.status)
-    if _is_success(_current):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Payment is already confirmed (status: '{p.status}')",
-        )
-    if not can_be_confirmed(_current):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot confirm a payment with status '{p.status}'",
-        )
-
-    if not p.paid_at:
-        p.paid_at = datetime.now(timezone.utc)
-        await db.flush()
-
-    if p.rent_schedule_id:
-        schedule = await _get_schedule(p.rent_schedule_id, p.lease_id, db)
-        schedule.amount_paid = float(schedule.amount_paid) + float(p.amount)
-        if float(schedule.amount_paid) >= float(schedule.amount_due) + float(schedule.late_fee_applied):
-            schedule.status = RentScheduleStatus.paid
-            schedule.paid_at = datetime.now(timezone.utc)
-
-    await advance_to_completed(p, db)
-    await db.refresh(p, attribute_names=["status", "updated_at"])
-    return _payment_out(p)
+    return await confirm_payment(payment_id, p.lease_id, org_id, db)
 
 
 async def refund_payment_by_org(
@@ -1602,7 +1581,9 @@ async def list_schedules_org(
     page: int = 1,
     page_size: int = 24,
 ) -> dict:
-    q = org_scope(select(RentSchedule), RentSchedule.organisation_id, org_id)
+    q = org_scope(select(RentSchedule), RentSchedule.organisation_id, org_id).where(
+        RentSchedule.deleted_at.is_(None)
+    )
     if status_filter:
         if status_filter == RentScheduleStatus.overdue or status_filter == RentScheduleStatus.overdue.value:
             q = q.where(
@@ -1714,3 +1695,40 @@ def _build_csv_row(
         "currency": currency,
     }
     return [mapping.get(col, "") for col in columns]
+
+
+# ── Bulk confirm ───────────────────────────────────────────────────────────────
+
+async def bulk_confirm_payments(
+    payment_ids: list[uuid.UUID],
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+) -> tuple[list[PaymentOut], list[tuple[uuid.UUID, str]]]:
+    """
+    Confirm multiple payments in a single request using partial-success semantics.
+
+    Each payment is confirmed independently; failures do not roll back successful
+    confirmations. The caller receives two lists: confirmed results and (id, reason)
+    tuples for failures.
+
+    Returns (confirmed, failed) where failed is a list of (payment_id, reason) pairs.
+    """
+    confirmed: list[PaymentOut] = []
+    failed: list[tuple[uuid.UUID, str]] = []
+
+    for pid in payment_ids:
+        try:
+            result = await confirm_payment_by_org(pid, org_id, db)
+            confirmed.append(result)
+        except HTTPException as exc:
+            await db.rollback()
+            failed.append((pid, exc.detail))
+        except Exception as exc:
+            await db.rollback()
+            failed.append((pid, "Unexpected error during confirmation"))
+            import structlog as _sl
+            _sl.get_logger(__name__).error(
+                "bulk_confirm.unexpected_error", payment_id=str(pid), error=str(exc)
+            )
+
+    return confirmed, failed

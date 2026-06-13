@@ -5,7 +5,7 @@ import { toast } from "@/store/useUIStore";
 import type { QueryParams, MaintenanceIssue, Inspection } from "@/types";
 import type { MaintenanceEvent, InspectionEvent } from "@/types/states";
 
-export function useInspections(params?: QueryParams) {
+export function useInspections(params?: QueryParams & { unitId?: string; leaseId?: string }) {
   return useQuery({
     queryKey: queryKeys.inspections.list(params ?? {}),
     queryFn: () => inspectionsApi.list(params),

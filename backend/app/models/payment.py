@@ -123,6 +123,7 @@ class RentSchedule(TimestampedBase):
     )
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
     # Relationships
     payments: Mapped[list["Payment"]] = relationship(
@@ -216,6 +217,9 @@ class Payment(TimestampedBase):
     # ── Cancellation audit (set when tenant cancels before confirmation) ──────
     cancellation_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # ── Payment evidence (bank transfer / cash receipts) ─────────────────────
+    receipt_url: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
     # Relationships
     rent_schedule: Mapped["RentSchedule | None"] = relationship(

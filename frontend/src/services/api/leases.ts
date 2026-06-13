@@ -189,6 +189,10 @@ export const leasesApi = {
   presignAgreement: (id: string, signatureDataUrl: string) =>
     apiPost<Record<string, unknown>>(`/leases/${id}/agreement/presign`, { signatureDataUrl }),
 
+  // Counter-sign agreement (manager/landlord signs after tenant has signed)
+  countersignAgreement: (id: string, signatureDataUrl: string) =>
+    apiPost<Record<string, unknown>>(`/leases/${id}/agreement/countersign`, { signatureDataUrl }),
+
   // Generate lease document (HTML, printable as PDF)
   generateDocument: (id: string) =>
     apiPost<{ url: string }>(`/leases/${id}/document`),

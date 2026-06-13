@@ -27,6 +27,8 @@ export interface User {
   // Tenant-specific
   tenantId?: string;
   currentLeaseId?: string;
+  mobileMoneyProvider?: "mtn" | "airtel" | string | null;
+  mobileMoneyNumber?: string | null;
   /**
    * Caretaker-specific metadata.
    * Populated when role === "caretaker" — scopes access to one landlord's properties.

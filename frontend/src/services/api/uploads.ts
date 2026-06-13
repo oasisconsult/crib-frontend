@@ -12,7 +12,7 @@ interface UploadOptions {
   tenantId?: string;
   leaseId?: string;
   inspectionId?: string;
-  category: "document" | "signature" | "inspection_photo" | "property_image";
+  category: "document" | "signature" | "inspection_photo" | "property_image" | "payment_receipt";
   /** If provided, uses the public onboarding presign endpoint (no JWT required). */
   onboardingToken?: string;
 }
@@ -30,7 +30,9 @@ export const uploadsApi = {
     const { onboardingToken, ...rest } = options;
     const endpoint = onboardingToken
       ? `/upload/presign/onboarding/${onboardingToken}`
-      : "/upload/presign";
+      : options.category === "payment_receipt"
+        ? "/upload/presign/payment-receipt"
+        : "/upload/presign";
     return apiPost<PresignedUrl>(endpoint, { filename, mimeType, ...rest });
   },
 

@@ -63,10 +63,16 @@ class RoleDetailOut(RoleOut):
     permissions: list[PermissionOut]
 
 
+class PermissionRef(BaseModel):
+    """Lightweight permission descriptor — id + action, no resource name repetition."""
+    id: int
+    action: str
+
+
 class ResourceOut(BaseModel):
     id: int
     name: str
-    actions: list[str]
+    permissions: list[PermissionRef]  # id+action pairs for each available action
 
     model_config = {"from_attributes": True}
 
@@ -302,18 +308,17 @@ async def list_resources(
     _: CurrentUser = _super,
     db: AsyncSession = Depends(get_db),
 ):
-    """List all resources with their available actions."""
+    """List all resources with their available actions and permission IDs."""
     result = await db.execute(
-        select(Resource.id, Resource.name, Permission.action)
+        select(Resource.id, Resource.name, Permission.id.label("perm_id"), Permission.action)
         .join(Permission, Permission.resource_id == Resource.id)
         .order_by(Resource.name, Permission.action)
     )
-    # Group by resource
     resources: dict[int, ResourceOut] = {}
     for row in result:
         if row.id not in resources:
-            resources[row.id] = ResourceOut(id=row.id, name=row.name, actions=[])
-        resources[row.id].actions.append(row.action)
+            resources[row.id] = ResourceOut(id=row.id, name=row.name, permissions=[])
+        resources[row.id].permissions.append(PermissionRef(id=row.perm_id, action=row.action))
     return list(resources.values())
 
 

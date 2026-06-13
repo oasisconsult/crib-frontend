@@ -25,7 +25,7 @@ from pydantic import Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_org_access
+from app.api.deps import CurrentUser, get_current_user, require_org_access
 from app.core.config import get_settings
 from app.core.database import get_db
 from app.core.storage import get_storage_provider
@@ -37,7 +37,7 @@ router = APIRouter(prefix="/upload", tags=["uploads"])
 _staff = Depends(require_org_access(allow_tenant_own=False))
 
 # Allowed upload categories
-_VALID_CATEGORIES = {"document", "signature", "inspection_photo", "property_image"}
+_VALID_CATEGORIES = {"document", "signature", "inspection_photo", "property_image", "payment_receipt"}
 
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
@@ -146,6 +146,22 @@ async def presign_upload(
     - **s3 / r2 / minio**: returns a real presigned URL — the file goes directly
       to cloud storage without passing through this server.
     """
+    return await _do_presign(body, db)
+
+
+# ── Presign endpoint (authenticated tenant — payment receipts only) ────────
+
+@router.post("/presign/payment-receipt", response_model=PresignResponse)
+async def presign_payment_receipt(
+    body: PresignRequest,
+    _: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Allow any authenticated user to upload a bank transfer / cash payment receipt.
+    Category is forced to 'payment_receipt' — caller cannot override it.
+    """
+    body.category = "payment_receipt"
     return await _do_presign(body, db)
 
 

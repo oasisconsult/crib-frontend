@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_org_id, get_tenant_record, require_org_access
 from app.core.database import get_db
+from app.services.policy_service import require_permission
 from app.schemas.lease import (
     LeaseActivate,
     LeaseAdvanceMonthsCorrection,
@@ -54,7 +55,7 @@ async def create_lease(
     return await svc.create_lease(body, current_user.org_id, db)
 
 
-@router.get("", response_model=dict)
+@router.get("", response_model=dict, dependencies=[require_permission("read", "lease")])
 async def list_leases(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100, alias="pageSize"),

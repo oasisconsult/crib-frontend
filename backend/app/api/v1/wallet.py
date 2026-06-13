@@ -11,14 +11,15 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_org_access
+from app.api.deps import CurrentUser, get_org_id, require_org_access
 from app.core.database import get_db
-from app.schemas.payment import WalletOut, WalletTransactionOut, WalletTransactionPageOut
-from app.services.wallet_service import get_wallet, get_wallet_transactions
+from app.schemas.payment import WalletCreditRequest, WalletOut, WalletTransactionOut, WalletTransactionPageOut
+from app.services.wallet_service import credit_wallet, get_wallet, get_wallet_transactions
 
 router = APIRouter(prefix="/tenants", tags=["wallet"])
 
-_read = Depends(require_org_access(allow_tenant_own=True))
+_read  = Depends(require_org_access(allow_tenant_own=True))
+_write = Depends(require_org_access(allow_tenant_own=False))
 
 
 def _fmt_wallet(w) -> WalletOut:
@@ -68,6 +69,39 @@ async def get_tenant_wallet(
         and str(wallet.tenant_id) != str(current_user.id)
     ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+    return _fmt_wallet(wallet)
+
+
+@router.post("/{tenant_id}/wallet/credit", response_model=WalletOut, status_code=status.HTTP_200_OK)
+async def credit_tenant_wallet(
+    tenant_id: uuid.UUID,
+    body: WalletCreditRequest,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Manually credit a tenant's wallet. Restricted to org managers/owners — tenants
+    cannot credit their own wallet via this endpoint.
+    """
+    org_id = get_org_id(current_user)
+    if org_id is None:
+        # Superadmin path: derive org from the existing wallet
+        existing = await get_wallet(db, tenant_id)
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Wallet not found — tenant has no recorded payments yet",
+            )
+        org_id = existing.organisation_id
+    wallet = await credit_wallet(
+        db,
+        tenant_id=tenant_id,
+        organisation_id=org_id,
+        amount=body.amount,
+        reference_type="manual_credit",
+        description=body.description,
+    )
+    await db.refresh(wallet)
     return _fmt_wallet(wallet)
 
 

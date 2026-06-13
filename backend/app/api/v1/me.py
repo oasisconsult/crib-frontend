@@ -53,6 +53,9 @@ class ProfileOut(CamelModel):
     property_ids: list[str] | None = None
     created_at: datetime
     updated_at: datetime
+    # Tenant mobile money details — populated when role includes "tenant"
+    mobile_money_provider: str | None = None
+    mobile_money_number: str | None = None
 
 
 class ProfilePatch(CamelModel):
@@ -106,6 +109,18 @@ async def _profile_out(current_user: CurrentUser, db: AsyncSession) -> ProfileOu
     if p.caretaker_property_ids is not None:
         property_ids = [str(pid) for pid in (p.caretaker_property_ids or [])]
 
+    # Fetch tenant mobile money details when the user is a tenant
+    mobile_money_provider: str | None = None
+    mobile_money_number: str | None = None
+    if "tenant" in (current_user.roles or []) and p.logto_sub:
+        from app.models.tenant import Tenant
+        tenant = await db.scalar(
+            select(Tenant).where(Tenant.logto_user_id == p.logto_sub)
+        )
+        if tenant:
+            mobile_money_provider = tenant.mobile_money_provider
+            mobile_money_number = tenant.mobile_money_number
+
     return ProfileOut(
         id=str(p.id),
         email=p.email or "",
@@ -126,6 +141,8 @@ async def _profile_out(current_user: CurrentUser, db: AsyncSession) -> ProfileOu
         property_ids=property_ids,
         created_at=created_at,
         updated_at=updated_at,
+        mobile_money_provider=mobile_money_provider,
+        mobile_money_number=mobile_money_number,
     )
 
 

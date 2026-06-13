@@ -143,10 +143,21 @@ export default function NewLeasePage() {
 
   const selectedProperty = selectableProperties.find((p) => p.id === propertyId);
   const selectedUnit     = availableUnits.find((u) => u.id === unitId);
+  const isWholeProperty  = selectedProperty?.isSingleUnit === true;
 
-  // When a unit is selected auto-fill rent and recalculate deposit from rules
+  // Auto-select the virtual unit for whole-property (single-unit) leases
   useEffect(() => {
-    if (selectedUnit) {
+    if (isWholeProperty && availableUnits.length > 0 && !unitId) {
+      setUnitId(availableUnits[0].id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWholeProperty, availableUnits]);
+
+  // When a unit is selected auto-fill rent and recalculate deposit from rules.
+  // Skip auto-fill for whole-property virtual units that have no rent set yet
+  // (monthlyRent === 0) — the user enters it manually in the financial terms.
+  useEffect(() => {
+    if (selectedUnit && selectedUnit.monthlyRent > 0) {
       setMonthlyRent(selectedUnit.monthlyRent);
       setCurrency(selectedUnit.currency ?? "UGX");
       // Deposit = depositMonths × monthly rent (from property rules, default 1)
@@ -304,55 +315,71 @@ export default function NewLeasePage() {
               </Select>
             </div>
 
-            {/* Unit — conditional on property */}
-            <div className="space-y-1.5">
-              <Label htmlFor="unit">
-                Unit <span className="text-destructive">*</span>
-                {propertyId && !loadingUnits && (
-                  <span className="ml-2 text-xs text-muted-foreground font-normal">
-                    {availableUnits.length} available
-                  </span>
-                )}
-              </Label>
-              <Select
-                value={unitId}
-                onValueChange={setUnitId}
-                disabled={!propertyId || loadingUnits}
-              >
-                <SelectTrigger id="unit">
-                  <SelectValue placeholder={
-                    !propertyId
-                      ? "Select a property first"
-                      : loadingUnits
-                        ? "Loading units..."
-                        : availableUnits.length === 0
-                          ? "No available units"
-                          : "Select a unit..."
-                  } />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableUnits.length === 0 && (
-                    <div className="px-3 py-2 text-xs text-muted-foreground">
-                      No vacant units in this property
-                    </div>
+            {/* Unit — hidden for whole-property leases; shown for multi-unit */}
+            {isWholeProperty ? (
+              propertyId && !loadingUnits && (
+                availableUnits.length > 0 ? (
+                  <div className="rounded-[6px] border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+                    <Home className="h-3.5 w-3.5 shrink-0 text-primary" />
+                    Rented as whole — the entire property is leased as one unit.
+                  </div>
+                ) : (
+                  <div className="rounded-[6px] border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                    <Info className="h-3.5 w-3.5 shrink-0" />
+                    This property is currently occupied and cannot be leased again until the active lease ends.
+                  </div>
+                )
+              )
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="unit">
+                  Unit {availableUnits.length > 0 && <span className="text-destructive">*</span>}
+                  {propertyId && !loadingUnits && (
+                    <span className="ml-2 text-xs text-muted-foreground font-normal">
+                      {availableUnits.length} available
+                    </span>
                   )}
-                  {availableUnits.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{u.name}</span>
-                        <span className="text-muted-foreground text-xs capitalize">{u.type}</span>
-                        {u.floor !== undefined && (
-                          <span className="text-muted-foreground text-xs">· Fl {u.floor}</span>
-                        )}
-                        <span className="text-emerald-600 text-xs ml-auto">
-                          {formatCurrency(u.monthlyRent, u.currency)}/mo
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </Label>
+                {propertyId && !loadingUnits && availableUnits.length === 0 ? (
+                  <div className="rounded-[6px] border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 px-3 py-2 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                    <Info className="h-3.5 w-3.5 shrink-0" />
+                    No available units in this property. All units are currently occupied or under maintenance.
+                  </div>
+                ) : (
+                  <Select
+                    value={unitId}
+                    onValueChange={setUnitId}
+                    disabled={!propertyId || loadingUnits}
+                  >
+                    <SelectTrigger id="unit">
+                      <SelectValue placeholder={
+                        !propertyId
+                          ? "Select a property first"
+                          : loadingUnits
+                            ? "Loading units..."
+                            : "Select a unit..."
+                      } />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableUnits.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{u.name}</span>
+                            <span className="text-muted-foreground text-xs capitalize">{u.type}</span>
+                            {u.floor !== undefined && (
+                              <span className="text-muted-foreground text-xs">· Fl {u.floor}</span>
+                            )}
+                            <span className="text-emerald-600 text-xs ml-auto">
+                              {formatCurrency(u.monthlyRent, u.currency)}/mo
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
 
             {/* Unit preview card */}
             {selectedUnit && selectedProperty && (

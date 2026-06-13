@@ -3,6 +3,8 @@
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryClient";
 import { propertiesApi } from "@/services/api/properties";
+import type { ResolvedGeocode } from "@/services/api/properties";
+import { geoboxApi } from "@/services/api/geobox";
 import { toast } from "@/store/useUIStore";
 import type { Property, Unit, PropertyRules, QueryParams } from "@/types";
 
@@ -19,6 +21,15 @@ export function useProperty(id: string) {
     queryKey: queryKeys.properties.detail(id),
     queryFn: () => propertiesApi.get(id),
     enabled: !!id,
+  });
+}
+
+export function usePropertyGeocode(propertyId: string, enabled = true) {
+  return useQuery<ResolvedGeocode>({
+    queryKey: [...queryKeys.properties.detail(propertyId), "geocode"],
+    queryFn: () => propertiesApi.getGeocode(propertyId),
+    enabled: !!propertyId && enabled,
+    staleTime: 10 * 60_000, // GeoBox data changes rarely
   });
 }
 
@@ -233,5 +244,16 @@ export function useBulkUpdateUnits() {
       toast.success("Units updated");
     },
     onError: () => toast.error("Failed to update units"),
+  });
+}
+
+export function useVillageSearch(query: string) {
+  return useQuery({
+    queryKey: ["geobox", "villages", query.trim().toLowerCase()],
+    queryFn: () => geoboxApi.searchVillages(query.trim()),
+    enabled: query.trim().length >= 2,
+    staleTime: 60 * 60_000,   // 1 hour — matches server-side Redis TTL
+    retry: false,              // GeoBox down → empty results, don't retry
+    placeholderData: keepPreviousData,
   });
 }

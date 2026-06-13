@@ -171,34 +171,21 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
     ("geobox.geocoding_enabled", "true",     "geobox",  "GeoBox Geocoding Enabled",
      "Master switch. Set to 'false' to disable all GeoBox calls without removing credentials.",
      "boolean", False, True),
-
-    # ── Agency / Landlord branding ────────────────────────────────────────────
-    ("agency.name",          "",  "agency", "Agency / Landlord Name",
-     "Business name or landlord name shown on tenancy agreements and correspondence.",
+    ("geobox.whatsapp_number",  "+256767171092", "geobox", "GeoBox Bot WhatsApp Number",
+     "The WhatsApp number tenants message to get directions via GeoBox. Include country code, e.g. +256700123456.",
      "string", False, False),
-    ("agency.contact_phone", "",  "agency", "Agency Contact Phone",
-     "Phone number shown on tenancy agreements (E.164 or local format, e.g. +256 700 000000).",
+    ("geobox.portal_url",       "https://app.geoboxafrica.com", "geobox", "GeoBox Portal URL",
+     "URL of the GeoBox web portal. Shown to landlords on desktop when they click 'Get a GeoBox code'.",
      "string", False, False),
-    ("agency.contact_email", "",  "agency", "Agency Contact Email",
-     "Email address shown on tenancy agreements and tenant-facing communications.",
+    ("geobox.whatsapp_create_message",
+     "Hi, I want to create a GeoBox location code for my property",
+     "geobox", "GeoBox Create-Code WhatsApp Message",
+     "Pre-filled WhatsApp message sent to the GeoBox bot when a landlord taps 'Get a GeoBox code' on mobile.",
      "string", False, False),
-
-    # ── Features ─────────────────────────────────────────────────────────────
-    ("features.esignature_enabled", "true",     "features","E-Signature Enabled",
-     "Enable the DocuSign-style e-signature flow for lease signing.", "boolean", False, True),
-    ("features.maintenance_portal", "true",     "features","Tenant Maintenance Portal",
-     "Allow tenants to submit maintenance requests from the tenant portal.", "boolean", False, True),
-    ("features.onboarding_enabled", "true",     "features","Tenant Onboarding",
-     "Enable the self-service onboarding wizard for new tenants.", "boolean", False, True),
-
-    # ── Payments ──────────────────────────────────────────────────────────────
-    ("payments.auto_confirm_enabled", "false", "payments", "Auto-Confirm Payments",
-     "When enabled, payments from configured methods are confirmed automatically "
-     "without manager action. Disable to require manual confirmation for all payments.",
-     "boolean", False, True),
-
-    ("geobox.whatsapp_number", "+256767171092", "geobox", "GeoBox WhatsApp Bot Number",
-     "WhatsApp number for the GeoBox directions bot (E.164 format). Shown to tenants on the portal.",
+    ("geobox.hierarchy_not_found_message",
+     "Code found but address hierarchy is unavailable — please fill in the fields below manually.",
+     "geobox", "GeoBox Hierarchy Not Found Message",
+     "Shown on the property form when a geocode resolves successfully but GeoBox returns no address hierarchy data.",
      "string", False, False),
 
     # ── Agency / Landlord branding ────────────────────────────────────────────
@@ -215,6 +202,9 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
     # ── Features ─────────────────────────────────────────────────────────────
     ("features.esignature_enabled", "true",     "features","E-Signature Enabled",
      "Enable the DocuSign-style e-signature flow for lease signing.", "boolean", False, True),
+    ("features.efris_enabled",      "false",    "features","EFRIS Integration",
+     "Enable URA EFRIS tax receipt integration. Requires efris.* credentials to be configured. "
+     "When disabled, EFRIS calls are logged but no receipts are issued.", "boolean", False, True),
     ("features.maintenance_portal", "true",     "features","Tenant Maintenance Portal",
      "Allow tenants to submit maintenance requests from the tenant portal.", "boolean", False, True),
     ("features.onboarding_enabled", "true",     "features","Tenant Onboarding",
@@ -225,6 +215,7 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "When enabled, payments from configured methods are confirmed automatically "
      "without manager action. Disable to require manual confirmation for all payments.",
      "boolean", False, True),
+
     ("payments.auto_confirm_methods", "mobile_money_mtn,mobile_money_airtel", "payments",
      "Auto-Confirm Methods",
      "Comma-separated list of payment methods that trigger automatic confirmation "

@@ -21,8 +21,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_org_id, get_tenant_record, require_org_access
 from app.core.database import get_db
-from app.schemas.payment import PaymentCreateFlat, PaymentOut
+from app.schemas.payment import BulkConfirmRequest, BulkConfirmResult, BulkConfirmFailure, PaymentCreateFlat, PaymentOut
 from app.services import payment_service as svc
+from app.services.policy_service import require_permission
 
 _read  = Depends(require_org_access(allow_tenant_own=True))
 _write = Depends(require_org_access(allow_tenant_own=False))
@@ -33,7 +34,7 @@ _write = Depends(require_org_access(allow_tenant_own=False))
 payments_router = APIRouter(prefix="/payments", tags=["payments"])
 
 
-@payments_router.get("", response_model=dict)
+@payments_router.get("", response_model=dict, dependencies=[require_permission("read", "payment")])
 async def list_payments(
     lease_id: uuid.UUID | None = Query(None, alias="leaseId"),
     payment_status: str | None = Query(None, alias="status"),
@@ -94,6 +95,30 @@ async def confirm_payment(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.confirm_payment_by_org(payment_id, get_org_id(current_user), db)
+
+
+@payments_router.post(
+    "/bulk-confirm",
+    response_model=BulkConfirmResult,
+    summary="Bulk confirm payments",
+    description=(
+        "Confirm up to 50 payments in one request. Uses partial-success semantics: "
+        "each payment is processed independently. Failures are reported in `failed` "
+        "without affecting payments that confirmed successfully."
+    ),
+)
+async def bulk_confirm_payments(
+    body: BulkConfirmRequest,
+    current_user=_write,
+    db: AsyncSession = Depends(get_db),
+):
+    confirmed, failed_pairs = await svc.bulk_confirm_payments(
+        body.payment_ids, get_org_id(current_user), db
+    )
+    return BulkConfirmResult(
+        confirmed=confirmed,
+        failed=[BulkConfirmFailure(id=pid, reason=reason) for pid, reason in failed_pairs],
+    )
 
 
 @payments_router.patch("/{payment_id}/refund", response_model=PaymentOut)

@@ -1,6 +1,16 @@
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "./client";
 import type { Property, Unit, PaginatedResponse, QueryParams, PropertyRules } from "@/types";
 
+export interface ResolvedGeocode {
+  geocode: string | null;
+  fullAddress?: string;
+  landmarkDescription?: string;
+  accessInstructions?: string;
+  deliveryNotes?: string;
+  navUrl?: string;
+  coordinates?: { latitude: number; longitude: number } | null;
+}
+
 export const propertiesApi = {
   list: (params?: QueryParams) =>
     apiGet<PaginatedResponse<Property>>("/properties", params),
@@ -50,4 +60,8 @@ export const propertiesApi = {
 
   bulkCreateUnits: (propertyId: string, units: Omit<Unit, "id" | "propertyId" | "createdAt" | "updatedAt">[]) =>
     apiPost<Unit[]>(`/properties/${propertyId}/units/batch`, { units }),
+
+  // GeoBox geocode resolution
+  getGeocode: (propertyId: string) =>
+    apiGet<ResolvedGeocode>(`/properties/${propertyId}/geocode`),
 };

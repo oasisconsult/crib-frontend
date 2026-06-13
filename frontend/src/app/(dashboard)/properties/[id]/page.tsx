@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -18,6 +18,8 @@ import {
   ImageIcon,
   Trash2,
   Loader2,
+  CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -36,23 +38,55 @@ import {
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency } from "@/utils/formatters";
 import { useProperty, useUpdateProperty, useDeleteProperty } from "@/hooks/useProperties";
+import { LocationSearch } from "@/components/ui/location-search";
+import { GeocodeField } from "@/components/ui/geocode-field";
+import { settingsApi } from "@/services/api/settings";
 import { uploadsApi } from "@/services/api/uploads";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/utils/cn";
-import type { Property, PropertyType, PropertyStatus } from "@/types";
+import type { Property, PropertyType, PropertyStatus, WaterSource, BackupPower, InternetType, CompoundType } from "@/types";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/;
+const GEOCODE_RE = /^[A-Z0-9]+-[A-Z0-9]+$/; // used for submit validation
 
 const PROPERTY_TYPES: { value: PropertyType; label: string }[] = [
-  { value: "flat",       label: "Flat / Apartment" },
-  { value: "house",      label: "House"             },
-  { value: "hostel",     label: "Hostel / Lodge"    },
-  { value: "commercial", label: "Commercial"        },
-  { value: "villa",      label: "Villa"             },
+  { value: "flat",            label: "Flat / Apartment"       },
+  { value: "house",           label: "House"                  },
+  { value: "bungalow",        label: "Bungalow"               },
+  { value: "maisonette",      label: "Maisonette"             },
+  { value: "townhouse",       label: "Townhouse"              },
+  { value: "villa",           label: "Villa"                  },
+  { value: "bedsitter_block", label: "Bedsitter Block / Lodge"},
+  { value: "hostel",          label: "Hostel"                 },
+  { value: "commercial",      label: "Commercial"             },
+];
+
+const WATER_SOURCE_OPTIONS: { value: WaterSource; label: string }[] = [
+  { value: "municipal", label: "NWSC / Municipal" },
+  { value: "borehole",  label: "Borehole"         },
+  { value: "tank",      label: "Water Tank"       },
+  { value: "multiple",  label: "Multiple Sources" },
+];
+
+const BACKUP_POWER_OPTIONS: { value: BackupPower; label: string }[] = [
+  { value: "none",      label: "None"              },
+  { value: "solar",     label: "Solar"             },
+  { value: "generator", label: "Generator"         },
+  { value: "both",      label: "Solar + Generator" },
+];
+
+const INTERNET_TYPE_OPTIONS: { value: InternetType; label: string }[] = [
+  { value: "none",  label: "None"  },
+  { value: "wifi",  label: "Wi-Fi" },
+  { value: "fibre", label: "Fibre" },
+];
+
+const COMPOUND_TYPE_OPTIONS: { value: CompoundType; label: string }[] = [
+  { value: "private", label: "Private Compound" },
+  { value: "shared",  label: "Shared Compound"  },
 ];
 
 const STATUS_OPTIONS: { value: PropertyStatus; label: string }[] = [
@@ -60,8 +94,6 @@ const STATUS_OPTIONS: { value: PropertyStatus; label: string }[] = [
   { value: "inactive",    label: "Inactive"    },
   { value: "maintenance", label: "Maintenance" },
 ];
-
-const UG_CITIES = ["Kampala", "Entebbe", "Jinja", "Mbarara", "Gulu", "Mbale", "Kasese"];
 
 const COMMON_AMENITIES = [
   "WiFi", "Parking", "CCTV", "Generator", "Water Tank", "Lift",
@@ -102,23 +134,55 @@ function EditForm({
 }) {
   const { mutate: update, isPending } = useUpdateProperty();
 
-  const [name,        setName]        = useState(property.name);
-  const [type,        setType]        = useState<PropertyType>(property.type);
-  const [status,      setStatus]      = useState<PropertyStatus>(property.status);
-  const [description, setDescription] = useState(property.description ?? "");
+  const [name,          setName]          = useState(property.name);
+  const [type,          setType]          = useState<PropertyType>(property.type);
+  const [status,        setStatus]        = useState<PropertyStatus>(property.status);
+  const [description,   setDescription]   = useState(property.description ?? "");
+  const [isSingleUnit,  setIsSingleUnit]  = useState(property.isSingleUnit ?? false);
+  // Uganda property features
+  const [totalFloors,        setTotalFloors]        = useState(property.totalFloors ?? 1);
+  const [yearBuilt,          setYearBuilt]          = useState(property.yearBuilt ? String(property.yearBuilt) : "");
+  const [landSizeAcres,      setLandSizeAcres]      = useState(property.landSizeAcres ? String(property.landSizeAcres) : "");
+  const [waterSource,        setWaterSource]        = useState<WaterSource>(property.waterSource ?? "municipal");
+  const [backupPower,        setBackupPower]        = useState<BackupPower>(property.backupPower ?? "none");
+  const [internetType,       setInternetType]       = useState<InternetType>(property.internetType ?? "none");
+  const [compoundType,       setCompoundType]       = useState<CompoundType>(property.compoundType ?? "private");
+  const [hasPerimeterWall,   setHasPerimeterWall]   = useState(property.hasPerimeterWall ?? false);
+  const [hasGate,            setHasGate]            = useState(property.hasGate ?? false);
+  const [hasGuard,           setHasGuard]           = useState(property.hasGuard ?? false);
+  const [hasCctv,            setHasCctv]            = useState(property.hasCctv ?? false);
+  const [totalParkingSpaces, setTotalParkingSpaces] = useState(property.totalParkingSpaces ?? 0);
   // Address
-  const [line1,    setLine1]    = useState(property.address.line1);
-  const [city,     setCity]     = useState(property.address.city);
-  const [region,   setRegion]   = useState(property.address.state);
-  const [postcode, setPostcode] = useState(property.address.postcode ?? "");
-  const [geocode,  setGeocode]  = useState(property.geocode ?? "");
+  const [line1,     setLine1]     = useState(property.address.line1);
+  const [city,      setCity]      = useState(property.address.city);
+  const [region,    setRegion]    = useState(property.address.state);
+  const [postcode,  setPostcode]  = useState(property.address.postcode ?? "");
+  const [geocode,   setGeocode]   = useState(property.geocode ?? "");
+  // GeoBox admin hierarchy — autofilled from village search or geocode lookup
+  const [village,   setVillage]   = useState(property.address.village   ?? "");
+  const [parish,    setParish]    = useState(property.address.parish    ?? "");
+  const [subCounty, setSubCounty] = useState(property.address.subCounty ?? "");
+  const [county,    setCounty]    = useState(property.address.county    ?? "");
+  const [district,  setDistrict]  = useState(property.address.district  ?? "");
+  const [geoboxSettings, setGeoboxSettings] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    settingsApi.getPublic().then(setGeoboxSettings).catch(() => {});
+  }, []);
+
+  function applyHierarchy(h: string[]) {
+    if (h[0]) setDistrict(h[0]);
+    if (h[1]) setCounty(h[1]);
+    if (h[2]) setSubCounty(h[2]);
+    if (h[3]) setParish(h[3]);
+    if (h[4]) setVillage(h[4]);
+  }
+
   // Amenities & tags
   const [amenities, setAmenities] = useState<string[]>(property.amenities ?? []);
   const [tagsInput, setTagsInput] = useState((property.tags ?? []).join(", "));
 
-  const geocodeError = geocode && !GEOCODE_RE.test(geocode)
-    ? "Must be uppercase letters/digits with a hyphen (e.g. UGKAN-JF5)"
-    : null;
+  const geocodeInvalid = geocode ? !GEOCODE_RE.test(geocode) : false;
 
   function toggleAmenity(a: string) {
     setAmenities((prev) =>
@@ -128,7 +192,7 @@ function EditForm({
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (geocodeError) return;
+    if (geocodeInvalid) return;
     const tags = tagsInput
       .split(",")
       .map((t) => t.trim())
@@ -148,11 +212,29 @@ function EditForm({
             city,
             state: region,
             postcode,
+            village:   village   || undefined,
+            parish:    parish    || undefined,
+            subCounty: subCounty || undefined,
+            county:    county    || undefined,
+            district:  district  || undefined,
           },
           geocode: geocode || undefined,
           amenities,
           tags,
-        },
+          isSingleUnit,
+          totalFloors,
+          yearBuilt:          yearBuilt ? parseInt(yearBuilt) : undefined,
+          landSizeAcres:      landSizeAcres ? parseFloat(landSizeAcres) : undefined,
+          waterSource,
+          backupPower,
+          internetType,
+          compoundType,
+          hasPerimeterWall,
+          hasGate,
+          hasGuard,
+          hasCctv,
+          totalParkingSpaces,
+        } as any,
       },
       { onSuccess: onCancel },
     );
@@ -217,6 +299,43 @@ function EditForm({
         </CardContent>
       </Card>
 
+      {/* ── Whole-property toggle ── */}
+      <Card
+        className={cn(
+          "cursor-pointer border-2 transition-colors",
+          isSingleUnit
+            ? "border-emerald-500 dark:border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10"
+            : "border-border hover:border-primary/40",
+        )}
+        onClick={() => setIsSingleUnit((v) => !v)}
+        role="checkbox"
+        aria-checked={isSingleUnit}
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") setIsSingleUnit((v) => !v); }}
+      >
+        <CardContent className="py-4 flex items-start gap-3">
+          <div className={cn(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 mt-0.5 transition-colors",
+            isSingleUnit
+              ? "border-emerald-500 bg-emerald-500"
+              : "border-border bg-background",
+          )}>
+            {isSingleUnit && <CheckCircle2 className="h-3.5 w-3.5 text-white" aria-hidden />}
+          </div>
+          <div>
+            <p className={cn(
+              "text-sm font-semibold",
+              isSingleUnit ? "text-emerald-800 dark:text-emerald-300" : "text-foreground",
+            )}>
+              This property is rented as a whole
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+              Enabling this on a property with no units will create a single virtual unit so you can create a lease for the entire property.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ── Address ───────────────────────────── */}
       <Card>
         <CardHeader className="pb-3">
@@ -235,17 +354,33 @@ function EditForm({
               required
             />
           </div>
+          {/* GeoBox Geocode — look up to auto-fill hierarchy, or create one on GeoBox */}
+          <div className="space-y-1.5">
+            <Label htmlFor="geocode">GeoBox Geocode</Label>
+            <GeocodeField
+              id="geocode"
+              value={geocode}
+              onChange={setGeocode}
+              onHierarchyFound={applyHierarchy}
+              portalUrl={geoboxSettings["geobox.portal_url"]}
+              whatsappNumber={geoboxSettings["geobox.whatsapp_number"]}
+              whatsappCreateMessage={geoboxSettings["geobox.whatsapp_create_message"]}
+              hierarchyNotFoundMessage={geoboxSettings["geobox.hierarchy_not_found_message"]}
+            />
+          </div>
+          {/* Village / Area search — selecting from GeoBox results also fills hierarchy */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="city">City</Label>
-              <Select value={city} onValueChange={setCity}>
-                <SelectTrigger id="city"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {UG_CITIES.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="city">Village / Area</Label>
+              <LocationSearch
+                id="city"
+                value={city}
+                onChange={(val, hierarchy) => {
+                  setCity(val);
+                  if (hierarchy) applyHierarchy(hierarchy);
+                }}
+                placeholder="e.g. Ntinda, Kampala"
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="region">Region</Label>
@@ -256,20 +391,26 @@ function EditForm({
               />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="geocode">GeoBox Geocode</Label>
-            <Input
-              id="geocode"
-              value={geocode}
-              onChange={(e) => setGeocode(e.target.value.toUpperCase())}
-              placeholder="e.g. UGKAN-JF5"
-              maxLength={20}
-              className={cn("font-mono", geocodeError && "border-destructive focus-visible:ring-destructive")}
-            />
-            {geocodeError
-              ? <p className="text-xs text-destructive">{geocodeError}</p>
-              : <p className="text-xs text-muted-foreground">Optional. Used for tenant navigation in the portal.</p>
-            }
+          {/* Admin hierarchy — auto-filled from GeoBox; editable */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="parish">Parish</Label>
+              <Input id="parish" value={parish} onChange={(e) => setParish(e.target.value)} placeholder="e.g. Ntinda" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="subCounty">Sub-county / Division</Label>
+              <Input id="subCounty" value={subCounty} onChange={(e) => setSubCounty(e.target.value)} placeholder="e.g. Nakawa Division" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="county">County</Label>
+              <Input id="county" value={county} onChange={(e) => setCounty(e.target.value)} placeholder="e.g. Kampala City" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="district">District</Label>
+              <Input id="district" value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="e.g. Kampala" />
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -292,6 +433,135 @@ function EditForm({
                 onToggle={() => toggleAmenity(a)}
               />
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Property Features ─────────────────── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4" />
+            Property Features
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Structure */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="totalFloors">Floors</Label>
+              <Input
+                id="totalFloors"
+                type="number"
+                min={0}
+                max={200}
+                value={totalFloors}
+                onChange={(e) => setTotalFloors(parseInt(e.target.value) || 0)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="yearBuilt">Year Built <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input
+                id="yearBuilt"
+                type="number"
+                min={1800}
+                max={2100}
+                value={yearBuilt}
+                onChange={(e) => setYearBuilt(e.target.value)}
+                placeholder="e.g. 2015"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="landSize">Land (acres) <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input
+                id="landSize"
+                type="number"
+                min={0}
+                step={0.01}
+                value={landSizeAcres}
+                onChange={(e) => setLandSizeAcres(e.target.value)}
+                placeholder="e.g. 0.5"
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Utilities */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Water Source</Label>
+              <Select value={waterSource} onValueChange={(v) => setWaterSource(v as WaterSource)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {WATER_SOURCE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Backup Power</Label>
+              <Select value={backupPower} onValueChange={(v) => setBackupPower(v as BackupPower)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {BACKUP_POWER_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Internet</Label>
+              <Select value={internetType} onValueChange={(v) => setInternetType(v as InternetType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {INTERNET_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Compound</Label>
+              <Select value={compoundType} onValueChange={(v) => setCompoundType(v as CompoundType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COMPOUND_TYPE_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Security */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Security &amp; Access</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              {[
+                { label: "Perimeter Wall", value: hasPerimeterWall, set: setHasPerimeterWall },
+                { label: "Gate",           value: hasGate,          set: setHasGate          },
+                { label: "Guard / Watchman", value: hasGuard,       set: setHasGuard         },
+                { label: "CCTV",           value: hasCctv,          set: setHasCctv          },
+              ].map(({ label, value, set }) => (
+                <label key={label} className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={value}
+                    onChange={(e) => set(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="parking">Total Parking Spaces</Label>
+            <Input
+              id="parking"
+              type="number"
+              min={0}
+              className="w-32"
+              value={totalParkingSpaces}
+              onChange={(e) => setTotalParkingSpaces(parseInt(e.target.value) || 0)}
+            />
           </div>
         </CardContent>
       </Card>
@@ -321,7 +591,7 @@ function EditForm({
           <X className="h-4 w-4" />
           Cancel
         </Button>
-        <Button type="submit" loading={isPending} disabled={!!geocodeError}>
+        <Button type="submit" loading={isPending} disabled={geocodeInvalid}>
           <Save className="h-4 w-4" />
           Save Changes
         </Button>

@@ -240,12 +240,11 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "hidden md:flex flex-col flex-shrink-0",
+          "hidden md:flex flex-col flex-shrink-0 h-screen",
           "transition-[width] duration-200 ease-out",
           "bg-[hsl(var(--sidebar))] border-r border-[hsl(var(--sidebar-border))]",
           sidebarCollapsed ? "w-[64px]" : "w-[240px]",
         )}
-        style={{ minHeight: "100vh" }}
         aria-label="Main navigation"
       >
         {/* ── Logo ──────────────────────────────────────────────────── */}

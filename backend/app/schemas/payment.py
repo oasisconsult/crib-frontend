@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 from typing import Any
 
@@ -47,6 +48,7 @@ class PaymentCreate(CamelModel):
     method: str = "cash"
     phone: str | None = None            # mobile money: triggers STK push
     reference: str | None = None
+    receipt_url: str | None = None      # bank transfer / cash proof of payment
     idempotency_key: str | None = None
     paid_at: datetime | None = None     # defaults to now() in service
     notes: str | None = None
@@ -78,6 +80,7 @@ class PaymentCreateFlat(CamelModel):
     method: str = "cash"
     phone: str | None = None            # mobile money: triggers STK push
     reference: str | None = None
+    receipt_url: str | None = None      # bank transfer / cash proof of payment
     idempotency_key: str | None = None
     paid_at: datetime | None = None
     notes: str | None = None
@@ -347,3 +350,31 @@ class MobileMoneyTransactionOut(CamelModel):
 
 
 MobileMoneyPageOut = PaginatedResponse[MobileMoneyTransactionOut]
+
+
+# ── Bulk confirm ───────────────────────────────────────────────────────────────
+
+class BulkConfirmRequest(CamelModel):
+    payment_ids: list[uuid.UUID] = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="IDs of payments to confirm. Max 50 per request.",
+    )
+
+
+class BulkConfirmFailure(CamelModel):
+    id: uuid.UUID
+    reason: str
+
+
+class BulkConfirmResult(CamelModel):
+    confirmed: list[PaymentOut]
+    failed: list[BulkConfirmFailure]
+
+
+# ── Wallet credit ──────────────────────────────────────────────────────────────
+
+class WalletCreditRequest(CamelModel):
+    amount: float = Field(..., gt=0, description="Amount to credit (positive, in org currency)")
+    description: str | None = Field(None, max_length=255)

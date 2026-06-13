@@ -17,10 +17,15 @@ export interface RoleDetailOut extends RoleOut {
   permissions: PermissionOut[];
 }
 
+export interface PermissionRef {
+  id: number;
+  action: string;
+}
+
 export interface ResourceOut {
   id: number;
   name: string;
-  actions: string[];
+  permissions: PermissionRef[];
 }
 
 export const rbacApi = {

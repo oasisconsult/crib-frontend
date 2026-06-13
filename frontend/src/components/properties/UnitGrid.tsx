@@ -113,9 +113,23 @@ const UnitCard = React.memo(function UnitCard({
           </span>
         </div>
         <p className="text-xs text-muted-foreground mt-0.5 capitalize">
-          {unit.type.replace("_", " ")}
+          {unit.type.replace(/_/g, " ")}
         </p>
-        <div className="mt-3 flex items-end justify-between">
+        {/* Uganda feature chips */}
+        <div className="mt-1.5 flex flex-wrap gap-1">
+          {unit.isSelfContained && (
+            <span className="text-[10px] rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 font-medium">SC</span>
+          )}
+          {unit.hasDomesticQuarters && (
+            <span className="text-[10px] rounded-full bg-muted/70 text-muted-foreground px-1.5 py-0.5 font-medium">BQ</span>
+          )}
+          {unit.furnishedStatus && unit.furnishedStatus !== "unfurnished" && (
+            <span className="text-[10px] rounded-full bg-muted/70 text-muted-foreground px-1.5 py-0.5 font-medium capitalize">
+              {unit.furnishedStatus === "semi_furnished" ? "Semi" : "Furnished"}
+            </span>
+          )}
+        </div>
+        <div className="mt-2 flex items-end justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-0.5">
               <BedDouble className="h-3 w-3" />
@@ -189,8 +203,21 @@ const UnitRow = React.memo(function UnitRow({
           )}
         </div>
       </td>
-      <td className="py-3 px-4 text-sm text-muted-foreground capitalize hidden sm:table-cell">
-        {unit.type.replace("_", " ")}
+      <td className="py-3 px-4 text-sm text-muted-foreground hidden sm:table-cell">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="capitalize">{unit.type.replace(/_/g, " ")}</span>
+          {unit.isSelfContained && (
+            <span className="text-[10px] rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 font-medium">SC</span>
+          )}
+          {unit.hasDomesticQuarters && (
+            <span className="text-[10px] rounded-full bg-muted/70 text-muted-foreground px-1.5 py-0.5 font-medium">BQ</span>
+          )}
+          {unit.furnishedStatus && unit.furnishedStatus !== "unfurnished" && (
+            <span className="text-[10px] rounded-full bg-muted/70 text-muted-foreground px-1.5 py-0.5 font-medium">
+              {unit.furnishedStatus === "semi_furnished" ? "Semi" : "Furn."}
+            </span>
+          )}
+        </div>
       </td>
       <td className="py-3 px-4">
         <span

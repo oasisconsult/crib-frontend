@@ -16,7 +16,11 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.landlord_invite import LandlordPropertyAccess
-from app.models.property import Property, Unit, UnitStatus
+from app.models.property import (
+    Property, Unit,
+    UnitStatus, UnitType,
+    FurnishedStatus, WaterSource, BackupPower, InternetType, CompoundType,
+)
 from app.utils.references import build_ref, next_seq
 from app.schemas.property import (
     BatchUnitCreate,
@@ -24,6 +28,7 @@ from app.schemas.property import (
     PropertyCreate,
     PropertyOut,
     PropertyUpdate,
+    SingleUnitOverrides,
     UnitCreate,
     UnitOut,
     UnitRulesUpdate,
@@ -66,6 +71,19 @@ async def _property_out(prop: Property, db: AsyncSession) -> PropertyOut:
         amenities=prop.amenities or [],
         currency=prop.currency,
         geocode=prop.geocode,
+        is_single_unit=prop.is_single_unit,
+        total_floors=prop.total_floors,
+        year_built=prop.year_built,
+        land_size_acres=prop.land_size_acres,
+        has_perimeter_wall=prop.has_perimeter_wall,
+        has_gate=prop.has_gate,
+        has_guard=prop.has_guard,
+        has_cctv=prop.has_cctv,
+        total_parking_spaces=prop.total_parking_spaces,
+        water_source=prop.water_source.value,
+        backup_power=prop.backup_power.value,
+        internet_type=prop.internet_type.value,
+        compound_type=prop.compound_type.value,
         total_units=total,
         occupied_units=occupied,
         occupancy_rate=occupancy_rate,
@@ -94,6 +112,15 @@ def _unit_out(unit: Unit) -> UnitOut:
         notes=unit.notes,
         rules=unit.rules,
         geocode=unit.geocode,
+        sitting_rooms=unit.sitting_rooms,
+        toilets=unit.toilets,
+        is_self_contained=unit.is_self_contained,
+        has_kitchen=unit.has_kitchen,
+        has_store=unit.has_store,
+        has_domestic_quarters=unit.has_domestic_quarters,
+        parking_spaces=unit.parking_spaces,
+        furnished_status=unit.furnished_status.value,
+        water_source=unit.water_source.value if unit.water_source else None,
         current_tenant_id=str(unit.current_tenant_id) if unit.current_tenant_id else None,
         current_lease_id=str(unit.current_lease_id) if unit.current_lease_id else None,
         last_inspection_date=unit.last_inspection_date,
@@ -201,9 +228,48 @@ async def create_property(body: PropertyCreate, org_id: uuid.UUID | None, db: As
         amenities=body.amenities,
         currency=body.currency,
         geocode=body.geocode,
+        is_single_unit=body.is_single_unit,
+        total_floors=body.total_floors,
+        year_built=body.year_built,
+        land_size_acres=body.land_size_acres,
+        has_perimeter_wall=body.has_perimeter_wall,
+        has_gate=body.has_gate,
+        has_guard=body.has_guard,
+        has_cctv=body.has_cctv,
+        total_parking_spaces=body.total_parking_spaces,
+        water_source=body.water_source,
+        backup_power=body.backup_power,
+        internet_type=body.internet_type,
+        compound_type=body.compound_type,
     )
     db.add(prop)
     await db.flush()
+
+    if body.is_single_unit:
+        ov = body.single_unit_overrides
+        db.add(Unit(
+            property_id=prop.id,
+            name="Main Property",
+            type=UnitType.studio,
+            status=UnitStatus.available,
+            monthly_rent=0.0,
+            currency=prop.currency,
+            bedrooms=ov.bedrooms if ov else 1,
+            bathrooms=ov.bathrooms if ov else 1,
+            sitting_rooms=ov.sitting_rooms if ov else 1,
+            toilets=ov.toilets if ov else 1,
+            is_self_contained=ov.is_self_contained if ov else True,
+            has_kitchen=ov.has_kitchen if ov else True,
+            has_store=ov.has_store if ov else False,
+            has_domestic_quarters=ov.has_domestic_quarters if ov else False,
+            parking_spaces=ov.parking_spaces if ov else 0,
+            furnished_status=ov.furnished_status if ov else FurnishedStatus.unfurnished,
+            area=ov.area if ov else None,
+            amenities=[],
+            images=[],
+        ))
+        await db.flush()
+
     await db.refresh(prop)
     return await _property_out(prop, db)
 
@@ -221,10 +287,46 @@ async def update_property(
     if body.rules is not None:
         updates["rules"] = body.rules.model_dump(by_alias=True)
 
+    transitioning_to_single = (
+        body.is_single_unit is True and not prop.is_single_unit
+    )
+
     for key, val in updates.items():
         setattr(prop, key, val)
 
     await db.flush()
+
+    # If the property is being converted to single-unit and has no units yet,
+    # auto-create the virtual "Main Property" unit.
+    if transitioning_to_single:
+        unit_count = await db.scalar(
+            select(func.count(Unit.id)).where(
+                Unit.property_id == prop.id, Unit.deleted_at.is_(None)
+            )
+        ) or 0
+        if unit_count == 0:
+            db.add(Unit(
+                property_id=prop.id,
+                name="Main Property",
+                type=UnitType.studio,
+                status=UnitStatus.available,
+                monthly_rent=0.0,
+                currency=prop.currency,
+                bedrooms=1,
+                bathrooms=1,
+                sitting_rooms=1,
+                toilets=1,
+                is_self_contained=True,
+                has_kitchen=True,
+                has_store=False,
+                has_domestic_quarters=False,
+                parking_spaces=0,
+                furnished_status=FurnishedStatus.unfurnished,
+                amenities=[],
+                images=[],
+            ))
+            await db.flush()
+
     await db.refresh(prop)
     return await _property_out(prop, db)
 
@@ -401,6 +503,15 @@ async def create_unit(
         rules=body.rules.model_dump(by_alias=True) if body.rules else None,
         reference=ref,
         geocode=body.geocode,
+        sitting_rooms=body.sitting_rooms,
+        toilets=body.toilets,
+        is_self_contained=body.is_self_contained,
+        has_kitchen=body.has_kitchen,
+        has_store=body.has_store,
+        has_domestic_quarters=body.has_domestic_quarters,
+        parking_spaces=body.parking_spaces,
+        furnished_status=body.furnished_status,
+        water_source=body.water_source,
     )
     db.add(unit)
     await db.flush()
@@ -431,6 +542,15 @@ async def batch_create_units(
             notes=u.notes,
             rules=u.rules.model_dump(by_alias=True) if u.rules else None,
             reference=build_ref("UNIT", base_seq + i),
+            sitting_rooms=u.sitting_rooms,
+            toilets=u.toilets,
+            is_self_contained=u.is_self_contained,
+            has_kitchen=u.has_kitchen,
+            has_store=u.has_store,
+            has_domestic_quarters=u.has_domestic_quarters,
+            parking_spaces=u.parking_spaces,
+            furnished_status=u.furnished_status,
+            water_source=u.water_source,
         )
         for i, u in enumerate(body.units)
     ]

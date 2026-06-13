@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_org_id, require_org_access, require_superadmin
 from app.core.database import get_db
 from app.models.landlord_invite import LandlordPropertyAccess
+from app.services.policy_service import require_permission
 
 from app.schemas.common import PaginatedResponse
 from app.schemas.property import (
@@ -119,7 +120,7 @@ async def _resolve_caretaker_filter(
 
 # ── Properties ────────────────────────────────────────────────────────────────
 
-@router.get("", response_model=dict)
+@router.get("", response_model=dict, dependencies=[require_permission("read", "property")])
 async def list_properties(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
