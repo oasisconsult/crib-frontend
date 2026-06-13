@@ -5,7 +5,7 @@ import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download,
   Smartphone, Building2, Banknote, Calendar, MessageCircle,
-  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation,
+  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload, PenLine,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,13 +17,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment } from "@/hooks/usePayments";
+import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment, useTenantWallet } from "@/hooks/usePayments";
 import { useLeases, useLease, useGenerateLeaseDocument, useConfirmLeaseTerms } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
-import { useProperty } from "@/hooks/useProperties";
+import { useProperty, usePropertyGeocode } from "@/hooks/useProperties";
 import { usePublicSettings } from "@/hooks/useSettings";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import { useAppStore } from "@/store/useAppStore";
+import { uploadsApi } from "@/services/api/uploads";
 import { cn } from "@/utils/cn";
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { WalletBalanceCard } from "@/components/payments/WalletBalanceCard";
@@ -103,24 +104,62 @@ const MOBILE_MONEY_IDS = new Set(["mtn_momo", "airtel_money"]);
 type PayStep = "method" | "form" | "pending" | "confirm" | "success";
 
 interface PayDialogProps {
-  lease: { id: string; terms: { monthlyRent: number; currency: string } };
+  lease: { id: string; reference?: string; terms: { monthlyRent: number; currency: string } };
+  balance: number;
+  lateFeeApplied: number;
   userPhone?: string;
+  mobileMoneyProvider?: string | null;
+  mobileMoneyNumber?: string | null;
   onClose: () => void;
 }
 
-function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
+function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvider, mobileMoneyNumber, onClose }: PayDialogProps) {
   const [step, setStep] = useState<PayStep>("method");
   const [selectedMethod, setSelectedMethod] = useState<PayMethod | null>(null);
   const [phone, setPhone] = useState(userPhone ?? "");
-  const [amount, setAmount] = useState(String(lease.terms.monthlyRent));
-  const [reference, setReference] = useState("");
-  const [pendingMessage, setPendingMessage] = useState("");
-  const { mutate, isPending } = useRecordPayment();
+  const [amount, setAmount] = useState(balance > 0 ? String(Math.round(balance)) : "");
 
+  const [reference, setReference] = useState(lease.reference ?? "");
+
+  // Sync amount if balance loads after mount
+  useEffect(() => {
+    if (balance > 0) setAmount(String(Math.round(balance)));
+  }, [balance]);
+
+  // Auto-populate phone from tenant's saved mobile money number when method is selected
   function handleMethodSelect(m: PayMethod) {
     setSelectedMethod(m);
+    if (MOBILE_MONEY_IDS.has(m.id) && mobileMoneyNumber) {
+      const providerMatches =
+        (m.id === "mtn_momo" && mobileMoneyProvider === "mtn") ||
+        (m.id === "airtel_money" && mobileMoneyProvider === "airtel");
+      if (providerMatches) setPhone(mobileMoneyNumber);
+    }
     setStep("form");
   }
+  const [pendingMessage, setPendingMessage] = useState("");
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [receiptName, setReceiptName] = useState<string | null>(null);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const { mutate, isPending } = useRecordPayment();
+
+  async function handleReceiptUpload(file: File) {
+    setUploadingReceipt(true);
+    try {
+      const result = await uploadsApi.uploadFile(file, {
+        category: "payment_receipt",
+        leaseId: lease.id,
+      });
+      setReceiptUrl(result.url);
+      setReceiptName(result.name);
+    } catch {
+      // toast is handled by the catch — surface it to user
+      alert("Upload failed. Please try again.");
+    } finally {
+      setUploadingReceipt(false);
+    }
+  }
+
 
   function isMobileMoney() {
     return selectedMethod ? MOBILE_MONEY_IDS.has(selectedMethod.id) : false;
@@ -134,7 +173,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
         category: "rent",
         method: METHOD_BACKEND_MAP[selectedMethod.id] as Payment["method"],
         leaseId: lease.id,
-        amount: parseFloat(amount) || lease.terms.monthlyRent,
+        amount: parseFloat(amount) || balance,
         currency: lease.terms.currency,
         phone: phone.trim() || undefined,
       } as any,
@@ -158,9 +197,10 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
         category: "rent",
         method: METHOD_BACKEND_MAP[selectedMethod.id] as Payment["method"],
         leaseId: lease.id,
-        amount: parseFloat(amount) || lease.terms.monthlyRent,
+        amount: parseFloat(amount) || balance,
         currency: lease.terms.currency,
         reference: reference.trim(),
+        receiptUrl: receiptUrl ?? undefined,
       } as Omit<Payment, "id" | "createdAt" | "updatedAt">,
       { onSuccess: () => setStep("success") },
     );
@@ -225,7 +265,7 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
           <h3 className="font-semibold text-foreground">
             {step === "method" && "Pay Rent"}
             {step === "form" && selectedMethod?.label}
-            {step === "confirm" && "Enter Reference"}
+            {step === "confirm" && "Upload Receipt"}
           </h3>
         </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
@@ -234,9 +274,17 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
       </div>
 
       {/* Amount pill */}
-      <div className="rounded-[6px] bg-primary/5 border border-primary/15 px-4 py-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-foreground/70">Amount due</span>
-        <span className="text-lg font-bold text-foreground">{formatCurrency(lease.terms.monthlyRent, lease.terms.currency)}</span>
+      <div className="rounded-[6px] bg-primary/5 border border-primary/15 px-4 py-3 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-foreground/70">Amount due</span>
+          <span className="text-lg font-bold text-foreground">{formatCurrency(balance, lease.terms.currency)}</span>
+        </div>
+        {lateFeeApplied > 0 && (
+          <div className="flex items-center justify-between text-xs text-amber-700 dark:text-amber-400">
+            <span>Includes late fee</span>
+            <span>+{formatCurrency(lateFeeApplied, lease.terms.currency)}</span>
+          </div>
+        )}
       </div>
 
       {/* Step: select method */}
@@ -266,6 +314,24 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
             </div>
           )}
 
+          {/* Reference shown here for bank/cash so tenant can use it as narration */}
+          {!isMobileMoney() && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Payment Reference
+              </Label>
+              <Input
+                type="text"
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="e.g. LSE-ABC123"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use this reference as your bank narration so your payment is matched automatically.
+              </p>
+            </div>
+          )}
+
           {selectedMethod.requiresPhone && (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -286,60 +352,100 @@ function PayDialog({ lease, userPhone, onClose }: PayDialogProps) {
               type="number"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              min={1}
+              min={balance}
+              className={cn(parseFloat(amount) < balance && amount !== "" && "border-destructive focus-visible:ring-destructive")}
             />
+            {parseFloat(amount) < balance && amount !== "" && (
+              <p className="text-xs text-destructive">
+                Amount cannot be less than {formatCurrency(balance, lease.terms.currency)} due.
+              </p>
+            )}
           </div>
 
           {isMobileMoney() ? (
-            /* Mobile money: submit immediately → STK push → check phone */
             <Button
               className="w-full"
               onClick={handleMobileMoneySubmit}
-              disabled={!phone.trim() || isPending}
+              disabled={!phone.trim() || isPending || parseFloat(amount) < balance}
             >
               {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
               {isPending ? "Sending request…" : "Send Payment Request"}
             </Button>
           ) : (
-            /* Cash / bank: go to reference step */
             <Button
               className="w-full"
               onClick={() => setStep("confirm")}
+              disabled={!reference.trim() || parseFloat(amount) < balance}
             >
+              <CreditCard className="h-4 w-4" />
               I&apos;ve Made Payment
             </Button>
           )}
         </div>
       )}
 
-      {/* Step: reference entry (cash / bank only) */}
+      {/* Step: upload receipt (cash / bank only) */}
       {step === "confirm" && selectedMethod && (
-        <div className="space-y-3">
-          <div className="rounded-[6px] bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300">
-            {selectedMethod.instructions}
-          </div>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Take a photo of your receipt or upload a PDF / image as proof of payment.
+          </p>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Transaction / Receipt Reference
-            </Label>
-            <Input
-              type="text"
-              value={reference}
-              onChange={(e) => setReference(e.target.value)}
-              placeholder="e.g. TXN123456789"
-              autoFocus
-            />
-          </div>
+          {receiptUrl ? (
+            <div className="flex items-center gap-2 rounded-[6px] border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+              <Paperclip className="h-4 w-4 shrink-0" />
+              <span className="truncate flex-1">{receiptName}</span>
+              <button
+                onClick={() => { setReceiptUrl(null); setReceiptName(null); }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : uploadingReceipt ? (
+            <div className="flex flex-col items-center gap-2 rounded-[6px] border border-dashed border-border px-4 py-8 text-sm text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <span>Uploading…</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {/* Camera — opens directly to camera on mobile */}
+              <label className="flex flex-col items-center gap-2 rounded-[6px] border border-dashed border-border px-3 py-6 cursor-pointer text-center text-sm text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all">
+                <Camera className="h-6 w-6" />
+                <span className="font-medium text-xs">Take Photo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="sr-only"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }}
+                />
+              </label>
+              {/* File picker — gallery, files, or PDF */}
+              <label className="flex flex-col items-center gap-2 rounded-[6px] border border-dashed border-border px-3 py-6 cursor-pointer text-center text-sm text-muted-foreground hover:border-primary/40 hover:bg-primary/5 transition-all">
+                <Upload className="h-6 w-6" />
+                <span className="font-medium text-xs">Upload File</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="sr-only"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleReceiptUpload(f); }}
+                />
+              </label>
+            </div>
+          )}
 
           <Button
             className="w-full"
-            disabled={!reference.trim() || isPending}
+            disabled={isPending || uploadingReceipt}
             onClick={handleCashBankSubmit}
           >
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
             {isPending ? "Submitting…" : "Submit Payment"}
           </Button>
+          <p className="text-xs text-center text-muted-foreground">
+            Receipt is optional but helps resolve disputes faster.
+          </p>
         </div>
       )}
     </div>
@@ -679,11 +785,11 @@ function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onCl
 function DialogOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pb-3 sm:pb-0"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative z-10 w-full max-w-md mx-4 sm:mx-auto bg-[hsl(var(--card))] rounded-t-[8px] sm:rounded-[8px] border border-border shadow-2xl p-5 max-h-[90vh] overflow-y-auto">
+      <div className="relative z-10 w-full max-w-lg mx-4 sm:mx-auto bg-[hsl(var(--card))] rounded-t-[8px] sm:rounded-[8px] border border-border shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
         {children}
       </div>
     </div>
@@ -940,10 +1046,14 @@ function InspectionsTab({ unitId, propertyId }: { unitId: string; propertyId: st
 
 // ─── How to Find Us ───────────────────────────────────────────────────────────
 
-function HowToFindUsCard({ geocode, address, whatsappNumber }: {
+function HowToFindUsCard({ geocode, address, whatsappNumber, navUrl, landmarkDescription, accessInstructions, deliveryNotes }: {
   geocode?: string;
   address: { line1: string; line2?: string; city: string; state: string; country: string; lat?: number; lng?: number };
   whatsappNumber?: string;
+  navUrl?: string;
+  landmarkDescription?: string;
+  accessInstructions?: string;
+  deliveryNotes?: string;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -1002,6 +1112,9 @@ function HowToFindUsCard({ geocode, address, whatsappNumber }: {
                 Get directions via GeoBox
               </p>
             </div>
+            <p className="text-xs text-emerald-700 dark:text-emerald-300 leading-relaxed">
+              This is your property&apos;s unique GeoBox address code. Share it with visitors, delivery drivers, or anyone coming to your home — they can tap <strong>Send to GeoBox on WhatsApp</strong> below to get turn-by-turn directions straight to your door.
+            </p>
 
             {/* Geocode chip + copy */}
             <div className="flex items-center gap-2">
@@ -1019,15 +1132,39 @@ function HowToFindUsCard({ geocode, address, whatsappNumber }: {
               </button>
             </div>
 
-            {/* Instruction */}
-            <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
-              Share this code with anyone who needs to find you, or tap the button below —
-              WhatsApp will open with the message already typed. Just hit <strong>Send</strong>.
-            </p>
+            {/* Resolved address details from GeoBox */}
+            {landmarkDescription && (
+              <p className="text-xs text-emerald-800 dark:text-emerald-200 leading-relaxed">
+                📍 {landmarkDescription}
+              </p>
+            )}
+            {accessInstructions && (
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                <span className="font-medium">Access:</span> {accessInstructions}
+              </p>
+            )}
+            {deliveryNotes && (
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed">
+                <span className="font-medium">Delivery notes:</span> {deliveryNotes}
+              </p>
+            )}
 
-            {/* WhatsApp CTA */}
+            {/* Open Navigation — primary CTA when nav_url is available */}
+            {navUrl && (
+              <a
+                href={navUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-emerald-700 dark:bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 dark:hover:bg-emerald-500 active:scale-[0.98] transition-all"
+              >
+                <Navigation className="h-4 w-4" />
+                Open Navigation
+              </a>
+            )}
+
+            {/* WhatsApp — share code with the GeoBox bot */}
             <a
-              href={waUrl}
+              href={waUrl!}
               target="_blank"
               rel="noopener noreferrer"
               className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d] active:scale-[0.98] transition-all"
@@ -1038,21 +1175,76 @@ function HowToFindUsCard({ geocode, address, whatsappNumber }: {
           </div>
         )}
 
-        {/* Geocode-only fallback: has geocode but no bot number configured yet */}
+        {/* Geocode-only panel: shown when geocode exists but no bot number is configured */}
         {geocode && !waUrl && (
-          <div className="flex items-center gap-2">
-            <code className="rounded bg-primary/10 px-2 py-0.5 text-sm font-mono font-semibold text-primary tracking-wider">
-              {geocode}
-            </code>
-            <button
-              onClick={handleCopy}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              title="Copy geocode"
+          <div className="rounded-[8px] border border-primary/20 bg-primary/5 p-3.5 space-y-3 dark:border-primary/15 dark:bg-primary/5">
+            {/* Header */}
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary shrink-0" />
+              <p className="text-sm font-semibold text-foreground">Your GeoBox Address Code</p>
+            </div>
+
+            {/* Geocode chip + copy */}
+            <div className="flex items-center gap-2">
+              <code className="rounded-[5px] bg-white dark:bg-background border border-primary/20 px-3 py-1 text-sm font-mono font-bold text-primary tracking-widest shadow-sm">
+                {geocode}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="flex items-center gap-1 text-xs text-primary/70 hover:text-primary transition-colors"
+                title="Copy geocode"
+              >
+                {copied
+                  ? <><CheckCircle2 className="h-3.5 w-3.5" /> Copied</>
+                  : <><Copy className="h-3.5 w-3.5" /> Copy</>}
+              </button>
+            </div>
+
+            {/* Resolved address details */}
+            {landmarkDescription && (
+              <p className="text-xs text-muted-foreground leading-relaxed">📍 {landmarkDescription}</p>
+            )}
+            {accessInstructions && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">Access:</span> {accessInstructions}
+              </p>
+            )}
+            {deliveryNotes && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <span className="font-medium text-foreground">Delivery notes:</span> {deliveryNotes}
+              </p>
+            )}
+
+            {!landmarkDescription && !accessInstructions && (
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                This short code uniquely identifies your home. Share it with delivery drivers,
+                taxis, or anyone who needs to find you.
+              </p>
+            )}
+
+            {/* Open Navigation */}
+            {navUrl && (
+              <a
+                href={navUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-[0.98] transition-all"
+              >
+                <Navigation className="h-4 w-4" />
+                Open Navigation
+              </a>
+            )}
+
+            {/* Generic WhatsApp share */}
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`My GeoBox address code is *${geocode}*. Send "Find ${geocode}" on WhatsApp to get directions to my home.`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d] active:scale-[0.98] transition-all"
             >
-              {copied
-                ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                : <Copy className="h-3.5 w-3.5" />}
-            </button>
+              <MessageCircle className="h-4 w-4" />
+              Share my address code via WhatsApp
+            </a>
           </div>
         )}
       </CardContent>
@@ -1084,9 +1276,18 @@ export default function TenantPortalPage() {
   // Find tenant's lease from list (for IDs), then fetch detail (for signatures)
   const leaseStub = allLeases.find((l) => l.tenantId === userId) ?? allLeases[0];
   const { data: myLease } = useLease(leaseStub?.id ?? "");
+  const { data: inspectionsData } = useInspections(
+    myLease?.unitId ? { unitId: myLease.unitId } as any : undefined,
+  );
 
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
+  const { data: walletData } = useTenantWallet(userId ?? "");
+  const walletBalance = walletData?.balance ?? 0;
   const { data: propertyData } = useProperty(myLease?.propertyId ?? "");
+  const { data: geocodeData } = usePropertyGeocode(
+    myLease?.propertyId ?? "",
+    !!myLease?.propertyId && !!propertyData?.geocode,
+  );
   const { data: publicSettings } = usePublicSettings();
   const { mutate: generateDoc, isPending: generatingDoc } = useGenerateLeaseDocument();
   const { mutate: confirmTerms, isPending: confirmingTerms } = useConfirmLeaseTerms();
@@ -1099,9 +1300,16 @@ export default function TenantPortalPage() {
     !myLease?.paperAgreementAcknowledged;
 
   const myPayments = allPayments.filter((p) => !myLease || p.leaseId === myLease.id);
-  const hasOverdueRent = (schedulesData?.data ?? []).some((s) => s.state === "overdue");
+  const schedules = schedulesData?.data ?? [];
+  const overdueSchedule = schedules.find((s) => s.status === "overdue" || s.state === "overdue") ?? null;
+  const hasOverdueRent = overdueSchedule !== null;
+  const overdueBalance = overdueSchedule?.balance ?? 0;
+  const overdueLateFee = overdueSchedule?.lateFeeApplied ?? 0;
   const myMaintenance = allMaintenance.filter((m) => (m as any).reportedById === userId || (m as any).reportedBy === userId);
   const openRequests = myMaintenance.filter((m) => !["resolved", "closed"].includes(m.state));
+  const pendingSignTasks = (inspectionsData?.data ?? []).filter(
+    (i: any) => i.landlordSignedAt && !i.tenantSignedAt && i.signToken,
+  );
 
   const nextPaymentDate = myLease?.terms
     ? (() => {
@@ -1288,6 +1496,9 @@ export default function TenantPortalPage() {
             <TabsTrigger value="inspections" className="gap-1.5">
               <Calendar className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Inspections</span>
+              {pendingSignTasks.length > 0 && (
+                <span className="ml-1 flex h-2 w-2 rounded-full bg-amber-500" />
+              )}
             </TabsTrigger>
             <TabsTrigger value="messages" className="gap-1.5">
               <MessageCircle className="h-3.5 w-3.5" />
@@ -1297,27 +1508,137 @@ export default function TenantPortalPage() {
 
           {/* ── Overview ────────────────────────────────────────────── */}
           <TabsContent value="overview" className="mt-4 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {[
-                {
-                  label: "Rent Status",
-                  value: hasOverdueRent ? "Overdue" : "Up to date",
-                  color: hasOverdueRent ? "text-destructive" : "text-emerald-600",
-                  icon: hasOverdueRent ? AlertCircle : CheckCircle2,
-                },
-                { label: "Next Payment", value: nextPaymentDate, color: "text-foreground", icon: Clock },
-                { label: "Open Requests", value: String(openRequests.length), color: "text-foreground", icon: Wrench },
-              ].map((s) => (
-                <Card key={s.label}>
+
+            {/* Balance Due banner — shown when rent is overdue */}
+            {hasOverdueRent && myLease && (
+              <Card className="border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-950/30">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                        <p className="text-sm font-medium text-destructive">Balance Due</p>
+                        <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive uppercase tracking-wide">
+                          Overdue
+                        </span>
+                      </div>
+                      <p className="text-3xl font-extrabold text-destructive tracking-tight">
+                        {formatCurrency(overdueBalance, myLease.terms?.currency ?? "UGX")}
+                      </p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>Base rent: {formatCurrency(overdueBalance - overdueLateFee, myLease.terms?.currency ?? "UGX")}</span>
+                        {overdueLateFee > 0 && (
+                          <span className="text-amber-600 dark:text-amber-400 font-medium">
+                            + {formatCurrency(overdueLateFee, myLease.terms?.currency ?? "UGX")} late fee
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      className="shrink-0 mt-1"
+                      onClick={() => setDialog("pay")}
+                    >
+                      Pay Now
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Pending tasks — shown when there are inspection reports awaiting tenant signature */}
+            {pendingSignTasks.length > 0 && (
+              <Card className="border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-start gap-3">
+                    <PenLine className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                          You have {pendingSignTasks.length === 1 ? "a pending task" : `${pendingSignTasks.length} pending tasks`}
+                        </p>
+                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                          {pendingSignTasks.length === 1
+                            ? "An inspection report is ready for your signature."
+                            : "Inspection reports are ready for your signature."}
+                        </p>
+                      </div>
+                      <div className="space-y-1.5">
+                        {pendingSignTasks.map((insp: any) => (
+                          <a
+                            key={insp.id}
+                            href={`/inspect/sign/${insp.signToken}`}
+                            className="flex items-center justify-between rounded-[6px] border border-amber-200 dark:border-amber-700 bg-white/60 dark:bg-amber-950/40 px-3 py-2 text-xs hover:bg-white dark:hover:bg-amber-900/30 transition-colors"
+                          >
+                            <span className="font-medium capitalize text-amber-900 dark:text-amber-200">
+                              {insp.type?.replace(/_/g, " ")} inspection
+                              {insp.propertyName ? ` · ${insp.propertyName}` : ""}
+                            </span>
+                            <span className="text-amber-600 dark:text-amber-400 font-medium">
+                              Sign now →
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Wallet / credit balance — shown when tenant has overpayment credit */}
+            {walletBalance > 0 && myLease && (
+              <Card className="border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <p className="text-sm font-medium text-emerald-800 dark:text-emerald-300">Wallet Credit</p>
+                      </div>
+                      <p className="text-2xl font-extrabold text-emerald-700 dark:text-emerald-300">
+                        {formatCurrency(walletBalance, walletData?.currency ?? myLease.terms?.currency ?? "UGX")}
+                      </p>
+                      <p className="text-xs text-emerald-700/70 dark:text-emerald-400">
+                        Credit from overpayment — will be applied automatically to your next rent.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Secondary stat cards — 3-col when current, 2-col when overdue banner is shown */}
+            <div className={cn("grid gap-3", hasOverdueRent ? "grid-cols-2" : "grid-cols-1 sm:grid-cols-3")}>
+              {!hasOverdueRent && (
+                <Card>
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-center gap-2 mb-1">
-                      <s.icon className={cn("h-4 w-4", s.color)} />
-                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <p className="text-xs text-muted-foreground">Rent Status</p>
                     </div>
-                    <p className={cn("text-lg font-bold", s.color)}>{s.value}</p>
+                    <p className="text-lg font-bold text-emerald-600">Up to date</p>
                   </CardContent>
                 </Card>
-              ))}
+              )}
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Next Payment</p>
+                  </div>
+                  <p className="text-lg font-bold text-foreground">{nextPaymentDate}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wrench className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">Open Requests</p>
+                  </div>
+                  <p className="text-lg font-bold text-foreground">{openRequests.length}</p>
+                </CardContent>
+              </Card>
             </div>
 
             <Card>
@@ -1349,6 +1670,10 @@ export default function TenantPortalPage() {
                 geocode={propertyData.geocode}
                 address={propertyData.address}
                 whatsappNumber={publicSettings?.["geobox.whatsapp_number"]}
+                navUrl={geocodeData?.navUrl}
+                landmarkDescription={geocodeData?.landmarkDescription}
+                accessInstructions={geocodeData?.accessInstructions}
+                deliveryNotes={geocodeData?.deliveryNotes}
               />
             )}
 
@@ -1479,6 +1804,11 @@ export default function TenantPortalPage() {
                         ["Security deposit", formatCurrency(myLease.terms.depositAmount, myLease.terms.currency)],
                         ["Notice period", `${myLease.terms.noticePeriodDays} days`],
                         ["Grace period", `${myLease.terms.gracePeriodDays} days`],
+                        ["Late fees", myLease.terms.lateFeeType === "flat"
+                          ? formatCurrency(myLease.terms.lateFeeValue, myLease.terms.currency)
+                          : myLease.terms.lateFeeType === "percentage"
+                            ? `${myLease.terms.lateFeeValue}% of outstanding rent`
+                            : "—"],
                       ].map(([label, value]) => (
                         <div key={label as string}>
                           <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -1640,15 +1970,27 @@ export default function TenantPortalPage() {
       </div>
 
       {/* ── Dialogs ───────────────────────────────────────────────── */}
-      {dialog === "pay" && myLease && (
-        <DialogOverlay onClose={closeDialog}>
-          <PayDialog
-            lease={myLease as any}
-            userPhone={user?.phone}
-            onClose={closeDialog}
-          />
-        </DialogOverlay>
-      )}
+      {dialog === "pay" && myLease && (() => {
+        const dueSchedule =
+          overdueSchedule ??
+          schedules.find((s) => s.status === "pending" || s.state === "pending") ??
+          null;
+        const balance = dueSchedule?.balance ?? (myLease as any).terms?.monthlyRent ?? 0;
+        const lateFeeApplied = dueSchedule?.lateFeeApplied ?? 0;
+        return (
+          <DialogOverlay onClose={closeDialog}>
+            <PayDialog
+              lease={myLease as any}
+              balance={balance}
+              lateFeeApplied={lateFeeApplied}
+              userPhone={user?.phone}
+              mobileMoneyProvider={user?.mobileMoneyProvider}
+              mobileMoneyNumber={user?.mobileMoneyNumber}
+              onClose={closeDialog}
+            />
+          </DialogOverlay>
+        );
+      })()}
 
       {dialog === "maintenance" && myLease && (
         <DialogOverlay onClose={closeDialog}>

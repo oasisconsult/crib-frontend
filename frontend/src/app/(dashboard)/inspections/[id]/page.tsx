@@ -26,6 +26,9 @@ import {
   Loader2,
   ImageIcon,
   Trash2,
+  FileDown,
+  PenLine,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,12 +46,14 @@ import {
 } from "@/components/ui/select";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatDate } from "@/utils/formatters";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useInspection,
   useUpdateInspection,
   useTransitionInspection,
   useMaintenanceIssues,
 } from "@/hooks/useInspections";
+import { queryKeys } from "@/lib/queryClient";
 import { inspectionsApi } from "@/services/api/inspections";
 import { uploadsApi } from "@/services/api/uploads";
 import { toast } from "@/store/useUIStore";
@@ -493,7 +498,7 @@ function PhotosSection({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
             <Camera className="h-4 w-4" />
             Photos
@@ -502,24 +507,38 @@ function PhotosSection({
             )}
           </CardTitle>
           {editable && (
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="sr-only"
-                onChange={handleFiles}
-                disabled={uploading}
-              />
-              <span className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors">
-                {uploading ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Camera className="h-3.5 w-3.5" />
-                )}
-                {uploading ? "Uploading…" : "Add Photos"}
-              </span>
-            </label>
+            <div className="flex items-center gap-2">
+              {/* Camera capture — opens device camera on mobile */}
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="sr-only"
+                  onChange={handleFiles}
+                  disabled={uploading}
+                />
+                <span className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors">
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                  {uploading ? "Uploading…" : "Take Photo"}
+                </span>
+              </label>
+              {/* Gallery picker */}
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  onChange={handleFiles}
+                  disabled={uploading}
+                />
+                <span className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors">
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  Gallery
+                </span>
+              </label>
+            </div>
           )}
         </div>
       </CardHeader>
@@ -531,7 +550,7 @@ function PhotosSection({
             {editable && (
               <label className="cursor-pointer text-xs text-primary underline-offset-2 hover:underline">
                 <input type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} />
-                Upload the first photo
+                Upload from gallery
               </label>
             )}
           </div>
@@ -585,12 +604,179 @@ function PhotosSection({
   );
 }
 
+// ── Report & signature section ────────────────────────────────────────────────
+
+function ReportSignatureSection({
+  inspection,
+  canEdit,
+  onUpdated,
+}: {
+  inspection: Inspection;
+  canEdit: boolean;
+  onUpdated: () => void;
+}) {
+  const [signerName, setSignerName] = useState("");
+  const [loading, setLoading] = useState<string | null>(null);
+
+  const isSignable = inspection.state === "completed" || inspection.state === "approved";
+  const hasLandlordSig = !!inspection.landlordSignedAt;
+  const hasTenantSig = !!inspection.tenantSignedAt;
+  const isSealed = hasLandlordSig && hasTenantSig;
+
+  async function handleGenerateReport() {
+    setLoading("report");
+    try {
+      await inspectionsApi.generateReport(inspection.id);
+      toast.success("Report generated");
+      onUpdated();
+    } catch {
+      toast.error("Failed to generate report");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleSignLandlord() {
+    if (!signerName.trim()) { toast.error("Enter your name to sign"); return; }
+    setLoading("landlord");
+    try {
+      await inspectionsApi.signLandlord(inspection.id, signerName.trim());
+      toast.success("Signed successfully");
+      setSignerName("");
+      onUpdated();
+    } catch {
+      toast.error("Failed to record signature");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function handleSendForSigning() {
+    setLoading("send");
+    try {
+      await inspectionsApi.sendForSigning(inspection.id);
+      toast.success("Sign link sent to tenant");
+      onUpdated();
+    } catch (err: any) {
+      toast.error(err?.detail ?? "Failed to send sign link");
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  if (!isSignable) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="text-base flex items-center gap-2">
+            <PenLine className="h-4 w-4" />
+            Report &amp; Signatures
+          </CardTitle>
+          {inspection.reportPdfUrl && (
+            <a
+              href={inspection.reportPdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors"
+            >
+              <FileDown className="h-3.5 w-3.5" />
+              {isSealed ? "Download Sealed Report" : "Download Draft Report"}
+            </a>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Status chips */}
+        <div className="flex flex-wrap gap-2">
+          <span className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
+            hasLandlordSig
+              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+              : "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300",
+          )}>
+            {hasLandlordSig ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+            {hasLandlordSig
+              ? `Landlord signed · ${inspection.landlordSignedBy}`
+              : "Landlord: awaiting signature"}
+          </span>
+          <span className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium",
+            hasTenantSig
+              ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300"
+              : "bg-amber-100 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300",
+          )}>
+            {hasTenantSig ? <Check className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+            {hasTenantSig ? "Tenant signed" : "Tenant: awaiting signature"}
+          </span>
+          {isSealed && (
+            <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium bg-primary/10 text-primary">
+              <Check className="h-3 w-3" />
+              Fully executed
+            </span>
+          )}
+        </div>
+
+        {/* Actions */}
+        {canEdit && !isSealed && (
+          <div className="space-y-3 border-t pt-3">
+            {/* Generate / regenerate report */}
+            {!inspection.reportPdfUrl && (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">Generate a PDF report to share or download.</p>
+                <Button size="sm" variant="outline" loading={loading === "report"} onClick={handleGenerateReport}>
+                  <FileDown className="h-3.5 w-3.5" />
+                  Generate Report
+                </Button>
+              </div>
+            )}
+
+            {/* Landlord sign */}
+            {!hasLandlordSig && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium">Sign as landlord / property manager</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={signerName}
+                    onChange={(e) => setSignerName(e.target.value)}
+                    placeholder="Your full name"
+                    className="h-8 text-xs"
+                  />
+                  <Button size="sm" loading={loading === "landlord"} onClick={handleSignLandlord}>
+                    <PenLine className="h-3.5 w-3.5" />
+                    Sign
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Send to tenant */}
+            {hasLandlordSig && !hasTenantSig && (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">
+                  Send a sign link to the tenant (14-day expiry).
+                </p>
+                <Button size="sm" variant="outline" loading={loading === "send"} onClick={handleSendForSigning}>
+                  <Send className="h-3.5 w-3.5" />
+                  Send to Tenant
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function InspectionDetailPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
 
+  const qc = useQueryClient();
   const { data: inspection, isLoading } = useInspection(id);
   const { data: property } = useProperty(inspection?.propertyId ?? "");
   const { data: unit }     = useUnit(inspection?.propertyId ?? "", inspection?.unitId ?? "");
@@ -600,6 +786,10 @@ export default function InspectionDetailPage({ params }: Props) {
 
   const [editing, setEditing] = useState(false);
   const { mutate: transition, isPending: transitioning } = useTransitionInspection();
+
+  function refreshInspection() {
+    qc.invalidateQueries({ queryKey: queryKeys.inspections.detail(id) });
+  }
 
   if (isLoading) return <PageSkeleton />;
   if (!inspection) {
@@ -794,6 +984,12 @@ export default function InspectionDetailPage({ params }: Props) {
               )}
 
               <PhotosSection inspection={inspection} editable={checklistEditable} />
+
+              <ReportSignatureSection
+                inspection={inspection}
+                canEdit={canEdit}
+                onUpdated={refreshInspection}
+              />
 
               {inspection.summary && (
                 <Card>

@@ -3,8 +3,26 @@ import type { Inspection, MaintenanceIssue, PaginatedResponse, QueryParams } fro
 import type { InspectionEvent, MaintenanceEvent } from "@/types/states";
 import { toInspectionParams, toMaintenanceParams } from "@/utils/backendParams";
 
+export interface InspectionPublicOut {
+  id: string;
+  type: string;
+  state: string;
+  scheduledDate: string;
+  propertyName?: string;
+  unitName?: string;
+  overallCondition?: string;
+  summary?: string;
+  checklistCount: number;
+  photoCount: number;
+  landlordSignedAt?: string;
+  landlordSignedBy?: string;
+  tenantSignedAt?: string;
+  signTokenExpiresAt?: string;
+  reportPdfUrl?: string;
+}
+
 export const inspectionsApi = {
-  list: (params?: QueryParams & { unitId?: string }) =>
+  list: (params?: QueryParams & { unitId?: string; leaseId?: string }) =>
     apiGet<PaginatedResponse<Inspection>>("/inspections", toInspectionParams(params)),
 
   get: (id: string) =>
@@ -21,6 +39,21 @@ export const inspectionsApi = {
 
   addPhotos: (id: string, urls: string[]) =>
     apiPatch<Inspection>(`/inspections/${id}/photos`, { urls }),
+
+  generateReport: (id: string) =>
+    apiPost<Inspection>(`/inspections/${id}/report`, {}),
+
+  signLandlord: (id: string, signedBy: string) =>
+    apiPost<Inspection>(`/inspections/${id}/sign/landlord`, { signedBy }),
+
+  sendForSigning: (id: string) =>
+    apiPost<Inspection>(`/inspections/${id}/send-for-signing`, {}),
+
+  getPublicByToken: (token: string) =>
+    apiGet<InspectionPublicOut>(`/inspections/sign/${token}`),
+
+  tenantSign: (token: string, fullName: string) =>
+    apiPost<InspectionPublicOut>(`/inspections/sign/${token}`, { fullName }),
 
   // Maintenance
   listMaintenance: (params?: QueryParams) =>

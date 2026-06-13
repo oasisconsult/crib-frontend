@@ -83,11 +83,42 @@ class InspectionOut(CamelModel):
     maintenance_issue_ids: list[str]
     tenant_signed_at: str | None
     landlord_signed_at: str | None
+    landlord_signed_by: str | None = None
+    report_pdf_url: str | None = None
+    sign_token: str | None = None
+    sign_token_expires_at: str | None = None
     created_at: str
     updated_at: str
     # Denormalised display names
     unit_name: str | None = None
     property_name: str | None = None
+
+
+class InspectionSignLandlord(CamelModel):
+    signed_by: str  # display name of the person signing
+
+
+class TenantSignRequest(CamelModel):
+    full_name: str  # tenant's full name as confirmation
+
+
+class InspectionPublicOut(CamelModel):
+    """Minimal inspection data served to the public sign page (no auth)."""
+    id: str
+    type: str
+    state: str
+    scheduled_date: str
+    property_name: str | None = None
+    unit_name: str | None = None
+    overall_condition: str | None
+    summary: str | None
+    checklist_count: int
+    photo_count: int
+    landlord_signed_at: str | None
+    landlord_signed_by: str | None
+    tenant_signed_at: str | None
+    sign_token_expires_at: str | None
+    report_pdf_url: str | None
 
 
 # ── Maintenance ────────────────────────────────────────────────────────────────

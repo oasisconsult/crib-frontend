@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rent Increase Notice</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 12pt;
+      line-height: 1.6;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 40pt 50pt;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2pt solid #1a1a1a;
+      padding-bottom: 16pt;
+      margin-bottom: 24pt;
+    }
+    .org-name { font-size: 16pt; font-weight: 700; }
+    .doc-title {
+      text-align: right;
+      font-size: 11pt;
+      color: #555;
+    }
+    .doc-title strong { display: block; font-size: 13pt; color: #1a1a1a; }
+    .reference {
+      font-size: 9pt;
+      color: #777;
+      margin-top: 4pt;
+    }
+    section { margin-bottom: 20pt; }
+    h2 {
+      font-size: 11pt;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #555;
+      border-bottom: 1pt solid #ddd;
+      padding-bottom: 4pt;
+      margin-bottom: 10pt;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 5pt 8pt; vertical-align: top; }
+    td:first-child { width: 45%; color: #555; font-size: 10.5pt; }
+    td:last-child { font-weight: 600; }
+    .highlight-box {
+      background: #f5f5f5;
+      border-left: 3pt solid #1a1a1a;
+      padding: 12pt 16pt;
+      margin: 16pt 0;
+    }
+    .highlight-box .rent-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6pt;
+    }
+    .highlight-box .label { color: #555; font-size: 10.5pt; }
+    .highlight-box .value { font-size: 13pt; font-weight: 700; }
+    .highlight-box .increase-pct {
+      font-size: 10pt;
+      color: #555;
+      margin-top: 4pt;
+    }
+    .effective-date-box {
+      background: #1a1a1a;
+      color: #fff;
+      text-align: center;
+      padding: 14pt;
+      margin: 16pt 0;
+    }
+    .effective-date-box .label { font-size: 9.5pt; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.7; }
+    .effective-date-box .date { font-size: 16pt; font-weight: 700; margin-top: 4pt; }
+    p { margin-bottom: 10pt; }
+    .legal-text { font-size: 9.5pt; color: #555; line-height: 1.5; }
+    .acknowledgement-section {
+      margin-top: 30pt;
+      border-top: 1pt solid #ddd;
+      padding-top: 20pt;
+    }
+    .sig-row {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 30pt;
+      gap: 40pt;
+    }
+    .sig-block { flex: 1; }
+    .sig-line { border-top: 1pt solid #1a1a1a; margin-top: 40pt; padding-top: 4pt; font-size: 9pt; color: #555; }
+    .footer {
+      margin-top: 40pt;
+      font-size: 8pt;
+      color: #aaa;
+      text-align: center;
+      border-top: 1pt solid #eee;
+      padding-top: 10pt;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="org-name">{{ org_name }}</div>
+      {% if org_address %}<div style="font-size:9.5pt;color:#555;margin-top:4pt;">{{ org_address }}</div>{% endif %}
+    </div>
+    <div class="doc-title">
+      <strong>Rent Increase Notice</strong>
+      Uganda Landlord &amp; Tenant Act 2022
+      <div class="reference">Ref: RI-{{ notice_ref }}</div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Notice Details</h2>
+    <table>
+      <tr><td>Date of Notice</td><td>{{ issued_date }}</td></tr>
+      <tr><td>Property</td><td>{{ property_name }}</td></tr>
+      <tr><td>Unit</td><td>{{ unit_name }}</td></tr>
+      <tr><td>Property Address</td><td>{{ property_address }}</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Tenant</h2>
+    <table>
+      <tr><td>Name</td><td>{{ tenant_name }}</td></tr>
+      {% if tenant_email %}<tr><td>Email</td><td>{{ tenant_email }}</td></tr>{% endif %}
+      {% if tenant_phone %}<tr><td>Phone</td><td>{{ tenant_phone }}</td></tr>{% endif %}
+    </table>
+  </section>
+
+  <section>
+    <h2>Rent Increase Summary</h2>
+
+    <div class="highlight-box">
+      <div class="rent-row">
+        <span class="label">Current Monthly Rent</span>
+        <span class="value">{{ currency }} {{ "{:,.0f}".format(current_rent) }}</span>
+      </div>
+      <div class="rent-row">
+        <span class="label">New Monthly Rent</span>
+        <span class="value">{{ currency }} {{ "{:,.0f}".format(new_rent) }}</span>
+      </div>
+      <div class="increase-pct">Increase: {{ "%.2f"|format(increase_pct) }}% (Uganda LTA 2022 cap: 10%)</div>
+    </div>
+
+    <div class="effective-date-box">
+      <div class="label">Effective Date</div>
+      <div class="date">{{ effective_date }}</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Notice to Tenant</h2>
+    <p>
+      Dear {{ tenant_name }},
+    </p>
+    <p>
+      Please be informed that your monthly rent for the above-mentioned premises will increase
+      from <strong>{{ currency }} {{ "{:,.0f}".format(current_rent) }}</strong> to
+      <strong>{{ currency }} {{ "{:,.0f}".format(new_rent) }}</strong> per month,
+      effective <strong>{{ effective_date }}</strong>.
+    </p>
+    <p class="legal-text">
+      This notice is issued in accordance with Section 38 of the Landlord and Tenant Act, 2022
+      (Uganda), which requires a minimum of ninety (90) days advance written notice for any
+      rent increase. The proposed increase of {{ "%.2f"|format(increase_pct) }}% does not
+      exceed the 10% annual cap prescribed by the Act.
+    </p>
+    {% if notes %}
+    <p style="margin-top:10pt;"><em>Additional notes from landlord:</em><br>{{ notes }}</p>
+    {% endif %}
+  </section>
+
+  <div class="acknowledgement-section">
+    <h2>Acknowledgement</h2>
+    <p class="legal-text">
+      Please sign below to confirm you have received and understood this notice.
+      Acknowledgement does not constitute acceptance or waiver of any of your rights
+      under the Landlord and Tenant Act, 2022.
+    </p>
+
+    <div class="sig-row">
+      <div class="sig-block">
+        <div class="sig-line">Issued by (Landlord / Agent)</div>
+        <div style="margin-top:4pt;font-size:9pt;">{{ issued_by_name }}</div>
+        <div style="font-size:8pt;color:#777;">Date: {{ issued_date }}</div>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line">Tenant Signature</div>
+        <div style="font-size:9pt;margin-top:4pt;">{{ tenant_name }}</div>
+        <div style="font-size:8pt;color:#777;">Date: ______________________</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Generated by Crib Property Management &bull; {{ issued_date }} &bull; Ref RI-{{ notice_ref }}
+  </div>
+
+</body>
+</html>
