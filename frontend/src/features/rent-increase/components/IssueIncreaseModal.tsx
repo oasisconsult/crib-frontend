@@ -164,11 +164,12 @@ export function IssueIncreaseModal({ open, onOpenChange, currentRent, currency, 
             </div>
 
             {exceedsCap && (
-              <Alert variant="destructive">
+              <Alert variant="warning">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  This increase exceeds 10%. The Uganda Landlord &amp; Tenant Act 2022 caps
-                  annual rent increases at 10%. Please reduce the new rent.
+                  This increase exceeds the 10% annual cap under Uganda LTA 2022. You may
+                  still issue the notice, but the tenant has the right to challenge it at the
+                  Rent Restriction Tribunal and the excess may be voided.
                 </AlertDescription>
               </Alert>
             )}
@@ -178,7 +179,7 @@ export function IssueIncreaseModal({ open, onOpenChange, currentRent, currency, 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit" loading={submitting} disabled={exceedsCap}>
+            <Button type="submit" loading={submitting}>
               Issue Notice
             </Button>
           </DialogFooter>
