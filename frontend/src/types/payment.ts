@@ -34,6 +34,12 @@ export interface Payment {
   // Cancellation audit (set by tenant)
   cancellationReason?: string | null;
   cancelledAt?: string | null;
+  // EFRIS fiscal receipt tracking
+  efrisStatus?: "pending" | "issued" | "failed" | "skipped" | null;
+  efrisReceiptNumber?: string | null;
+  efrisReceiptDate?: string | null;
+  efrisFiscalReceiptUrl?: string | null;
+  efrisAntiFlakeCode?: string | null;
   // Denormalised display names
   tenantName?: string | null;
   unitName?: string | null;

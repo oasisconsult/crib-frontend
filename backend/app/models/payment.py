@@ -221,6 +221,21 @@ class Payment(TimestampedBase):
     # ── Payment evidence (bank transfer / cash receipts) ─────────────────────
     receipt_url: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
+    # ── EFRIS (URA Electronic Fiscal Receipting) ──────────────────────────────
+    # pending | issued | failed — null means not yet submitted
+    efris_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # URA-assigned Fiscal Document Number (e.g. FD-20260613-12345)
+    efris_receipt_number: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    efris_receipt_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    efris_failure_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    efris_retry_count: Mapped[int] = mapped_column(Integer(), nullable=False, default=0, server_default="0")
+    # S3 URL of the generated fiscal receipt PDF
+    efris_fiscal_receipt_url: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    # Anti-fake code from URA response (for receipt verification)
+    efris_anti_fake_code: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # QR code data string from URA response
+    efris_qr_code: Mapped[str | None] = mapped_column(Text(), nullable=True)
+
     # Relationships
     rent_schedule: Mapped["RentSchedule | None"] = relationship(
         "RentSchedule", back_populates="payments"

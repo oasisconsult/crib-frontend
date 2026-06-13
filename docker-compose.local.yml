@@ -174,7 +174,7 @@ services:
         "worker",
         "--loglevel=info",
         "-Q",
-        "default,notifications,payments",
+        "default,notifications,payments,efris",
       ]
     volumes:
       - ./backend:/app
@@ -198,6 +198,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    networks:
+      - crib-local
+
+  efris-mock:
+    build:
+      context: ./backend/mock_efris
+      dockerfile: Dockerfile
+    ports:
+      - "8099:8000"   # Mock URA EFRIS server — set EFRIS apiUrl to http://efris-mock:8000
     networks:
       - crib-local
 

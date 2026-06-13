@@ -155,6 +155,12 @@ class PaymentOut(CamelModel):
     # Cancellation audit (set when tenant cancels)
     cancellation_reason: str | None = None
     cancelled_at: str | None = None
+    # EFRIS fiscal receipt tracking
+    efris_status: str | None = None
+    efris_receipt_number: str | None = None
+    efris_receipt_date: str | None = None
+    efris_fiscal_receipt_url: str | None = None
+    efris_anti_fake_code: str | None = None
     created_at: str
     updated_at: str
     # Denormalised display names

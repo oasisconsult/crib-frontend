@@ -13,6 +13,8 @@ import {
   Calendar,
   Hash,
   Receipt,
+  FileCheck,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Dialog,
@@ -239,6 +241,49 @@ export function PaymentReceipt({
             <div className="rounded-[6px] border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 p-3">
               <p className="text-xs font-semibold text-red-700 dark:text-red-400 mb-1">Failure Reason</p>
               <p className="text-sm text-red-700 dark:text-red-300">{payment.failureReason}</p>
+            </div>
+          )}
+
+          {/* EFRIS Fiscal Receipt */}
+          {payment.efrisReceiptNumber && (
+            <div className="rounded-[6px] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 p-3">
+              <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-2 flex items-center gap-1.5">
+                <FileCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                URA EFRIS Fiscal Receipt
+              </p>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-xs text-emerald-800 dark:text-emerald-300">
+                  {payment.efrisReceiptNumber}
+                </span>
+                {payment.efrisFiscalReceiptUrl && (
+                  <a
+                    href={payment.efrisFiscalReceiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Download EFRIS receipt ${payment.efrisReceiptNumber}`}
+                    className="text-xs text-emerald-700 underline hover:text-emerald-900"
+                  >
+                    Download PDF
+                  </a>
+                )}
+              </div>
+              {payment.efrisAntiFlakeCode && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Anti-fake code: <span className="font-mono">{payment.efrisAntiFlakeCode}</span>
+                </p>
+              )}
+            </div>
+          )}
+          {payment.efrisStatus === "failed" && !payment.efrisReceiptNumber && (
+            <div
+              role="status"
+              aria-label="EFRIS receipt submission failed — contact your administrator"
+              className="rounded-[6px] border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3"
+            >
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+                EFRIS receipt pending — submission failed, will be retried
+              </p>
             </div>
           )}
 

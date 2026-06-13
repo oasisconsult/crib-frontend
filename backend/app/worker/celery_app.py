@@ -25,6 +25,7 @@ celery_app = Celery(
         "app.worker.tasks.payments",
         "app.worker.tasks.subscriptions",
         "app.worker.tasks.mobile_money",
+        "app.worker.tasks.efris",
     ],
 )
 
@@ -42,6 +43,7 @@ celery_app.conf.update(
     task_routes={
         "app.worker.tasks.notifications.*": {"queue": "notifications"},
         "app.worker.tasks.payments.*": {"queue": "payments"},
+        "app.worker.tasks.efris.*": {"queue": "efris"},
     },
 
     # Retry defaults

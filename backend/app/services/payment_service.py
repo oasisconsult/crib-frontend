@@ -712,6 +712,12 @@ async def confirm_payment(
         method=p.method,
     )
 
+    # Dispatch EFRIS fiscal receipt async — non-blocking, never raises
+    from app.services.subscription_limits import check_feature_access_bool
+    if await check_feature_access_bool(org_id, "efris", db):
+        from app.worker.tasks.efris import issue_efris_receipt
+        issue_efris_receipt.delay(str(p.id))
+
     return _payment_out(p)
 
 

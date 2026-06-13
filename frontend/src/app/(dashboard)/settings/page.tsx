@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, Mail, RefreshCw, Check, Link, Zap } from "lucide-react";
+import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, Mail, RefreshCw, Check, Link, Zap, FileCheck } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,8 @@ import { Badge } from "@/components/ui/badge";
 import { useCaretakers, useCaretakerInvites, useDeactivateCaretaker, useRevokeCaretakerInvite, useResendCaretakerInvite } from "@/hooks/useCaretakers";
 import { CaretakerInviteModal } from "./components/CaretakerInviteModal";
 import type { ActiveCaretaker, CaretakerInvite } from "@/services/api/caretakers";
+import { efrisApi } from "@/services/api/efris";
+import type { EfrisConfig } from "@/services/api/efris";
 
 // ── Caretakers Panel ──────────────────────────────────────────────────────────
 
@@ -317,6 +319,84 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // ── EFRIS state ────────────────────────────────────────────────────────────
+  const [efrisLoading, setEfrisLoading] = useState(false);
+  const [efrisSaving, setEfrisSaving] = useState(false);
+  const [efrisTesting, setEfrisTesting] = useState(false);
+  const [efrisConfig, setEfrisConfig] = useState<EfrisConfig | null>(null);
+  const [efrisEnv, setEfrisEnv] = useState<"mock" | "uat" | "prod">("mock");
+  const [efrisApiUrl, setEfrisApiUrl] = useState("");
+  const [efrisTin, setEfrisTin] = useState("");
+  const [efrisDeviceNo, setEfrisDeviceNo] = useState("");
+  const [efrisUsername, setEfrisUsername] = useState("");
+  const [efrisPassword, setEfrisPassword] = useState("");
+  const [efrisIsActive, setEfrisIsActive] = useState(false);
+
+  useEffect(() => {
+    if (!org?.id || !canManageOrg) return;
+    setEfrisLoading(true);
+    efrisApi.getConfig(org.id)
+      .then((config) => {
+        if (config) {
+          setEfrisConfig(config);
+          setEfrisEnv(config.environment);
+          setEfrisApiUrl(config.apiUrl);
+          setEfrisTin(config.tin);
+          setEfrisDeviceNo(config.deviceNo);
+          setEfrisUsername(config.username);
+          setEfrisIsActive(config.isActive);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setEfrisLoading(false));
+  }, [org?.id, canManageOrg]);
+
+  async function handleSaveEfris() {
+    if (!org?.id) return;
+    setEfrisSaving(true);
+    try {
+      const updated = await efrisApi.upsertConfig(org.id, {
+        environment: efrisEnv,
+        apiUrl: efrisApiUrl,
+        tin: efrisTin,
+        deviceNo: efrisDeviceNo,
+        username: efrisUsername,
+        password: efrisPassword || null,
+        isActive: efrisIsActive,
+      });
+      setEfrisConfig(updated);
+      setEfrisPassword("");
+      toast.success("EFRIS configuration saved");
+    } catch (err: any) {
+      toast.error("Failed to save EFRIS config", err?.response?.data?.detail ?? "Please try again");
+    } finally {
+      setEfrisSaving(false);
+    }
+  }
+
+  async function handleTestEfris() {
+    if (!org?.id) return;
+    setEfrisTesting(true);
+    try {
+      const result = await efrisApi.testConnection(org.id);
+      if (result.success) {
+        toast.success(
+          "Connection successful",
+          result.legalName ? `Taxpayer: ${result.legalName}` : "EFRIS server responded",
+        );
+        if (result.taxpayerId) {
+          setEfrisConfig((prev) => prev ? { ...prev, taxpayerId: result.taxpayerId ?? prev.taxpayerId } : prev);
+        }
+      } else {
+        toast.error("Connection failed", result.message);
+      }
+    } catch (err: any) {
+      toast.error("Test failed", err?.response?.data?.detail ?? "Could not reach EFRIS server");
+    } finally {
+      setEfrisTesting(false);
+    }
+  }
+
   const initials = (user?.name ?? "U")
     .split(" ")
     .map((n) => n[0])
@@ -377,6 +457,7 @@ export default function SettingsPage() {
                 {!isLandlord          && item("notifications", <Bell className="h-4 w-4 shrink-0" />,      "Notifications")}
                 {!isLandlord          && item("caretakers",   <Users className="h-4 w-4 shrink-0" />,     "Caretakers")}
                 {isSuperAdmin         && item("features",     <Zap className="h-4 w-4 shrink-0" />,       "Features")}
+                {canManageOrg         && item("efris",       <FileCheck className="h-4 w-4 shrink-0" />, "EFRIS")}
                 {item("appearance",    <Paintbrush className="h-4 w-4 shrink-0" />, "Appearance")}
                 {item("security",      <Shield className="h-4 w-4 shrink-0" />,     "Security")}
               </>
@@ -1195,6 +1276,163 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* ── EFRIS ── */}
+        {canManageOrg && (
+          <TabsContent value="efris" className="">
+            <Card>
+              <CardHeader>
+                <CardTitle>EFRIS Tax Receipts</CardTitle>
+                <CardDescription>
+                  Configure your Uganda Revenue Authority (URA) EFRIS credentials to automatically
+                  issue fiscalised receipts for confirmed rent payments.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {efrisLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading configuration…
+                  </div>
+                ) : (
+                  <>
+                    {/* Active toggle */}
+                    <div className="flex items-center justify-between rounded-[6px] border p-4">
+                      <div>
+                        <p className="text-sm font-medium">Auto-issue EFRIS receipts</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          When enabled, a fiscalised receipt is submitted to URA for every confirmed payment
+                        </p>
+                      </div>
+                      <Switch
+                        checked={efrisIsActive}
+                        onCheckedChange={setEfrisIsActive}
+                      />
+                    </div>
+
+                    {/* Taxpayer info returned from last successful test */}
+                    {efrisConfig?.taxpayerId && (
+                      <div className="rounded-[6px] border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 p-3 text-xs text-emerald-800 dark:text-emerald-300">
+                        <span className="font-medium">Verified taxpayer ID:</span>{" "}
+                        <span className="font-mono">{efrisConfig.taxpayerId}</span>
+                      </div>
+                    )}
+
+                    {/* Environment */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="efrisEnv">Environment</Label>
+                      <Select
+                        value={efrisEnv}
+                        onValueChange={(v) => setEfrisEnv(v as "mock" | "uat" | "prod")}
+                      >
+                        <SelectTrigger id="efrisEnv">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mock">Mock (local testing)</SelectItem>
+                          <SelectItem value="uat">UAT (URA sandbox)</SelectItem>
+                          <SelectItem value="prod">Production (URA live)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* API URL */}
+                    <div className="space-y-1.5">
+                      <Label htmlFor="efrisApiUrl">API URL</Label>
+                      <Input
+                        id="efrisApiUrl"
+                        value={efrisApiUrl}
+                        onChange={(e) => setEfrisApiUrl(e.target.value)}
+                        placeholder={
+                          efrisEnv === "mock"
+                            ? "http://localhost:8099"
+                            : "https://efris.ura.go.ug/efrisws/ws/taapp/getInformation"
+                        }
+                      />
+                      {efrisEnv !== "mock" && (
+                        <p className="text-xs text-muted-foreground">
+                          Must begin with https:// for uat and prod
+                        </p>
+                      )}
+                    </div>
+
+                    {/* TIN + Device Number */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="efrisTin">TIN</Label>
+                        <Input
+                          id="efrisTin"
+                          value={efrisTin}
+                          onChange={(e) => setEfrisTin(e.target.value)}
+                          placeholder="1234567890"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="efrisDeviceNo">Device Number</Label>
+                        <Input
+                          id="efrisDeviceNo"
+                          value={efrisDeviceNo}
+                          onChange={(e) => setEfrisDeviceNo(e.target.value)}
+                          placeholder="DEV-001"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Username + Password */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="efrisUsername">Username</Label>
+                        <Input
+                          id="efrisUsername"
+                          value={efrisUsername}
+                          onChange={(e) => setEfrisUsername(e.target.value)}
+                          placeholder="EFRIS username"
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="efrisPassword">Password</Label>
+                        <Input
+                          id="efrisPassword"
+                          type="password"
+                          value={efrisPassword}
+                          onChange={(e) => setEfrisPassword(e.target.value)}
+                          placeholder={efrisConfig?.passwordSet ? "••••••••" : "Enter password"}
+                          autoComplete="new-password"
+                        />
+                        {efrisConfig?.passwordSet && (
+                          <p className="text-xs text-muted-foreground">
+                            Leave blank to keep existing password
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between pt-2">
+                      <Button
+                        variant="outline"
+                        onClick={handleTestEfris}
+                        disabled={efrisTesting || !efrisConfig}
+                      >
+                        {efrisTesting ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileCheck className="h-4 w-4" />
+                        )}
+                        Test Connection
+                      </Button>
+                      <Button onClick={handleSaveEfris} loading={efrisSaving}>
+                        <Save className="h-4 w-4" />
+                        Save configuration
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {/* ── Caretakers ── */}
         <TabsContent value="caretakers" className="">

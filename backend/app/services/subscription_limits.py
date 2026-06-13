@@ -198,6 +198,23 @@ async def check_feature_access(
         )
 
 
+async def check_feature_access_bool(
+    org_id: uuid.UUID,
+    feature: str,
+    db: AsyncSession,
+) -> bool:
+    """Return True if the org's active plan includes the feature; False otherwise.
+
+    Non-raising variant of check_feature_access() — use this in background tasks
+    and service hooks where a 402 HTTPException would be unhandled.
+    """
+    try:
+        limits = await _get_active_plan_limits(org_id, db)
+        return bool(limits.get("features", {}).get(feature, False))
+    except Exception:
+        return False
+
+
 async def get_usage(org_id: uuid.UUID, db: AsyncSession) -> dict:
     """Return current usage counts and percentages for the org."""
     limits = await _get_active_plan_limits(org_id, db)

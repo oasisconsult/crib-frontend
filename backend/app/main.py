@@ -339,6 +339,10 @@ def create_app() -> FastAPI:
     application.include_router(invoices.router, prefix=settings.api_prefix)
     application.include_router(admin_billing.router, prefix=settings.api_prefix)
 
+    # ── EFRIS (URA Electronic Fiscal Receipting) ──────────────────────────────
+    from app.api.v1 import efris
+    application.include_router(efris.router, prefix=settings.api_prefix)
+
     # ── Prometheus metrics ────────────────────────────────────────────────────
     # Exposes GET /metrics for the shared Prometheus instance on geobox-network.
     # Scrape target is added in GeoBox core/config/prometheus/prometheus.yml.
