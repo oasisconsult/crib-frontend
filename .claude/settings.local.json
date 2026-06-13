@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wsl -d Ubuntu-22.04 -- bash -c \"source /home/belac/.nvm/nvm.sh && nvm use 22 && cd /home/belac/projects/crib/frontend && ls node_modules/.bin/vitest 2>/dev/null || echo MISSING; ls package.json\")"
+      "Bash(wsl -d Ubuntu-22.04 -- bash -c \"source /home/belac/.nvm/nvm.sh && nvm use 22 && cd /home/belac/projects/crib/frontend && ls node_modules/.bin/vitest 2>/dev/null || echo MISSING; ls package.json\")",
+      "Bash(wsl -e bash -c \"docker exec crib-frontend-1 sh -c 'grep -n \\\\\"declare const Locate[^FO]\\\\\" /app/node_modules/lucide-react/dist/lucide-react.d.ts | head'\")"
     ]
   }
 }
