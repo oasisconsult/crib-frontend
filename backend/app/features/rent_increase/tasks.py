@@ -99,7 +99,7 @@ async def _reminder_async(increase_id: uuid.UUID, days_before: int) -> dict:
             notif = Notification(
                 organisation_id=ri.organisation_id,
                 channel="email",
-                status=NotificationState.queued,
+                state=NotificationState.queued,
                 recipient_id=ri.tenant_id,
                 recipient_email=tenant.email,
                 subject=f"Rent Increase Reminder — {days_before} days to go",

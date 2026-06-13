@@ -94,9 +94,8 @@ async def _generate_notice_pdf(ri: RentIncrease, db: AsyncSession) -> str | None
 
         from app.models.lease import Lease
         from app.models.organisation import Organisation
-        from app.models.property import Property
+        from app.models.property import Property, Unit
         from app.models.tenant import Tenant
-        from app.models.unit import Unit
 
         lease = await db.scalar(select(Lease).where(Lease.id == ri.lease_id))
         org   = await db.scalar(select(Organisation).where(Organisation.id == ri.organisation_id))
@@ -386,7 +385,7 @@ async def _notify_tenant_issued(ri: RentIncrease, db: AsyncSession) -> None:
         notif = Notification(
             organisation_id=ri.organisation_id,
             channel="email",
-            status=NotificationState.queued,
+            state=NotificationState.queued,
             recipient_id=ri.tenant_id,
             recipient_email=tenant.email,
             subject="Rent Increase Notice",

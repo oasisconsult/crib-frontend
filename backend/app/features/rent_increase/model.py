@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import enum
 import uuid
+from datetime import date, datetime
 
 import sqlalchemy as sa
 from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text
@@ -80,11 +81,11 @@ class RentIncrease(TimestampedBase):
     new_rent: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     increase_pct: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
 
-    effective_date: Mapped[sa.Date] = mapped_column(Date, nullable=False)
-    issued_at: Mapped[sa.DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
-    acknowledged_at: Mapped[sa.DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    applied_at: Mapped[sa.DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    withdrawn_at: Mapped[sa.DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    effective_date: Mapped[date] = mapped_column(Date, nullable=False)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    withdrawn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     notice_pdf_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
