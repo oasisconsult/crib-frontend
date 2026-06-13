@@ -21,7 +21,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 log = logging.getLogger(__name__)
@@ -210,9 +210,16 @@ async def list_inspections(
         q = q.where(Inspection.property_id.in_(allowed))
     if property_id:
         q = q.where(Inspection.property_id == uuid.UUID(property_id))
-    if unit_id:
+    if unit_id and lease_id:
+        # Tenant portal: match inspections tied to the unit OR the lease
+        # (admin may schedule without linking a lease, or without a unit)
+        q = q.where(or_(
+            Inspection.unit_id == uuid.UUID(unit_id),
+            Inspection.lease_id == uuid.UUID(lease_id),
+        ))
+    elif unit_id:
         q = q.where(Inspection.unit_id == uuid.UUID(unit_id))
-    if lease_id:
+    elif lease_id:
         q = q.where(Inspection.lease_id == uuid.UUID(lease_id))
     if states:
         q = q.where(Inspection.state.in_(states))

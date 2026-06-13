@@ -979,8 +979,8 @@ function MessagesTab({ leaseId, userId, userSub }: { leaseId: string; userId: st
 
 // ─── Inspections Tab ──────────────────────────────────────────────────────────
 
-function InspectionsTab({ unitId, propertyId }: { unitId: string; propertyId: string }) {
-  const { data, isLoading } = useInspections({ unitId } as any);
+function InspectionsTab({ leaseId, unitId, propertyId }: { leaseId: string; unitId: string; propertyId: string }) {
+  const { data, isLoading } = useInspections({ leaseId, unitId: unitId || undefined } as any);
   const inspections = (data?.data ?? []) as any[];
 
   const INSP_TYPE_LABELS: Record<string, string> = {
@@ -1277,7 +1277,9 @@ export default function TenantPortalPage() {
   const leaseStub = allLeases.find((l) => l.tenantId === userId) ?? allLeases[0];
   const { data: myLease } = useLease(leaseStub?.id ?? "");
   const { data: inspectionsData } = useInspections(
-    myLease?.unitId ? { unitId: myLease.unitId } as any : undefined,
+    myLease?.id
+      ? { leaseId: myLease.id, unitId: myLease.unitId || undefined } as any
+      : undefined,
   );
 
   const { data: schedulesData } = useRentSchedule(myLease?.id ?? "");
@@ -1940,6 +1942,7 @@ export default function TenantPortalPage() {
           <TabsContent value="inspections" className="mt-4">
             {myLease ? (
               <InspectionsTab
+                leaseId={myLease.id}
                 unitId={myLease.unitId ?? ""}
                 propertyId={myLease.propertyId ?? ""}
               />
