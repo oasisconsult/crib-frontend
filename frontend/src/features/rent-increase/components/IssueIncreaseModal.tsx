@@ -190,7 +190,7 @@ export function IssueIncreaseModal({ open, onOpenChange, currentRent, currency, 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit" loading={submitting} disabled={exceedsCap && !allowCapOverride}>
+            <Button type="submit" loading={submitting} disabled={!newRent || (exceedsCap && !allowCapOverride)}>
               Issue Notice
             </Button>
           </DialogFooter>
