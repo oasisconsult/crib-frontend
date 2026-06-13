@@ -19,6 +19,7 @@ interface Props {
   currentRent: number;
   currency: string;
   leaseStatus: string;
+  allowCapOverride?: boolean;
 }
 
 function fmt(n: number, currency: string) {
@@ -129,7 +130,7 @@ function IncreaseCard({
   );
 }
 
-export function IncreaseHistoryPanel({ leaseId, currentRent, currency, leaseStatus }: Props) {
+export function IncreaseHistoryPanel({ leaseId, currentRent, currency, leaseStatus, allowCapOverride = false }: Props) {
   const [issueOpen, setIssueOpen] = useState(false);
   const { data, loading, error, create, acknowledge, withdraw } = useRentIncreases(leaseId);
 
@@ -187,6 +188,7 @@ export function IncreaseHistoryPanel({ leaseId, currentRent, currency, leaseStat
         onOpenChange={setIssueOpen}
         currentRent={currentRent}
         currency={currency}
+        allowCapOverride={allowCapOverride}
         onCreate={create}
       />
     </Card>

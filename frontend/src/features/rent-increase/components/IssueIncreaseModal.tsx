@@ -46,10 +46,11 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   currentRent: number;
   currency: string;
+  allowCapOverride?: boolean;
   onCreate: (body: RentIncreaseCreate) => Promise<unknown>;
 }
 
-export function IssueIncreaseModal({ open, onOpenChange, currentRent, currency, onCreate }: Props) {
+export function IssueIncreaseModal({ open, onOpenChange, currentRent, currency, allowCapOverride = false, onCreate }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -163,13 +164,23 @@ export function IssueIncreaseModal({ open, onOpenChange, currentRent, currency, 
               />
             </div>
 
-            {exceedsCap && (
+            {exceedsCap && allowCapOverride && (
               <Alert variant="warning">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  This increase exceeds the 10% annual cap under Uganda LTA 2022. You may
-                  still issue the notice, but the tenant has the right to challenge it at the
-                  Rent Restriction Tribunal and the excess may be voided.
+                  This increase exceeds the 10% annual cap under Uganda LTA 2022. The cap
+                  override is enabled for your organisation — you may still issue this notice,
+                  but the tenant has the right to challenge it at the Rent Restriction Tribunal.
+                </AlertDescription>
+              </Alert>
+            )}
+            {exceedsCap && !allowCapOverride && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  This increase exceeds the 10% annual cap under Uganda LTA 2022. To allow
+                  increases above 10%, enable <strong>Allow Rent Increase Above 10% Cap</strong> in
+                  Organisation Settings → Features.
                 </AlertDescription>
               </Alert>
             )}
@@ -179,7 +190,7 @@ export function IssueIncreaseModal({ open, onOpenChange, currentRent, currency, 
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button type="submit" loading={submitting}>
+            <Button type="submit" loading={submitting} disabled={exceedsCap && !allowCapOverride}>
               Issue Notice
             </Button>
           </DialogFooter>

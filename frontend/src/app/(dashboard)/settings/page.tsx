@@ -1065,12 +1065,25 @@ export default function SettingsPage() {
                     key: "manualPayments" as const,
                     label: "Record Manual Payment",
                     plan: "All plans",
+                    defaultOn: true,
                     description:
                       "Lets managers record payments made outside Crib (mobile money, bank transfer, cash). " +
                       "Disabling hides the \"Record Payment\" button on all active leases and blocks the API endpoint.",
                   },
-                ] as const).map(({ key, label, plan, description }) => {
-                  const enabled = org?.features?.[key] !== false;
+                  {
+                    key: "rentIncreaseCapOverride" as const,
+                    label: "Allow Rent Increase Above 10% Cap",
+                    plan: "All plans",
+                    defaultOn: false,
+                    description:
+                      "Allows managers and owners to issue rent increase notices above the 10% annual cap set by " +
+                      "Uganda LTA 2022. When enabled, a warning is shown but the notice can still be issued. " +
+                      "Note: tenants retain the right to challenge excess increases at the Rent Restriction Tribunal.",
+                  },
+                ] as const).map(({ key, label, plan, description, defaultOn }) => {
+                  const enabled = defaultOn
+                    ? org?.features?.[key] !== false
+                    : org?.features?.[key] === true;
                   return (
                     <div key={key} className="flex items-start justify-between gap-6 py-4 first:pt-0 last:pb-0">
                       <div className="space-y-1">

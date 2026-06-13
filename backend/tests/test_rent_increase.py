@@ -3,7 +3,8 @@ Tests for the rent increase workflow (Uganda LTA 2022).
 
 Coverage:
   - Issue notice (happy path, increase % computed correctly)
-  - LTA cap enforcement: > 10% rejected with 422
+  - LTA cap enforcement: > 10% rejected with 422 by default
+  - LTA cap override: > 10% allowed when org.features.rentIncreaseCapOverride=True
   - Notice period enforcement: effective_date < 90 days rejected with 422
   - Decrease rejected (new_rent <= current_rent)
   - Only one active notice per lease (409 on second)
@@ -104,6 +105,38 @@ async def test_exceeds_10pct_cap_rejected(client: AsyncClient, setup):
     )
     assert resp.status_code == 422, resp.text
     assert "10" in resp.text
+
+
+@pytest.mark.asyncio
+async def test_exceeds_10pct_cap_allowed_with_override(
+    client: AsyncClient, setup, db_session: AsyncSession
+):
+    """Cap is bypassed when org.features.rentIncreaseCapOverride is True."""
+    from app.models.organisation import Organisation
+    from sqlalchemy import select as _select
+
+    # Enable override on the dev org
+    org = await db_session.scalar(
+        _select(Organisation).where(Organisation.logto_org_id == "org_dev")
+    )
+    assert org is not None, "dev org not seeded"
+    features = {**(org.settings or {}).get("features", {}), "rentIncreaseCapOverride": True}
+    org.settings = {**(org.settings or {}), "features": features}
+    await db_session.flush()
+
+    lease = setup["lease"]
+    resp = await client.post(
+        f"{PREFIX}/leases/{lease.id}/rent-increases",
+        headers=auth_headers("manager-1"),
+        json={"newRent": 1_110_000, "effectiveDate": _eff(95)},  # 11% — allowed via override
+    )
+    assert resp.status_code == 201, resp.text
+    assert float(resp.json()["increasePct"]) > 10.0
+
+    # Cleanup: disable override so other tests are unaffected
+    features_off = {**(org.settings or {}).get("features", {}), "rentIncreaseCapOverride": False}
+    org.settings = {**(org.settings or {}), "features": features_off}
+    await db_session.flush()
 
 
 @pytest.mark.asyncio

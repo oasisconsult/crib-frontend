@@ -240,7 +240,7 @@ async def update_my_organisation(
 
 # ── Feature flags ──────────────────────────────────────────────────────────────
 
-_ALLOWED_FEATURE_KEYS = {"manualPayments"}
+_ALLOWED_FEATURE_KEYS = {"manualPayments", "rentIncreaseCapOverride"}
 
 
 @router.patch("/me/features", response_model=OrganisationOut)
@@ -250,14 +250,14 @@ async def update_features(
     db: AsyncSession = Depends(get_db),
 ) -> OrganisationOut:
     """
-    Toggle org-level feature flags. Owner and superadmin only.
+    Toggle org-level feature flags. Owner, manager, and superadmin only.
     Partial update — only supplied keys are changed, others left as-is.
     Unknown keys are silently ignored.
     """
-    if not current_user.has_role("owner", "superadmin"):
+    if not current_user.has_role("owner", "manager", "superadmin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Owner or superadmin required to manage features",
+            detail="Owner, manager or superadmin required to manage features",
         )
     if not current_user.profile.organisation_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No organisation found")

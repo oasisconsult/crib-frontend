@@ -562,6 +562,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         currentRent={lease.terms.monthlyRent}
         currency={lease.terms.currency}
         leaseStatus={lease.state}
+        allowCapOverride={org?.features?.rentIncreaseCapOverride === true}
       />
 
       {/* Eviction Notices */}

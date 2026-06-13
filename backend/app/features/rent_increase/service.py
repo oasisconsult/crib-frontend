@@ -183,7 +183,12 @@ async def create_increase(
         )
 
     increase_pct = (new_rent - current_rent) / current_rent * 100
-    if increase_pct > LTA_MAX_INCREASE_PCT:
+
+    # LTA cap: enforced by default; bypassed when org has rentIncreaseCapOverride=True
+    from app.models.organisation import Organisation as _Org
+    org = await db.scalar(select(_Org).where(_Org.id == org_id))
+    cap_override = bool((org.settings or {}).get("features", {}).get("rentIncreaseCapOverride", False))
+    if increase_pct > LTA_MAX_INCREASE_PCT and not cap_override:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Increase of {increase_pct:.2f}% exceeds the Uganda LTA 2022 cap of {LTA_MAX_INCREASE_PCT}%",
