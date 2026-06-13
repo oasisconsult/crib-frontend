@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { User, Bell, Paintbrush, Shield, Save, Building2, Loader2, Sun, Moon, Monitor, Lock, Users, Plus, Trash2, Mail, RefreshCw, Check, Link, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -352,75 +352,48 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      <div>
+    <div className="p-6 max-w-5xl mx-auto">
+      <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">Manage your account preferences</p>
       </div>
 
-      <Tabs defaultValue="profile">
-        {/* Tab count per role:
-            landlord    → 4  (Profile, Agency, Appearance, Security)
-            superadmin  → 9  (+ Landlords, Agencies, Notifications, Caretakers, Features)
-            manager     → 7  (+ Landlords, Notifications, Caretakers)
-            owner       → 6  (+ Notifications, Caretakers)                   */}
-        <TabsList className={`grid w-full ${
-          isLandlord    ? "grid-cols-4"
-          : isSuperAdmin ? "grid-cols-9"
-          : isManager    ? "grid-cols-7"
-          :                "grid-cols-6"
-        }`}>
-          <TabsTrigger value="profile" className="gap-2">
-            <User className="h-4 w-4" />
-            <span className="hidden sm:inline">Profile</span>
-          </TabsTrigger>
-          <TabsTrigger value="agency" className="gap-2">
-            <Building2 className="h-4 w-4" />
-            <span className="hidden sm:inline">Agency</span>
-          </TabsTrigger>
-          {(isManager || isSuperAdmin) && (
-            <TabsTrigger value="landlords" className="gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Landlords</span>
-            </TabsTrigger>
-          )}
-          {isSuperAdmin && (
-            <TabsTrigger value="agencies" className="gap-2">
-              <Building2 className="h-4 w-4" />
-              <span className="hidden sm:inline">Agencies</span>
-            </TabsTrigger>
-          )}
-          {!isLandlord && (
-            <TabsTrigger value="notifications" className="gap-2">
-              <Bell className="h-4 w-4" />
-              <span className="hidden sm:inline">Notifications</span>
-            </TabsTrigger>
-          )}
-          {/* Caretakers tab — owners + superadmins; hidden from read-only landlords */}
-          {!isLandlord && (
-            <TabsTrigger value="caretakers" className="gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Caretakers</span>
-            </TabsTrigger>
-          )}
-          {isSuperAdmin && (
-            <TabsTrigger value="features" className="gap-2">
-              <Zap className="h-4 w-4" />
-              <span className="hidden sm:inline">Features</span>
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="appearance" className="gap-2">
-            <Paintbrush className="h-4 w-4" />
-            <span className="hidden sm:inline">Appearance</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="gap-2">
-            <Shield className="h-4 w-4" />
-            <span className="hidden sm:inline">Security</span>
-          </TabsTrigger>
+      <Tabs defaultValue="profile" orientation="vertical" className="flex gap-8 items-start">
+        {/* Vertical sidebar nav — scales to any number of items without crowding */}
+        <TabsList className="flex flex-col w-48 shrink-0 bg-transparent gap-0.5 h-auto p-0 border-r border-border pr-4 rounded-none">
+          {(() => {
+            const item = (value: string, icon: React.ReactNode, label: string) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                className="w-full justify-start gap-2.5 text-sm font-medium h-9 px-3 rounded-lg
+                           text-muted-foreground hover:bg-accent hover:text-accent-foreground
+                           data-[state=active]:bg-accent data-[state=active]:text-accent-foreground
+                           data-[state=active]:font-semibold"
+              >
+                {icon}
+                {label}
+              </TabsTrigger>
+            );
+            return (
+              <>
+                {item("profile",       <User className="h-4 w-4 shrink-0" />,      "Profile")}
+                {item("agency",        <Building2 className="h-4 w-4 shrink-0" />, "Agency")}
+                {(isManager || isSuperAdmin) && item("landlords",  <Users className="h-4 w-4 shrink-0" />,    "Landlords")}
+                {isSuperAdmin         && item("agencies",     <Building2 className="h-4 w-4 shrink-0" />, "Agencies")}
+                {!isLandlord          && item("notifications", <Bell className="h-4 w-4 shrink-0" />,      "Notifications")}
+                {!isLandlord          && item("caretakers",   <Users className="h-4 w-4 shrink-0" />,     "Caretakers")}
+                {isSuperAdmin         && item("features",     <Zap className="h-4 w-4 shrink-0" />,       "Features")}
+                {item("appearance",    <Paintbrush className="h-4 w-4 shrink-0" />, "Appearance")}
+                {item("security",      <Shield className="h-4 w-4 shrink-0" />,     "Security")}
+              </>
+            );
+          })()}
         </TabsList>
+        <div className="flex-1 min-w-0 space-y-6">
 
         {/* ── Profile ── */}
-        <TabsContent value="profile" className="mt-6">
+        <TabsContent value="profile" className="">
           <Card>
             <CardHeader>
               <CardTitle>Profile</CardTitle>
@@ -495,7 +468,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ── Agency ── */}
-        <TabsContent value="agency" className="mt-6">
+        <TabsContent value="agency" className="">
           <Card>
             <CardHeader>
               <CardTitle>Agency Details</CardTitle>
@@ -893,7 +866,7 @@ export default function SettingsPage() {
 
         {/* ── Agencies (superadmin only) ── */}
         {isSuperAdmin && (
-          <TabsContent value="agencies" className="mt-6">
+          <TabsContent value="agencies" className="">
             <Card>
               <CardHeader>
                 <CardTitle>Agency Invites</CardTitle>
@@ -979,7 +952,7 @@ export default function SettingsPage() {
         )}
 
         {/* ── Notifications ── */}
-        <TabsContent value="notifications" className="mt-6">
+        <TabsContent value="notifications" className="">
           <Card>
             <CardHeader>
               <CardTitle>Notifications</CardTitle>
@@ -1048,7 +1021,7 @@ export default function SettingsPage() {
 
         {/* ── Features ── */}
         {isSuperAdmin && (
-          <TabsContent value="features" className="mt-6">
+          <TabsContent value="features" className="">
             <Card>
               <CardHeader>
                 <CardTitle>Feature Flags</CardTitle>
@@ -1089,7 +1062,7 @@ export default function SettingsPage() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium">{label}</p>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium border">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium border border-primary/20">
                             {plan}
                           </span>
                         </div>
@@ -1120,7 +1093,7 @@ export default function SettingsPage() {
         )}
 
         {/* ── Appearance ── */}
-        <TabsContent value="appearance" className="mt-6">
+        <TabsContent value="appearance" className="">
           <Card>
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
@@ -1161,7 +1134,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ── Security ── */}
-        <TabsContent value="security" className="mt-6">
+        <TabsContent value="security" className="">
           <Card>
             <CardHeader>
               <CardTitle>Change password</CardTitle>
@@ -1231,10 +1204,11 @@ export default function SettingsPage() {
         </TabsContent>
 
         {/* ── Caretakers ── */}
-        <TabsContent value="caretakers" className="mt-6">
+        <TabsContent value="caretakers" className="">
           <CaretakersPanel />
         </TabsContent>
 
+        </div>{/* flex-1 content column */}
       </Tabs>
     </div>
   );

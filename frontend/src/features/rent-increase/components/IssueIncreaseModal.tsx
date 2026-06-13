@@ -106,7 +106,7 @@ export function IssueIncreaseModal({ open, onOpenChange, currentRent, currency, 
 
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogBody className="space-y-4">
-            <div className="rounded-md bg-amber-50 border border-amber-100 px-4 py-3 text-sm">
+            <div className="surface-brand">
               <span className="text-muted-foreground">Current monthly rent: </span>
               <span className="font-semibold">{currency} {currentRent.toLocaleString()}</span>
             </div>
