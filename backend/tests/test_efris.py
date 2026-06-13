@@ -341,7 +341,7 @@ async def test_upsert_efris_config_masks_password(
     client: AsyncClient, db_session: AsyncSession, org
 ):
     """PUT /efris/config stores password encrypted; response returns passwordSet=true, not the value."""
-    with patch("app.services.subscription_limits.check_feature_access", new_callable=AsyncMock):
+    with patch("app.api.v1.efris.check_feature_access", new_callable=AsyncMock):
         resp = await client.put(
             f"/api/v1/organisations/{org.id}/efris/config",
             json={
@@ -369,7 +369,7 @@ async def test_get_efris_config_returns_none_when_not_configured(
     client: AsyncClient, org
 ):
     """GET /efris/config returns null when no config exists for the org."""
-    with patch("app.services.subscription_limits.check_feature_access", new_callable=AsyncMock):
+    with patch("app.api.v1.efris.check_feature_access", new_callable=AsyncMock):
         resp = await client.get(
             f"/api/v1/organisations/{org.id}/efris/config",
             headers=auth_headers("manager-1"),
@@ -385,7 +385,7 @@ async def test_efris_config_keep_password_on_null(
     """Passing password=null in upsert does not overwrite the stored password."""
     from app.core.encryption import decrypt
 
-    with patch("app.services.subscription_limits.check_feature_access", new_callable=AsyncMock):
+    with patch("app.api.v1.efris.check_feature_access", new_callable=AsyncMock):
         resp = await client.put(
             f"/api/v1/organisations/{org.id}/efris/config",
             json={
