@@ -305,7 +305,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
             {canGiveNotice && !lease.noticeGivenAt && (
               <Button size="sm" variant="warning" onClick={openNoticeDialog}>
                 <AlertTriangle className="h-3.5 w-3.5" />
-                Give Notice
+                Notice to Vacate
               </Button>
             )}
             {canGiveNotice && lease.noticeGivenAt && (
