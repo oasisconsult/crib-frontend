@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, SidenavTabsList, SidenavTabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAppStore } from "@/store/useAppStore";
@@ -360,20 +360,13 @@ export default function SettingsPage() {
 
       <Tabs defaultValue="profile" orientation="vertical" className="flex gap-8 items-start">
         {/* Vertical sidebar nav — scales to any number of items without crowding */}
-        <TabsList className="flex flex-col w-48 shrink-0 bg-transparent gap-0.5 h-auto p-0 border-r border-border pr-4 rounded-none">
+        <SidenavTabsList className="w-48 pr-4">
           {(() => {
             const item = (value: string, icon: React.ReactNode, label: string) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className="w-full justify-start gap-2.5 text-sm font-medium h-9 px-3 rounded-lg
-                           text-muted-foreground hover:bg-accent hover:text-accent-foreground
-                           data-[state=active]:bg-accent data-[state=active]:text-accent-foreground
-                           data-[state=active]:font-semibold"
-              >
+              <SidenavTabsTrigger key={value} value={value}>
                 {icon}
                 {label}
-              </TabsTrigger>
+              </SidenavTabsTrigger>
             );
             return (
               <>
@@ -389,7 +382,7 @@ export default function SettingsPage() {
               </>
             );
           })()}
-        </TabsList>
+        </SidenavTabsList>
         <div className="flex-1 min-w-0 space-y-6">
 
         {/* ── Profile ── */}

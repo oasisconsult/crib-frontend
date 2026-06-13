@@ -87,6 +87,45 @@ const PillTabsTrigger = React.forwardRef<
 ));
 PillTabsTrigger.displayName = "PillTabsTrigger";
 
+/* ── Sidenav list + trigger — for vertical sidebar-style tab navigation ──── */
+const SidenavTabsList = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.List>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.List
+    ref={ref}
+    className={cn(
+      "flex flex-col shrink-0 bg-transparent gap-0.5 h-auto p-0",
+      "border-r border-border",
+      className,
+    )}
+    {...props}
+  />
+));
+SidenavTabsList.displayName = "SidenavTabsList";
+
+const SidenavTabsTrigger = React.forwardRef<
+  React.ElementRef<typeof TabsPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
+>(({ className, ...props }, ref) => (
+  <TabsPrimitive.Trigger
+    ref={ref}
+    className={cn(
+      "w-full flex items-center justify-start gap-2.5",
+      "h-9 px-3 rounded-lg",
+      "text-sm font-medium text-muted-foreground",
+      "transition-all duration-150",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+      "disabled:pointer-events-none disabled:opacity-40",
+      "hover:bg-accent hover:text-accent-foreground",
+      "data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:font-semibold",
+      className,
+    )}
+    {...props}
+  />
+));
+SidenavTabsTrigger.displayName = "SidenavTabsTrigger";
+
 /* ── Tab panel ──────────────────────────────────────────────────────────── */
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
@@ -104,4 +143,4 @@ const TabsContent = React.forwardRef<
 ));
 TabsContent.displayName = TabsPrimitive.Content.displayName;
 
-export { Tabs, TabsList, TabsTrigger, PillTabsTrigger, TabsContent };
+export { Tabs, TabsList, TabsTrigger, PillTabsTrigger, SidenavTabsList, SidenavTabsTrigger, TabsContent };
