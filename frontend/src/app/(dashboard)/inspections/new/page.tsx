@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,32 +13,35 @@ import { useCreateInspection } from "@/hooks/useInspections";
 import { useProperties, useUnits } from "@/hooks/useProperties";
 
 const INSPECTION_TYPES = [
-  { value: "routine", label: "Routine" },
-  { value: "move_in", label: "Move-in" },
-  { value: "move_out", label: "Move-out" },
+  { value: "routine",     label: "Routine" },
+  { value: "move_in",    label: "Move-in" },
+  { value: "move_out",   label: "Move-out" },
   { value: "maintenance", label: "Maintenance" },
-  { value: "complaint", label: "Complaint" },
+  { value: "complaint",  label: "Complaint" },
 ];
 
 const DEFAULT_CHECKLIST = [
-  { id: "cl-1", area: "Living Room", description: "General condition", condition: null, notes: "", photoUrls: [], required: true },
-  { id: "cl-2", area: "Kitchen", description: "Appliances and fixtures", condition: null, notes: "", photoUrls: [], required: true },
-  { id: "cl-3", area: "Bathroom", description: "Fixtures and fittings", condition: null, notes: "", photoUrls: [], required: true },
-  { id: "cl-4", area: "Bedroom(s)", description: "Walls, floor, windows", condition: null, notes: "", photoUrls: [], required: true },
-  { id: "cl-5", area: "Exterior", description: "Entry, compound, drainage", condition: null, notes: "", photoUrls: [], required: false },
+  { id: "cl-1", area: "Living Room",  description: "General condition",       condition: null, notes: "", photoUrls: [], required: true },
+  { id: "cl-2", area: "Kitchen",      description: "Appliances and fixtures",  condition: null, notes: "", photoUrls: [], required: true },
+  { id: "cl-3", area: "Bathroom",     description: "Fixtures and fittings",    condition: null, notes: "", photoUrls: [], required: true },
+  { id: "cl-4", area: "Bedroom(s)",   description: "Walls, floor, windows",    condition: null, notes: "", photoUrls: [], required: true },
+  { id: "cl-5", area: "Exterior",     description: "Entry, compound, drainage",condition: null, notes: "", photoUrls: [], required: false },
 ];
 
 export default function NewInspectionPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { mutate: create, isPending } = useCreateInspection();
 
-  const [propertyId, setPropertyId] = useState("");
-  const [unitId, setUnitId] = useState("");
-  const [type, setType] = useState("routine");
-  const [scheduledDate, setScheduledDate] = useState("");
+  // Pre-fill from query params when arriving from the lease detail panel
+  const [propertyId, setPropertyId] = useState(searchParams.get("propertyId") ?? "");
+  const [unitId, setUnitId]         = useState(searchParams.get("unitId") ?? "");
+  const [leaseId]                   = useState(searchParams.get("leaseId") ?? "");
+  const [type, setType]             = useState(searchParams.get("type") ?? "routine");
+  const [scheduledDate, setScheduledDate]       = useState("");
   const [scheduledTimeSlot, setScheduledTimeSlot] = useState("");
-  const [inspectorName, setInspectorName] = useState("");
-  const [notes, setNotes] = useState("");
+  const [inspectorName, setInspectorName]         = useState("");
+  const [notes, setNotes]                         = useState("");
 
   const { data: propertiesData } = useProperties();
   const properties = propertiesData?.data ?? [];
@@ -54,7 +57,8 @@ export default function NewInspectionPage() {
         type: type as "routine",
         propertyId,
         unitId: unitId || undefined,
-        landlordId: "landlord-1",
+        leaseId: leaseId || undefined,
+        landlordId: "",
         scheduledDate,
         scheduledTimeSlot: scheduledTimeSlot || undefined,
         inspectorName: inspectorName || undefined,
@@ -63,7 +67,7 @@ export default function NewInspectionPage() {
         videoUrls: [],
         maintenanceIssueIds: [],
         summary: notes || undefined,
-      },
+      } as Parameters<typeof create>[0],
       { onSuccess: () => router.push("/inspections") },
     );
   }
@@ -93,7 +97,11 @@ export default function NewInspectionPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="property">Property *</Label>
-                <Select value={propertyId} onValueChange={(v) => { setPropertyId(v); setUnitId(""); }} required>
+                <Select
+                  value={propertyId}
+                  onValueChange={(v) => { setPropertyId(v); setUnitId(""); }}
+                  required
+                >
                   <SelectTrigger id="property">
                     <SelectValue placeholder="Select property" />
                   </SelectTrigger>
@@ -107,7 +115,11 @@ export default function NewInspectionPage() {
 
               <div className="space-y-1.5">
                 <Label htmlFor="unit">Unit (optional)</Label>
-                <Select value={unitId} onValueChange={setUnitId} disabled={!propertyId || units.length === 0}>
+                <Select
+                  value={unitId}
+                  onValueChange={setUnitId}
+                  disabled={!propertyId || units.length === 0}
+                >
                   <SelectTrigger id="unit">
                     <SelectValue placeholder={propertyId ? (units.length === 0 ? "No units found" : "Whole property") : "Select property first"} />
                   </SelectTrigger>
