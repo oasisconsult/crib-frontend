@@ -117,8 +117,8 @@ const SidenavTabsTrigger = React.forwardRef<
       "transition-all duration-150",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
       "disabled:pointer-events-none disabled:opacity-40",
-      "hover:bg-accent hover:text-accent-foreground",
-      "data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:font-semibold",
+      "hover:bg-[hsl(var(--sidebar-hover-bg))] hover:text-foreground",
+      "data-[state=active]:bg-[hsl(var(--sidebar-active-bg))] data-[state=active]:text-[hsl(var(--sidebar-active-fg))] data-[state=active]:font-semibold",
       className,
     )}
     {...props}
