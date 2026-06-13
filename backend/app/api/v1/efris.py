@@ -126,7 +126,16 @@ async def _get_org_config(org_id: uuid.UUID, db: AsyncSession) -> OrganisationEf
     )
 
 
-async def _require_efris_feature(org_id: uuid.UUID | None, db: AsyncSession) -> None:
+async def _require_efris_feature(
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+    current_user: CurrentUser | None = None,
+) -> None:
+    # Superadmins can configure EFRIS for any org regardless of subscription state.
+    # The platform org has no subscription record so check_feature_access would
+    # fall through to a freshly-created free subscription and return 402.
+    if current_user and getattr(getattr(current_user, "profile", None), "role", None) == "superadmin":
+        return
     if org_id is not None:
         await check_feature_access(org_id, "efris", db)
 
@@ -144,7 +153,7 @@ async def get_efris_config(
 ) -> EfrisConfigOut | None:
     """Get the EFRIS configuration for an organisation. Password is never returned."""
     scoped_org_id = get_org_id(current_user) or org_id
-    await _require_efris_feature(scoped_org_id, db)
+    await _require_efris_feature(scoped_org_id, db, current_user)
 
     config = await _get_org_config(scoped_org_id, db)
     if config is None:
@@ -168,7 +177,7 @@ async def upsert_efris_config(
     Omit the password field (or pass null) to keep the existing password.
     """
     scoped_org_id = get_org_id(current_user) or org_id
-    await _require_efris_feature(scoped_org_id, db)
+    await _require_efris_feature(scoped_org_id, db, current_user)
 
     # Validate TLS requirement
     if body.environment != "mock" and body.api_url.startswith("http://"):
