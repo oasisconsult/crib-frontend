@@ -642,8 +642,34 @@ function PhotosSection({
     setPhotos((prev) => prev.filter((p) => p !== url));
   }
 
-  // In view mode with no photos there is nothing to show
+  // No photos + not editable: nothing to show
   if (!editable && photos.length === 0) return null;
+
+  // No photos + editable: compact inline uploader — no big empty card
+  if (editable && photos.length === 0) {
+    return (
+      <div className="flex items-center gap-3 rounded-[6px] border border-dashed bg-muted/20 px-4 py-3">
+        <Camera className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+        <span className="text-sm text-muted-foreground">General photos</span>
+        <div className="flex items-center gap-3 ml-auto">
+          <label className="cursor-pointer">
+            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleFiles} disabled={uploading} />
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline underline-offset-2">
+              {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
+              Camera
+            </span>
+          </label>
+          <label className="cursor-pointer">
+            <input type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} disabled={uploading} />
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline underline-offset-2">
+              <ImageIcon className="h-3 w-3" />
+              Gallery
+            </span>
+          </label>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Card>
@@ -693,40 +719,27 @@ function PhotosSection({
         </div>
       </CardHeader>
       <CardContent>
-        {photos.length === 0 ? (
-          <div className="flex items-center gap-3 py-4 text-muted-foreground">
-            <ImageIcon className="h-5 w-5 opacity-30 shrink-0" />
-            <p className="text-sm">No photos yet</p>
-            {editable && (
-              <label className="cursor-pointer text-xs text-primary underline-offset-2 hover:underline ml-auto">
-                <input type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} />
-                Upload from gallery
-              </label>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {photos.map((url, i) => (
-              <div key={url} className="group relative aspect-square rounded-[5px] overflow-hidden border bg-muted">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={toProxyUrl(url)}
-                  alt={`Photo ${i + 1}`}
-                  className="h-full w-full object-cover cursor-pointer"
-                  onClick={() => setLightbox(url)}
-                />
-                {editable && (
-                  <button
-                    onClick={() => removeLocal(url)}
-                    className="absolute top-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {photos.map((url, i) => (
+            <div key={url} className="group relative aspect-square rounded-[5px] overflow-hidden border bg-muted">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={toProxyUrl(url)}
+                alt={`Photo ${i + 1}`}
+                className="h-full w-full object-cover cursor-pointer"
+                onClick={() => setLightbox(url)}
+              />
+              {editable && (
+                <button
+                  onClick={() => removeLocal(url)}
+                  className="absolute top-1 right-1 hidden group-hover:flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </CardContent>
 
       {/* Lightbox */}
