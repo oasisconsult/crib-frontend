@@ -320,6 +320,8 @@ function EditForm({
 
 // ── Checklist editor ──────────────────────────────────────────────────────────
 
+const MAX_ITEM_PHOTOS = 2;
+
 function ChecklistEditor({
   inspection,
   editable,
@@ -330,6 +332,8 @@ function ChecklistEditor({
   const { mutate: update, isPending } = useUpdateInspection();
   const [items, setItems] = useState<ChecklistItem[]>(inspection.checklist ?? []);
   const [dirty, setDirty] = useState(false);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   function setCondition(index: number, condition: ChecklistItem["condition"]) {
     setItems((prev) => prev.map((item, i) => i === index ? { ...item, condition } : item));
@@ -338,6 +342,36 @@ function ChecklistEditor({
 
   function setNotes(index: number, notes: string) {
     setItems((prev) => prev.map((item, i) => i === index ? { ...item, notes } : item));
+    setDirty(true);
+  }
+
+  async function handleItemPhoto(index: number, files: FileList | null) {
+    if (!files?.length) return;
+    const item = items[index];
+    const current = item.photoUrls ?? [];
+    const slots = MAX_ITEM_PHOTOS - current.length;
+    if (slots <= 0) return;
+    const toUpload = Array.from(files).slice(0, slots);
+    setUploadingIdx(index);
+    try {
+      const results = await Promise.all(
+        toUpload.map((f) => uploadsApi.uploadFile(f, { category: "inspection_photo", inspectionId: inspection.id })),
+      );
+      setItems((prev) => prev.map((it, i) =>
+        i === index ? { ...it, photoUrls: [...(it.photoUrls ?? []), ...results.map((r) => r.url)] } : it,
+      ));
+      setDirty(true);
+    } catch {
+      toast.error("Failed to upload photo");
+    } finally {
+      setUploadingIdx(null);
+    }
+  }
+
+  function removeItemPhoto(index: number, url: string) {
+    setItems((prev) => prev.map((it, i) =>
+      i === index ? { ...it, photoUrls: (it.photoUrls ?? []).filter((u) => u !== url) } : it,
+    ));
     setDirty(true);
   }
 
@@ -459,6 +493,79 @@ function ChecklistEditor({
                     ) : item.notes ? (
                       <p className="text-xs text-muted-foreground">{item.notes}</p>
                     ) : null}
+
+                    {/* Per-item photos */}
+                    {((item.photoUrls ?? []).length > 0 || editable) && (
+                      <div className="space-y-1.5">
+                        {/* Thumbnails */}
+                        {(item.photoUrls ?? []).length > 0 && (
+                          <div className="flex gap-1.5 flex-wrap">
+                            {(item.photoUrls ?? []).map((url) => (
+                              <div key={url} className="group relative h-16 w-16 rounded border overflow-hidden bg-muted shrink-0">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={toProxyUrl(url)}
+                                  alt="Item photo"
+                                  className="h-full w-full object-cover cursor-pointer"
+                                  onClick={() => setLightbox(url)}
+                                />
+                                {editable && (
+                                  <button
+                                    onClick={() => removeItemPhoto(idx, url)}
+                                    className="absolute top-0.5 right-0.5 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-white"
+                                  >
+                                    <X className="h-2.5 w-2.5" />
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Upload controls — only when slots remain */}
+                        {editable && (item.photoUrls ?? []).length < MAX_ITEM_PHOTOS && (
+                          <div className="flex items-center gap-1.5">
+                            {/* Camera capture */}
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                className="sr-only"
+                                disabled={uploadingIdx === idx}
+                                onChange={(e) => handleItemPhoto(idx, e.target.files)}
+                              />
+                              <span className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1 text-[10px] font-medium hover:bg-accent transition-colors">
+                                {uploadingIdx === idx
+                                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                                  : <Camera className="h-3 w-3" />}
+                                Photo
+                              </span>
+                            </label>
+                            {/* Gallery picker */}
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="sr-only"
+                                disabled={uploadingIdx === idx}
+                                onChange={(e) => handleItemPhoto(idx, e.target.files)}
+                              />
+                              <span className="inline-flex items-center gap-1 rounded border border-input bg-background px-2 py-1 text-[10px] font-medium hover:bg-accent transition-colors">
+                                <ImageIcon className="h-3 w-3" />
+                                Upload
+                              </span>
+                            </label>
+                            <span className="text-[10px] text-muted-foreground">
+                              {MAX_ITEM_PHOTOS - (item.photoUrls ?? []).length} slot{MAX_ITEM_PHOTOS - (item.photoUrls ?? []).length !== 1 ? "s" : ""} left
+                            </span>
+                          </div>
+                        )}
+                        {editable && (item.photoUrls ?? []).length >= MAX_ITEM_PHOTOS && (
+                          <p className="text-[10px] text-muted-foreground">Max {MAX_ITEM_PHOTOS} photos per item</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -472,6 +579,28 @@ function ChecklistEditor({
           )}
         </div>
       </CardContent>
+
+      {/* Lightbox for item photos */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightbox(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={toProxyUrl(lightbox)}
+            alt="Full size"
+            className="max-h-[90vh] max-w-[90vw] rounded-[6px] shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </Card>
   );
 }

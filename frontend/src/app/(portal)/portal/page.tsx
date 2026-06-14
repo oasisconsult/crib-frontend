@@ -5,7 +5,7 @@ import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download, FileDown,
   Smartphone, Building2, Banknote, Calendar, MessageCircle,
-  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload, PenLine,
+  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload, PenLine, ClipboardList,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -1364,6 +1364,20 @@ export default function TenantPortalPage() {
     (i: any) => i.landlordSignedAt && !i.tenantSignedAt && i.signToken,
   );
 
+  // Show an end-of-tenancy task card when lease is expiring within 60 days or already expired/terminated
+  // and no active move-out inspection has been created yet.
+  const hasMoveOutInspection = (inspectionsData?.data ?? []).some(
+    (i: any) => i.type === "move_out" && !["cancelled", "failed"].includes(i.state),
+  );
+  const showMoveOutTask = !hasMoveOutInspection && myLease && (() => {
+    if (["expired", "terminated"].includes(myLease.state)) return true;
+    if (!myLease.terms?.endDate) return false;
+    const daysToEnd = Math.ceil(
+      (new Date(myLease.terms.endDate).getTime() - Date.now()) / 86_400_000,
+    );
+    return daysToEnd >= 0 && daysToEnd <= 60;
+  })();
+
   const nextPaymentDate = myLease?.terms
     ? (() => {
         const startDate = new Date(myLease.terms.startDate + "T00:00:00");
@@ -1546,7 +1560,7 @@ export default function TenantPortalPage() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="inspections" className="gap-1.5">
+            <TabsTrigger value="inspections" className="gap-1.5" data-tab="inspections">
               <Calendar className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Inspections</span>
               {pendingSignTasks.length > 0 && (
@@ -1633,6 +1647,38 @@ export default function TenantPortalPage() {
                           </a>
                         ))}
                       </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* End-of-tenancy inspection task — shown when lease is ending and no move-out inspection exists */}
+            {showMoveOutTask && (
+              <Card className="border-blue-300 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-start gap-3">
+                    <ClipboardList className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 space-y-2">
+                      <div>
+                        <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                          End of Tenancy Inspection Required
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">
+                          {myLease?.state === "expired" || myLease?.state === "terminated"
+                            ? "Your tenancy has ended. A move-out inspection must be completed to finalise your deposit."
+                            : "Your lease is ending soon. Please coordinate with your property manager to schedule a move-out inspection before your last day."}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const el = document.querySelector('[data-tab="inspections"]') as HTMLElement | null;
+                          el?.click();
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-[6px] border border-blue-300 dark:border-blue-700 bg-white/70 dark:bg-blue-900/40 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-200 hover:bg-white dark:hover:bg-blue-900/60 transition-colors"
+                      >
+                        View Inspections →
+                      </button>
                     </div>
                   </div>
                 </CardContent>
