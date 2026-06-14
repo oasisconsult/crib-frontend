@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
-  AlertCircle, ChevronRight, Plus, X, Loader2, Download,
+  AlertCircle, ChevronRight, Plus, X, Loader2, Download, FileDown,
   Smartphone, Building2, Banknote, Calendar, MessageCircle,
   Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload, PenLine,
 } from "lucide-react";
@@ -1009,28 +1009,79 @@ function InspectionsTab({ leaseId, unitId, propertyId }: { leaseId: string; unit
             </div>
           ) : (
             <div className="divide-y divide-border/50">
-              {inspections.map((insp: any) => (
-                <div key={insp.id} className="py-3 flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium">
-                      {INSP_TYPE_LABELS[insp.type] ?? insp.type}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {insp.scheduledDate ? formatDate(insp.scheduledDate) : "—"}
-                      {insp.scheduledTimeSlot && (
-                        <span className="ml-1 font-medium">{insp.scheduledTimeSlot}</span>
-                      )}
+              {inspections.map((insp: any) => {
+                const fullySigned = !!insp.landlordSignedAt && !!insp.tenantSignedAt;
+                const awaitingTenant = !!insp.landlordSignedAt && !insp.tenantSignedAt && !!insp.signToken;
+                return (
+                  <div key={insp.id} className="py-3 space-y-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium">
+                          {INSP_TYPE_LABELS[insp.type] ?? insp.type}
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {insp.scheduledDate ? formatDate(insp.scheduledDate) : "—"}
+                          {insp.scheduledTimeSlot && (
+                            <span className="ml-1 font-medium">{insp.scheduledTimeSlot}</span>
+                          )}
+                        </div>
+                        {insp.inspectorName && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Inspector: {insp.inspectorName}
+                          </p>
+                        )}
+                      </div>
+                      <StatusBadge state={insp.state} domain="inspection" />
                     </div>
-                    {insp.inspectorName && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Inspector: {insp.inspectorName}
-                      </p>
+
+                    {/* Signature status + report actions */}
+                    {(insp.landlordSignedAt || insp.tenantSignedAt || insp.reportPdfUrl) && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {insp.landlordSignedAt && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[11px] font-medium">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Landlord signed
+                          </span>
+                        )}
+                        {insp.tenantSignedAt ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-[11px] font-medium">
+                            <CheckCircle2 className="h-3 w-3" />
+                            You signed
+                          </span>
+                        ) : insp.landlordSignedAt ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[11px] font-medium">
+                            Your signature needed
+                          </span>
+                        ) : null}
+
+                        {/* Download sealed report */}
+                        {fullySigned && insp.reportPdfUrl && (
+                          <a
+                            href={`/api/v1/inspections/${insp.id}/report/download-public`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] font-medium hover:bg-accent transition-colors"
+                          >
+                            <FileDown className="h-3 w-3" />
+                            Download Report
+                          </a>
+                        )}
+
+                        {/* Sign now link */}
+                        {awaitingTenant && (
+                          <a
+                            href={`/inspect/sign/${insp.signToken}`}
+                            className="inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-2 py-0.5 text-[11px] font-medium hover:bg-primary/90 transition-colors"
+                          >
+                            Sign now →
+                          </a>
+                        )}
+                      </div>
                     )}
                   </div>
-                  <StatusBadge state={insp.state} domain="inspection" />
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
