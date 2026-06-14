@@ -291,13 +291,20 @@ async def create_inspection(
         )
         if active_lease:
             resolved_lease_id = active_lease.id
-            if resolved_tenant_id is None:
-                resolved_tenant_id = active_lease.tenant_id
+            if resolved_tenant_id is None and active_lease.tenant_id:
+                # inspections.tenant_id FK → profiles.id; find the Profile for this tenant
+                from app.models.profile import Profile as _P
+                _prof = await db.scalar(select(_P).where(_P.tenant_id == active_lease.tenant_id))
+                if _prof:
+                    resolved_tenant_id = _prof.id
     elif resolved_lease_id is not None and resolved_tenant_id is None:
-        # lease_id supplied explicitly but no tenant_id: pull from the lease
+        # lease_id supplied explicitly — resolve Profile UUID for the linked tenant
         linked_lease = await db.scalar(select(Lease).where(Lease.id == resolved_lease_id))
-        if linked_lease:
-            resolved_tenant_id = linked_lease.tenant_id
+        if linked_lease and linked_lease.tenant_id:
+            from app.models.profile import Profile as _P
+            _prof = await db.scalar(select(_P).where(_P.tenant_id == linked_lease.tenant_id))
+            if _prof:
+                resolved_tenant_id = _prof.id
 
     inspection = Inspection(
         organisation_id=org_id,
@@ -564,25 +571,39 @@ async def send_for_tenant_signing(
             detail="Landlord must sign the report before sending it to the tenant",
         )
 
-    # Backfill tenant_id from lease when missing (inspections created before this fix)
-    if not i.tenant_id and i.lease_id:
+    # Resolve tenant entity for email/name.
+    # inspection.tenant_id FK → profiles.id; tenants.id is on the lease.
+    # Try both paths so inspections with either kind of stored id work.
+    from app.models.tenant import Tenant as _Tenant
+    tenant = None
+
+    if i.tenant_id:
+        # New path: i.tenant_id is a Profile UUID — get Tenant via Profile.tenant_id
+        from app.models.profile import Profile as _P
+        _prof = await db.scalar(select(_P).where(_P.id == i.tenant_id))
+        if _prof and _prof.tenant_id:
+            tenant = await db.scalar(select(_Tenant).where(_Tenant.id == _prof.tenant_id))
+        if not tenant:
+            # Legacy path: i.tenant_id was stored as a Tenant UUID before the FK fix
+            tenant = await db.scalar(select(_Tenant).where(_Tenant.id == i.tenant_id))
+
+    if not tenant and i.lease_id:
+        # Fallback: look up tenant directly from the lease
         linked_lease = await db.scalar(select(Lease).where(Lease.id == i.lease_id))
         if linked_lease and linked_lease.tenant_id:
-            i.tenant_id = linked_lease.tenant_id
-            await db.flush()
+            tenant = await db.scalar(select(_Tenant).where(_Tenant.id == linked_lease.tenant_id))
+            # Backfill i.tenant_id with the Profile UUID (FK-correct)
+            if tenant and not i.tenant_id:
+                from app.models.profile import Profile as _P
+                _prof = await db.scalar(select(_P).where(_P.tenant_id == linked_lease.tenant_id))
+                if _prof:
+                    i.tenant_id = _prof.id
+                    await db.flush()
 
-    if not i.tenant_id:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="No tenant is linked to this inspection",
-        )
-
-    from app.models.tenant import Tenant
-    tenant = await db.scalar(select(Tenant).where(Tenant.id == i.tenant_id))
     if not tenant or not tenant.email:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Tenant has no email address on file",
+            detail="No tenant is linked to this inspection",
         )
 
     # Issue a fresh token (or reuse unexpired one)
