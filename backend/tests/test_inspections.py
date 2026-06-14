@@ -536,13 +536,13 @@ async def test_get_inspection_by_sign_token_rewrites_checklist_photo_urls(client
 
 @pytest.mark.asyncio
 async def test_get_inspection_by_sign_token_non_serve_urls_unchanged(client: AsyncClient, ctx, db_session):
-    """Non-serve URLs (CDN, local dev) pass through unchanged."""
+    """Non-inspection CDN URLs (no UUID pattern) pass through unchanged."""
     import secrets
     from datetime import datetime, timedelta, timezone
     from app.models.inspection import Inspection, InspectionState, InspectionType
 
     token = secrets.token_urlsafe(32)
-    cdn_url = "https://cdn.example.com/inspections/photo.jpg"
+    cdn_url = "https://cdn.example.com/general/photo.jpg"
     insp = Inspection(
         organisation_id=ctx["org"].id,
         property_id=ctx["prop"].id,
@@ -562,3 +562,40 @@ async def test_get_inspection_by_sign_token_non_serve_urls_unchanged(client: Asy
     r = await client.get(f"/api/v1/inspections/sign/{token}")
     assert r.status_code == 200
     assert r.json()["photoUrls"][0] == cdn_url
+
+
+@pytest.mark.asyncio
+async def test_get_inspection_by_sign_token_rewrites_minio_direct_urls(client: AsyncClient, ctx, db_session):
+    """Direct MinIO/S3 URLs (https://minio.host/bucket/inspections/{id}/...) are rewritten to serve-public."""
+    import secrets, uuid
+    from datetime import datetime, timedelta, timezone
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    token = secrets.token_urlsafe(32)
+    insp_id = uuid.uuid4()
+    minio_url = f"https://minio.geoboxafrica.com/minio-prod/inspections/{insp_id}/abc123/photo.jpg"
+    insp = Inspection(
+        id=insp_id,
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        type=InspectionType.move_out,
+        state=InspectionState.approved,
+        scheduled_date=__import__("datetime").date(2026, 6, 1),
+        checklist=[],
+        photo_urls=[minio_url],
+        video_urls=[],
+        maintenance_issue_ids=[],
+        sign_token=token,
+        sign_token_expires_at=datetime.now(timezone.utc) + timedelta(days=14),
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    r = await client.get(f"/api/v1/inspections/sign/{token}")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["photoUrls"]) == 1
+    url = body["photoUrls"][0]
+    assert "/upload/serve-public/" in url
+    assert f"sign_token={token}" in url
+    assert "minio.geoboxafrica.com" not in url

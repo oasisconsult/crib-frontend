@@ -916,10 +916,31 @@ async def send_for_tenant_signing(
     return _insp_out(i)
 
 
+import re as _re
+_INSPECTION_KEY_RE = _re.compile(r"(inspections/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.+)")
+
+
 def _to_public_photo_url(url: str, token: str) -> str:
-    """Rewrite an authenticated /upload/serve/ URL to a token-gated /upload/serve-public/ URL."""
+    """Rewrite any stored inspection photo URL to a token-gated /upload/serve-public/ URL.
+
+    Handles three stored formats:
+      1. Backend proxy: /api/v1/upload/serve/{key}
+      2. MinIO/S3 direct: https://minio.host/bucket/inspections/{id}/...
+      3. Local dev: /api/upload/local/{key}  — already public, returned unchanged
+    """
+    if not url:
+        return url
+    # Already the backend proxy URL — rewrite to public variant
     if "/upload/serve/" in url:
         key = url.split("/upload/serve/", 1)[1]
+        return f"/api/v1/upload/serve-public/{key}?sign_token={token}"
+    # Local dev URLs are served without auth — no rewrite needed
+    if "/api/upload/local/" in url or "/upload/local/" in url:
+        return url
+    # MinIO/S3 direct URL: extract the inspection key via UUID pattern
+    m = _INSPECTION_KEY_RE.search(url)
+    if m:
+        key = m.group(1)
         return f"/api/v1/upload/serve-public/{key}?sign_token={token}"
     return url
 
