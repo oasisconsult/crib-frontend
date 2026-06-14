@@ -642,6 +642,9 @@ function PhotosSection({
     setPhotos((prev) => prev.filter((p) => p !== url));
   }
 
+  // In view mode with no photos there is nothing to show
+  if (!editable && photos.length === 0) return null;
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -691,11 +694,11 @@ function PhotosSection({
       </CardHeader>
       <CardContent>
         {photos.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-8 text-muted-foreground">
-            <ImageIcon className="h-8 w-8 opacity-30" />
+          <div className="flex items-center gap-3 py-4 text-muted-foreground">
+            <ImageIcon className="h-5 w-5 opacity-30 shrink-0" />
             <p className="text-sm">No photos yet</p>
             {editable && (
-              <label className="cursor-pointer text-xs text-primary underline-offset-2 hover:underline">
+              <label className="cursor-pointer text-xs text-primary underline-offset-2 hover:underline ml-auto">
                 <input type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} />
                 Upload from gallery
               </label>
