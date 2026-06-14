@@ -71,6 +71,24 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+// Known storage key prefixes — all bucket objects start with one of these.
+// Extracts the key from a stored URL and routes it through the authenticated
+// backend proxy so the browser never hits the private MinIO bucket directly.
+const _KEY_PREFIXES = ["inspections/", "documents/", "signatures/", "properties/", "payment_receipt/"];
+
+function toProxyUrl(url: string): string {
+  if (!url) return url;
+  // Already a proxy or local dev URL — leave as-is
+  if (url.startsWith("/api/v1/upload/") || url.startsWith("/api/upload/local/")) return url;
+  for (const prefix of _KEY_PREFIXES) {
+    const idx = url.indexOf(prefix);
+    if (idx !== -1) return `/api/v1/upload/serve/${url.slice(idx)}`;
+  }
+  return url;
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const CONDITIONS: { value: ChecklistItem["condition"]; label: string; color: string }[] = [
@@ -560,7 +578,7 @@ function PhotosSection({
               <div key={url} className="group relative aspect-square rounded-[5px] overflow-hidden border bg-muted">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={url}
+                  src={toProxyUrl(url)}
                   alt={`Photo ${i + 1}`}
                   className="h-full w-full object-cover cursor-pointer"
                   onClick={() => setLightbox(url)}
@@ -587,7 +605,7 @@ function PhotosSection({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={lightbox}
+            src={toProxyUrl(lightbox)}
             alt="Full size"
             className="max-h-[90vh] max-w-[90vw] rounded-[6px] shadow-2xl object-contain"
             onClick={(e) => e.stopPropagation()}

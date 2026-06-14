@@ -270,6 +270,43 @@ async def presign_upload_onboarding(
     return await _do_presign(body, db)
 
 
+# ── Authenticated file proxy (MinIO / S3 private buckets) ────────────────────
+
+@router.get("/serve/{key:path}")
+async def serve_file(
+    key: str,
+    _: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Authenticated proxy for files stored in private MinIO/S3 buckets.
+
+    The browser cannot reach MinIO directly (private bucket, internal network).
+    This endpoint downloads the file server-side and streams it back to the
+    authenticated caller. Used for inspection photos, tenant documents, etc.
+    """
+    import mimetypes
+    from fastapi.responses import Response as _Response
+
+    # Basic path-traversal guard — key must not escape its prefix
+    if ".." in key or key.startswith("/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid key")
+
+    config = await settings_service.get_storage_config(db)
+    try:
+        provider = get_storage_provider(config, local_base_url=get_settings().storage_local_base_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    try:
+        data = await provider.download(key)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    mime, _ = mimetypes.guess_type(key)
+    return _Response(content=data, media_type=mime or "application/octet-stream")
+
+
 # ── Local dev upload / serve ───────────────────────────────────────────────────
 
 _UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
