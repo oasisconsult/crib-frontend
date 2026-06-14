@@ -18,7 +18,7 @@ from __future__ import annotations
 import os
 import uuid as _uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import Field
 from sqlalchemy import select
@@ -291,6 +291,58 @@ async def serve_file(
     # Basic path-traversal guard — key must not escape its prefix
     if ".." in key or key.startswith("/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid key")
+
+    config = await settings_service.get_storage_config(db)
+    try:
+        provider = get_storage_provider(config, local_base_url=get_settings().storage_local_base_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    try:
+        data = await provider.download(key)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+    mime, _ = mimetypes.guess_type(key)
+    return _Response(content=data, media_type=mime or "application/octet-stream")
+
+
+# ── Public file proxy (inspection sign flow) ─────────────────────────────────
+
+@router.get("/serve-public/{key:path}")
+async def serve_file_public(
+    key: str,
+    sign_token: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Unauthenticated photo proxy for the tenant inspection sign page.
+    Access is gated by a valid, unexpired inspection sign token.
+    Only serves photos belonging to the inspection referenced by the token.
+    """
+    import mimetypes
+    from datetime import datetime, timezone
+
+    from fastapi.responses import Response as _Response
+
+    from app.models.inspection import Inspection
+
+    if ".." in key or key.startswith("/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid key")
+
+    if not key.startswith("inspections/"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    insp = await db.scalar(select(Inspection).where(Inspection.sign_token == sign_token))
+    if not insp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid token")
+
+    now = datetime.now(timezone.utc)
+    if insp.sign_token_expires_at and insp.sign_token_expires_at < now:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Link expired")
+
+    if not key.startswith(f"inspections/{insp.id}/"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
 
     config = await settings_service.get_storage_config(db)
     try:

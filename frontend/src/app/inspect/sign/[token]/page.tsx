@@ -234,6 +234,7 @@ export default function TenantSignPage({ params }: Props) {
 
   // ── Main sign view ───────────────────────────────────────────────────────────
   const typeLabel = inspection!.type.replace(/_/g, " ");
+  const typeTitleCase = typeLabel.replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-10">
@@ -243,7 +244,7 @@ export default function TenantSignPage({ params }: Props) {
           <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-primary text-white mx-auto mb-2">
             <ClipboardList className="h-6 w-6" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">Move-in Inspection Report</h1>
+          <h1 className="text-xl font-bold tracking-tight">{typeTitleCase} Inspection Report</h1>
           <p className="text-sm text-muted-foreground">Review the report below, then sign to confirm the property condition</p>
         </div>
 
@@ -369,7 +370,7 @@ export default function TenantSignPage({ params }: Props) {
             </CardTitle>
             <CardDescription>
               By signing you confirm that the above report accurately reflects the condition
-              of the property at move-in.
+              of the property at {typeLabel}.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

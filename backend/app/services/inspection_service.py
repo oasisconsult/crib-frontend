@@ -916,6 +916,26 @@ async def send_for_tenant_signing(
     return _insp_out(i)
 
 
+def _to_public_photo_url(url: str, token: str) -> str:
+    """Rewrite an authenticated /upload/serve/ URL to a token-gated /upload/serve-public/ URL."""
+    if "/upload/serve/" in url:
+        key = url.split("/upload/serve/", 1)[1]
+        return f"/api/v1/upload/serve-public/{key}?sign_token={token}"
+    return url
+
+
+def _rewrite_checklist_photos(checklist: list, token: str) -> list:
+    """Rewrite photo URLs inside checklist items (supports both photo_urls and photoUrls keys)."""
+    out = []
+    for item in checklist:
+        item = dict(item)
+        for key in ("photo_urls", "photoUrls"):
+            if item.get(key):
+                item[key] = [_to_public_photo_url(u, token) for u in item[key]]
+        out.append(item)
+    return out
+
+
 async def get_by_sign_token(token: str, db: AsyncSession) -> InspectionPublicOut:
     """Public — no org scope; validates token freshness."""
     i = await db.scalar(select(Inspection).where(Inspection.sign_token == token))
@@ -935,6 +955,9 @@ async def get_by_sign_token(token: str, db: AsyncSession) -> InspectionPublicOut
             return None
         return v.isoformat() if hasattr(v, "isoformat") else str(v)
 
+    _pub_photos = [_to_public_photo_url(u, token) for u in (i.photo_urls or [])]
+    _pub_checklist = _rewrite_checklist_photos(i.checklist or [], token)
+
     return InspectionPublicOut(
         id=str(i.id),
         type=i.type if isinstance(i.type, str) else i.type.value,
@@ -945,10 +968,10 @@ async def get_by_sign_token(token: str, db: AsyncSession) -> InspectionPublicOut
         overall_condition=i.overall_condition,
         summary=i.summary,
         recommendations=i.recommendations,
-        checklist=i.checklist or [],
-        checklist_count=len(i.checklist or []),
-        photo_urls=i.photo_urls or [],
-        photo_count=len(i.photo_urls or []),
+        checklist=_pub_checklist,
+        checklist_count=len(_pub_checklist),
+        photo_urls=_pub_photos,
+        photo_count=len(_pub_photos),
         landlord_signed_at=_s(i.landlord_signed_at),
         landlord_signed_by=i.landlord_signed_by,
         tenant_signed_at=_s(i.tenant_signed_at),
