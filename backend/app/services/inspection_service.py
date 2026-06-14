@@ -650,11 +650,14 @@ async def send_for_tenant_signing(
         notif = Notification(
             organisation_id=i.organisation_id,
             channel="email",
+            trigger="inspection_sign_request",
             state=NotificationState.queued,
-            recipient_id=i.tenant_id,
+            tenant_id=i.tenant_id,
+            recipient_name=tenant_name,
             recipient_email=tenant.email,
             subject=subject,
             body=body,
+            queued_at=datetime.now(timezone.utc),
         )
         db.add(notif)
         await db.flush()
@@ -747,7 +750,9 @@ async def sign_tenant(token: str, full_name: str, db: AsyncSession) -> Inspectio
                 notif = Notification(
                     organisation_id=i.organisation_id,
                     channel="email",
+                    trigger="inspection_tenant_signed",
                     state=NotificationState.queued,
+                    recipient_name=org.name,
                     recipient_email=org.email,
                     subject="Tenant Signed the Inspection Report",
                     body=(
@@ -756,6 +761,7 @@ async def sign_tenant(token: str, full_name: str, db: AsyncSession) -> Inspectio
                         f"Both signatures are now on file. "
                         f"{'The sealed PDF is available at: ' + i.report_pdf_url if i.report_pdf_url else ''}"
                     ),
+                    queued_at=datetime.now(timezone.utc),
                 )
                 db.add(notif)
                 await db.flush()
@@ -930,7 +936,9 @@ async def create_maintenance_issue(
             notif = Notification(
                 organisation_id=org_id,
                 channel="email",
+                trigger="maintenance_new_request",
                 state=NotificationState.queued,
+                recipient_name=org.name,
                 recipient_email=org.email,
                 subject=f"New Maintenance Request: {issue.title}",
                 body=(
@@ -941,6 +949,7 @@ async def create_maintenance_issue(
                     f"{('Details: ' + issue.description) if issue.description else ''}\n\n"
                     f"Please review and assign this request in the Crib maintenance queue."
                 ),
+                queued_at=datetime.now(timezone.utc),
             )
             db.add(notif)
             await db.flush()
@@ -1029,8 +1038,9 @@ async def transition_maintenance(
                     notif = Notification(
                         organisation_id=m.organisation_id,
                         channel="email",
+                        trigger="maintenance_status_update",
                         state=NotificationState.queued,
-                        recipient_id=lease.tenant_id,
+                        recipient_name=tenant_name,
                         recipient_email=tenant.email,
                         subject=f"Maintenance Update: {m.title}",
                         body=(
@@ -1039,6 +1049,7 @@ async def transition_maintenance(
                             f"{'Resolution notes: ' + m.notes if m.notes and new_state == MaintenanceState.resolved else ''}"
                             f"\n\nIf you have any questions, please contact your property manager."
                         ),
+                        queued_at=datetime.now(timezone.utc),
                     )
                     db.add(notif)
                     await db.flush()
