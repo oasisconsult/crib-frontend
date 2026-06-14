@@ -866,51 +866,67 @@ async def send_for_tenant_signing(
         f"Best regards,\n{org_name}"
     )
 
+    # Use a savepoint so notification failures cannot poison the outer transaction
+    # that holds the committed sign_token. If the notification INSERT fails (e.g.
+    # organisation_id NOT NULL when notif_org_id is None), only the savepoint rolls
+    # back; the outer transaction with sign_token remains clean.
+    # IDs are collected in a tmp list and only promoted to _notif_ids after the
+    # savepoint exits successfully, so we never dispatch for rows that were
+    # rolled back by a partial failure inside the savepoint.
+    _notif_ids: list[str] = []
     try:
-        from app.models.notification import Notification, NotificationState
-        from app.worker.tasks.notifications import deliver_notification
+        _pending_ids: list[str] = []
+        async with db.begin_nested():
+            from app.models.notification import Notification, NotificationState
 
-        # Email to tenant with sign link
-        notif = Notification(
-            organisation_id=notif_org_id,
-            channel="email",
-            trigger="inspection_sign_request",
-            state=NotificationState.queued,
-            tenant_id=i.tenant_id,
-            recipient_name=tenant_name,
-            recipient_email=tenant.email,
-            subject=subject,
-            body=body,
-            queued_at=datetime.now(timezone.utc),
-        )
-        db.add(notif)
-        await db.flush()
-        deliver_notification.delay(str(notif.id))
-
-        # WhatsApp to tenant — short nudge with sign link
-        tenant_phone = tenant.whatsapp_number or tenant.phone
-        if tenant_phone:
-            wa_body = (
-                f"Hi {tenant_name}, your {insp_label} inspection report for {prop_name} "
-                f"is ready for your signature. Please sign it here before {expires_str}: {sign_url}"
-            )
-            wa_notif = Notification(
+            notif = Notification(
                 organisation_id=notif_org_id,
-                channel="whatsapp",
+                channel="email",
                 trigger="inspection_sign_request",
                 state=NotificationState.queued,
                 tenant_id=i.tenant_id,
                 recipient_name=tenant_name,
-                recipient_phone=tenant_phone,
-                subject=None,
-                body=wa_body,
+                recipient_email=tenant.email,
+                subject=subject,
+                body=body,
                 queued_at=datetime.now(timezone.utc),
             )
-            db.add(wa_notif)
+            db.add(notif)
             await db.flush()
-            deliver_notification.delay(str(wa_notif.id))
+            _pending_ids.append(str(notif.id))
+
+            tenant_phone = tenant.whatsapp_number or tenant.phone
+            if tenant_phone:
+                wa_body = (
+                    f"Hi {tenant_name}, your {insp_label} inspection report for {prop_name} "
+                    f"is ready for your signature. Please sign it here before {expires_str}: {sign_url}"
+                )
+                wa_notif = Notification(
+                    organisation_id=notif_org_id,
+                    channel="whatsapp",
+                    trigger="inspection_sign_request",
+                    state=NotificationState.queued,
+                    tenant_id=i.tenant_id,
+                    recipient_name=tenant_name,
+                    recipient_phone=tenant_phone,
+                    subject=None,
+                    body=wa_body,
+                    queued_at=datetime.now(timezone.utc),
+                )
+                db.add(wa_notif)
+                await db.flush()
+                _pending_ids.append(str(wa_notif.id))
+        # Savepoint committed — all notification rows exist in the outer transaction
+        _notif_ids = _pending_ids
     except Exception:
         log.warning("inspection.sign_email.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
+
+    # Dispatch Celery tasks after the savepoint is released so the notification
+    # rows are guaranteed to exist when the worker picks them up.
+    if _notif_ids:
+        from app.worker.tasks.notifications import deliver_notification
+        for _nid in _notif_ids:
+            deliver_notification.delay(_nid)
 
     await db.refresh(i)
     return _insp_out(i)
