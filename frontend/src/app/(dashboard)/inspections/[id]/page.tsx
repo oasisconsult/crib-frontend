@@ -722,15 +722,15 @@ function ReportSignatureSection({
         {canEdit && !isSealed && (
           <div className="space-y-3 border-t pt-3">
             {/* Generate / regenerate report */}
-            {!inspection.reportPdfUrl && (
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs text-muted-foreground">Generate a PDF report to share or download.</p>
-                <Button size="sm" variant="outline" loading={loading === "report"} onClick={handleGenerateReport}>
-                  <FileDown className="h-3.5 w-3.5" />
-                  Generate Report
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-muted-foreground">
+                {inspection.reportPdfUrl ? "Regenerate the PDF report." : "Generate a PDF report to share or download."}
+              </p>
+              <Button size="sm" variant="outline" loading={loading === "report"} onClick={handleGenerateReport}>
+                <FileDown className="h-3.5 w-3.5" />
+                {inspection.reportPdfUrl ? "Regenerate Report" : "Generate Report"}
+              </Button>
+            </div>
 
             {/* Landlord sign */}
             {!hasLandlordSig && (
