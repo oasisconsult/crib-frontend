@@ -103,7 +103,8 @@ class TenantSignRequest(CamelModel):
 
 
 class InspectionPublicOut(CamelModel):
-    """Minimal inspection data served to the public sign page (no auth)."""
+    """Inspection data served to the public sign page (no auth).
+    Includes full checklist and photos so the tenant can review before signing."""
     id: str
     type: str
     state: str
@@ -112,7 +113,10 @@ class InspectionPublicOut(CamelModel):
     unit_name: str | None = None
     overall_condition: str | None
     summary: str | None
+    recommendations: str | None = None
+    checklist: list[dict[str, Any]] = Field(default_factory=list)
     checklist_count: int
+    photo_urls: list[str] = Field(default_factory=list)
     photo_count: int
     landlord_signed_at: str | None
     landlord_signed_by: str | None

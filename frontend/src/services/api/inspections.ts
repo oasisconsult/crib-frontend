@@ -3,6 +3,16 @@ import type { Inspection, MaintenanceIssue, PaginatedResponse, QueryParams } fro
 import type { InspectionEvent, MaintenanceEvent } from "@/types/states";
 import { toInspectionParams, toMaintenanceParams } from "@/utils/backendParams";
 
+export interface ChecklistItem {
+  id: string;
+  area: string;
+  description: string;
+  condition?: string | null;
+  notes?: string | null;
+  photoUrls?: string[];
+  required?: boolean;
+}
+
 export interface InspectionPublicOut {
   id: string;
   type: string;
@@ -12,7 +22,10 @@ export interface InspectionPublicOut {
   unitName?: string;
   overallCondition?: string;
   summary?: string;
+  recommendations?: string;
+  checklist: ChecklistItem[];
   checklistCount: number;
+  photoUrls: string[];
   photoCount: number;
   landlordSignedAt?: string;
   landlordSignedBy?: string;
