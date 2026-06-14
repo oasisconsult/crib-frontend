@@ -253,3 +253,100 @@ async def test_onboarding_presign_tenant_id_overridden(client: AsyncClient, org_
     body = r.json()
     assert str(tenant.id) in body["uploadUrl"]
     assert "attacker-controlled-value" not in body["uploadUrl"]
+
+
+# ── serve-public (inspection sign-token photo proxy) ─────────────────────────
+
+@pytest_asyncio.fixture
+async def inspection_with_sign_token(db_session: AsyncSession):
+    """Inspection with a valid sign token and a photo stored as an authenticated serve URL."""
+    from datetime import datetime, timedelta, timezone
+
+    from tests.factories import make_organisation, make_property
+
+    org = await make_organisation(db_session, logto_org_id=f"org-pub-{__import__('uuid').uuid4().hex[:6]}")
+    prop = await make_property(db_session, org)
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+    import secrets, uuid as _uuid
+    token = secrets.token_urlsafe(32)
+    insp = Inspection(
+        organisation_id=org.id,
+        property_id=prop.id,
+        type=InspectionType.move_in,
+        state=InspectionState.approved,
+        scheduled_date=__import__("datetime").date(2026, 6, 1),
+        checklist=[],
+        photo_urls=[f"/api/v1/upload/serve/inspections/{_uuid.uuid4()}/abc/photo.jpg"],
+        video_urls=[],
+        maintenance_issue_ids=[],
+        sign_token=token,
+        sign_token_expires_at=datetime.now(timezone.utc) + timedelta(days=14),
+    )
+    db_session.add(insp)
+    await db_session.flush()
+    return insp, token
+
+
+@pytest.mark.asyncio
+async def test_serve_public_invalid_token(client: AsyncClient):
+    """Missing or wrong sign_token returns 404."""
+    r = await client.get("/api/v1/upload/serve-public/inspections/abc/photo.jpg?sign_token=bad-token")
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_serve_public_expired_token(client: AsyncClient, db_session: AsyncSession):
+    """Expired sign token returns 410."""
+    from datetime import datetime, timedelta, timezone
+
+    from tests.factories import make_organisation, make_property
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    org = await make_organisation(db_session, logto_org_id=f"org-exp2-{__import__('uuid').uuid4().hex[:6]}")
+    prop = await make_property(db_session, org)
+    token = "expired-sign-token-xyz"
+    insp = Inspection(
+        organisation_id=org.id,
+        property_id=prop.id,
+        type=InspectionType.routine,
+        state=InspectionState.approved,
+        scheduled_date=__import__("datetime").date(2026, 6, 1),
+        checklist=[],
+        photo_urls=[],
+        video_urls=[],
+        maintenance_issue_ids=[],
+        sign_token=token,
+        sign_token_expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    r = await client.get(f"/api/v1/upload/serve-public/inspections/{insp.id}/photo.jpg?sign_token={token}")
+    assert r.status_code == 410
+
+
+@pytest.mark.asyncio
+async def test_serve_public_wrong_inspection(client: AsyncClient, inspection_with_sign_token):
+    """Valid token but key belonging to a different inspection is forbidden."""
+    import uuid
+    insp, token = inspection_with_sign_token
+    other_id = uuid.uuid4()
+    r = await client.get(
+        f"/api/v1/upload/serve-public/inspections/{other_id}/photo.jpg?sign_token={token}"
+    )
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_serve_public_non_inspection_key(client: AsyncClient, inspection_with_sign_token):
+    """Keys outside inspections/ directory are forbidden even with valid token."""
+    _, token = inspection_with_sign_token
+    r = await client.get(f"/api/v1/upload/serve-public/documents/tenants/secret.pdf?sign_token={token}")
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_serve_public_no_token_param(client: AsyncClient):
+    """Missing sign_token query param returns 422."""
+    r = await client.get("/api/v1/upload/serve-public/inspections/abc/photo.jpg")
+    assert r.status_code == 422

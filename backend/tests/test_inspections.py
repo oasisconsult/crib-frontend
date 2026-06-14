@@ -430,3 +430,135 @@ async def test_create_move_in_inspection_for_lease(client, ctx, db_session):
     r2 = await client.get(f"/api/v1/inspections?leaseId={lease.id}", headers=auth_headers())
     assert r2.status_code == 200
     assert r2.json()["total"] == 1
+
+
+# ── Public sign token endpoint ────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_get_inspection_by_sign_token_not_found(client: AsyncClient):
+    r = await client.get("/api/v1/inspections/sign/no-such-token")
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_inspection_by_sign_token_expired(client: AsyncClient, ctx, db_session):
+    from datetime import datetime, timedelta, timezone
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    insp = Inspection(
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        type=InspectionType.move_out,
+        state=InspectionState.approved,
+        scheduled_date=__import__("datetime").date(2026, 6, 1),
+        checklist=[],
+        photo_urls=[],
+        video_urls=[],
+        maintenance_issue_ids=[],
+        sign_token="expired-tok-xyz",
+        sign_token_expires_at=datetime.now(timezone.utc) - timedelta(days=1),
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    r = await client.get("/api/v1/inspections/sign/expired-tok-xyz")
+    assert r.status_code == 410
+
+
+@pytest.mark.asyncio
+async def test_get_inspection_by_sign_token_rewrites_photo_urls(client: AsyncClient, ctx, db_session):
+    """Authenticated serve URLs in photo_urls are rewritten to serve-public URLs with sign_token."""
+    import secrets
+    from datetime import datetime, timedelta, timezone
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    token = secrets.token_urlsafe(32)
+    serve_url = f"/api/v1/upload/serve/inspections/{ctx['prop'].id}/uuid/photo.jpg"
+    insp = Inspection(
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        type=InspectionType.move_in,
+        state=InspectionState.approved,
+        scheduled_date=__import__("datetime").date(2026, 6, 1),
+        checklist=[],
+        photo_urls=[serve_url],
+        video_urls=[],
+        maintenance_issue_ids=[],
+        sign_token=token,
+        sign_token_expires_at=datetime.now(timezone.utc) + timedelta(days=14),
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    r = await client.get(f"/api/v1/inspections/sign/{token}")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["photoUrls"]) == 1
+    url = body["photoUrls"][0]
+    assert "/upload/serve-public/" in url
+    assert f"sign_token={token}" in url
+    assert "/upload/serve/" not in url
+
+
+@pytest.mark.asyncio
+async def test_get_inspection_by_sign_token_rewrites_checklist_photo_urls(client: AsyncClient, ctx, db_session):
+    """Authenticated serve URLs inside checklist items are also rewritten."""
+    import secrets
+    from datetime import datetime, timedelta, timezone
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    token = secrets.token_urlsafe(32)
+    serve_url = f"/api/v1/upload/serve/inspections/{ctx['prop'].id}/uuid/checklist.jpg"
+    insp = Inspection(
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        type=InspectionType.routine,
+        state=InspectionState.approved,
+        scheduled_date=__import__("datetime").date(2026, 6, 1),
+        checklist=[{"id": "cl-1", "area": "Kitchen", "description": "Check sink", "photoUrls": [serve_url]}],
+        photo_urls=[],
+        video_urls=[],
+        maintenance_issue_ids=[],
+        sign_token=token,
+        sign_token_expires_at=datetime.now(timezone.utc) + timedelta(days=14),
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    r = await client.get(f"/api/v1/inspections/sign/{token}")
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["checklist"]) == 1
+    item_url = body["checklist"][0]["photoUrls"][0]
+    assert "/upload/serve-public/" in item_url
+    assert f"sign_token={token}" in item_url
+
+
+@pytest.mark.asyncio
+async def test_get_inspection_by_sign_token_non_serve_urls_unchanged(client: AsyncClient, ctx, db_session):
+    """Non-serve URLs (CDN, local dev) pass through unchanged."""
+    import secrets
+    from datetime import datetime, timedelta, timezone
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    token = secrets.token_urlsafe(32)
+    cdn_url = "https://cdn.example.com/inspections/photo.jpg"
+    insp = Inspection(
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        type=InspectionType.routine,
+        state=InspectionState.approved,
+        scheduled_date=__import__("datetime").date(2026, 6, 1),
+        checklist=[],
+        photo_urls=[cdn_url],
+        video_urls=[],
+        maintenance_issue_ids=[],
+        sign_token=token,
+        sign_token_expires_at=datetime.now(timezone.utc) + timedelta(days=14),
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    r = await client.get(f"/api/v1/inspections/sign/{token}")
+    assert r.status_code == 200
+    assert r.json()["photoUrls"][0] == cdn_url
