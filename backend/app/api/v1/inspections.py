@@ -57,8 +57,13 @@ async def list_inspections(
 ):
     state_list = [s.strip() for s in states.split(",")] if states else ([state] if state else None)
     landlord_id = current_user.id if current_user.profile.is_read_only else None
+
+    # Tenants scope by their own profile ID (bypasses org_id mismatch with
+    # inspections created by a superadmin that have organisation_id=NULL)
+    tenant_profile_id = current_user.id if current_user.profile.role == "tenant" else None
+
     return await inspection_service.list_inspections(
-        org_id=get_org_id(current_user),
+        org_id=get_org_id(current_user) if tenant_profile_id is None else None,
         db=db,
         property_id=property_id,
         unit_id=unit_id,
@@ -69,6 +74,7 @@ async def list_inspections(
         page=page,
         page_size=page_size,
         landlord_profile_id=landlord_id,
+        tenant_profile_id=tenant_profile_id,
     )
 
 

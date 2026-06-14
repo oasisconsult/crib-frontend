@@ -202,8 +202,19 @@ async def list_inspections(
     page: int = 1,
     page_size: int = 20,
     landlord_profile_id: uuid.UUID | None = None,
+    tenant_profile_id: uuid.UUID | None = None,
 ) -> dict:
-    q = org_scope(select(Inspection), Inspection.organisation_id, org_id)
+    if tenant_profile_id is not None:
+        # Tenant access: scope by tenant_id rather than org to avoid JWT org mismatch.
+        # Inspections created by a superadmin may have organisation_id=NULL which
+        # org_scope would exclude; filtering by tenant_id is both correct and secure.
+        tenant_clauses = [Inspection.tenant_id == tenant_profile_id]
+        if lease_id:
+            # Also surface inspections linked to the lease but with a legacy/missing tenant_id
+            tenant_clauses.append(Inspection.lease_id == uuid.UUID(lease_id))
+        q = select(Inspection).where(or_(*tenant_clauses))
+    else:
+        q = org_scope(select(Inspection), Inspection.organisation_id, org_id)
     if landlord_profile_id is not None:
         allowed = select(LandlordPropertyAccess.property_id).where(
             LandlordPropertyAccess.landlord_profile_id == landlord_profile_id
@@ -273,7 +284,7 @@ async def get_inspection(
 
 
 async def create_inspection(
-    body: InspectionCreate, org_id: uuid.UUID, db: AsyncSession
+    body: InspectionCreate, org_id: uuid.UUID | None, db: AsyncSession
 ) -> InspectionOut:
     year = datetime.now(timezone.utc).year
     seq = await next_seq(db, Inspection, year=year)
@@ -305,6 +316,17 @@ async def create_inspection(
             _prof = await db.scalar(select(_P).where(_P.tenant_id == linked_lease.tenant_id))
             if _prof:
                 resolved_tenant_id = _prof.id
+
+    # Superadmin creates without org context — derive from lease or property
+    if org_id is None:
+        if resolved_lease_id:
+            _lease = await db.scalar(select(Lease).where(Lease.id == resolved_lease_id))
+            if _lease and _lease.organisation_id:
+                org_id = _lease.organisation_id
+        if org_id is None and body.property_id:
+            _prop = await db.scalar(select(Property).where(Property.id == uuid.UUID(body.property_id)))
+            if _prop and _prop.organisation_id:
+                org_id = _prop.organisation_id
 
     inspection = Inspection(
         organisation_id=org_id,
@@ -649,7 +671,18 @@ async def send_for_tenant_signing(
     tenant_name = f"{tenant.first_name or ''} {tenant.last_name or ''}".strip() or tenant.email
 
     from app.models.organisation import Organisation
-    org = await db.scalar(select(Organisation).where(Organisation.id == i.organisation_id))
+    # If inspection has NULL organisation_id (created by superadmin), derive from lease
+    notif_org_id = i.organisation_id
+    if notif_org_id is None and i.lease_id:
+        _nl = await db.scalar(select(Lease).where(Lease.id == i.lease_id))
+        if _nl:
+            notif_org_id = _nl.organisation_id
+    if notif_org_id is None and i.property_id:
+        _np = await db.scalar(select(Property).where(Property.id == i.property_id))
+        if _np:
+            notif_org_id = _np.organisation_id
+
+    org = await db.scalar(select(Organisation).where(Organisation.id == notif_org_id)) if notif_org_id else None
     from app.models.property import Property
     prop = await db.scalar(select(Property).where(Property.id == i.property_id)) if i.property_id else None
 
@@ -677,7 +710,7 @@ async def send_for_tenant_signing(
     try:
         from app.models.notification import Notification, NotificationState
         notif = Notification(
-            organisation_id=i.organisation_id,
+            organisation_id=notif_org_id,
             channel="email",
             trigger="inspection_sign_request",
             state=NotificationState.queued,
