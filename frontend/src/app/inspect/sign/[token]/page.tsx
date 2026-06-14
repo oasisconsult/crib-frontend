@@ -191,7 +191,7 @@ export default function TenantSignPage({ params }: Props) {
           <CardContent className="space-y-3">
             {signedData.reportPdfUrl && (
               <a
-                href={signedData.reportPdfUrl}
+                href={`/api/v1/inspections/${signedData.id}/report/download-public`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent transition-colors"
@@ -218,7 +218,7 @@ export default function TenantSignPage({ params }: Props) {
           <CardContent>
             {inspection.reportPdfUrl && (
               <a
-                href={inspection.reportPdfUrl}
+                href={`/api/v1/inspections/${inspection.id}/report/download-public`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium shadow-sm hover:bg-accent transition-colors"

@@ -186,6 +186,24 @@ async def send_for_tenant_signing(
 
 # ── Public sign endpoints (no auth) ───────────────────────────────────────────
 
+@router.get("/inspections/{inspection_id}/report/download-public")
+async def download_report_public(
+    inspection_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public PDF download — available only after both parties have signed."""
+    import io
+    from fastapi.responses import StreamingResponse
+    pdf_bytes = await inspection_service.download_report_pdf_public(inspection_id, db)
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="inspection-report-{inspection_id}.pdf"'
+        },
+    )
+
+
 @router.get("/inspections/sign/{token}", response_model=InspectionPublicOut)
 async def get_inspection_by_sign_token(
     token: str,
