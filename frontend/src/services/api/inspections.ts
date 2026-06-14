@@ -43,6 +43,8 @@ export const inspectionsApi = {
   generateReport: (id: string) =>
     apiPost<Inspection>(`/inspections/${id}/report`, {}),
 
+  reportDownloadUrl: (id: string) => `/api/v1/inspections/${id}/report/download`,
+
   signLandlord: (id: string, signedBy: string) =>
     apiPost<Inspection>(`/inspections/${id}/sign/landlord`, { signedBy }),
 

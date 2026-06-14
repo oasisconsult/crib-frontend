@@ -58,6 +58,10 @@ class StorageProvider(ABC):
         """Delete an object by key."""
 
     @abstractmethod
+    async def download(self, key: str) -> bytes:
+        """Download an object by key and return its bytes."""
+
+    @abstractmethod
     async def test_connection(self) -> None:
         """Upload and delete a 1-byte canary. Raises on failure."""
 
@@ -154,6 +158,20 @@ class S3CompatibleProvider(StorageProvider):
         await asyncio.get_event_loop().run_in_executor(None, fn)
         return self.public_url(key)
 
+    async def download(self, key: str) -> bytes:
+        import asyncio
+        import functools
+
+        client = self._client()
+        fn = functools.partial(client.get_object, self._bucket, key)
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(None, fn)
+        try:
+            return response.read()
+        finally:
+            response.close()
+            response.release_conn()
+
     async def delete(self, key: str) -> None:
         import asyncio
         import functools
@@ -229,6 +247,13 @@ class LocalStorageProvider(StorageProvider):
         with open(dest, "wb") as f:
             f.write(data)
         return self.public_url(key)
+
+    async def download(self, key: str) -> bytes:
+        path = os.path.join(self._upload_dir, key.replace("/", os.sep))
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Local file not found: {key}")
+        with open(path, "rb") as f:
+            return f.read()
 
     async def delete(self, key: str) -> None:
         path = os.path.join(self._upload_dir, key.replace("/", os.sep))

@@ -534,6 +534,35 @@ async def generate_report_pdf(
         )
 
 
+async def download_report_pdf(
+    inspection_id: uuid.UUID,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+) -> bytes:
+    i = await _get_inspection(inspection_id, org_id, db)
+    if not i.report_pdf_url:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Report has not been generated yet",
+        )
+    try:
+        from app.core.config import get_settings as _get_settings
+        from app.core.storage import get_storage_provider
+        from app.services import settings_service as _ss
+        _config = await _ss.get_storage_config(db)
+        _provider = get_storage_provider(_config, local_base_url=_get_settings().storage_local_base_url)
+        _key = f"documents/inspection_reports/{i.id}/report.pdf"
+        return await _provider.download(_key)
+    except HTTPException:
+        raise
+    except Exception:
+        log.warning("inspection.report_pdf.download_failed", extra={"inspection_id": str(i.id)}, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Failed to retrieve inspection report PDF",
+        )
+
+
 async def sign_landlord(
     inspection_id: uuid.UUID,
     signed_by: str,

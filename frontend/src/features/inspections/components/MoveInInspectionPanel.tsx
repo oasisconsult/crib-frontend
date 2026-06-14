@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useInspections } from "@/hooks/useInspections";
+import { inspectionsApi } from "@/services/api/inspections";
 import { formatDate } from "@/utils/formatters";
 import type { Inspection } from "@/types";
 
@@ -135,7 +136,7 @@ function InspectionCard({ inspection }: { inspection: Inspection }) {
       {/* Report download */}
       {(inspection as any).reportPdfUrl && (
         <a
-          href={(inspection as any).reportPdfUrl}
+          href={inspectionsApi.reportDownloadUrl(inspection.id)}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline"

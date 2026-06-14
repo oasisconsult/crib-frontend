@@ -135,6 +135,26 @@ async def generate_report(
     )
 
 
+@router.get("/inspections/{inspection_id}/report/download")
+async def download_report(
+    inspection_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import io
+    from fastapi.responses import StreamingResponse
+    pdf_bytes = await inspection_service.download_report_pdf(
+        inspection_id, get_org_id(current_user), db
+    )
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="inspection-report-{inspection_id}.pdf"'
+        },
+    )
+
+
 @router.post("/inspections/{inspection_id}/sign/landlord", response_model=InspectionOut)
 async def sign_landlord(
     inspection_id: uuid.UUID,

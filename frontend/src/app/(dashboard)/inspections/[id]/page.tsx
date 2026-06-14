@@ -676,7 +676,7 @@ function ReportSignatureSection({
           </CardTitle>
           {inspection.reportPdfUrl && (
             <a
-              href={inspection.reportPdfUrl}
+              href={inspectionsApi.reportDownloadUrl(inspection.id)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors"
