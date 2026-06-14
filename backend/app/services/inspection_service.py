@@ -508,14 +508,17 @@ async def generate_report_pdf(
         )
         html_str = jinja.get_template("report.html").render(**ctx)
 
-        upload_dir = os.path.join(
-            os.getcwd(), "uploads", "documents", "inspection_reports", str(i.id)
-        )
-        os.makedirs(upload_dir, exist_ok=True)
-        pdf_path = os.path.join(upload_dir, "report.pdf")
-        WPHtml(string=html_str).write_pdf(pdf_path)
+        pdf_bytes = WPHtml(string=html_str).write_pdf()
 
-        pdf_url = f"/api/v1/upload/local/documents/inspection_reports/{i.id}/report.pdf"
+        # Upload to configured storage (MinIO in prod, local filesystem in dev)
+        from app.core.database import get_db as _get_db
+        from app.core.config import get_settings as _get_settings
+        from app.core.storage import get_storage_provider
+        from app.services import settings_service as _ss
+        _config = await _ss.get_storage_config(db)
+        _provider = get_storage_provider(_config, local_base_url=_get_settings().storage_local_base_url)
+        _key = f"documents/inspection_reports/{i.id}/report.pdf"
+        pdf_url = await _provider.upload(_key, pdf_bytes, "application/pdf")
         i.report_pdf_url = pdf_url
         await db.flush()
         await db.refresh(i)
