@@ -211,6 +211,7 @@ class DepositReturn(CamelModel):
     amount_returned: float = Field(gt=0)
     deductions: list[DeductionItem] = []
     notes: str | None = None
+    move_out_inspection_id: str | None = None
 
 
 class DepositOut(CamelModel):
@@ -225,6 +226,7 @@ class DepositOut(CamelModel):
     notes: str | None
     created_at: str
     updated_at: str
+    move_out_inspection_id: str | None = None
 
 
 # ── Ledger ─────────────────────────────────────────────────────────────────────

@@ -151,6 +151,10 @@ class Inspection(TimestampedBase):
     sign_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     landlord_signed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     report_pdf_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    baseline_inspection_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("inspections.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     def __repr__(self) -> str:
         return f"<Inspection property={self.property_id} type={self.type} state={self.state}>"

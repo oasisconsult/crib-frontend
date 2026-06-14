@@ -22,6 +22,8 @@ import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { IncreaseHistoryPanel } from "@/features/rent-increase/components/IncreaseHistoryPanel";
 import { EvictionNoticePanel } from "@/features/eviction-notice/components/EvictionNoticePanel";
 import { MoveInInspectionPanel } from "@/features/inspections/components/MoveInInspectionPanel";
+import { MoveOutInspectionPanel } from "@/features/inspections/components/MoveOutInspectionPanel";
+import { DepositPanel } from "@/components/payments/DepositPanel";
 import { RecordManualPaymentModal } from "./RecordManualPaymentModal";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease, useCountersignAgreement } from "@/hooks/useLeases";
@@ -564,6 +566,23 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         unitId={lease.unitId}
         leaseStatus={lease.state}
       />
+
+      {/* Move-out Inspection */}
+      <MoveOutInspectionPanel
+        leaseId={lease.id}
+        propertyId={lease.propertyId}
+        unitId={lease.unitId}
+        leaseStatus={lease.state}
+      />
+
+      {/* Security Deposit */}
+      {lease.terms?.depositAmount > 0 && (
+        <DepositPanel
+          leaseId={lease.id}
+          currency={lease.terms.currency}
+          canManage={true}
+        />
+      )}
 
       {/* Rent Increases */}
       <IncreaseHistoryPanel

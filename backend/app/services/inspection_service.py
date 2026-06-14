@@ -93,6 +93,7 @@ def _insp_out(i: Inspection, unit_name: str | None = None, property_name: str | 
         updated_at=i.updated_at.isoformat(),
         unit_name=unit_name,
         property_name=property_name,
+        baseline_inspection_id=str(i.baseline_inspection_id) if i.baseline_inspection_id else None,
     )
 
 
@@ -328,6 +329,36 @@ async def create_inspection(
             if _prop and _prop.organisation_id:
                 org_id = _prop.organisation_id
 
+    # For move-out inspections: auto-copy checklist structure from the move-in baseline
+    baseline_inspection_id: uuid.UUID | None = None
+    checklist_to_use = body.checklist or []
+    if body.type == "move_out" and resolved_lease_id and not body.checklist:
+        baseline = await db.scalar(
+            select(Inspection).where(
+                Inspection.lease_id == resolved_lease_id,
+                Inspection.type == "move_in",
+                Inspection.state.in_(["completed", "approved"]),
+            ).order_by(Inspection.scheduled_date.desc())
+        )
+        if baseline:
+            baseline_inspection_id = baseline.id
+            # Copy checklist structure — clear conditions/notes/photos for fresh move-out assessment
+            checklist_to_use = [
+                {
+                    "id": item.get("id", str(uuid.uuid4())[:8]),
+                    "area": item.get("area", ""),
+                    "description": item.get("description", ""),
+                    "required": item.get("required", True),
+                    "condition": None,
+                    "notes": None,
+                    "photo_urls": [],
+                    # Preserve move-in condition as reference
+                    "move_in_condition": item.get("condition"),
+                    "move_in_notes": item.get("notes"),
+                }
+                for item in (baseline.checklist or [])
+            ]
+
     inspection = Inspection(
         organisation_id=org_id,
         property_id=uuid.UUID(body.property_id),
@@ -340,11 +371,12 @@ async def create_inspection(
         state=InspectionState.scheduled,
         scheduled_date=body.scheduled_date,
         scheduled_time_slot=body.scheduled_time_slot,
-        checklist=body.checklist or [],
+        checklist=checklist_to_use,
         photo_urls=[],
         video_urls=[],
         maintenance_issue_ids=[],
         reference=ref,
+        baseline_inspection_id=baseline_inspection_id,
     )
     db.add(inspection)
     await db.flush()
@@ -422,6 +454,15 @@ async def add_inspection_photos(
 # ── Report & signing ───────────────────────────────────────────────────────────
 
 _TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "features", "inspections", "templates")
+
+
+_CONDITION_RANK = {"excellent": 4, "good": 3, "fair": 2, "poor": 1, "damaged": 0}
+
+
+def _condition_degraded(before: str | None, after: str | None) -> bool:
+    if not before or not after:
+        return False
+    return _CONDITION_RANK.get(after, 3) < _CONDITION_RANK.get(before, 3)
 
 
 def _b64_from_url(url: str) -> str | None:
@@ -528,7 +569,37 @@ async def generate_report_pdf(
             loader=FileSystemLoader(_TEMPLATE_DIR),
             autoescape=select_autoescape(["html"]),
         )
-        html_str = jinja.get_template("report.html").render(**ctx)
+        template_name = "report.html"
+        if (i.type == "move_out" or (hasattr(i, "type") and str(i.type) == "move_out")) and i.baseline_inspection_id:
+            template_name = "move_out_report.html"
+            # Fetch baseline (move-in) inspection for comparison
+            baseline = await db.scalar(select(Inspection).where(Inspection.id == i.baseline_inspection_id))
+            if baseline:
+                # Build comparison checklist
+                baseline_map = {item.get("id"): item for item in (baseline.checklist or [])}
+                comparison_checklist = []
+                for item in (i.checklist or []):
+                    base_item = baseline_map.get(item.get("id"), {})
+                    item_photos = item.get("photo_urls") or item.get("photoUrls") or []
+                    photo_data = [d for d in (_b64_from_url(u) for u in item_photos[:3]) if d]
+                    comparison_checklist.append({
+                        "area": item.get("area", ""),
+                        "description": item.get("description", ""),
+                        "move_in_condition": item.get("move_in_condition") or base_item.get("condition"),
+                        "move_in_notes": item.get("move_in_notes") or base_item.get("notes", ""),
+                        "condition": item.get("condition"),
+                        "notes": item.get("notes", ""),
+                        "photo_data": photo_data,
+                        "degraded": _condition_degraded(
+                            item.get("move_in_condition") or base_item.get("condition"),
+                            item.get("condition"),
+                        ),
+                    })
+                ctx["checklist"] = comparison_checklist
+                ctx["baseline_date"] = str(baseline.scheduled_date)
+                ctx["has_comparison"] = True
+
+        html_str = jinja.get_template(template_name).render(**ctx)
 
         pdf_bytes = WPHtml(string=html_str).write_pdf()
 

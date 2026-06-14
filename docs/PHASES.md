@@ -41,8 +41,8 @@ _Features that protect both landlord and tenant legally, reduce disputes, and ma
 | 2.1 | **Rent Increase Workflow** | ✅ Done | Uganda LTA 2022: 10% cap, 90-day notice, one active notice per lease, PDF notice, tenant notification, Celery auto-apply on effective date. 18/18 tests green. |
 | 2.2 | **Eviction Notice Workflow** | ✅ Done | Uganda LTA 2022 §§ 73-78: 4 notice types, type-specific minimums (14/14/30/180 days), court ref required for redevelopment, status machine (issued→served→executed/disputed/withdrawn), one active notice per lease, PDF, Celery reminders, tenant notification. 24/24 tests green. |
 | 2.3 | Move-in inspection | ✅ Done | PDF report, dual-party signatures (landlord + tenant portal), photo upload via backend proxy, tenant sign-off task in portal, inspection auto-linked to lease+tenant on create |
-| 2.4 | Move-out inspection | ⬜ Planned | Damage assessment vs move-in baseline; deposit deduction justification |
-| 2.5 | Security deposit management | ⬜ Planned | Hold on lease creation; itemised deductions on move-out; refund workflow; dispute trail |
+| 2.4 | Move-out inspection | ✅ Done | Comparison PDF vs move-in baseline, auto-copy checklist, damage summary, `baseline_inspection_id` FK, dual-party signatures |
+| 2.5 | Security deposit management | ✅ Done | Deposit hold on lease, deductions with reasons, return workflow (full/partial), link to move-out inspection, DepositPanel in lease detail |
 | 2.6 | Tenancy agreement generation | 🟡 Partial | `tenancy_agreement` model exists; PDF template generation started; e-signature not integrated |
 | 2.7 | EFRIS receipt integration | ✅ Done | Per-org Fernet-encrypted creds, async Celery `efris` queue, audit log, mock server, frontend config panel, superadmin bypass. Shipped 2026-06-13 |
 | 2.8 | Document storage & access control | 🟡 Partial | Backend proxy upload (`POST /upload/file`) wired; MinIO internal-endpoint upload working; per-tenant access control on document URLs not yet enforced |

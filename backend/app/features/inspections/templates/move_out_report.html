@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Move-Out Inspection Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 11pt; line-height: 1.55; color: #1a1a1a; background: #fff; padding: 36pt 48pt; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2pt solid #1a1a1a; padding-bottom: 14pt; margin-bottom: 20pt; }
+    .org-name { font-size: 15pt; font-weight: 700; }
+    .doc-meta { text-align: right; font-size: 10pt; color: #555; }
+    .doc-meta strong { display: block; font-size: 13pt; color: #1a1a1a; font-weight: 700; }
+    .ref { font-size: 8.5pt; color: #888; margin-top: 3pt; }
+    section { margin-bottom: 18pt; }
+    h2 { font-size: 10pt; text-transform: uppercase; letter-spacing: 0.06em; color: #555; border-bottom: 1pt solid #ddd; padding-bottom: 4pt; margin-bottom: 10pt; }
+    table.info { width: 100%; border-collapse: collapse; }
+    table.info td { padding: 4pt 6pt; vertical-align: top; font-size: 10pt; }
+    table.info td:first-child { width: 38%; color: #666; }
+    table.info td:last-child { font-weight: 600; }
+    .checklist-table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    .checklist-table thead tr { background: #f5f5f5; }
+    .checklist-table th { padding: 5pt 7pt; text-align: left; font-weight: 700; color: #333; border: 1pt solid #e0e0e0; }
+    .checklist-table td { padding: 5pt 7pt; vertical-align: top; border: 1pt solid #e0e0e0; }
+    .row-degraded { background: #fff5f5; }
+    .row-degraded td { border-color: #fca5a5; }
+    .condition-badge { display: inline-block; padding: 1pt 5pt; border-radius: 3pt; font-size: 8pt; font-weight: 700; text-transform: capitalize; }
+    .cond-excellent { background: #d1fae5; color: #065f46; }
+    .cond-good      { background: #dcfce7; color: #166534; }
+    .cond-fair      { background: #fef9c3; color: #854d0e; }
+    .cond-poor      { background: #fee2e2; color: #991b1b; }
+    .cond-damaged   { background: #fecaca; color: #7f1d1d; }
+    .cond-none      { background: #f3f4f6; color: #9ca3af; }
+    .change-badge { display: inline-block; padding: 1pt 5pt; border-radius: 3pt; font-size: 8pt; font-weight: 700; }
+    .change-worse  { background: #fee2e2; color: #991b1b; }
+    .change-same   { background: #f3f4f6; color: #6b7280; }
+    .change-better { background: #d1fae5; color: #065f46; }
+    .item-photos { display: flex; gap: 4pt; margin-top: 4pt; flex-wrap: wrap; }
+    .item-photo { width: 60pt; height: 60pt; object-fit: cover; border-radius: 2pt; border: 1pt solid #ddd; }
+    .damage-box { border: 1.5pt solid #dc2626; border-radius: 3pt; padding: 10pt 14pt; margin-bottom: 14pt; background: #fff5f5; }
+    .damage-box h3 { font-size: 9.5pt; color: #991b1b; margin-bottom: 6pt; }
+    .damage-row { display: flex; justify-content: space-between; padding: 3pt 0; border-bottom: 1pt solid #fecaca; font-size: 9.5pt; }
+    .damage-row:last-child { border-bottom: none; }
+    .condition-box { border: 1.5pt solid #1a1a1a; padding: 10pt 16pt; text-align: center; margin: 12pt 0; }
+    .condition-box .label { font-size: 9pt; color: #666; text-transform: uppercase; }
+    .condition-box .value { font-size: 18pt; font-weight: 700; text-transform: capitalize; margin-top: 3pt; }
+    .summary-block { background: #fafafa; border-left: 3pt solid #1a1a1a; padding: 8pt 12pt; font-size: 10pt; white-space: pre-wrap; }
+    .sig-section { margin-top: 30pt; }
+    .sig-row { display: flex; gap: 32pt; margin-top: 12pt; }
+    .sig-block { flex: 1; }
+    .sig-line { border-top: 1pt solid #1a1a1a; margin-top: 48pt; padding-top: 4pt; font-size: 8.5pt; color: #555; }
+    .sig-name { font-size: 9.5pt; font-weight: 600; margin-top: 3pt; }
+    .sig-date { font-size: 8pt; color: #777; }
+    .sig-pending { margin-top: 48pt; padding-top: 4pt; border-top: 1pt dashed #aaa; font-size: 8.5pt; color: #aaa; }
+    .status-row { display: flex; gap: 10pt; margin-bottom: 14pt; flex-wrap: wrap; }
+    .status-chip { display: inline-flex; align-items: center; gap: 4pt; padding: 2pt 10pt; border-radius: 20pt; font-size: 8.5pt; font-weight: 600; }
+    .chip-signed   { background: #d1fae5; color: #065f46; }
+    .chip-unsigned { background: #f3f4f6; color: #6b7280; border: 1pt solid #e5e7eb; }
+    .footer { margin-top: 36pt; font-size: 7.5pt; color: #bbb; text-align: center; border-top: 1pt solid #eee; padding-top: 8pt; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <div class="org-name">{{ org_name }}</div>
+      {% if org_address %}<div style="font-size:9pt;color:#666;margin-top:3pt;">{{ org_address }}</div>{% endif %}
+    </div>
+    <div class="doc-meta">
+      <strong>Move-Out Inspection Report</strong>
+      {% if inspection_ref %}<div class="ref">Ref: {{ inspection_ref }}</div>{% endif %}
+      <div class="ref">Move-out date: {{ scheduled_date }}</div>
+      {% if baseline_date %}<div class="ref">Move-in date: {{ baseline_date }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="status-row">
+    {% if landlord_signed_at %}
+      <span class="status-chip chip-signed">&#10003; Landlord signed — {{ landlord_signed_by }} on {{ landlord_signed_at }}</span>
+    {% else %}
+      <span class="status-chip chip-unsigned">Landlord: awaiting signature</span>
+    {% endif %}
+    {% if tenant_signed_at %}
+      <span class="status-chip chip-signed">&#10003; Tenant signed on {{ tenant_signed_at }}</span>
+    {% else %}
+      <span class="status-chip chip-unsigned">Tenant: awaiting signature</span>
+    {% endif %}
+  </div>
+
+  <section>
+    <h2>Property &amp; Tenancy Details</h2>
+    <table class="info">
+      <tr><td>Property</td><td>{{ property_name }}</td></tr>
+      {% if unit_name %}<tr><td>Unit</td><td>{{ unit_name }}</td></tr>{% endif %}
+      {% if property_address %}<tr><td>Address</td><td>{{ property_address }}</td></tr>{% endif %}
+      <tr><td>Tenant</td><td>{{ tenant_name }}</td></tr>
+      {% if tenant_email %}<tr><td>Tenant Email</td><td>{{ tenant_email }}</td></tr>{% endif %}
+      <tr><td>Inspector</td><td>{{ inspector_name }}</td></tr>
+      <tr><td>Move-Out Date</td><td>{{ scheduled_date }}</td></tr>
+      {% if baseline_date %}<tr><td>Move-In Date (baseline)</td><td>{{ baseline_date }}</td></tr>{% endif %}
+      <tr><td>Report Generated</td><td>{{ generated_at }}</td></tr>
+    </table>
+  </section>
+
+  {% if overall_condition %}
+  <section>
+    <h2>Overall Condition at Move-Out</h2>
+    <div class="condition-box">
+      <div class="label">Overall Property Condition</div>
+      <div class="value">{{ overall_condition }}</div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% set damaged_items = checklist | selectattr("degraded") | list %}
+  {% if damaged_items %}
+  <div class="damage-box">
+    <h3>&#9888; Damage Summary — {{ damaged_items | length }} item(s) showing deterioration</h3>
+    {% for item in damaged_items %}
+    <div class="damage-row">
+      <span><strong>{{ item.area }}</strong> — {{ item.description }}</span>
+      <span>
+        <span class="condition-badge cond-{{ item.move_in_condition or 'none' }}">{{ item.move_in_condition or '—' }}</span>
+        &rarr;
+        <span class="condition-badge cond-{{ item.condition or 'none' }}">{{ item.condition or '—' }}</span>
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if checklist %}
+  <section>
+    <h2>Condition Comparison</h2>
+    <table class="checklist-table">
+      <thead>
+        <tr>
+          <th style="width:16%">Area</th>
+          <th style="width:24%">Description</th>
+          <th style="width:15%">Move-In</th>
+          <th style="width:15%">Move-Out</th>
+          <th style="width:10%">Change</th>
+          <th>Notes &amp; Photos</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in checklist %}
+        <tr {% if item.degraded %}class="row-degraded"{% endif %}>
+          <td><strong>{{ item.area }}</strong></td>
+          <td>{{ item.description }}</td>
+          <td>
+            {% if item.move_in_condition %}
+              <span class="condition-badge cond-{{ item.move_in_condition }}">{{ item.move_in_condition }}</span>
+            {% else %}
+              <span class="condition-badge cond-none">—</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.condition %}
+              <span class="condition-badge cond-{{ item.condition }}">{{ item.condition }}</span>
+            {% else %}
+              <span class="condition-badge cond-none">Not assessed</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.degraded %}
+              <span class="change-badge change-worse">&#9660; Worse</span>
+            {% elif item.condition and item.move_in_condition and item.condition != item.move_in_condition %}
+              <span class="change-badge change-better">&#9650; Better</span>
+            {% else %}
+              <span class="change-badge change-same">&#8212; Same</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if item.notes %}<div>{{ item.notes }}</div>{% endif %}
+            {% if item.move_in_notes and item.move_in_notes != item.notes %}
+              <div style="font-size:8pt;color:#888;margin-top:2pt;">Move-in note: {{ item.move_in_notes }}</div>
+            {% endif %}
+            {% if item.photo_data %}
+              <div class="item-photos">
+                {% for photo_b64 in item.photo_data %}
+                  <img src="data:image/jpeg;base64,{{ photo_b64 }}" class="item-photo" alt="Photo">
+                {% endfor %}
+              </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  {% if general_photos %}
+  <section>
+    <h2>General Photos ({{ general_photos | length }})</h2>
+    <div class="item-photos" style="gap:6pt;">
+      {% for photo_b64 in general_photos %}
+        <img src="data:image/jpeg;base64,{{ photo_b64 }}" style="width:90pt;height:90pt;object-fit:cover;border-radius:3pt;border:1pt solid #ddd;" alt="Photo">
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  {% if summary %}
+  <section>
+    <h2>Inspector Notes</h2>
+    <div class="summary-block">{{ summary }}</div>
+  </section>
+  {% endif %}
+
+  {% if recommendations %}
+  <section>
+    <h2>Recommendations / Deposit Deductions</h2>
+    <div class="summary-block">{{ recommendations }}</div>
+  </section>
+  {% endif %}
+
+  <div class="sig-section">
+    <h2>Signatures</h2>
+    <p style="font-size:9pt;color:#555;margin-bottom:8pt;">
+      Both parties confirm that the information in this report accurately represents the condition
+      of the property at the time of the move-out inspection, and agree to the damage assessment above.
+    </p>
+    <div class="sig-row">
+      <div class="sig-block">
+        {% if landlord_signed_at %}
+          <div class="sig-line">Landlord / Property Manager</div>
+          <div class="sig-name">{{ landlord_signed_by }}</div>
+          <div class="sig-date">Signed: {{ landlord_signed_at }}</div>
+        {% else %}
+          <div class="sig-pending">Landlord / Property Manager — awaiting signature</div>
+        {% endif %}
+      </div>
+      <div class="sig-block">
+        {% if tenant_signed_at %}
+          <div class="sig-line">Tenant</div>
+          <div class="sig-name">{{ tenant_name }}</div>
+          <div class="sig-date">Signed: {{ tenant_signed_at }}</div>
+        {% else %}
+          <div class="sig-pending">Tenant — awaiting signature</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Generated by Crib Property Management &bull; {{ generated_at }}
+    {% if inspection_ref %} &bull; Ref {{ inspection_ref }}{% endif %}
+  </div>
+
+</body>
+</html>

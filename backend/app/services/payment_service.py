@@ -175,6 +175,7 @@ def _deposit_out(d: Deposit) -> DepositOut:
         notes=d.notes,
         created_at=d.created_at.isoformat(),
         updated_at=d.updated_at.isoformat(),
+        move_out_inspection_id=str(d.move_out_inspection_id) if d.move_out_inspection_id else None,
     )
 
 
@@ -1258,6 +1259,8 @@ async def return_deposit(
         deposit.deductions = existing
     if body.notes:
         deposit.notes = body.notes
+    if body.move_out_inspection_id:
+        deposit.move_out_inspection_id = uuid.UUID(body.move_out_inspection_id)
 
     if deposit.amount_returned >= float(deposit.amount_held):
         deposit.status = DepositStatus.fully_returned

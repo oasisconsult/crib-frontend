@@ -161,6 +161,18 @@ export function useTenantWallet(tenantId: string) {
   });
 }
 
+export function useReturnDeposit(leaseId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: any) => paymentsApi.returnDeposit(leaseId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.payments.deposits(leaseId) });
+      toast.success("Deposit return processed");
+    },
+    onError: () => toast.error("Failed to process deposit return"),
+  });
+}
+
 export function useWalletTransactions(tenantId: string, page = 1) {
   return useQuery({
     queryKey: ["wallet", tenantId, "transactions", page],

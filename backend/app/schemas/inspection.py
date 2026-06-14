@@ -92,6 +92,7 @@ class InspectionOut(CamelModel):
     # Denormalised display names
     unit_name: str | None = None
     property_name: str | None = None
+    baseline_inspection_id: str | None = None
 
 
 class InspectionSignLandlord(CamelModel):
