@@ -1,6 +1,6 @@
 # Crib — Development Phases & Sprint Status
 
-_Last updated: 2026-06-13_
+_Last updated: 2026-06-14 (post-sprint 3.2)_
 
 ---
 
@@ -40,12 +40,12 @@ _Features that protect both landlord and tenant legally, reduce disputes, and ma
 |---|--------|--------|-------|
 | 2.1 | **Rent Increase Workflow** | ✅ Done | Uganda LTA 2022: 10% cap, 90-day notice, one active notice per lease, PDF notice, tenant notification, Celery auto-apply on effective date. 18/18 tests green. |
 | 2.2 | **Eviction Notice Workflow** | ✅ Done | Uganda LTA 2022 §§ 73-78: 4 notice types, type-specific minimums (14/14/30/180 days), court ref required for redevelopment, status machine (issued→served→executed/disputed/withdrawn), one active notice per lease, PDF, Celery reminders, tenant notification. 24/24 tests green. |
-| 2.3 | Move-in inspection | ⬜ Planned | Photo documentation per room/area; tenant sign-off; stored as inspection record |
+| 2.3 | Move-in inspection | ✅ Done | PDF report, dual-party signatures (landlord + tenant portal), photo upload via backend proxy, tenant sign-off task in portal, inspection auto-linked to lease+tenant on create |
 | 2.4 | Move-out inspection | ⬜ Planned | Damage assessment vs move-in baseline; deposit deduction justification |
 | 2.5 | Security deposit management | ⬜ Planned | Hold on lease creation; itemised deductions on move-out; refund workflow; dispute trail |
 | 2.6 | Tenancy agreement generation | 🟡 Partial | `tenancy_agreement` model exists; PDF template generation started; e-signature not integrated |
-| 2.7 | EFRIS receipt integration | ⬜ Planned | URA EFRIS API mock first (sprint 3.1); live integration after credentials confirmed. Feature flag `features.efris_enabled` already in system settings (default `false`) |
-| 2.8 | Document storage & access control | 🟡 Partial | Local upload endpoint `/api/v1/upload/local/...`; S3/MinIO not yet wired; per-tenant access control not enforced on document URLs |
+| 2.7 | EFRIS receipt integration | ✅ Done | Per-org Fernet-encrypted creds, async Celery `efris` queue, audit log, mock server, frontend config panel, superadmin bypass. Shipped 2026-06-13 |
+| 2.8 | Document storage & access control | 🟡 Partial | Backend proxy upload (`POST /upload/file`) wired; MinIO internal-endpoint upload working; per-tenant access control on document URLs not yet enforced |
 | 2.9 | Superadmin email templates | ✅ Done | Jinja2 templates for demo-booking emails; editable via admin UI; fallback to defaults; shipped 2026-06-11 |
 
 ---
@@ -55,9 +55,9 @@ _Features that support multi-property companies, self-service, reporting, and in
 
 | # | Sprint | Status | Notes |
 |---|--------|--------|-------|
-| 3.1 | EFRIS mock & integration | ⬜ Planned | Build mock server first for dev/test; then wire live URA EFRIS API. Add `efris.*` credential settings to system settings when building |
-| 3.2 | Maintenance request logging | ⬜ Planned | Tenant-initiated; category, priority, photo attachments; assigned to caretaker |
-| 3.3 | Maintenance workflow | ⬜ Planned | Assign → in-progress → completed; contractor management; status notifications |
+| 3.1 | EFRIS mock & integration | ✅ Done | Mock FastAPI server on port 8099, live URA API client (T101/T103/T109), Celery task with 5-retry backoff, compliance audit log, 11 tests green. Shipped 2026-06-13 |
+| 3.2 | Maintenance request logging | ✅ Done | Model+migration (006), service, API endpoints, state machine (reported→assigned→in_progress→resolved→closed), Celery notifications (manager on create, tenant on status change), full frontend (list/detail/create/edit/transition) |
+| 3.3 | Maintenance workflow | 🔜 Next | Assign → in-progress → completed; contractor management; status notifications |
 | 3.4 | Maintenance photo evidence | ⬜ Planned | Before/after photo upload per job; stored with S3/MinIO |
 | 3.5 | Tenant self-service portal | ⬜ Planned | Pay rent, log issues, view statements, download documents; mobile-first |
 | 3.6 | Tenant communication / announcements | ⬜ Planned | Bulk SMS/email/WhatsApp to all tenants in a property or organisation |
@@ -79,20 +79,25 @@ Delivered: 4 notice types, type-specific LTA minimums, full status machine, Weas
 Celery reminders, tenant email notification, `EvictionNoticePanel` in lease detail.
 42/42 tests green (24 eviction + 18 rent increase).
 
-### Sprint 3.1 — EFRIS Mock & Integration
+### Sprint 3.1 — EFRIS Mock & Integration ✅ Complete
 
-**Why now:** URA now mandates EFRIS receipts on every rental payment. Without this,
-Crib cannot be fully compliant and enterprise customers won't adopt it.
+Delivered: per-org Fernet-encrypted credentials, URA T101/T103/T109 API client,
+Celery `efris` queue with 5-retry exponential backoff, append-only audit log,
+FastAPI mock server (port 8099), frontend config panel in org Settings, EFRIS
+receipt badge on payments, superadmin bypass for platform org. 11/11 tests green.
 
-**Scope:**
-- Add `efris.*` credential settings to `SYSTEM_SETTING_DEFAULTS` (tin, device_no, username, password, api_url)
-- Build a mock EFRIS server (FastAPI, runs in Docker) returning valid receipt JSON
-- Wire `efris_service.issue_receipt(payment_id)` called from `payment_service` after reconciliation
-- Feature-gated by `features.efris_enabled` system setting (already present, default `false`)
-- Store receipt number + FD date on `Payment` model
-- Frontend: show EFRIS receipt badge/number on payment records
+---
 
-**Depends on:** Payment reconciliation (✅), system settings framework (✅), `features.efris_enabled` flag (✅)
+### Sprint 3.2 — Maintenance Request Logging ✅ Complete
+
+Delivered: `MaintenanceIssue` model (migration 006), full state machine
+(reported → assigned → in_progress → resolved → closed / cancelled),
+CRUD service, REST API (`/maintenance`), Celery email notifications
+(manager on new request, tenant on every status change), and complete
+frontend — list page with tabs + filters, detail page with transition
+buttons and edit form.
+
+### Sprint 3.3 — Maintenance Workflow 🔜 Next
 
 ---
 
@@ -105,6 +110,6 @@ Crib cannot be fully compliant and enterprise customers won't adopt it.
 | Celery + Redis | ✅ | DB 6 on geobox-redis-prod; `-n 6` when clearing Crib cache keys |
 | Email delivery | ✅ | Provider abstraction; Jinja2 templates for transactional email |
 | SMS | 🟡 Partial | Africa's Talking stub present; not tested live |
-| S3/MinIO document storage | ⬜ Planned | Currently using local disk upload; replace in Phase 3 |
+| S3/MinIO document storage | 🟡 Partial | Backend proxy upload working via internal endpoint; public read URLs via `public_base_url` setting |
 | CI/CD | 🟡 Partial | GitHub repo `oasisconsult/crib-frontend`; no automated test pipeline yet |
 | Feature flags (system settings) | ✅ | `features.efris_enabled` seeded; pattern established for future flags |

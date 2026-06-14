@@ -891,6 +891,40 @@ async def create_maintenance_issue(
     db.add(issue)
     await db.flush()
     await db.refresh(issue)
+
+    # Notify org manager of the new maintenance request (non-fatal)
+    try:
+        from app.models.notification import Notification, NotificationState
+        from app.models.organisation import Organisation
+        org = await db.scalar(select(Organisation).where(Organisation.id == org_id))
+        if org and org.email:
+            prop = await db.scalar(select(Property).where(Property.id == issue.property_id)) if issue.property_id else None
+            unit = await db.scalar(select(Unit).where(Unit.id == issue.unit_id)) if issue.unit_id else None
+            location = prop.name if prop else "a property"
+            if unit:
+                location = f"{unit.name}, {location}"
+            notif = Notification(
+                organisation_id=org_id,
+                channel="email",
+                state=NotificationState.queued,
+                recipient_email=org.email,
+                subject=f"New Maintenance Request: {issue.title}",
+                body=(
+                    f"A new [{issue.priority.upper()}] maintenance request has been logged for {location}.\n\n"
+                    f"Reference: {issue.reference}\n"
+                    f"Category: {issue.category.title()}\n"
+                    f"Title: {issue.title}\n\n"
+                    f"{('Details: ' + issue.description) if issue.description else ''}\n\n"
+                    f"Please review and assign this request in the Crib maintenance queue."
+                ),
+            )
+            db.add(notif)
+            await db.flush()
+            from app.worker.tasks.notifications import deliver_notification
+            deliver_notification.delay(str(notif.id))
+    except Exception:
+        log.warning("maintenance.create.notify_manager.failed", extra={"issue_id": str(issue.id)}, exc_info=True)
+
     pname, uname = await _maint_names(issue, db)
     return _maint_out(issue, property_name=pname, unit_name=uname)
 
@@ -949,5 +983,45 @@ async def transition_maintenance(
 
     await db.flush()
     await db.refresh(m)
+
+    # Notify tenant of status change when lease is linked (non-fatal)
+    if m.lease_id and new_state not in (MaintenanceState.cancelled,):
+        try:
+            from app.models.lease import Lease
+            from app.models.notification import Notification, NotificationState
+            from app.models.tenant import Tenant
+            lease = await db.scalar(select(Lease).where(Lease.id == m.lease_id))
+            if lease and lease.tenant_id:
+                tenant = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
+                if tenant and tenant.email:
+                    state_labels = {
+                        MaintenanceState.assigned:    "assigned to a technician",
+                        MaintenanceState.in_progress: "now in progress",
+                        MaintenanceState.resolved:    "marked as resolved",
+                        MaintenanceState.closed:      "closed",
+                    }
+                    label = state_labels.get(new_state, new_state)
+                    tenant_name = f"{tenant.first_name or ''} {tenant.last_name or ''}".strip() or tenant.email
+                    notif = Notification(
+                        organisation_id=m.organisation_id,
+                        channel="email",
+                        state=NotificationState.queued,
+                        recipient_id=lease.tenant_id,
+                        recipient_email=tenant.email,
+                        subject=f"Maintenance Update: {m.title}",
+                        body=(
+                            f"Dear {tenant_name},\n\n"
+                            f"Your maintenance request '{m.title}' (ref: {m.reference}) has been {label}.\n\n"
+                            f"{'Resolution notes: ' + m.notes if m.notes and new_state == MaintenanceState.resolved else ''}"
+                            f"\n\nIf you have any questions, please contact your property manager."
+                        ),
+                    )
+                    db.add(notif)
+                    await db.flush()
+                    from app.worker.tasks.notifications import deliver_notification
+                    deliver_notification.delay(str(notif.id))
+        except Exception:
+            log.warning("maintenance.transition.notify_tenant.failed", extra={"issue_id": str(m.id)}, exc_info=True)
+
     pname, uname = await _maint_names(m, db)
     return _maint_out(m, property_name=pname, unit_name=uname)
