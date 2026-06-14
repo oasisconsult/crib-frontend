@@ -215,7 +215,7 @@ function EditForm({
   }
 
   return (
-    <form onSubmit={handleSave} className="space-y-4 max-w-2xl">
+    <form onSubmit={handleSave} className="space-y-4">
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -1024,7 +1024,16 @@ export default function InspectionDetailPage({ params }: Props) {
       </div>
 
       {editing ? (
-        <EditForm inspection={inspection} onCancel={() => setEditing(false)} />
+        <>
+          {/* ── Edit mode: metadata form + full checklist + photos ── */}
+          <EditForm inspection={inspection} onCancel={() => setEditing(false)} />
+
+          {checklist.length > 0 && (
+            <ChecklistEditor inspection={inspection} editable={canEdit} />
+          )}
+
+          <PhotosSection inspection={inspection} editable={canEdit} />
+        </>
       ) : (
         <>
           {/* ── Summary stat chips ────────────────────────── */}
