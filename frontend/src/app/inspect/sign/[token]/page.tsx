@@ -90,7 +90,7 @@ function ChecklistSection({ checklist }: { checklist: ChecklistItem[] }) {
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">{area}</p>
             <div className="space-y-3">
               {grouped[area].map((item) => (
-                <div key={item.id} className="rounded-lg border bg-muted/20 p-3 space-y-1.5">
+                <div key={item.id} className="rounded-lg border p-3 space-y-1.5">
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-medium leading-tight">{item.description}</p>
                     <ConditionBadge condition={item.condition} />
