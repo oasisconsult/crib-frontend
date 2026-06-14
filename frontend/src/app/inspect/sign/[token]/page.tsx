@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { CheckCircle2, Clock, ClipboardList, AlertTriangle, Loader2, PenLine, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { inspectionsApi } from "@/services/api/inspections";
-import { useAppStore } from "@/store/useAppStore";
 import type { InspectionPublicOut } from "@/services/api/inspections";
 
 interface Props {
@@ -29,27 +28,10 @@ function StatusChip({ signed, label }: { signed: boolean; label: string }) {
   );
 }
 
+// This page is intentionally public — the sign token is the security mechanism.
+// It must work without a Crib login so tenants who only have an email link can sign.
 export default function TenantSignPage({ params }: Props) {
   const { token } = use(params);
-  const isAuthInitialized = useAppStore((s) => s.isAuthInitialized);
-  const isAuthenticated   = useAppStore((s) => s.isAuthenticated);
-
-  // Redirect to login if not authenticated; return here after login.
-  useEffect(() => {
-    if (!isAuthInitialized) return;
-    if (!isAuthenticated) {
-      window.location.replace(`/login?redirect=/inspect/sign/${token}`);
-    }
-  }, [isAuthInitialized, isAuthenticated, token]);
-
-  // Don't render the sign form until auth is confirmed
-  if (!isAuthInitialized || !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/30">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
   const [fullName, setFullName] = useState("");
   const [signed, setSigned] = useState(false);
   const [signedData, setSignedData] = useState<InspectionPublicOut | null>(null);
