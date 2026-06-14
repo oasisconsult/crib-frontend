@@ -1039,21 +1039,9 @@ export default function InspectionDetailPage({ params }: Props) {
         )}
       </div>
 
-      {editing ? (
-        <>
-          {/* ── Edit mode: metadata form + full checklist + photos ── */}
-          <EditForm inspection={inspection} onCancel={() => setEditing(false)} />
-
-          {checklist.length > 0 && (
-            <ChecklistEditor inspection={inspection} editable={canEdit} />
-          )}
-
-          <PhotosSection inspection={inspection} editable={canEdit} />
-        </>
-      ) : (
-        <>
-          {/* ── Summary stat chips ────────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* ── Summary stat chips (view mode only) ─────── */}
+      {!editing && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               {
                 label: "Scheduled",
@@ -1098,8 +1086,10 @@ export default function InspectionDetailPage({ params }: Props) {
               </div>
             ))}
           </div>
+      )}
 
-          {/* ── State flow ────────────────────────────────── */}
+      {/* ── State flow (view mode only) ───────────────── */}
+      {!editing && (
           <Card>
             <CardContent className="py-4">
               <div className="flex flex-wrap items-center gap-1.5">
@@ -1144,10 +1134,22 @@ export default function InspectionDetailPage({ params }: Props) {
               </div>
             </CardContent>
           </Card>
+      )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* ── Left col: checklist + photos + notes ──── */}
-            <div className="lg:col-span-2 space-y-6">
+      {/* ── Main grid: always rendered ────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* ── Left col ──────────────────────────────────── */}
+        <div className="lg:col-span-2 space-y-6">
+          {editing ? (
+            <>
+              <EditForm inspection={inspection} onCancel={() => setEditing(false)} />
+              {checklist.length > 0 && (
+                <ChecklistEditor inspection={inspection} editable={canEdit} />
+              )}
+              <PhotosSection inspection={inspection} editable={canEdit} />
+            </>
+          ) : (
+            <>
               {checklist.length > 0 && (
                 <ChecklistEditor
                   inspection={inspection}
@@ -1221,144 +1223,140 @@ export default function InspectionDetailPage({ params }: Props) {
                   </CardContent>
                 </Card>
               )}
-            </div>
+            </>
+          )}
+        </div>
 
-            {/* ── Right col: details sidebar ─────────────── */}
-            <div className="space-y-4">
-              {/* Details */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Type</span>
-                    <span className="capitalize">{inspection.type.replace(/_/g, " ")}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Property</span>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0 text-sm"
-                      onClick={() => router.push(`/properties/${inspection.propertyId}`)}
-                    >
-                      <Building2 className="h-3.5 w-3.5 mr-1" />
-                      {property?.name ?? inspection.propertyId}
-                    </Button>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Unit</span>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0 text-sm"
-                      onClick={() => router.push(`/properties/${inspection.propertyId}/units/${inspection.unitId}`)}
-                    >
-                      <Home className="h-3.5 w-3.5 mr-1" />
-                      {unit?.name ?? inspection.unitId}
-                    </Button>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Inspector</span>
-                    <span>{inspectorName ?? "—"}</span>
-                  </div>
-                </CardContent>
-              </Card>
+        {/* ── Right col: details sidebar (always visible) ── */}
+        <div className="space-y-4">
+          {/* Details */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Type</span>
+                <span className="capitalize">{inspection.type.replace(/_/g, " ")}</span>
+              </div>
+              <Separator />
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Property</span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-sm"
+                  onClick={() => router.push(`/properties/${inspection.propertyId}`)}
+                >
+                  <Building2 className="h-3.5 w-3.5 mr-1" />
+                  {property?.name ?? inspection.propertyId}
+                </Button>
+              </div>
+              <Separator />
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Unit</span>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-sm"
+                  onClick={() => router.push(`/properties/${inspection.propertyId}/units/${inspection.unitId}`)}
+                >
+                  <Home className="h-3.5 w-3.5 mr-1" />
+                  {unit?.name ?? inspection.unitId}
+                </Button>
+              </div>
+              <Separator />
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Inspector</span>
+                <span>{inspectorName ?? "—"}</span>
+              </div>
+            </CardContent>
+          </Card>
 
-              {/* Timeline */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Timeline
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Scheduled</span>
-                    <span>{formatDate(inspection.scheduledDate)}</span>
-                  </div>
-                  {inspection.startedAt && (
-                    <>
-                      <Separator />
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Started</span>
-                        <span>{formatDate(inspection.startedAt)}</span>
-                      </div>
-                    </>
-                  )}
-                  {inspection.completedAt && (
-                    <>
-                      <Separator />
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Completed</span>
-                        <span>{formatDate(inspection.completedAt)}</span>
-                      </div>
-                    </>
-                  )}
-                  {inspection.approvedAt && (
-                    <>
-                      <Separator />
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Approved</span>
-                        <span>{formatDate(inspection.approvedAt)}</span>
-                      </div>
-                    </>
-                  )}
+          {/* Timeline */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Scheduled</span>
+                <span>{formatDate(inspection.scheduledDate)}</span>
+              </div>
+              {inspection.startedAt && (
+                <>
                   <Separator />
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Created</span>
-                    <span>{formatDate(inspection.createdAt)}</span>
+                    <span className="text-muted-foreground">Started</span>
+                    <span>{formatDate(inspection.startedAt)}</span>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Pass/fail summary */}
-              {checklist.length > 0 && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Result Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-emerald-600">Passed</span>
-                      <Badge variant="success">{passed}</Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-red-600">Failed</span>
-                      <Badge variant="destructive">{failed}</Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Not Assessed</span>
-                      <Badge variant="secondary">{unassessed}</Badge>
-                    </div>
-                    <Separator />
-                    <div className="h-2 w-full rounded-full bg-primary/10 overflow-hidden flex">
-                      {checklist.length > 0 && (
-                        <>
-                          <div
-                            className="h-full bg-emerald-500 transition-all"
-                            style={{ width: `${(passed / checklist.length) * 100}%` }}
-                          />
-                          <div
-                            className="h-full bg-red-500 transition-all"
-                            style={{ width: `${(failed / checklist.length) * 100}%` }}
-                          />
-                        </>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground text-right">{checklistPct}% pass rate</p>
-                  </CardContent>
-                </Card>
+                </>
               )}
-            </div>
-          </div>
-        </>
-      )}
+              {inspection.completedAt && (
+                <>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Completed</span>
+                    <span>{formatDate(inspection.completedAt)}</span>
+                  </div>
+                </>
+              )}
+              {inspection.approvedAt && (
+                <>
+                  <Separator />
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Approved</span>
+                    <span>{formatDate(inspection.approvedAt)}</span>
+                  </div>
+                </>
+              )}
+              <Separator />
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Created</span>
+                <span>{formatDate(inspection.createdAt)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pass/fail summary */}
+          {checklist.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Result Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-emerald-600">Passed</span>
+                  <Badge variant="success">{passed}</Badge>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-red-600">Failed</span>
+                  <Badge variant="destructive">{failed}</Badge>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Not Assessed</span>
+                  <Badge variant="secondary">{unassessed}</Badge>
+                </div>
+                <Separator />
+                <div className="h-2 w-full rounded-full bg-primary/10 overflow-hidden flex">
+                  <div
+                    className="h-full bg-emerald-500 transition-all"
+                    style={{ width: `${(passed / checklist.length) * 100}%` }}
+                  />
+                  <div
+                    className="h-full bg-red-500 transition-all"
+                    style={{ width: `${(failed / checklist.length) * 100}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-right">{checklistPct}% pass rate</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
