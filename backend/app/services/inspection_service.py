@@ -465,10 +465,32 @@ def _condition_degraded(before: str | None, after: str | None) -> bool:
     return _CONDITION_RANK.get(after, 3) < _CONDITION_RANK.get(before, 3)
 
 
+_KEY_PREFIXES = ("inspections/", "documents/", "signatures/", "properties/", "payment_receipt/")
+
+
+def _key_from_url(url: str, public_base_url: str | None = None) -> str | None:
+    """Extract the storage object key from a stored URL."""
+    if not url:
+        return None
+    # Local dev: /api/v1/upload/local/{key} or /api/upload/local/{key}
+    if "/upload/local/" in url:
+        return url.split("/upload/local/", 1)[-1]
+    # MinIO/S3 with known public_base_url: strip prefix to get key
+    if public_base_url:
+        prefix = public_base_url.rstrip("/") + "/"
+        if url.startswith(prefix):
+            return url[len(prefix):]
+    # Fallback: find first well-known key prefix in URL path
+    for prefix in _KEY_PREFIXES:
+        idx = url.find(prefix)
+        if idx != -1:
+            return url[idx:]
+    return None
+
+
 def _b64_from_url(url: str) -> str | None:
-    """Read a local upload URL and return base64-encoded bytes."""
+    """Dev-only fallback: read a local upload from the filesystem."""
     try:
-        # URL format: /api/v1/upload/local/<path>
         rel = url.split("/upload/local/", 1)[-1]
         abs_path = os.path.join(os.getcwd(), "uploads", rel)
         if not os.path.isfile(abs_path):
@@ -476,6 +498,23 @@ def _b64_from_url(url: str) -> str | None:
         with open(abs_path, "rb") as f:
             return base64.b64encode(f.read()).decode()
     except Exception:
+        return None
+
+
+async def _b64_from_storage(url: str, provider, public_base_url: str | None = None) -> str | None:
+    """Download a stored file via the storage provider and return base64 bytes.
+
+    Works for both local dev (filesystem) and production MinIO/S3 (internal
+    credentials) so photos are always embedded in generated PDF reports.
+    """
+    try:
+        key = _key_from_url(url, public_base_url)
+        if not key:
+            return None
+        data = await provider.download(key)
+        return base64.b64encode(data).decode()
+    except Exception:
+        log.debug("inspection.report_pdf.photo_skip url=%s", url)
         return None
 
 
@@ -521,16 +560,32 @@ async def generate_report_pdf(
 
         now_dt = datetime.now(timezone.utc)
 
+        # Initialise storage provider early — needed for photo embedding
+        from app.core.config import get_settings as _get_settings
+        from app.core.storage import get_storage_provider
+        from app.services import settings_service as _ss
+        _config = await _ss.get_storage_config(db)
+        _provider = get_storage_provider(_config, local_base_url=_get_settings().storage_local_base_url)
+        _pub_base = _config.get("public_base_url")
+
         def _fmt_sig(dt) -> str | None:
             if dt is None:
                 return None
             return dt.strftime("%d %B %Y at %H:%M UTC") if hasattr(dt, "strftime") else str(dt)
 
-        # Build checklist with max 3 photos per item embedded as base64
+        async def _photos(urls: list, limit: int) -> list[str]:
+            results = []
+            for u in urls[:limit]:
+                b64 = await _b64_from_storage(u, _provider, _pub_base)
+                if b64:
+                    results.append(b64)
+            return results
+
+        # Build checklist with max 2 photos per item embedded as base64
         checklist_ctx = []
         for item in (i.checklist or []):
             item_photos = item.get("photo_urls") or item.get("photoUrls") or []
-            photo_data = [d for d in (_b64_from_url(u) for u in item_photos[:3]) if d]
+            photo_data = await _photos(item_photos, 2)
             checklist_ctx.append({
                 "area":        item.get("area", ""),
                 "description": item.get("description", ""),
@@ -540,7 +595,7 @@ async def generate_report_pdf(
             })
 
         # General photos (all), up to 9 shown in PDF
-        general_photos = [d for d in (_b64_from_url(u) for u in (i.photo_urls or [])[:9]) if d]
+        general_photos = await _photos(i.photo_urls or [], 9)
 
         ctx = {
             "inspection_ref":    i.reference or str(i.id)[:8].upper(),
@@ -581,7 +636,7 @@ async def generate_report_pdf(
                 for item in (i.checklist or []):
                     base_item = baseline_map.get(item.get("id"), {})
                     item_photos = item.get("photo_urls") or item.get("photoUrls") or []
-                    photo_data = [d for d in (_b64_from_url(u) for u in item_photos[:3]) if d]
+                    photo_data = await _photos(item_photos, 2)
                     comparison_checklist.append({
                         "area": item.get("area", ""),
                         "description": item.get("description", ""),
@@ -604,12 +659,6 @@ async def generate_report_pdf(
         pdf_bytes = WPHtml(string=html_str).write_pdf()
 
         # Upload to configured storage (MinIO in prod, local filesystem in dev)
-        from app.core.database import get_db as _get_db
-        from app.core.config import get_settings as _get_settings
-        from app.core.storage import get_storage_provider
-        from app.services import settings_service as _ss
-        _config = await _ss.get_storage_config(db)
-        _provider = get_storage_provider(_config, local_base_url=_get_settings().storage_local_base_url)
         _key = f"documents/inspection_reports/{i.id}/report.pdf"
         pdf_url = await _provider.upload(_key, pdf_bytes, "application/pdf")
         i.report_pdf_url = pdf_url
