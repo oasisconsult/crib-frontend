@@ -51,6 +51,14 @@ from app.schemas.inspection import (
 )
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _insp_type_label(insp_type) -> str:
+    """Return a human-readable inspection type string (e.g. 'move-in', 'move-out')."""
+    t = insp_type if isinstance(insp_type, str) else insp_type.value
+    return {"move_in": "move-in", "move_out": "move-out", "routine": "routine"}.get(t, t.replace("_", "-"))
+
+
 # ── Serialisers ────────────────────────────────────────────────────────────────
 
 def _insp_out(i: Inspection, unit_name: str | None = None, property_name: str | None = None) -> InspectionOut:
@@ -841,24 +849,28 @@ async def send_for_tenant_signing(
     sign_url = f"{frontend_url}/inspect/sign/{i.sign_token}"
     expires_str = i.sign_token_expires_at.strftime("%d %B %Y")
 
-    subject = f"Inspection Report Ready — Please Review and Sign"
+    insp_label = _insp_type_label(i.type)
+    prop_name = prop.name if prop else "your property"
+    org_name = org.name if org else "Crib Property Management"
+
+    subject = "Inspection Report Ready — Please Review and Sign"
     body = (
         f"Dear {tenant_name},\n\n"
-        f"Your move-in inspection report for "
-        f"{prop.name if prop else 'your property'} "
-        f"{'(Unit ' + (await db.scalar(select(Property).where(Property.id == i.property_id))).name + ')' if False else ''}"
-        f"is ready for your review and signature.\n\n"
+        f"Your {insp_label} inspection report for {prop_name} is ready for your review and signature.\n\n"
         f"The landlord/property manager has already reviewed and signed the report. "
         f"Please click the link below to view the full report and add your signature:\n\n"
         f"    {sign_url}\n\n"
         f"This link expires on {expires_str}. After that date you will need to contact "
         f"your property manager to request a new link.\n\n"
-        f"Once you sign, both parties will have a fully executed copy of the move-in inspection report.\n\n"
-        f"Best regards,\n{org.name if org else 'Crib Property Management'}"
+        f"Once you sign, both parties will have a fully executed copy of the {insp_label} inspection report.\n\n"
+        f"Best regards,\n{org_name}"
     )
 
     try:
         from app.models.notification import Notification, NotificationState
+        from app.worker.tasks.notifications import deliver_notification
+
+        # Email to tenant with sign link
         notif = Notification(
             organisation_id=notif_org_id,
             channel="email",
@@ -873,9 +885,30 @@ async def send_for_tenant_signing(
         )
         db.add(notif)
         await db.flush()
-
-        from app.worker.tasks.notifications import deliver_notification
         deliver_notification.delay(str(notif.id))
+
+        # WhatsApp to tenant — short nudge with sign link
+        tenant_phone = tenant.whatsapp_number or tenant.phone
+        if tenant_phone:
+            wa_body = (
+                f"Hi {tenant_name}, your {insp_label} inspection report for {prop_name} "
+                f"is ready for your signature. Please sign it here before {expires_str}: {sign_url}"
+            )
+            wa_notif = Notification(
+                organisation_id=notif_org_id,
+                channel="whatsapp",
+                trigger="inspection_sign_request",
+                state=NotificationState.queued,
+                tenant_id=i.tenant_id,
+                recipient_name=tenant_name,
+                recipient_phone=tenant_phone,
+                subject=None,
+                body=wa_body,
+                queued_at=datetime.now(timezone.utc),
+            )
+            db.add(wa_notif)
+            await db.flush()
+            deliver_notification.delay(str(wa_notif.id))
     except Exception:
         log.warning("inspection.sign_email.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
 
@@ -953,35 +986,107 @@ async def sign_tenant(token: str, full_name: str, db: AsyncSession) -> Inspectio
     except Exception:
         log.warning("inspection.sign_tenant_pdf.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
 
-    # Notify the org/landlord that the tenant has signed
+    # Notify all parties that the report is fully executed
     try:
-        if i.organisation_id:
-            from app.models.notification import Notification, NotificationState
-            from app.models.organisation import Organisation
-            from app.models.property import Property
-            org  = await db.scalar(select(Organisation).where(Organisation.id == i.organisation_id))
-            prop = await db.scalar(select(Property).where(Property.id == i.property_id)) if i.property_id else None
-            if org and org.email:
-                notif = Notification(
+        from app.models.notification import Notification, NotificationState
+        from app.models.organisation import Organisation
+        from app.models.property import Property as _NotifProp
+        from app.models.tenant import Tenant as _NotifTenant
+        from app.models.profile import Profile as _NotifProfile
+        from app.worker.tasks.notifications import deliver_notification
+
+        org  = await db.scalar(select(Organisation).where(Organisation.id == i.organisation_id)) if i.organisation_id else None
+        prop = await db.scalar(select(_NotifProp).where(_NotifProp.id == i.property_id)) if i.property_id else None
+
+        insp_label = _insp_type_label(i.type)
+        prop_name  = prop.name if prop else "a property"
+        org_name   = org.name if org else "Crib Property Management"
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
+        # 1 — Email to org/landlord confirming tenant signed
+        if org and org.email and i.organisation_id:
+            landlord_body = (
+                f"The tenant has signed the {insp_label} inspection report for {prop_name}.\n\n"
+                f"Both signatures are now on file."
+                + (f"\n\nThe sealed PDF is available at: {i.report_pdf_url}" if i.report_pdf_url else "")
+            )
+            landlord_notif = Notification(
+                organisation_id=i.organisation_id,
+                channel="email",
+                trigger="inspection_tenant_signed",
+                state=NotificationState.queued,
+                recipient_name=org.name,
+                recipient_email=org.email,
+                subject=f"Tenant Signed the {insp_label.title()} Inspection Report",
+                body=landlord_body,
+                queued_at=datetime.now(timezone.utc),
+            )
+            db.add(landlord_notif)
+            await db.flush()
+            deliver_notification.delay(str(landlord_notif.id))
+
+        # 2 — Email + WhatsApp to tenant: report ready for download
+        tenant = None
+        if i.tenant_id:
+            _prof = await db.scalar(select(_NotifProfile).where(_NotifProfile.id == i.tenant_id))
+            if _prof and _prof.tenant_id:
+                tenant = await db.scalar(select(_NotifTenant).where(_NotifTenant.id == _prof.tenant_id))
+            if not tenant:
+                tenant = await db.scalar(select(_NotifTenant).where(_NotifTenant.id == i.tenant_id))
+        if not tenant and i.lease_id:
+            _nl = await db.scalar(select(Lease).where(Lease.id == i.lease_id))
+            if _nl and _nl.tenant_id:
+                tenant = await db.scalar(select(_NotifTenant).where(_NotifTenant.id == _nl.tenant_id))
+
+        if tenant and tenant.email:
+            tenant_name = f"{tenant.first_name or ''} {tenant.last_name or ''}".strip() or tenant.email
+            portal_url  = f"{frontend_url}/portal"
+            tenant_email_body = (
+                f"Dear {tenant_name},\n\n"
+                f"Your {insp_label} inspection report for {prop_name} has been fully signed by both parties "
+                f"and is now ready.\n\n"
+                f"You can view and download your signed copy from the tenant portal:\n\n"
+                f"    {portal_url}\n\n"
+                f"Log in and navigate to the Inspections section to access the report.\n\n"
+                f"Best regards,\n{org_name}"
+            )
+            email_notif = Notification(
+                organisation_id=i.organisation_id,
+                channel="email",
+                trigger="inspection_report_ready",
+                state=NotificationState.queued,
+                tenant_id=i.tenant_id,
+                recipient_name=tenant_name,
+                recipient_email=tenant.email,
+                subject=f"Your {insp_label.title()} Inspection Report Is Ready",
+                body=tenant_email_body,
+                queued_at=datetime.now(timezone.utc),
+            )
+            db.add(email_notif)
+            await db.flush()
+            deliver_notification.delay(str(email_notif.id))
+
+            tenant_phone = tenant.whatsapp_number or tenant.phone
+            if tenant_phone:
+                wa_notif = Notification(
                     organisation_id=i.organisation_id,
-                    channel="email",
-                    trigger="inspection_tenant_signed",
+                    channel="whatsapp",
+                    trigger="inspection_report_ready",
                     state=NotificationState.queued,
-                    recipient_name=org.name,
-                    recipient_email=org.email,
-                    subject="Tenant Signed the Inspection Report",
+                    tenant_id=i.tenant_id,
+                    recipient_name=tenant_name,
+                    recipient_phone=tenant_phone,
+                    subject=None,
                     body=(
-                        f"The tenant has signed the move-in inspection report for "
-                        f"{prop.name if prop else 'a property'}.\n\n"
-                        f"Both signatures are now on file. "
-                        f"{'The sealed PDF is available at: ' + i.report_pdf_url if i.report_pdf_url else ''}"
+                        f"Hi {tenant_name}, your {insp_label} inspection report for {prop_name} "
+                        f"is now fully signed by both parties. Log in to your tenant portal to download your copy: "
+                        f"{portal_url}"
                     ),
                     queued_at=datetime.now(timezone.utc),
                 )
-                db.add(notif)
+                db.add(wa_notif)
                 await db.flush()
-                from app.worker.tasks.notifications import deliver_notification
-                deliver_notification.delay(str(notif.id))
+                deliver_notification.delay(str(wa_notif.id))
     except Exception:
         log.warning("inspection.sign_tenant_notify.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
 
