@@ -284,7 +284,8 @@ def create_app() -> FastAPI:
         late_fees_router, payments_router, schedules_router,
     )
 
-    application.include_router(health.router)
+    application.include_router(health.router)                                    # /health, /health/ready  (k8s probes)
+    application.include_router(health.router, prefix=settings.api_prefix)       # /api/v1/health/ready    (admin UI)
     application.include_router(me.router, prefix=settings.api_prefix)
     application.include_router(organisations.router, prefix=settings.api_prefix)
     application.include_router(properties.router, prefix=settings.api_prefix)
