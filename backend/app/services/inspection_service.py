@@ -1065,7 +1065,7 @@ async def sign_tenant(token: str, full_name: str, db: AsyncSession) -> Inspectio
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
         # 1 — Email to org/landlord confirming tenant signed
-        if org and org.email and i.organisation_id:
+        if org and org.billing_email and i.organisation_id:
             landlord_body = (
                 f"The tenant has signed the {insp_label} inspection report for {prop_name}.\n\n"
                 f"Both signatures are now on file."
@@ -1077,7 +1077,7 @@ async def sign_tenant(token: str, full_name: str, db: AsyncSession) -> Inspectio
                 trigger="inspection_tenant_signed",
                 state=NotificationState.queued,
                 recipient_name=org.name,
-                recipient_email=org.email,
+                recipient_email=org.billing_email,
                 subject=f"Tenant Signed the {insp_label.title()} Inspection Report",
                 body=landlord_body,
                 queued_at=datetime.now(timezone.utc),
@@ -1313,7 +1313,7 @@ async def create_maintenance_issue(
         from app.models.notification import Notification, NotificationState
         from app.models.organisation import Organisation
         org = await db.scalar(select(Organisation).where(Organisation.id == org_id))
-        if org and org.email:
+        if org and org.billing_email:
             prop = await db.scalar(select(Property).where(Property.id == issue.property_id)) if issue.property_id else None
             unit = await db.scalar(select(Unit).where(Unit.id == issue.unit_id)) if issue.unit_id else None
             location = prop.name if prop else "a property"
@@ -1327,7 +1327,7 @@ async def create_maintenance_issue(
                     trigger="maintenance_new_request",
                     state=NotificationState.queued,
                     recipient_name=org.name,
-                    recipient_email=org.email,
+                    recipient_email=org.billing_email,
                     subject=f"New Maintenance Request: {issue.title}",
                     body=(
                         f"A new [{issue.priority.upper()}] maintenance request has been logged for {location}.\n\n"

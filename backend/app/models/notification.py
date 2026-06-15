@@ -70,7 +70,7 @@ class NotificationTemplate(TimestampedBase):
         nullable=False, index=True,
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    trigger: Mapped[str] = mapped_column(String(30), nullable=False)
+    trigger: Mapped[str] = mapped_column(String(64), nullable=False)
     channel: Mapped[str] = mapped_column(String(20), nullable=False)
     subject: Mapped[str | None] = mapped_column(String(500), nullable=True)
     body: Mapped[str] = mapped_column(Text(), nullable=False)
@@ -107,7 +107,7 @@ class Notification(Base):
     )
 
     channel: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
-    trigger: Mapped[str] = mapped_column(String(30), nullable=False)
+    trigger: Mapped[str] = mapped_column(String(64), nullable=False)
 
     recipient_name: Mapped[str] = mapped_column(String(255), nullable=False)
     recipient_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
