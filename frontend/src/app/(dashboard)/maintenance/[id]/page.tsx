@@ -1,18 +1,20 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  Camera,
   Check,
   Wrench,
   AlertTriangle,
-  User,
   Building2,
   Home,
   Calendar,
-  DollarSign,
   Edit,
+  ImageIcon,
+  Loader2,
+  Trash2,
   X,
   Save,
   CheckCircle,
@@ -56,6 +58,8 @@ import {
 } from "@/hooks/useInspections";
 import { useProperty } from "@/hooks/useProperties";
 import { usePermissions } from "@/hooks/usePermissions";
+import { uploadsApi } from "@/services/api/uploads";
+import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 import {
   MAINTENANCE_STATE_DISPLAY,
@@ -126,6 +130,172 @@ const TRANSITION_ACTIONS: {
     fromStates: ["reported", "assigned", "in_progress"],
   },
 ];
+
+// ── Photo section ────────────────────────────────────────────────────────────
+
+function PhotoSection({
+  issue,
+  canEdit,
+}: {
+  issue: MaintenanceIssue;
+  canEdit: boolean;
+}) {
+  const { mutate: update } = useUpdateMaintenanceIssue();
+  const [photos, setPhotos] = useState<string[]>(issue.photoUrls ?? []);
+  const [uploading, setUploading] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    e.target.value = "";
+    setUploading(true);
+    try {
+      const results = await Promise.all(
+        files.map((f) => uploadsApi.uploadFile(f, { category: "inspection_photo" })),
+      );
+      const urls = results.map((r) => r.url);
+      const next = [...photos, ...urls];
+      setPhotos(next);
+      update({ id: issue.id, data: { photoUrls: next } });
+    } catch {
+      toast.error("Failed to upload photos");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleRemove(url: string) {
+    const next = photos.filter((p) => p !== url);
+    setPhotos(next);
+    update({ id: issue.id, data: { photoUrls: next } });
+  }
+
+  if (!canEdit && photos.length === 0) return null;
+
+  if (canEdit && photos.length === 0) {
+    return (
+      <div className="flex items-center gap-3 rounded-[6px] border border-dashed bg-muted/20 px-4 py-3">
+        <Camera className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+        <span className="text-sm text-muted-foreground">Completion photos</span>
+        <div className="flex items-center gap-2 ml-auto">
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleFiles} disabled={uploading} />
+          <button
+            type="button"
+            onClick={() => cameraRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline underline-offset-2 disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Camera className="h-3 w-3" />}
+            Camera
+          </button>
+          <input ref={galleryRef} type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} disabled={uploading} />
+          <button
+            type="button"
+            onClick={() => galleryRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline underline-offset-2 disabled:opacity-50"
+          >
+            <ImageIcon className="h-3 w-3" />
+            Gallery
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Camera className="h-4 w-4" />
+              Completion Photos
+              {photos.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{photos.length}</Badge>
+              )}
+            </CardTitle>
+            {canEdit && (
+              <div className="flex items-center gap-2">
+                <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleFiles} disabled={uploading} />
+                <button
+                  type="button"
+                  onClick={() => cameraRef.current?.click()}
+                  disabled={uploading}
+                  className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                  {uploading ? "Uploading…" : "Take Photo"}
+                </button>
+                <input ref={galleryRef} type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} disabled={uploading} />
+                <button
+                  type="button"
+                  onClick={() => galleryRef.current?.click()}
+                  disabled={uploading}
+                  className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  Add from Gallery
+                </button>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {photos.map((url) => (
+              <div key={url} className="group relative aspect-square rounded-[6px] overflow-hidden bg-muted border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt="Completion photo"
+                  className="w-full h-full object-cover cursor-pointer transition-opacity group-hover:opacity-90"
+                  onClick={() => setLightbox(url)}
+                />
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemove(url)}
+                    className="absolute top-1 right-1 hidden group-hover:flex items-center justify-center h-6 w-6 rounded-full bg-black/60 text-white hover:bg-destructive transition-colors"
+                    aria-label="Remove photo"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox}
+            alt="Photo preview"
+            className="max-h-full max-w-full rounded-lg object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white"
+            onClick={() => setLightbox(null)}
+            aria-label="Close"
+          >
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
 
 // ── Assign modal (contractor picker) ─────────────────────────────────────────
 
@@ -710,6 +880,9 @@ export default function MaintenanceDetailPage({ params }: Props) {
               </Card>
             )}
           </div>
+
+          {/* ── Completion photos ─────────────────────────── */}
+          <PhotoSection issue={issue} canEdit={canEdit} />
 
           {/* ── Status flow ───────────────────────────────── */}
           <Card>
