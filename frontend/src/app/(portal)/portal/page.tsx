@@ -26,6 +26,8 @@ import { useMessages, useSendMessage } from "@/hooks/useMessages";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "@/store/useUIStore";
+import { useOrgPaymentSettings } from "@/hooks/useOrganisation";
+import type { OrgPaymentSettings } from "@/services/api/organisations";
 import { uploadsApi } from "@/services/api/uploads";
 import { cn } from "@/utils/cn";
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
@@ -58,7 +60,6 @@ interface PayMethod {
   color: string;
   requiresPhone: boolean;
   instructions: string;
-  bankDetails?: string;
 }
 
 const PAY_METHODS: PayMethod[] = [
@@ -85,7 +86,6 @@ const PAY_METHODS: PayMethod[] = [
     color: "text-teal-600",
     requiresPhone: false,
     instructions: "Transfer to the account below and enter the transaction/reference number.",
-    bankDetails: "Stanbic Bank · Account: 9030012345678 · Account Name: Crib Properties Ltd",
   },
   {
     id: "cash",
@@ -112,10 +112,11 @@ interface PayDialogProps {
   userPhone?: string;
   mobileMoneyProvider?: string | null;
   mobileMoneyNumber?: string | null;
+  paymentSettings?: OrgPaymentSettings;
   onClose: () => void;
 }
 
-function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvider, mobileMoneyNumber, onClose }: PayDialogProps) {
+function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvider, mobileMoneyNumber, paymentSettings, onClose }: PayDialogProps) {
   const [step, setStep] = useState<PayStep>("method");
   const [selectedMethod, setSelectedMethod] = useState<PayMethod | null>(null);
   const [phone, setPhone] = useState(userPhone ?? "");
@@ -309,10 +310,38 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
       {/* Step: fill details */}
       {step === "form" && selectedMethod && (
         <div className="space-y-3">
-          {selectedMethod.bankDetails && (
-            <div className="rounded-[6px] bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 p-3 text-xs text-teal-800 dark:text-teal-300">
-              <p className="font-medium mb-0.5">Bank Details</p>
-              {selectedMethod.bankDetails}
+          {/* Live bank details from org payment settings */}
+          {selectedMethod.id === "bank_transfer" && paymentSettings?.bankName && (
+            <div className="rounded-[6px] bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 p-3 text-xs text-teal-800 dark:text-teal-300 space-y-1">
+              <p className="font-medium">Bank Details</p>
+              {[
+                paymentSettings.bankName,
+                paymentSettings.bankAccountNumber && `Account: ${paymentSettings.bankAccountNumber}`,
+                paymentSettings.bankAccountName && `Name: ${paymentSettings.bankAccountName}`,
+                paymentSettings.bankBranch && `Branch: ${paymentSettings.bankBranch}`,
+                paymentSettings.swiftCode && `SWIFT: ${paymentSettings.swiftCode}`,
+              ].filter(Boolean).map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
+              {paymentSettings.bankInstructions && (
+                <p className="mt-1 italic">{paymentSettings.bankInstructions}</p>
+              )}
+            </div>
+          )}
+
+          {/* MTN paybill from org settings */}
+          {selectedMethod.id === "mtn_momo" && paymentSettings?.mtnPaybill && (
+            <div className="rounded-[6px] bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-800 p-3 text-xs text-yellow-800 dark:text-yellow-300">
+              <p className="font-medium mb-0.5">MTN Paybill</p>
+              <p>Dial <span className="font-mono font-semibold">{paymentSettings.mtnPaybill}</span> on your MTN line to pay directly.</p>
+            </div>
+          )}
+
+          {/* Airtel paybill from org settings */}
+          {selectedMethod.id === "airtel_money" && paymentSettings?.airtelPaybill && (
+            <div className="rounded-[6px] bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-800 dark:text-red-300">
+              <p className="font-medium mb-0.5">Airtel Paybill</p>
+              <p>Dial <span className="font-mono font-semibold">{paymentSettings.airtelPaybill}</span> on your Airtel line to pay directly.</p>
             </div>
           )}
 
@@ -1359,6 +1388,7 @@ export default function TenantPortalPage() {
     !!myLease?.propertyId && !!propertyData?.geocode,
   );
   const { data: publicSettings } = usePublicSettings();
+  const { data: paymentSettings } = useOrgPaymentSettings();
   const { mutate: generateDoc, isPending: generatingDoc } = useGenerateLeaseDocument();
   const { mutate: confirmTerms, isPending: confirmingTerms } = useConfirmLeaseTerms();
   const [termsChecked, setTermsChecked] = useState(false);
@@ -2103,6 +2133,7 @@ export default function TenantPortalPage() {
               userPhone={user?.phone}
               mobileMoneyProvider={user?.mobileMoneyProvider}
               mobileMoneyNumber={user?.mobileMoneyNumber}
+              paymentSettings={paymentSettings}
               onClose={closeDialog}
             />
           </PortalSheet>
