@@ -473,61 +473,27 @@ export default function NotificationsPage() {
           ))}
         </TabsList>
 
-        {TABS.map((t) => {
-          const total = (data as any)?.total ?? 0;
-          const start = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-          const end   = Math.min(page * PAGE_SIZE, total);
-          return (
-            <TabsContent key={t} value={t} className="mt-3 space-y-2">
-              <DataTable
-                data={(data as any)?.data ?? []}
-                columns={COLUMNS}
-                loading={isLoading}
-                rowKey={(n) => n.id}
-                onRowClick={(n) => setSelectedId(n.id)}
-                emptyTitle="No notifications found"
-                emptyDescription={
-                  t === "all"
-                    ? "Notifications will appear here as they are sent"
-                    : "No notifications match this filter"
-                }
-                pageSize={PAGE_SIZE}
-                totalItems={total}
-                currentPage={page}
-                onPageChange={setPage}
-              />
-              {!isLoading && total > 0 && (
-                <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
-                  <span>
-                    Showing <span className="font-medium text-foreground">{start}–{end}</span> of{" "}
-                    <span className="font-medium text-foreground">{total.toLocaleString()}</span> notifications
-                  </span>
-                  {total > PAGE_SIZE && (
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                      >
-                        Previous
-                      </Button>
-                      <span className="px-2">Page {page} of {Math.ceil(total / PAGE_SIZE)}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setPage((p) => Math.min(Math.ceil(total / PAGE_SIZE), p + 1))}
-                        disabled={page >= Math.ceil(total / PAGE_SIZE)}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-          );
-        })}
+        {TABS.map((t) => (
+          <TabsContent key={t} value={t} className="mt-3">
+            <DataTable
+              data={(data as any)?.data ?? []}
+              columns={COLUMNS}
+              loading={isLoading}
+              rowKey={(n) => n.id}
+              onRowClick={(n) => setSelectedId(n.id)}
+              emptyTitle="No notifications found"
+              emptyDescription={
+                t === "all"
+                  ? "Notifications will appear here as they are sent"
+                  : "No notifications match this filter"
+              }
+              pageSize={PAGE_SIZE}
+              totalItems={(data as any)?.total}
+              currentPage={page}
+              onPageChange={setPage}
+            />
+          </TabsContent>
+        ))}
       </Tabs>
 
       {/* Detail drawer */}
