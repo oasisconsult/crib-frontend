@@ -1543,6 +1543,66 @@ function DocumentsTab({ tenantId }: { tenantId: string }) {
   );
 }
 
+// ─── Mobile bottom navigation ─────────────────────────────────────────────────
+
+interface PortalBottomNavProps {
+  tab: string;
+  setTab: (t: string) => void;
+  hasOverdueRent: boolean;
+  openRequestsCount: number;
+}
+
+function PortalBottomNav({ tab, setTab, hasOverdueRent, openRequestsCount }: PortalBottomNavProps) {
+  type Badge = null | number | "dot";
+  const navItems: { value: string; label: string; icon: React.ElementType; badge: Badge }[] = [
+    { value: "overview",    label: "Home",     icon: Home,          badge: null },
+    { value: "payments",    label: "Pay",      icon: CreditCard,    badge: hasOverdueRent ? "dot" : null },
+    { value: "maintenance", label: "Issues",   icon: Wrench,        badge: openRequestsCount > 0 ? openRequestsCount : null },
+    { value: "messages",    label: "Messages", icon: MessageCircle, badge: null },
+    { value: "documents",   label: "Docs",     icon: FileText,      badge: null },
+  ];
+
+  return (
+    <nav
+      className="fixed bottom-0 inset-x-0 z-40 sm:hidden border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      aria-label="Portal navigation"
+    >
+      <div className="flex h-16 items-stretch">
+        {navItems.map(({ value, label, icon: Icon, badge }) => {
+          const isActive = tab === value;
+          return (
+            <button
+              key={value}
+              onClick={() => setTab(value)}
+              aria-current={isActive ? "page" : undefined}
+              className={cn(
+                "relative flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors",
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {isActive && (
+                <span aria-hidden="true" className="absolute top-0 inset-x-3 h-0.5 bg-primary rounded-b-sm" />
+              )}
+              <div className="relative">
+                <Icon className="h-5 w-5" />
+                {badge === "dot" && (
+                  <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
+                )}
+                {typeof badge === "number" && (
+                  <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-bold text-primary-foreground">
+                    {badge > 9 ? "9+" : badge}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] font-medium leading-none">{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 type Dialog = "pay" | "maintenance" | null;
@@ -1735,7 +1795,7 @@ export default function TenantPortalPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 pb-24 sm:p-6 sm:pb-6 lg:p-8">
       <div className="max-w-4xl mx-auto space-y-5">
 
         {/* Current Lease Banner */}
@@ -1776,7 +1836,7 @@ export default function TenantPortalPage() {
         )}
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:flex">
+          <TabsList className="hidden sm:flex">
             <TabsTrigger value="overview" className="gap-1.5">
               <Home className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Overview</span>
@@ -2384,6 +2444,13 @@ export default function TenantPortalPage() {
         schedules={schedulesData?.data ?? []}
         open={!!receiptPayment}
         onClose={() => setReceiptPayment(null)}
+      />
+
+      <PortalBottomNav
+        tab={tab}
+        setTab={setTab}
+        hasOverdueRent={hasOverdueRent}
+        openRequestsCount={openRequests.length}
       />
     </div>
   );
