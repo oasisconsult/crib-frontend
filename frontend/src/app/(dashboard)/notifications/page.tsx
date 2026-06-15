@@ -89,15 +89,15 @@ const COLUMNS: Column<Notification>[] = [
 ];
 
 const TAB_FILTERS: Record<string, FilterConfig[]> = {
-  all:       [],
-  delivered: [{ field: "state", operator: "eq", value: "delivered" }],
-  pending:   [{ field: "state", operator: "in", value: ["queued", "sending"] }],
-  failed:    [{ field: "state", operator: "eq", value: "failed" }],
+  all:     [],
+  sent:    [{ field: "state", operator: "in", value: ["sent", "delivered", "read"] }],
+  pending: [{ field: "state", operator: "eq", value: "queued" }],
+  failed:  [{ field: "state", operator: "eq", value: "failed" }],
 };
 
-const TABS = ["all", "delivered", "pending", "failed"] as const;
+const TABS = ["all", "sent", "pending", "failed"] as const;
 const TAB_LABELS: Record<typeof TABS[number], string> = {
-  all: "All", delivered: "Delivered", pending: "Pending", failed: "Failed",
+  all: "All", sent: "Sent", pending: "Pending", failed: "Failed",
 };
 
 const FILTER_FIELDS: FilterField[] = [
@@ -483,9 +483,10 @@ export default function NotificationsPage() {
               onRowClick={(n) => setSelectedId(n.id)}
               emptyTitle="No notifications found"
               emptyDescription={
-                t === "all"
-                  ? "Notifications will appear here as they are sent"
-                  : "No notifications match this filter"
+                t === "all"     ? "Notifications will appear here as they are sent" :
+                t === "sent"    ? "No successfully sent notifications yet" :
+                t === "pending" ? "No notifications currently queued" :
+                                  "No failed notifications"
               }
               pageSize={PAGE_SIZE}
               totalItems={(data as any)?.total}
