@@ -1,27 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import {
-  HardHat,
-  Plus,
-  Phone,
-  Mail,
-  Pencil,
-  PowerOff,
-  Search,
-} from "lucide-react";
+import { Plus, HardHat, Phone, Mail, Pencil, PowerOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -30,14 +16,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { PageSkeleton } from "@/components/common/LoadingSkeleton";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { DataTable, type Column } from "@/components/common/DataTable";
+import { FilterBar } from "@/components/common/FilterBar";
 import {
   useContractors,
   useCreateContractor,
@@ -50,6 +36,8 @@ import { cn } from "@/utils/cn";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
+const PAGE_SIZE = 20;
+
 const SPECIALTIES: { value: ContractorSpecialty; label: string }[] = [
   { value: "plumbing",   label: "Plumbing" },
   { value: "electrical", label: "Electrical" },
@@ -60,12 +48,129 @@ const SPECIALTIES: { value: ContractorSpecialty; label: string }[] = [
   { value: "other",      label: "General / Other" },
 ];
 
-const specialtyLabel = (s?: string) =>
-  SPECIALTIES.find((x) => x.value === s)?.label ?? (s ? s : "All trades");
+function specialtyLabel(s?: string) {
+  return SPECIALTIES.find((x) => x.value === s)?.label ?? (s ? s : "—");
+}
+
+// ── Column definitions ─────────────────────────────────────────────────────────
+// Actions column is built at runtime (needs callbacks), so only static cols here.
+
+function buildColumns(
+  canWrite: boolean,
+  onEdit: (c: Contractor) => void,
+  onDeactivate: (id: string) => void,
+): Column<Contractor>[] {
+  return [
+    {
+      key: "name",
+      header: "Contractor",
+      render: (c) => (
+        <div>
+          <p className="font-medium">{c.name}</p>
+          {c.notes && (
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+              {c.notes}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "specialty",
+      header: "Specialty",
+      render: (c) => (
+        <span className="text-sm capitalize">{specialtyLabel(c.specialty)}</span>
+      ),
+    },
+    {
+      key: "phone",
+      header: "Contact",
+      render: (c) => (
+        <div className="flex flex-col gap-1 text-sm text-muted-foreground">
+          {c.phone && (
+            <a
+              href={`tel:${c.phone}`}
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              aria-label={`Call ${c.name}`}
+            >
+              <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {c.phone}
+            </a>
+          )}
+          {c.email && (
+            <a
+              href={`mailto:${c.email}`}
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              aria-label={`Email ${c.name}`}
+            >
+              <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              {c.email}
+            </a>
+          )}
+          {!c.phone && !c.email && <span>—</span>}
+        </div>
+      ),
+    },
+    {
+      key: "isActive",
+      header: "Status",
+      render: (c) => (
+        <Badge
+          variant="outline"
+          className={cn(
+            "text-xs",
+            c.isActive
+              ? "border-green-300 text-green-700 bg-green-50 dark:border-green-800 dark:text-green-300 dark:bg-green-950/30"
+              : "border-slate-300 text-slate-500 bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:bg-slate-900",
+          )}
+        >
+          {c.isActive ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+    ...(canWrite
+      ? [
+          {
+            key: "_actions" as keyof Contractor,
+            header: "",
+            render: (c: Contractor) => (
+              <div className="flex justify-end gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Edit ${c.name}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(c);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+                {c.isActive && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Deactivate ${c.name}`}
+                    className="text-destructive hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeactivate(c.id);
+                    }}
+                  >
+                    <PowerOff className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Button>
+                )}
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
+}
 
 // ── Contractor form ────────────────────────────────────────────────────────────
 
-interface ContractorFormState {
+interface FormState {
   name: string;
   phone: string;
   email: string;
@@ -73,7 +178,7 @@ interface ContractorFormState {
   notes: string;
 }
 
-function emptyForm(c?: Contractor): ContractorFormState {
+function emptyForm(c?: Contractor): FormState {
   return {
     name:      c?.name      ?? "",
     phone:     c?.phone     ?? "",
@@ -83,27 +188,19 @@ function emptyForm(c?: Contractor): ContractorFormState {
   };
 }
 
-interface ContractorModalProps {
-  open: boolean;
-  onClose: () => void;
+function ContractorForm({
+  editing,
+  onClose,
+}: {
   editing?: Contractor;
-}
-
-function ContractorModal({ open, onClose, editing }: ContractorModalProps) {
-  const [form, setForm] = useState<ContractorFormState>(() => emptyForm(editing));
+  onClose: () => void;
+}) {
+  const [form, setForm] = useState<FormState>(() => emptyForm(editing));
   const { mutate: create, isPending: creating } = useCreateContractor();
   const { mutate: update, isPending: updating } = useUpdateContractor();
   const isPending = creating || updating;
 
-  // Reset form when modal opens/closes
-  const handleOpenChange = (isOpen: boolean) => {
-    if (!isOpen) {
-      setForm(emptyForm(editing));
-      onClose();
-    }
-  };
-
-  function set(field: keyof ContractorFormState, value: string) {
+  function set(field: keyof FormState, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -124,282 +221,208 @@ function ContractorModal({ open, onClose, editing }: ContractorModalProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{editing ? "Edit Contractor" : "Add Contractor"}</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="c-name">Name *</Label>
-            <Input
-              id="c-name"
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder="Contractor or company name"
-              required
-            />
-          </div>
+    <form onSubmit={handleSubmit} className="space-y-4 px-6 pb-6 pt-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="c-name">Name *</Label>
+        <Input
+          id="c-name"
+          value={form.name}
+          onChange={(e) => set("name", e.target.value)}
+          placeholder="Contractor or company name"
+          required
+        />
+      </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="c-specialty">Specialty</Label>
-            <Select value={form.specialty} onValueChange={(v) => set("specialty", v)}>
-              <SelectTrigger id="c-specialty">
-                <SelectValue placeholder="Select specialty…" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All trades / General</SelectItem>
-                {SPECIALTIES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="c-specialty">Specialty</Label>
+        <Select value={form.specialty} onValueChange={(v) => set("specialty", v)}>
+          <SelectTrigger id="c-specialty">
+            <SelectValue placeholder="Select specialty…" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All trades / General</SelectItem>
+            {SPECIALTIES.map((s) => (
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="c-phone">Phone</Label>
-              <Input
-                id="c-phone"
-                type="tel"
-                value={form.phone}
-                onChange={(e) => set("phone", e.target.value)}
-                placeholder="+256 700 000000"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="c-email">Email</Label>
-              <Input
-                id="c-email"
-                type="email"
-                value={form.email}
-                onChange={(e) => set("email", e.target.value)}
-                placeholder="contractor@example.com"
-              />
-            </div>
-          </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="c-phone">Phone</Label>
+          <Input
+            id="c-phone"
+            type="tel"
+            value={form.phone}
+            onChange={(e) => set("phone", e.target.value)}
+            placeholder="+256 700 000000"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-email">Email</Label>
+          <Input
+            id="c-email"
+            type="email"
+            value={form.email}
+            onChange={(e) => set("email", e.target.value)}
+            placeholder="contractor@example.com"
+          />
+        </div>
+      </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="c-notes">Notes</Label>
-            <Textarea
-              id="c-notes"
-              value={form.notes}
-              onChange={(e) => set("notes", e.target.value)}
-              placeholder="Availability, rates, preferred contact method…"
-              rows={3}
-            />
-          </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="c-notes">Notes</Label>
+        <Textarea
+          id="c-notes"
+          value={form.notes}
+          onChange={(e) => set("notes", e.target.value)}
+          placeholder="Availability, rates, preferred contact method…"
+          rows={3}
+        />
+      </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={isPending}>
-              {editing ? "Save Changes" : "Add Contractor"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      <Separator />
+      <div className="flex justify-end gap-3">
+        <Button type="button" variant="outline" onClick={onClose} disabled={isPending}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isPending}>
+          {isPending
+            ? editing ? "Saving…" : "Adding…"
+            : editing ? "Save Changes" : "Add Contractor"}
+        </Button>
+      </div>
+    </form>
   );
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ContractorsPage() {
-  const [search, setSearch]             = useState("");
-  const [specialty, setSpecialty]       = useState<string>("");
-  const [showInactive, setShowInactive] = useState(false);
-  const [creating, setCreating]         = useState(false);
-  const [editing, setEditing]           = useState<Contractor | undefined>();
+  const { canWrite } = usePermissions();
+
+  const [search, setSearch]       = useState("");
+  const [specialty, setSpecialty] = useState("");
+  const [activeOnly, setActiveOnly] = useState("true");
+  const [page, setPage]           = useState(1);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing]       = useState<Contractor | undefined>();
 
   const { data, isLoading } = useContractors({
-    search:    search.length > 1 ? search : undefined,
+    search:    search || undefined,
     specialty: specialty || undefined,
-    isActive:  showInactive ? undefined : true,
+    isActive:  activeOnly === "true" ? true : activeOnly === "false" ? false : undefined,
   });
 
   const { mutate: deactivate } = useDeactivateContractor();
-  const { can } = usePermissions();
-  const canEdit = can("properties:write");
 
-  const contractors = data?.data ?? [];
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+
+  const columns = buildColumns(
+    canWrite,
+    (c) => setEditing(c),
+    (id) => deactivate(id),
+  );
 
   return (
     <div className="space-y-6">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <HardHat className="h-6 w-6 text-primary" aria-hidden="true" />
             Contractors
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground mt-1">
             Trusted tradespeople and contractors for maintenance jobs
           </p>
         </div>
-        {canEdit && (
-          <Button onClick={() => setCreating(true)}>
-            <Plus className="h-4 w-4" />
-            Add Contractor
-          </Button>
+        {canWrite && (
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4" />
+                Add Contractor
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Add Contractor</DialogTitle>
+              </DialogHeader>
+              <ContractorForm onClose={() => setCreateOpen(false)} />
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 
       {/* ── Filters ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-52 max-w-xs">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" aria-hidden="true" />
-          <Input
-            aria-label="Search contractors"
-            placeholder="Search by name…"
-            className="pl-8"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <Select value={specialty} onValueChange={setSpecialty}>
+      <FilterBar
+        search={search}
+        onSearchChange={handleSearchChange}
+        placeholder="Search by name…"
+        className="max-w-sm"
+      >
+        <Select value={specialty} onValueChange={(v) => { setSpecialty(v); setPage(1); }}>
           <SelectTrigger className="w-44" aria-label="Filter by specialty">
             <SelectValue placeholder="All specialties" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All specialties</SelectItem>
             {SPECIALTIES.map((s) => (
-              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+              <SelectItem key={s.value} value={s.value}>
+                {s.label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <Button
-          variant="outline"
-          size="sm"
-          aria-pressed={showInactive}
-          onClick={() => setShowInactive((v) => !v)}
-          className={cn(showInactive && "border-primary text-primary")}
-        >
-          {showInactive ? "Showing all" : "Active only"}
-        </Button>
-      </div>
+
+        <Select value={activeOnly} onValueChange={(v) => { setActiveOnly(v); setPage(1); }}>
+          <SelectTrigger className="w-36" aria-label="Filter by status">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="true">Active only</SelectItem>
+            <SelectItem value="false">Inactive only</SelectItem>
+            <SelectItem value="">All</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterBar>
 
       {/* ── Table ───────────────────────────────────────────────────────────── */}
-      {isLoading ? (
-        <PageSkeleton />
-      ) : contractors.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-3 text-muted-foreground">
-          <HardHat className="h-10 w-10" aria-hidden="true" />
-          <p className="text-sm font-medium">No contractors found</p>
-          {canEdit && (
-            <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
-              <Plus className="h-4 w-4" />
-              Add your first contractor
-            </Button>
-          )}
-        </div>
-      ) : (
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Specialty</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Status</TableHead>
-                {canEdit && <TableHead className="w-24 text-right">Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contractors.map((c) => (
-                <TableRow key={c.id} className={cn(!c.isActive && "opacity-50")}>
-                  <TableCell className="font-medium">
-                    {c.name}
-                    {c.notes && (
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{c.notes}</p>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm capitalize">{specialtyLabel(c.specialty)}</span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1 text-sm text-muted-foreground">
-                      {c.phone && (
-                        <a
-                          href={`tel:${c.phone}`}
-                          className="flex items-center gap-1 hover:text-foreground transition-colors"
-                          aria-label={`Call ${c.name}`}
-                        >
-                          <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                          {c.phone}
-                        </a>
-                      )}
-                      {c.email && (
-                        <a
-                          href={`mailto:${c.email}`}
-                          className="flex items-center gap-1 hover:text-foreground transition-colors"
-                          aria-label={`Email ${c.name}`}
-                        >
-                          <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                          {c.email}
-                        </a>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs",
-                        c.isActive
-                          ? "border-green-300 text-green-700 bg-green-50 dark:border-green-800 dark:text-green-300 dark:bg-green-950/30"
-                          : "border-slate-300 text-slate-500 bg-slate-50 dark:border-slate-700 dark:text-slate-400 dark:bg-slate-900"
-                      )}
-                    >
-                      {c.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </TableCell>
-                  {canEdit && (
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          aria-label={`Edit ${c.name}`}
-                          onClick={() => setEditing(c)}
-                        >
-                          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                        </Button>
-                        {c.isActive && (
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Deactivate ${c.name}`}
-                            className="text-destructive hover:text-destructive"
-                            onClick={() =>
-                              deactivate(c.id)
-                            }
-                          >
-                            <PowerOff className="h-3.5 w-3.5" aria-hidden="true" />
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      {/* ── Modals ──────────────────────────────────────────────────────────── */}
-      <ContractorModal
-        open={creating}
-        onClose={() => setCreating(false)}
+      <DataTable
+        data={data?.data ?? []}
+        columns={columns}
+        loading={isLoading}
+        rowKey={(c) => c.id}
+        pageSize={PAGE_SIZE}
+        totalItems={data?.total}
+        currentPage={page}
+        onPageChange={setPage}
+        emptyTitle="No contractors found"
+        emptyDescription={
+          canWrite
+            ? "Add your first contractor to build a trusted directory."
+            : "No contractors have been added yet."
+        }
       />
+
+      {/* ── Edit modal ──────────────────────────────────────────────────────── */}
       {editing && (
-        <ContractorModal
-          open={!!editing}
-          editing={editing}
-          onClose={() => setEditing(undefined)}
-        />
+        <Dialog open onOpenChange={(v) => { if (!v) setEditing(undefined); }}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Contractor</DialogTitle>
+            </DialogHeader>
+            <ContractorForm editing={editing} onClose={() => setEditing(undefined)} />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
