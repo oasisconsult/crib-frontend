@@ -20,7 +20,7 @@ import { EmptyState } from "@/components/common/EmptyState";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/formatters";
 import { useOrganisation } from "@/hooks/useOrganisation";
 import { efrisApi, type EfrisCompliancePayment } from "@/services/api/efris";
-import { toast } from "@/utils/toast";
+import { toast } from "@/store/useUIStore";
 import type { PaginatedResponse } from "@/types";
 
 const PAGE_SIZE = 20;
