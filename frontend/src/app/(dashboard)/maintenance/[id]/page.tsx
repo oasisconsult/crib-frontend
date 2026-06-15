@@ -20,6 +20,7 @@ import {
   Play,
   UserCheck,
   HardHat,
+  Mail,
   Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -203,11 +204,17 @@ function AssignModal({
 
           {/* Show selected contractor contact info */}
           {selected && (selected.phone || selected.email) && (
-            <div className="rounded-md bg-muted/50 px-3 py-2 text-sm space-y-1">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
               {selected.phone && (
-                <a href={`tel:${selected.phone}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
-                  <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+                <a href={`tel:${selected.phone}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                  <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                   {selected.phone}
+                </a>
+              )}
+              {selected.email && (
+                <a href={`mailto:${selected.email}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+                  <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {selected.email}
                 </a>
               )}
             </div>
