@@ -133,6 +133,25 @@ const TRANSITION_ACTIONS: {
 
 // ── Photo section ────────────────────────────────────────────────────────────
 
+const _PHOTO_KEY_PREFIXES = [
+  "inspection_photo/",
+  "inspections/",
+  "documents/",
+  "signatures/",
+  "properties/",
+  "payment_receipt/",
+];
+
+function toDisplayUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("/api/v1/upload/") || url.startsWith("/api/upload/local/")) return url;
+  for (const prefix of _PHOTO_KEY_PREFIXES) {
+    const idx = url.indexOf(prefix);
+    if (idx !== -1) return `/api/v1/upload/serve/${url.slice(idx)}`;
+  }
+  return url;
+}
+
 function PhotoSection({
   issue,
   canEdit,
@@ -250,7 +269,7 @@ function PhotoSection({
               <div key={url} className="group relative aspect-square rounded-[6px] overflow-hidden bg-muted border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={url}
+                  src={toDisplayUrl(url)}
                   alt="Completion photo"
                   className="w-full h-full object-cover cursor-pointer transition-opacity group-hover:opacity-90"
                   onClick={() => setLightbox(url)}
@@ -279,7 +298,7 @@ function PhotoSection({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={lightbox}
+            src={toDisplayUrl(lightbox)}
             alt="Photo preview"
             className="max-h-full max-w-full rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
