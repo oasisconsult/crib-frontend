@@ -183,7 +183,7 @@ function emptyForm(c?: Contractor): FormState {
     name:      c?.name      ?? "",
     phone:     c?.phone     ?? "",
     email:     c?.email     ?? "",
-    specialty: c?.specialty ?? "",
+    specialty: c?.specialty ?? "all",
     notes:     c?.notes     ?? "",
   };
 }
@@ -210,7 +210,7 @@ function ContractorForm({
       name:      form.name.trim(),
       phone:     form.phone.trim() || undefined,
       email:     form.email.trim() || undefined,
-      specialty: (form.specialty || undefined) as ContractorSpecialty | undefined,
+      specialty: (form.specialty === "all" ? undefined : form.specialty || undefined) as ContractorSpecialty | undefined,
       notes:     form.notes.trim() || undefined,
     };
     if (editing) {
@@ -240,7 +240,7 @@ function ContractorForm({
             <SelectValue placeholder="Select specialty…" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All trades / General</SelectItem>
+            <SelectItem value="all">All trades / General</SelectItem>
             {SPECIALTIES.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 {s.label}
@@ -305,7 +305,7 @@ export default function ContractorsPage() {
   const { canWrite } = usePermissions();
 
   const [search, setSearch]       = useState("");
-  const [specialty, setSpecialty] = useState("");
+  const [specialty, setSpecialty] = useState("all");
   const [activeOnly, setActiveOnly] = useState("true");
   const [page, setPage]           = useState(1);
 
@@ -314,8 +314,8 @@ export default function ContractorsPage() {
 
   const { data, isLoading } = useContractors({
     search:    search || undefined,
-    specialty: specialty || undefined,
-    isActive:  activeOnly === "true" ? true : activeOnly === "false" ? false : undefined,
+    specialty: specialty === "all" ? undefined : specialty || undefined,
+    isActive:  activeOnly === "true" ? true : activeOnly === "false" ? false : undefined, // "all" → undefined
   });
 
   const { mutate: deactivate } = useDeactivateContractor();
@@ -374,7 +374,7 @@ export default function ContractorsPage() {
             <SelectValue placeholder="All specialties" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All specialties</SelectItem>
+            <SelectItem value="all">All specialties</SelectItem>
             {SPECIALTIES.map((s) => (
               <SelectItem key={s.value} value={s.value}>
                 {s.label}
@@ -390,7 +390,7 @@ export default function ContractorsPage() {
           <SelectContent>
             <SelectItem value="true">Active only</SelectItem>
             <SelectItem value="false">Inactive only</SelectItem>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="all">All</SelectItem>
           </SelectContent>
         </Select>
       </FilterBar>
