@@ -46,10 +46,19 @@ async def create_contractor(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    org_id = get_org_id(current_user)
+    from fastapi import HTTPException
+    # Superadmin writes to their own platform org (mirrors properties.py pattern).
+    # get_org_id() returns None for superadmin (cross-org read bypass) so we
+    # fall back to their profile org for mutations.
+    if current_user.has_role("superadmin"):
+        org_id = current_user.profile.organisation_id
+    else:
+        org_id = get_org_id(current_user)
     if org_id is None:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organisation required")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No organisation assigned to your account.",
+        )
     return await contractor_service.create_contractor(body, org_id, db)
 
 
