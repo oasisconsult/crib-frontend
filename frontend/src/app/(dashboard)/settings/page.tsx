@@ -222,11 +222,21 @@ export default function SettingsPage() {
   const [agencyPhone, setAgencyPhone] = useState("");
   const [agencyEmail, setAgencyEmail] = useState("");
 
+  // Unit naming defaults
+  const [unitNamingScheme,        setUnitNamingScheme]       = useState<"numeric" | "alpha" | "alpha-numeric">("numeric");
+  const [unitNamingLetter,        setUnitNamingLetter]       = useState("A");
+  const [unitNamingNumsPerLetter, setUnitNamingNumsPerLetter] = useState(4);
+
   useEffect(() => {
     if (org) {
       setAgencyName(org.name ?? "");
       setAgencyPhone(org.contactPhone ?? "");
       setAgencyEmail(org.contactEmail ?? "");
+      if (org.unitNaming) {
+        setUnitNamingScheme(org.unitNaming.scheme ?? "numeric");
+        setUnitNamingLetter(org.unitNaming.startLetter ?? "A");
+        setUnitNamingNumsPerLetter(org.unitNaming.numbersPerLetter ?? 4);
+      }
     }
   }, [org]);
 
@@ -241,6 +251,23 @@ export default function SettingsPage() {
       onError: (err: any) =>
         toast.error("Failed to save", err?.response?.data?.detail ?? "Please try again"),
     });
+  }
+
+  function handleSaveUnitNaming() {
+    updateOrg(
+      {
+        unitNaming: {
+          scheme: unitNamingScheme,
+          startLetter: unitNamingLetter || "A",
+          numbersPerLetter: unitNamingNumsPerLetter || 4,
+        },
+      },
+      {
+        onSuccess: () => toast.success("Unit naming defaults saved"),
+        onError: (err: any) =>
+          toast.error("Failed to save", err?.response?.data?.detail ?? "Please try again"),
+      },
+    );
   }
 
   // ── Landlord invite state ────────────────────────────────────────────────
@@ -667,6 +694,69 @@ export default function SettingsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Unit Naming Defaults */}
+          {org && !isLandlord && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Unit Naming Defaults</CardTitle>
+                <CardDescription>
+                  Set how unit identifiers are auto-generated when creating properties. Individual units can always be renamed afterwards.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="unitNamingScheme">Numbering scheme</Label>
+                    <Select value={unitNamingScheme} onValueChange={(v) => setUnitNamingScheme(v as typeof unitNamingScheme)}>
+                      <SelectTrigger id="unitNamingScheme"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="numeric">Numeric — 1, 2, 3</SelectItem>
+                        <SelectItem value="alpha">Alphabetic — A, B, C</SelectItem>
+                        <SelectItem value="alpha-numeric">Alphanumeric — A1, A2, B1</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {(unitNamingScheme === "alpha" || unitNamingScheme === "alpha-numeric") && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="unitNamingLetter">Starting letter</Label>
+                      <Input
+                        id="unitNamingLetter"
+                        value={unitNamingLetter}
+                        maxLength={2}
+                        onChange={(e) => setUnitNamingLetter(e.target.value.toUpperCase().replace(/[^A-Z]/g, "") || "A")}
+                        placeholder="A"
+                      />
+                    </div>
+                  )}
+                  {unitNamingScheme === "alpha-numeric" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="unitNamingNumsPerLetter">Numbers per letter</Label>
+                      <Input
+                        id="unitNamingNumsPerLetter"
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={unitNamingNumsPerLetter}
+                        onChange={(e) => setUnitNamingNumsPerLetter(parseInt(e.target.value) || 4)}
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {unitNamingScheme === "numeric" && "Units will be numbered 1, 2, 3, … — e.g. Flat 1 · Flat 2"}
+                  {unitNamingScheme === "alpha" && `Units will be lettered ${unitNamingLetter || "A"}, … — e.g. Flat ${unitNamingLetter || "A"} · Flat ${String.fromCharCode((unitNamingLetter || "A").charCodeAt(0) + 1)}`}
+                  {unitNamingScheme === "alpha-numeric" && `Units grouped by letter with ${unitNamingNumsPerLetter} each — e.g. Flat ${unitNamingLetter || "A"}1 · Flat ${unitNamingLetter || "A"}2 · Flat ${String.fromCharCode((unitNamingLetter || "A").charCodeAt(0) + 1)}1`}
+                </p>
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveUnitNaming} loading={savingAgency}>
+                    <Save className="h-4 w-4" />
+                    Save defaults
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* ── Landlords ── */}

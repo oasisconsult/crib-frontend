@@ -40,16 +40,18 @@ class OrganisationOut(CamelModel):
     contact_phone: str | None = None
     contact_email: str | None = None
     features: dict = {}
+    unit_naming: dict | None = None
 
 
 class OrganisationUpdateRequest(CamelModel):
     """
-    Fields editable by manager/owner: contact_phone, contact_email.
+    Fields editable by manager/owner: contact_phone, contact_email, unit_naming.
     Field editable by superadmin only: name.
     """
     name: str | None = None
     contact_phone: str | None = None
     contact_email: str | None = None
+    unit_naming: dict | None = None
 
 
 class UpdateFeaturesRequest(CamelModel):
@@ -150,6 +152,7 @@ async def provision_organisation(
         contact_phone=org.settings.get("contact_phone"),
         contact_email=org.settings.get("contact_email"),
         features=org.settings.get("features", {}),
+        unit_naming=org.settings.get("unit_naming"),
     )
 
 
@@ -178,6 +181,7 @@ async def get_my_organisation(
         contact_phone=org.settings.get("contact_phone"),
         contact_email=org.settings.get("contact_email"),
         features=org.settings.get("features", {}),
+        unit_naming=org.settings.get("unit_naming"),
     )
 
 
@@ -214,12 +218,14 @@ async def update_my_organisation(
             )
         org.name = body.name
 
-    # Contact fields go into JSONB settings
+    # Contact and naming fields go into JSONB settings
     settings_blob: dict = dict(org.settings or {})
     if body.contact_phone is not None:
         settings_blob["contact_phone"] = body.contact_phone
     if body.contact_email is not None:
         settings_blob["contact_email"] = body.contact_email
+    if body.unit_naming is not None:
+        settings_blob["unit_naming"] = body.unit_naming
     org.settings = settings_blob
 
     await db.flush()
@@ -235,6 +241,7 @@ async def update_my_organisation(
         contact_phone=org.settings.get("contact_phone"),
         contact_email=org.settings.get("contact_email"),
         features=org.settings.get("features", {}),
+        unit_naming=org.settings.get("unit_naming"),
     )
 
 

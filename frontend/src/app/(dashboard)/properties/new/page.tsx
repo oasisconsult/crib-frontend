@@ -29,10 +29,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCreateProperty, useBulkCreateUnits } from "@/hooks/useProperties";
+import { useOrganisation } from "@/hooks/useOrganisation";
 import { LocationSearch } from "@/components/ui/location-search";
 import { GeocodeField } from "@/components/ui/geocode-field";
 import { settingsApi } from "@/services/api/settings";
 import { cn } from "@/utils/cn";
+import type { UnitNamingScheme } from "@/services/api/organisations";
 import type { UnitType, FurnishedStatus, WaterSource, BackupPower, InternetType, CompoundType } from "@/types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -165,7 +167,10 @@ function StepBar({ step }: { step: 1 | 2 }) {
 interface GeneratorConfig {
   count: number;
   prefix: string;
+  namingScheme: UnitNamingScheme;
   startNumber: number;
+  startLetter: string;
+  numbersPerLetter: number;
   defaultType: UnitType;
   defaultRent: number;
   defaultBeds: number;
@@ -177,15 +182,43 @@ interface GeneratorConfig {
   startFloor: number;
 }
 
+function toAlpha(n: number): string {
+  let result = "";
+  n = n + 1;
+  while (n > 0) {
+    n--;
+    result = String.fromCharCode(65 + (n % 26)) + result;
+    n = Math.floor(n / 26);
+  }
+  return result;
+}
+
+function genIdentifier(i: number, cfg: Pick<GeneratorConfig, "namingScheme" | "startNumber" | "startLetter" | "numbersPerLetter">): string {
+  switch (cfg.namingScheme) {
+    case "alpha": {
+      const base = cfg.startLetter.toUpperCase().charCodeAt(0) - 65;
+      return toAlpha(base + i);
+    }
+    case "alpha-numeric": {
+      const base = cfg.startLetter.toUpperCase().charCodeAt(0) - 65;
+      const letterIdx = base + Math.floor(i / cfg.numbersPerLetter);
+      const num = (i % cfg.numbersPerLetter) + 1;
+      return `${toAlpha(letterIdx)}${num}`;
+    }
+    default:
+      return String(cfg.startNumber + i);
+  }
+}
+
 function generateUnits(cfg: GeneratorConfig): UnitDraft[] {
   return Array.from({ length: cfg.count }, (_, i) => {
-    const num = cfg.startNumber + i;
+    const id = genIdentifier(i, cfg);
     const floor = cfg.floorsEnabled
       ? cfg.startFloor + Math.floor(i / cfg.unitsPerFloor)
       : ("" as const);
     return {
       _key: `draft-${i}`,
-      name: `${cfg.prefix} ${num}`,
+      name: cfg.prefix ? `${cfg.prefix} ${id}` : id,
       type: cfg.defaultType,
       monthlyRent: cfg.defaultRent,
       bedrooms: cfg.defaultBeds,
@@ -355,6 +388,7 @@ export default function NewPropertyPage() {
   const { mutate: createProperty, isPending: creatingProp } = useCreateProperty();
   const { mutate: bulkCreate,     isPending: creatingUnits } = useBulkCreateUnits();
   const isSubmitting = creatingProp || creatingUnits;
+  const { data: org } = useOrganisation();
 
   const tableRef = useRef<HTMLDivElement>(null);
 
@@ -411,7 +445,10 @@ export default function NewPropertyPage() {
   // ── Step 2: Unit generator ─────────────────────────────────────────────────
   const [genCount,           setGenCount]       = useState(10);
   const [genPrefix,          setGenPrefix]      = useState("Unit");
+  const [genScheme,          setGenScheme]      = useState<UnitNamingScheme>("numeric");
   const [genStartNum,        setGenStartNum]    = useState(1);
+  const [genStartLetter,     setGenStartLetter] = useState("A");
+  const [genNumsPerLetter,   setGenNumsPerLetter] = useState(4);
   const [genType,            setGenType]        = useState<UnitType>("one_bed");
   const [genRent,            setGenRent]        = useState(800000);
   const [genBeds,            setGenBeds]        = useState(1);
@@ -424,11 +461,25 @@ export default function NewPropertyPage() {
   const [units, setUnits] = useState<UnitDraft[]>([]);
   const [generated, setGenerated] = useState(false);
 
+  // Pre-populate generator from org unit naming defaults
+  useEffect(() => {
+    if (org?.unitNaming) {
+      const n = org.unitNaming;
+      if (n.scheme) setGenScheme(n.scheme);
+      if (n.startNumber != null) setGenStartNum(n.startNumber);
+      if (n.startLetter) setGenStartLetter(n.startLetter);
+      if (n.numbersPerLetter) setGenNumsPerLetter(n.numbersPerLetter);
+    }
+  }, [org]);
+
   function handleGenerate() {
     const drafts = generateUnits({
       count: Math.min(genCount, 500),
-      prefix: genPrefix || "Unit",
+      prefix: genPrefix,
+      namingScheme: genScheme,
       startNumber: genStartNum,
+      startLetter: genStartLetter || "A",
+      numbersPerLetter: genNumsPerLetter || 4,
       defaultType: genType,
       defaultRent: genRent,
       defaultBeds: genBeds,
@@ -453,10 +504,17 @@ export default function NewPropertyPage() {
   }
 
   function addBlankUnit() {
-    const n = units.length + genStartNum;
+    const i = units.length;
+    const id = genIdentifier(i, {
+      namingScheme: genScheme,
+      startNumber: genStartNum,
+      startLetter: genStartLetter || "A",
+      numbersPerLetter: genNumsPerLetter || 4,
+    });
+    const name = genPrefix ? `${genPrefix} ${id}` : id;
     setUnits((prev) => [...prev, {
       _key: `draft-manual-${Date.now()}`,
-      name: `${genPrefix} ${n}`,
+      name,
       type: genType,
       monthlyRent: genRent,
       bedrooms: genBeds,
@@ -946,9 +1004,9 @@ export default function NewPropertyPage() {
             </CardHeader>
             <CardContent className="space-y-5">
               {/* Naming */}
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">Naming</p>
-                <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Naming</p>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="genCount">Number of units *</Label>
                     <Input
@@ -966,19 +1024,68 @@ export default function NewPropertyPage() {
                       id="genPrefix"
                       value={genPrefix}
                       onChange={(e) => setGenPrefix(e.target.value)}
-                      placeholder="Unit / Room / Flat"
+                      placeholder="Unit / Room / Flat / House"
                     />
                   </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="genStart">Starting number</Label>
-                    <Input
-                      id="genStart"
-                      type="number"
-                      min={0}
-                      value={genStartNum}
-                      onChange={(e) => setGenStartNum(parseInt(e.target.value) || 1)}
-                    />
+                    <Label htmlFor="genScheme">Numbering scheme</Label>
+                    <Select value={genScheme} onValueChange={(v) => setGenScheme(v as UnitNamingScheme)}>
+                      <SelectTrigger id="genScheme"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="numeric">Numeric — 1, 2, 3</SelectItem>
+                        <SelectItem value="alpha">Alphabetic — A, B, C</SelectItem>
+                        <SelectItem value="alpha-numeric">Alphanumeric — A1, A2, B1</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
+                  {genScheme === "numeric" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="genStart">Starting number</Label>
+                      <Input
+                        id="genStart"
+                        type="number"
+                        min={0}
+                        value={genStartNum}
+                        onChange={(e) => setGenStartNum(parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                  )}
+                  {(genScheme === "alpha" || genScheme === "alpha-numeric") && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="genStartLetter">Starting letter</Label>
+                      <Input
+                        id="genStartLetter"
+                        value={genStartLetter}
+                        maxLength={2}
+                        onChange={(e) => setGenStartLetter(e.target.value.toUpperCase().replace(/[^A-Z]/g, "") || "A")}
+                        placeholder="A"
+                      />
+                    </div>
+                  )}
+                  {genScheme === "alpha-numeric" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="genNumsPerLetter">Numbers per letter</Label>
+                      <Input
+                        id="genNumsPerLetter"
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={genNumsPerLetter}
+                        onChange={(e) => setGenNumsPerLetter(parseInt(e.target.value) || 4)}
+                      />
+                    </div>
+                  )}
+                </div>
+                {/* Live preview */}
+                <div className="text-xs text-muted-foreground">
+                  <span className="font-medium">Preview: </span>
+                  {Array.from({ length: Math.min(4, genCount) }, (_, i) => {
+                    const id = genIdentifier(i, { namingScheme: genScheme, startNumber: genStartNum, startLetter: genStartLetter || "A", numbersPerLetter: genNumsPerLetter || 4 });
+                    return genPrefix ? `${genPrefix} ${id}` : id;
+                  }).join(" · ")}
+                  {genCount > 4 && " · …"}
                 </div>
               </div>
 

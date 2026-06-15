@@ -6,6 +6,15 @@ export interface OrgFeatures {
   [key: string]: boolean | undefined;
 }
 
+export type UnitNamingScheme = "numeric" | "alpha" | "alpha-numeric";
+
+export interface UnitNamingConfig {
+  scheme: UnitNamingScheme;
+  startNumber?: number;
+  startLetter?: string;
+  numbersPerLetter?: number;
+}
+
 export interface Organisation {
   id: string;
   logtoOrgId: string;
@@ -17,12 +26,14 @@ export interface Organisation {
   contactPhone?: string;
   contactEmail?: string;
   features?: OrgFeatures;
+  unitNaming?: UnitNamingConfig;
 }
 
 export interface UpdateOrganisationRequest {
   name?: string;
   contactPhone?: string;
   contactEmail?: string;
+  unitNaming?: UnitNamingConfig;
 }
 
 export interface ProvisionOrganisationRequest {

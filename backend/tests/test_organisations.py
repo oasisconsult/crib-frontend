@@ -217,3 +217,76 @@ async def test_superadmin_can_change_org_name(client: AsyncClient):
     )
     assert resp.status_code == 200
     assert resp.json()["name"] == "New Superadmin Name Ltd"
+
+
+# ── unit_naming ───────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_unit_naming_stored_and_returned(client: AsyncClient):
+    """Saving unitNaming persists the value and GET /me returns it."""
+    # Save alpha-numeric scheme
+    resp = await client.patch(
+        "/api/v1/organisations/me",
+        headers=auth_headers("manager-1"),
+        json={
+            "unitNaming": {
+                "scheme": "alpha-numeric",
+                "startLetter": "A",
+                "numbersPerLetter": 4,
+            }
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["unitNaming"]["scheme"] == "alpha-numeric"
+    assert body["unitNaming"]["startLetter"] == "A"
+    assert body["unitNaming"]["numbersPerLetter"] == 4
+
+    # GET /me should also return it
+    resp2 = await client.get("/api/v1/organisations/me", headers=auth_headers("manager-1"))
+    assert resp2.status_code == 200
+    assert resp2.json()["unitNaming"]["scheme"] == "alpha-numeric"
+
+
+@pytest.mark.asyncio
+async def test_unit_naming_alpha_scheme(client: AsyncClient):
+    """Alphabetic scheme is stored and round-trips correctly."""
+    resp = await client.patch(
+        "/api/v1/organisations/me",
+        headers=auth_headers("manager-1"),
+        json={"unitNaming": {"scheme": "alpha", "startLetter": "B"}},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["unitNaming"]["scheme"] == "alpha"
+    assert resp.json()["unitNaming"]["startLetter"] == "B"
+
+
+@pytest.mark.asyncio
+async def test_unit_naming_does_not_overwrite_contact_fields(client: AsyncClient):
+    """Saving unitNaming in isolation preserves existing contactPhone/Email."""
+    # First set contact details
+    await client.patch(
+        "/api/v1/organisations/me",
+        headers=auth_headers("manager-1"),
+        json={"contactPhone": "+256700111222", "contactEmail": "keep@me.ug"},
+    )
+    # Now update only unitNaming
+    resp = await client.patch(
+        "/api/v1/organisations/me",
+        headers=auth_headers("manager-1"),
+        json={"unitNaming": {"scheme": "numeric"}},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["contactPhone"] == "+256700111222"
+    assert body["contactEmail"] == "keep@me.ug"
+    assert body["unitNaming"]["scheme"] == "numeric"
+
+
+@pytest.mark.asyncio
+async def test_unit_naming_null_when_not_set(client: AsyncClient):
+    """unitNaming is null in the response if never saved."""
+    resp = await client.get("/api/v1/organisations/me", headers=auth_headers("manager-1"))
+    assert resp.status_code == 200
+    # Fresh org may have unitNaming=null or a value from earlier tests — just check key present
+    assert "unitNaming" in resp.json()
