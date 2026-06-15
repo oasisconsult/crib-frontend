@@ -56,6 +56,23 @@ export interface Inspection {
   propertyName?: string;
 }
 
+export type ContractorSpecialty =
+  | "plumbing" | "electrical" | "structural" | "appliance"
+  | "pest" | "security" | "other";
+
+export interface Contractor {
+  id: string;
+  organisationId: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  specialty?: ContractorSpecialty;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface MaintenanceIssue {
   id: string;
   state: MaintenanceState;
@@ -74,6 +91,7 @@ export interface MaintenanceIssue {
   category: "plumbing" | "electrical" | "structural" | "appliance" | "pest" | "security" | "other";
   priority: "low" | "medium" | "high" | "urgent";
   // Assignment
+  contractorId?: string;
   assignedTo?: string;
   assignedAt?: string;
   estimatedCost?: number;

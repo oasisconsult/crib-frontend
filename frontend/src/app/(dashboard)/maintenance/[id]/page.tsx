@@ -19,6 +19,8 @@ import {
   XCircle,
   Play,
   UserCheck,
+  HardHat,
+  Phone,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,12 +36,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatDate, formatCurrency } from "@/utils/formatters";
 import {
   useMaintenanceIssue,
   useUpdateMaintenanceIssue,
   useTransitionMaintenanceIssue,
+  useContractors,
 } from "@/hooks/useInspections";
 import { useProperty } from "@/hooks/useProperties";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -50,7 +60,7 @@ import {
   type MaintenanceState,
   type MaintenanceEvent,
 } from "@/types/states";
-import type { MaintenanceIssue } from "@/types";
+import type { Contractor, MaintenanceIssue } from "@/types";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -113,6 +123,127 @@ const TRANSITION_ACTIONS: {
     fromStates: ["reported", "assigned", "in_progress"],
   },
 ];
+
+// ── Assign modal (contractor picker) ─────────────────────────────────────────
+
+function AssignModal({
+  open,
+  onClose,
+  issueId,
+  issueCategory,
+}: {
+  open: boolean;
+  onClose: () => void;
+  issueId: string;
+  issueCategory: string;
+}) {
+  const [contractorId, setContractorId] = useState("");
+  const [freeText, setFreeText]         = useState("");
+
+  const { data: contractorsPage, isLoading } = useContractors({
+    specialty: issueCategory !== "other" ? issueCategory : undefined,
+    isActive: true,
+  });
+  const contractors = contractorsPage?.data ?? [];
+
+  const { mutate: transition, isPending } = useTransitionMaintenanceIssue();
+
+  const selected = contractors.find((c) => c.id === contractorId);
+
+  function handleAssign() {
+    if (!contractorId && !freeText.trim()) return;
+    transition(
+      {
+        id: issueId,
+        event: "ISSUE_ASSIGNED",
+        payload: contractorId
+          ? { contractorId }
+          : { assignedTo: freeText.trim() },
+      },
+      { onSuccess: onClose },
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Assign Contractor</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="assign-contractor">From directory</Label>
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading contractors…</p>
+            ) : (
+              <Select value={contractorId} onValueChange={(v) => { setContractorId(v); setFreeText(""); }}>
+                <SelectTrigger id="assign-contractor" aria-label="Select contractor from directory">
+                  <SelectValue placeholder="Select a contractor…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">— None —</SelectItem>
+                  {contractors.map((c: Contractor) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span className="font-medium">{c.name}</span>
+                      {c.specialty && (
+                        <span className="ml-1.5 text-xs text-muted-foreground capitalize">({c.specialty})</span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+
+          {/* Show selected contractor contact info */}
+          {selected && (selected.phone || selected.email) && (
+            <div className="rounded-md bg-muted/50 px-3 py-2 text-sm space-y-1">
+              {selected.phone && (
+                <a href={`tel:${selected.phone}`} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground">
+                  <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+                  {selected.phone}
+                </a>
+              )}
+            </div>
+          )}
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">or enter name manually</span>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="assign-free">Name</Label>
+            <Input
+              id="assign-free"
+              value={freeText}
+              onChange={(e) => { setFreeText(e.target.value); setContractorId(""); }}
+              placeholder="Contractor or staff name"
+              aria-label="Enter contractor name manually"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
+          <Button
+            onClick={handleAssign}
+            loading={isPending}
+            disabled={!contractorId && !freeText.trim()}
+          >
+            <HardHat className="h-4 w-4" />
+            Assign
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -324,7 +455,8 @@ export default function MaintenanceDetailPage({ params }: Props) {
   const { data: property } = useProperty(issue?.propertyId ?? "");
   const { can } = usePermissions();
   const canEdit = can("properties:write");
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing]   = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   const { mutate: transition, isPending: transitioning } = useTransitionMaintenanceIssue();
 
@@ -377,8 +509,12 @@ export default function MaintenanceDetailPage({ params }: Props) {
                 key={action.event}
                 variant={action.variant}
                 size="sm"
-                loading={transitioning}
-                onClick={() => transition({ id: issue.id, event: action.event })}
+                loading={transitioning && action.event !== "ISSUE_ASSIGNED"}
+                onClick={() =>
+                  action.event === "ISSUE_ASSIGNED"
+                    ? setAssigning(true)
+                    : transition({ id: issue.id, event: action.event })
+                }
               >
                 <action.icon className="h-3.5 w-3.5" />
                 {action.label}
@@ -614,6 +750,16 @@ export default function MaintenanceDetailPage({ params }: Props) {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {/* ── Assign modal ──────────────────────────────────── */}
+      {assigning && (
+        <AssignModal
+          open={assigning}
+          onClose={() => setAssigning(false)}
+          issueId={issue.id}
+          issueCategory={issue.category}
+        />
       )}
     </div>
   );

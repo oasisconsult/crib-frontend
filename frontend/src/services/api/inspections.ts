@@ -1,5 +1,5 @@
-import { apiGet, apiPost, apiPut, apiPatch } from "./client";
-import type { Inspection, MaintenanceIssue, PaginatedResponse, QueryParams } from "@/types";
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "./client";
+import type { Contractor, Inspection, MaintenanceIssue, PaginatedResponse, QueryParams } from "@/types";
 import type { InspectionEvent, MaintenanceEvent } from "@/types/states";
 import { toInspectionParams, toMaintenanceParams } from "@/utils/backendParams";
 
@@ -85,4 +85,20 @@ export const inspectionsApi = {
 
   transitionMaintenance: (id: string, event: MaintenanceEvent, payload?: object) =>
     apiPost<MaintenanceIssue>(`/maintenance/${id}/transition`, { event, ...payload }),
+
+  // Contractor directory
+  listContractors: (params?: { specialty?: string; isActive?: boolean; search?: string }) =>
+    apiGet<PaginatedResponse<Contractor>>("/contractors", params),
+
+  getContractor: (id: string) =>
+    apiGet<Contractor>(`/contractors/${id}`),
+
+  createContractor: (data: Omit<Contractor, "id" | "organisationId" | "isActive" | "createdAt" | "updatedAt">) =>
+    apiPost<Contractor>("/contractors", data),
+
+  updateContractor: (id: string, data: Partial<Omit<Contractor, "id" | "organisationId" | "createdAt" | "updatedAt">>) =>
+    apiPut<Contractor>(`/contractors/${id}`, data),
+
+  deactivateContractor: (id: string) =>
+    apiDelete(`/contractors/${id}`),
 };

@@ -126,6 +126,38 @@ class InspectionPublicOut(CamelModel):
     report_pdf_url: str | None
 
 
+# ── Contractor ─────────────────────────────────────────────────────────────────
+
+class ContractorCreate(CamelModel):
+    name: str
+    phone: str | None = None
+    email: str | None = None
+    specialty: str | None = None  # matches MaintenanceCategory values
+    notes: str | None = None
+
+
+class ContractorUpdate(CamelModel):
+    name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    specialty: str | None = None
+    notes: str | None = None
+    is_active: bool | None = None
+
+
+class ContractorOut(CamelModel):
+    id: str
+    organisation_id: str
+    name: str
+    phone: str | None
+    email: str | None
+    specialty: str | None
+    notes: str | None
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+
 # ── Maintenance ────────────────────────────────────────────────────────────────
 
 class MaintenanceCreate(CamelModel):
@@ -160,7 +192,8 @@ class MaintenanceUpdate(CamelModel):
 
 class MaintenanceTransition(CamelModel):
     event: str  # ISSUE_ASSIGNED, ISSUE_STARTED, ISSUE_RESOLVED, ISSUE_CLOSED, ISSUE_CANCELLED
-    assigned_to: str | None = None  # required for ISSUE_ASSIGNED
+    contractor_id: str | None = None  # preferred for ISSUE_ASSIGNED — looked up from directory
+    assigned_to: str | None = None   # fallback free-text name when no contractor_id
 
 
 class MaintenanceOut(CamelModel):
@@ -178,6 +211,7 @@ class MaintenanceOut(CamelModel):
     category: str
     priority: str
     state: str
+    contractor_id: str | None = None
     assigned_to: str | None
     assigned_at: str | None
     estimated_cost: float | None

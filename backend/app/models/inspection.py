@@ -195,6 +195,10 @@ class MaintenanceIssue(TimestampedBase):
     priority: Mapped[str] = mapped_column(String(10), nullable=False, default="medium", index=True)
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="reported", index=True)
 
+    contractor_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("contractors.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
     assigned_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
     assigned_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     estimated_cost: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)

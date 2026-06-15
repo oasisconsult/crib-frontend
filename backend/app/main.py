@@ -343,6 +343,10 @@ def create_app() -> FastAPI:
     from app.api.v1 import efris
     application.include_router(efris.router, prefix=settings.api_prefix)
 
+    # ── Contractor directory ───────────────────────────────────────────────────
+    from app.api.v1 import contractors
+    application.include_router(contractors.router, prefix=settings.api_prefix)
+
     # ── Prometheus metrics ────────────────────────────────────────────────────
     # Exposes GET /metrics for the shared Prometheus instance on geobox-network.
     # Scrape target is added in GeoBox core/config/prometheus/prometheus.yml.

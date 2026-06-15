@@ -18,6 +18,7 @@ import {
   ChevronRight,
   ChevronDown,
   Wrench,
+  HardHat,
   Shield,
   LogOut,
   KeyRound,
@@ -144,6 +145,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: Wrench,
     roles: ["owner", "manager", "superadmin", "maintenance", "landlord", "caretaker"],
     permission: { action: "read", resource: "maintenance_request" },
+  },
+  {
+    href: "/contractors",
+    label: "Contractors",
+    icon: HardHat,
+    roles: ["owner", "manager", "superadmin"],
+    permission: { action: "write", resource: "maintenance_request" },
   },
   {
     href: "/notifications",

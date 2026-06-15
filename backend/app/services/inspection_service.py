@@ -130,6 +130,7 @@ def _maint_out(
         category=m.category if isinstance(m.category, str) else m.category.value,
         priority=m.priority if isinstance(m.priority, str) else m.priority.value,
         state=m.state if isinstance(m.state, str) else m.state.value,
+        contractor_id=str(m.contractor_id) if m.contractor_id else None,
         assigned_to=m.assigned_to,
         assigned_at=_s(m.assigned_at),
         estimated_cost=float(m.estimated_cost) if m.estimated_cost is not None else None,
@@ -1305,7 +1306,9 @@ async def create_maintenance_issue(
     await db.flush()
     await db.refresh(issue)
 
-    # Notify org manager of the new maintenance request (non-fatal)
+    # Notify org manager of the new maintenance request.
+    # Savepoint isolates notification failures from the outer transaction.
+    _create_notif_ids: list[str] = []
     try:
         from app.models.notification import Notification, NotificationState
         from app.models.organisation import Organisation
@@ -1316,30 +1319,36 @@ async def create_maintenance_issue(
             location = prop.name if prop else "a property"
             if unit:
                 location = f"{unit.name}, {location}"
-            notif = Notification(
-                organisation_id=org_id,
-                channel="email",
-                trigger="maintenance_new_request",
-                state=NotificationState.queued,
-                recipient_name=org.name,
-                recipient_email=org.email,
-                subject=f"New Maintenance Request: {issue.title}",
-                body=(
-                    f"A new [{issue.priority.upper()}] maintenance request has been logged for {location}.\n\n"
-                    f"Reference: {issue.reference}\n"
-                    f"Category: {issue.category.title()}\n"
-                    f"Title: {issue.title}\n\n"
-                    f"{('Details: ' + issue.description) if issue.description else ''}\n\n"
-                    f"Please review and assign this request in the Crib maintenance queue."
-                ),
-                queued_at=datetime.now(timezone.utc),
-            )
-            db.add(notif)
-            await db.flush()
-            from app.worker.tasks.notifications import deliver_notification
-            deliver_notification.delay(str(notif.id))
+            _pending: list[str] = []
+            async with db.begin_nested():
+                notif = Notification(
+                    organisation_id=org_id,
+                    channel="email",
+                    trigger="maintenance_new_request",
+                    state=NotificationState.queued,
+                    recipient_name=org.name,
+                    recipient_email=org.email,
+                    subject=f"New Maintenance Request: {issue.title}",
+                    body=(
+                        f"A new [{issue.priority.upper()}] maintenance request has been logged for {location}.\n\n"
+                        f"Reference: {issue.reference}\n"
+                        f"Category: {issue.category.title()}\n"
+                        f"Title: {issue.title}\n\n"
+                        f"{('Details: ' + issue.description) if issue.description else ''}\n\n"
+                        f"Please review and assign this request in the Crib maintenance queue."
+                    ),
+                    queued_at=datetime.now(timezone.utc),
+                )
+                db.add(notif)
+                await db.flush()
+                _pending.append(str(notif.id))
+            _create_notif_ids = _pending
     except Exception:
         log.warning("maintenance.create.notify_manager.failed", extra={"issue_id": str(issue.id)}, exc_info=True)
+    if _create_notif_ids:
+        from app.worker.tasks.notifications import deliver_notification
+        for _nid in _create_notif_ids:
+            deliver_notification.delay(_nid)
 
     pname, uname = await _maint_names(issue, db)
     return _maint_out(issue, property_name=pname, unit_name=uname)
@@ -1387,7 +1396,30 @@ async def transition_maintenance(
     m.state = new_state
 
     if new_state == MaintenanceState.assigned:
-        if body.assigned_to:
+        # Resolve contractor from directory if contractor_id provided
+        contractor_name: str | None = None
+        contractor_phone: str | None = None
+        contractor_email: str | None = None
+        if body.contractor_id:
+            from app.models.contractor import Contractor as _Contractor
+            _c = await db.scalar(
+                select(_Contractor).where(
+                    _Contractor.id == uuid.UUID(body.contractor_id),
+                    _Contractor.organisation_id == m.organisation_id,
+                    _Contractor.is_active.is_(True),
+                )
+            )
+            if not _c:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Contractor not found or inactive",
+                )
+            m.contractor_id = _c.id
+            contractor_name = _c.name
+            contractor_phone = _c.phone
+            contractor_email = _c.email
+            m.assigned_to = _c.name
+        elif body.assigned_to:
             m.assigned_to = body.assigned_to
         m.assigned_at = now
     elif new_state == MaintenanceState.in_progress:
@@ -1400,46 +1432,104 @@ async def transition_maintenance(
     await db.flush()
     await db.refresh(m)
 
-    # Notify tenant of status change when lease is linked (non-fatal)
-    if m.lease_id and new_state not in (MaintenanceState.cancelled,):
-        try:
-            from app.models.lease import Lease
-            from app.models.notification import Notification, NotificationState
-            from app.models.tenant import Tenant
-            lease = await db.scalar(select(Lease).where(Lease.id == m.lease_id))
-            if lease and lease.tenant_id:
-                tenant = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
-                if tenant and tenant.email:
-                    state_labels = {
-                        MaintenanceState.assigned:    "assigned to a technician",
-                        MaintenanceState.in_progress: "now in progress",
-                        MaintenanceState.resolved:    "marked as resolved",
-                        MaintenanceState.closed:      "closed",
-                    }
-                    label = state_labels.get(new_state, new_state)
-                    tenant_name = f"{tenant.first_name or ''} {tenant.last_name or ''}".strip() or tenant.email
-                    notif = Notification(
+    _transition_notif_ids: list[str] = []
+    try:
+        from app.models.notification import Notification, NotificationState
+        _pending_t: list[str] = []
+        async with db.begin_nested():
+            # Notify contractor on assignment
+            if new_state == MaintenanceState.assigned and (contractor_email or contractor_phone):
+                prop_for_notif = await db.scalar(select(Property).where(Property.id == m.property_id)) if m.property_id else None
+                location_str = prop_for_notif.name if prop_for_notif else "a property"
+                if contractor_email:
+                    cn = Notification(
                         organisation_id=m.organisation_id,
                         channel="email",
-                        trigger="maintenance_status_update",
+                        trigger="maintenance_contractor_assigned",
                         state=NotificationState.queued,
-                        recipient_name=tenant_name,
-                        recipient_email=tenant.email,
-                        subject=f"Maintenance Update: {m.title}",
+                        recipient_name=contractor_name,
+                        recipient_email=contractor_email,
+                        subject=f"Maintenance Job Assigned: {m.title}",
                         body=(
-                            f"Dear {tenant_name},\n\n"
-                            f"Your maintenance request '{m.title}' (ref: {m.reference}) has been {label}.\n\n"
-                            f"{'Resolution notes: ' + m.notes if m.notes and new_state == MaintenanceState.resolved else ''}"
-                            f"\n\nIf you have any questions, please contact your property manager."
+                            f"Dear {contractor_name},\n\n"
+                            f"You have been assigned a maintenance job at {location_str}.\n\n"
+                            f"Reference: {m.reference}\n"
+                            f"Category: {m.category.title() if isinstance(m.category, str) else m.category.value.title()}\n"
+                            f"Priority: {m.priority.upper() if isinstance(m.priority, str) else m.priority.value.upper()}\n"
+                            f"Title: {m.title}\n\n"
+                            f"{('Details: ' + m.description) if m.description else ''}\n\n"
+                            f"Please contact the property manager for access arrangements."
                         ),
-                        queued_at=datetime.now(timezone.utc),
+                        queued_at=now,
                     )
-                    db.add(notif)
+                    db.add(cn)
                     await db.flush()
-                    from app.worker.tasks.notifications import deliver_notification
-                    deliver_notification.delay(str(notif.id))
-        except Exception:
-            log.warning("maintenance.transition.notify_tenant.failed", extra={"issue_id": str(m.id)}, exc_info=True)
+                    _pending_t.append(str(cn.id))
+                if contractor_phone:
+                    wa_body = (
+                        f"Hi {contractor_name}, you have been assigned a maintenance job "
+                        f"({m.reference}) at {location_str}: {m.title}. "
+                        f"Priority: {m.priority.upper() if isinstance(m.priority, str) else m.priority.value.upper()}. "
+                        f"Please contact the property manager for details."
+                    )
+                    wn = Notification(
+                        organisation_id=m.organisation_id,
+                        channel="whatsapp",
+                        trigger="maintenance_contractor_assigned",
+                        state=NotificationState.queued,
+                        recipient_name=contractor_name,
+                        recipient_phone=contractor_phone,
+                        subject=None,
+                        body=wa_body,
+                        queued_at=now,
+                    )
+                    db.add(wn)
+                    await db.flush()
+                    _pending_t.append(str(wn.id))
+
+            # Notify tenant of status change when a lease is linked
+            if m.lease_id and new_state not in (MaintenanceState.cancelled,):
+                from app.models.lease import Lease
+                from app.models.tenant import Tenant
+                lease = await db.scalar(select(Lease).where(Lease.id == m.lease_id))
+                if lease and lease.tenant_id:
+                    tenant = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id))
+                    if tenant and tenant.email:
+                        state_labels = {
+                            MaintenanceState.assigned:    "assigned to a technician",
+                            MaintenanceState.in_progress: "now in progress",
+                            MaintenanceState.resolved:    "marked as resolved",
+                            MaintenanceState.closed:      "closed",
+                        }
+                        label = state_labels.get(new_state, new_state)
+                        tenant_name = f"{tenant.first_name or ''} {tenant.last_name or ''}".strip() or tenant.email
+                        tn = Notification(
+                            organisation_id=m.organisation_id,
+                            channel="email",
+                            trigger="maintenance_status_update",
+                            state=NotificationState.queued,
+                            recipient_name=tenant_name,
+                            recipient_email=tenant.email,
+                            subject=f"Maintenance Update: {m.title}",
+                            body=(
+                                f"Dear {tenant_name},\n\n"
+                                f"Your maintenance request '{m.title}' (ref: {m.reference}) has been {label}.\n\n"
+                                f"{'Resolution notes: ' + m.notes if m.notes and new_state == MaintenanceState.resolved else ''}"
+                                f"\n\nIf you have any questions, please contact your property manager."
+                            ),
+                            queued_at=now,
+                        )
+                        db.add(tn)
+                        await db.flush()
+                        _pending_t.append(str(tn.id))
+        _transition_notif_ids = _pending_t
+    except Exception:
+        log.warning("maintenance.transition.notify.failed", extra={"issue_id": str(m.id)}, exc_info=True)
+
+    if _transition_notif_ids:
+        from app.worker.tasks.notifications import deliver_notification
+        for _nid in _transition_notif_ids:
+            deliver_notification.delay(_nid)
 
     pname, uname = await _maint_names(m, db)
     return _maint_out(m, property_name=pname, unit_name=uname)
