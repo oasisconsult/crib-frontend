@@ -166,6 +166,66 @@ async def update_maintenance(
     return resp.json()
 
 
+@registry.register("upload_maintenance_photos")
+async def upload_maintenance_photos(
+    client: RoleClient,
+    input: dict,
+    ctx: ExecutionContext,
+) -> dict:
+    """
+    Simulate uploading completion photos and attaching them to a maintenance issue.
+
+    Steps
+    -----
+    1. Call ``POST /api/v1/upload/presign`` for each photo to obtain public URLs.
+    2. Attach those URLs to the issue via ``PUT /api/v1/maintenance/{id}``.
+
+    The actual byte transfer to storage is skipped — we test that the presign
+    endpoint works and that ``photo_urls`` are persisted on the issue.
+
+    Input keys
+    ----------
+    issueId  : required
+    count    : number of dummy photos to attach (default 2)
+    """
+    issue_id = input["issueId"]
+    count = int(input.get("count", 2))
+
+    photo_urls: list[str] = []
+    for i in range(count):
+        presign_resp = await client.post(
+            "/api/v1/upload/presign",
+            json={
+                "filename": f"completion_photo_{i + 1}.jpg",
+                "mimeType": "image/jpeg",
+                "category": "inspection_photo",
+            },
+        )
+        if presign_resp.status_code not in (200, 201):
+            raise StepError(
+                f"upload_maintenance_photos presign failed (photo {i + 1}): "
+                f"{presign_resp.status_code} {presign_resp.text}",
+                step_name=input.get("_step_name", "upload_maintenance_photos"),
+                action="upload_maintenance_photos",
+            )
+        photo_urls.append(presign_resp.json()["publicUrl"])
+
+    update_resp = await client.put(
+        f"/api/v1/maintenance/{issue_id}",
+        json={"photoUrls": photo_urls},
+    )
+    if update_resp.status_code not in (200, 201):
+        raise StepError(
+            f"upload_maintenance_photos update failed: "
+            f"{update_resp.status_code} {update_resp.text}",
+            step_name=input.get("_step_name", "upload_maintenance_photos"),
+            action="upload_maintenance_photos",
+        )
+    result = update_resp.json()
+    result["_uploadedPhotoUrls"] = photo_urls
+    return result
+
+
 @registry.register("list_maintenance")
 async def list_maintenance(
     client: RoleClient,

@@ -135,6 +135,33 @@ async def test_workflow_debug_mode_runs_without_error(client: AsyncClient, tmp_p
 # ── Assertion system ──────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
+async def test_maintenance_lifecycle_with_photos(client: AsyncClient, tmp_path):
+    """
+    Full lifecycle including completion photo upload:
+      property → contractor → issue reported → assigned → in_progress →
+      upload 2 completion photos → resolved → closed.
+
+    Asserts photos are stored on the issue and the contractor is persisted
+    through to final state.
+    """
+    runner = WorkflowRunner(client, debug=False, snapshot_dir=tmp_path)
+    ctx = await runner.run(WORKFLOWS_DIR / "maintenance_with_photos.yaml")
+
+    assert ctx.get("issue_final.state") == "closed"
+    assert ctx.get("issue_final.contractorId") == ctx.get("contractor.id")
+
+    uploaded_urls = ctx.get("issue_with_photos._uploadedPhotoUrls")
+    assert uploaded_urls is not None, "Photo URLs were not returned by upload action"
+    assert len(uploaded_urls) == 2, f"Expected 2 photos, got {len(uploaded_urls)}"
+
+    stored_urls = ctx.get("issue_with_photos.photoUrls")
+    assert stored_urls is not None, "photoUrls not set on issue after upload"
+    assert len(stored_urls) >= 1, "At least one photo URL should be stored on the issue"
+
+    print("\n" + runner.summary())
+
+
+@pytest.mark.asyncio
 async def test_assertion_step_raises_on_mismatch(client: AsyncClient):
     """
     Unit-test the assertion action in isolation: mismatched values must raise

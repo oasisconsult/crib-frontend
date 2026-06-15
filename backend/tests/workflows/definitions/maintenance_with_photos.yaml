@@ -1,0 +1,163 @@
+name: maintenance_with_photos
+description: >
+  Maintenance lifecycle with completion photo uploads.
+  property setup → contractor creation → issue reported → assigned →
+  in_progress → upload completion photos → resolved → closed.
+  Validates photo attachment at the in_progress step.
+
+steps:
+  # ── Setup ────────────────────────────────────────────────────────────────────
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "Photo Upload Test Property"
+      type: flat
+    save_as: property
+
+  - name: create_contractor
+    action: create_contractor
+    as: manager
+    input:
+      name: "Alice Electrician"
+      specialty: electrical
+      phone: "+256700333444"
+      ratePerDay: 200000
+    save_as: contractor
+
+  # ── Report maintenance issue ──────────────────────────────────────────────────
+
+  - name: report_issue
+    action: create_maintenance
+    as: manager
+    input:
+      propertyId: "${property.id}"
+      title: "Faulty wiring in bedroom"
+      description: "Circuit breaker keeps tripping, potential fire hazard"
+      category: electrical
+      priority: urgent
+      reportedBy: "Property Manager"
+      reportedById: "manager-1"
+    save_as: issue
+
+  - name: assert_issue_reported
+    action: assert_field
+    input:
+      target: "${issue.state}"
+      equals: reported
+
+  # ── Assign contractor ────────────────────────────────────────────────────────
+
+  - name: assign_contractor
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue.id}"
+      toState: assigned
+      contractorId: "${contractor.id}"
+    save_as: issue_assigned
+    retry:
+      max: 2
+      delay: 0.3
+
+  - name: assert_state_assigned
+    action: assert_field
+    input:
+      target: "${issue_assigned.state}"
+      equals: assigned
+
+  - name: assert_contractor_linked
+    action: assert_field
+    input:
+      target: "${issue_assigned.contractorId}"
+      equals: "${contractor.id}"
+
+  # ── Start work ───────────────────────────────────────────────────────────────
+
+  - name: start_work
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue_assigned.id}"
+      toState: in_progress
+    save_as: issue_in_progress
+
+  - name: assert_state_in_progress
+    action: assert_field
+    input:
+      target: "${issue_in_progress.state}"
+      equals: in_progress
+
+  # ── Upload completion photos ──────────────────────────────────────────────────
+
+  - name: upload_completion_photos
+    action: upload_maintenance_photos
+    as: manager
+    input:
+      issueId: "${issue_in_progress.id}"
+      count: 2
+    save_as: issue_with_photos
+
+  - name: assert_photos_attached
+    action: assert_field
+    input:
+      target: "${issue_with_photos.photoUrls}"
+      not_null: true
+
+  # ── Complete job ──────────────────────────────────────────────────────────────
+
+  - name: resolve_issue
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue_with_photos.id}"
+      toState: resolved
+    save_as: issue_resolved
+
+  - name: assert_state_resolved
+    action: assert_field
+    input:
+      target: "${issue_resolved.state}"
+      equals: resolved
+
+  - name: assert_resolved_at_set
+    action: assert_field
+    input:
+      target: "${issue_resolved.resolvedAt}"
+      not_null: true
+
+  - name: close_issue
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue_resolved.id}"
+      toState: closed
+    save_as: issue_closed
+
+  - name: assert_state_closed
+    action: assert_field
+    input:
+      target: "${issue_closed.state}"
+      equals: closed
+
+  # ── Verify final state via fresh GET ─────────────────────────────────────────
+
+  - name: fetch_final
+    action: get_maintenance
+    as: manager
+    input:
+      issueId: "${issue_closed.id}"
+    save_as: issue_final
+
+  - name: assert_final_closed
+    action: assert_field
+    input:
+      target: "${issue_final.state}"
+      equals: closed
+
+  - name: assert_contractor_persisted
+    action: assert_field
+    input:
+      target: "${issue_final.contractorId}"
+      equals: "${contractor.id}"
