@@ -29,8 +29,9 @@ async def list_contractors(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    org_id = None if current_user.has_role("superadmin") else get_org_id(current_user)
     return await contractor_service.list_contractors(
-        org_id=get_org_id(current_user),
+        org_id=org_id,
         db=db,
         specialty=specialty,
         is_active=is_active,
@@ -68,7 +69,8 @@ async def get_contractor(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await contractor_service.get_contractor(contractor_id, get_org_id(current_user), db)
+    org_id = None if current_user.has_role("superadmin") else get_org_id(current_user)
+    return await contractor_service.get_contractor(contractor_id, org_id, db)
 
 
 @router.put("/contractors/{contractor_id}", response_model=ContractorOut)
@@ -78,8 +80,9 @@ async def update_contractor(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    org_id = None if current_user.has_role("superadmin") else get_org_id(current_user)
     return await contractor_service.update_contractor(
-        contractor_id, body, get_org_id(current_user), db
+        contractor_id, body, org_id, db
     )
 
 
@@ -89,6 +92,7 @@ async def deactivate_contractor(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    org_id = None if current_user.has_role("superadmin") else get_org_id(current_user)
     await contractor_service.deactivate_contractor(
-        contractor_id, get_org_id(current_user), db
+        contractor_id, org_id, db
     )

@@ -39,6 +39,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogFooter,
@@ -137,7 +138,7 @@ function AssignModal({
   issueId: string;
   issueCategory: string;
 }) {
-  const [contractorId, setContractorId] = useState("");
+  const [contractorId, setContractorId] = useState("none");
   const [freeText, setFreeText]         = useState("");
 
   const { data: contractorsPage, isLoading } = useContractors({
@@ -151,12 +152,12 @@ function AssignModal({
   const selected = contractors.find((c) => c.id === contractorId);
 
   function handleAssign() {
-    if (!contractorId && !freeText.trim()) return;
+    if (contractorId === "none" && !freeText.trim()) return;
     transition(
       {
         id: issueId,
         event: "ISSUE_ASSIGNED",
-        payload: contractorId
+        payload: contractorId !== "none"
           ? { contractorId }
           : { assignedTo: freeText.trim() },
       },
@@ -166,9 +167,12 @@ function AssignModal({
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-sm" aria-describedby="assign-dialog-description">
         <DialogHeader>
           <DialogTitle>Assign Contractor</DialogTitle>
+          <DialogDescription id="assign-dialog-description">
+            Pick a contractor from your directory or enter a name manually.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -182,7 +186,7 @@ function AssignModal({
                   <SelectValue placeholder="Select a contractor…" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">— None —</SelectItem>
+                  <SelectItem value="none">— None —</SelectItem>
                   {contractors.map((c: Contractor) => (
                     <SelectItem key={c.id} value={c.id}>
                       <span className="font-medium">{c.name}</span>
@@ -222,7 +226,7 @@ function AssignModal({
             <Input
               id="assign-free"
               value={freeText}
-              onChange={(e) => { setFreeText(e.target.value); setContractorId(""); }}
+              onChange={(e) => { setFreeText(e.target.value); setContractorId("none"); }}
               placeholder="Contractor or staff name"
               aria-label="Enter contractor name manually"
             />
@@ -234,7 +238,7 @@ function AssignModal({
           <Button
             onClick={handleAssign}
             loading={isPending}
-            disabled={!contractorId && !freeText.trim()}
+            disabled={contractorId === "none" && !freeText.trim()}
           >
             <HardHat className="h-4 w-4" />
             Assign
