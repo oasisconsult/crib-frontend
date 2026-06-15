@@ -1,6 +1,6 @@
 # Crib — Development Phases & Sprint Status
 
-_Last updated: 2026-06-14 (post-sprint 3.2)_
+_Last updated: 2026-06-15 (post-sprint 3.4)_
 
 ---
 
@@ -57,9 +57,9 @@ _Features that support multi-property companies, self-service, reporting, and in
 |---|--------|--------|-------|
 | 3.1 | EFRIS mock & integration | ✅ Done | Mock FastAPI server on port 8099, live URA API client (T101/T103/T109), Celery task with 5-retry backoff, compliance audit log, 11 tests green. Shipped 2026-06-13 |
 | 3.2 | Maintenance request logging | ✅ Done | Model+migration (006), service, API endpoints, state machine (reported→assigned→in_progress→resolved→closed), Celery notifications (manager on create, tenant on status change), full frontend (list/detail/create/edit/transition) |
-| 3.3 | Maintenance workflow | 🔜 Next | Assign → in-progress → completed; contractor management; status notifications |
-| 3.4 | Maintenance photo evidence | ⬜ Planned | Before/after photo upload per job; stored with S3/MinIO |
-| 3.5 | Tenant self-service portal | ⬜ Planned | Pay rent, log issues, view statements, download documents; mobile-first |
+| 3.3 | Maintenance workflow | ✅ Done | Contractor directory (CRUD), assign modal (from directory or free-text), full state machine (reported→assigned→in_progress→resolved→closed/cancelled), email+WhatsApp to contractor on assignment, tenant email on every status change. Shipped 2026-06-15 |
+| 3.4 | Maintenance photo evidence | ✅ Done | Completion photo upload gallery on detail page (camera + gallery picker), MinIO/S3 URL proxy via serve endpoint, lightbox, delete. Workflow engine E2E test green. Shipped 2026-06-15 |
+| 3.5 | Tenant self-service portal | 🔜 Next | Pay rent, log issues, view statements, download documents; mobile-first |
 | 3.6 | Tenant communication / announcements | ⬜ Planned | Bulk SMS/email/WhatsApp to all tenants in a property or organisation |
 | 3.7 | Utility billing | ⬜ Planned | Water/electricity/garbage metered per unit; monthly bill generation; added to invoice |
 | 3.8 | Vacancy marketing | ⬜ Planned | List vacant units; basic listing page; optional portal listing integration |
@@ -97,7 +97,19 @@ CRUD service, REST API (`/maintenance`), Celery email notifications
 frontend — list page with tabs + filters, detail page with transition
 buttons and edit form.
 
-### Sprint 3.3 — Maintenance Workflow 🔜 Next
+### Sprint 3.3 — Maintenance Workflow ✅ Complete
+
+Delivered: Contractor directory (full CRUD, specialty/active filtering), assign modal on
+maintenance detail (pick from directory or enter free-text name), full state machine
+(reported→assigned→in_progress→resolved→closed/cancelled), email + WhatsApp notification
+to contractor on assignment, tenant email notification on every state change.
+
+### Sprint 3.4 — Maintenance Photo Evidence ✅ Complete
+
+Delivered: Completion photo upload gallery on maintenance detail page (camera capture +
+gallery picker), MinIO/S3 URLs rewritten through backend serve proxy (`toDisplayUrl`),
+lightbox for full-size preview, per-photo delete, badge count. Workflow engine E2E test
+covers the full photo upload and retrieval flow.
 
 ---
 
