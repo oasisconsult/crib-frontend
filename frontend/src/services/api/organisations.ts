@@ -43,6 +43,17 @@ export interface ProvisionOrganisationRequest {
   currency?: string;
 }
 
+export interface OrgPaymentSettings {
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankAccountName?: string;
+  bankBranch?: string;
+  swiftCode?: string;
+  bankInstructions?: string;
+  mtnPaybill?: string;
+  airtelPaybill?: string;
+}
+
 export const organisationsApi = {
   getMe: () => apiGet<Organisation>("/organisations/me"),
   updateMe: (body: UpdateOrganisationRequest) =>
@@ -51,4 +62,8 @@ export const organisationsApi = {
     apiPost<Organisation>("/organisations/provision", body),
   updateFeatures: (features: OrgFeatures) =>
     apiPatch<Organisation>("/organisations/me/features", { features }),
+  getPaymentSettings: () =>
+    apiGet<OrgPaymentSettings>("/organisations/me/payment-settings"),
+  updatePaymentSettings: (body: OrgPaymentSettings) =>
+    apiPatch<OrgPaymentSettings>("/organisations/me/payment-settings", body),
 };

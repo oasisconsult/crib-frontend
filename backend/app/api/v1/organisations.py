@@ -245,6 +245,97 @@ async def update_my_organisation(
     )
 
 
+# ── Payment settings ───────────────────────────────────────────────────────────
+
+
+class OrgPaymentSettingsOut(CamelModel):
+    bank_name: str | None = None
+    bank_account_number: str | None = None
+    bank_account_name: str | None = None
+    bank_branch: str | None = None
+    swift_code: str | None = None
+    bank_instructions: str | None = None
+    mtn_paybill: str | None = None
+    airtel_paybill: str | None = None
+
+
+class OrgPaymentSettingsUpdate(CamelModel):
+    bank_name: str | None = None
+    bank_account_number: str | None = None
+    bank_account_name: str | None = None
+    bank_branch: str | None = None
+    swift_code: str | None = None
+    bank_instructions: str | None = None
+    mtn_paybill: str | None = None
+    airtel_paybill: str | None = None
+
+
+def _payment_settings_out(org: Organisation) -> OrgPaymentSettingsOut:
+    ps: dict = org.payment_settings or {}
+    return OrgPaymentSettingsOut(
+        bank_name=ps.get("bank_name"),
+        bank_account_number=ps.get("bank_account_number"),
+        bank_account_name=ps.get("bank_account_name"),
+        bank_branch=ps.get("bank_branch"),
+        swift_code=ps.get("swift_code"),
+        bank_instructions=ps.get("bank_instructions"),
+        mtn_paybill=ps.get("mtn_paybill"),
+        airtel_paybill=ps.get("airtel_paybill"),
+    )
+
+
+@router.get("/me/payment-settings", response_model=OrgPaymentSettingsOut)
+async def get_payment_settings(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OrgPaymentSettingsOut:
+    """
+    Return the org's payment settings (bank details, mobile money paybills).
+    Accessible by all roles including tenant — tenants need this to pay rent.
+    """
+    if not current_user.profile.organisation_id:
+        return OrgPaymentSettingsOut()
+    result = await db.execute(
+        select(Organisation).where(Organisation.id == current_user.profile.organisation_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found")
+    return _payment_settings_out(org)
+
+
+@router.patch("/me/payment-settings", response_model=OrgPaymentSettingsOut)
+async def update_payment_settings(
+    body: OrgPaymentSettingsUpdate,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> OrgPaymentSettingsOut:
+    """
+    Update org payment settings. Owner, manager, or superadmin only.
+    Partial update — only supplied (non-None) fields are written.
+    """
+    if not current_user.has_role("owner", "manager", "superadmin"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    if not current_user.profile.organisation_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No organisation found")
+
+    result = await db.execute(
+        select(Organisation).where(Organisation.id == current_user.profile.organisation_id)
+    )
+    org = result.scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organisation not found")
+
+    ps: dict = dict(org.payment_settings or {})
+    for field in OrgPaymentSettingsUpdate.model_fields:
+        value = getattr(body, field)
+        if value is not None:
+            ps[field] = value
+    org.payment_settings = ps
+    await db.flush()
+    return _payment_settings_out(org)
+
+
 # ── Feature flags ──────────────────────────────────────────────────────────────
 
 _ALLOWED_FEATURE_KEYS = {"manualPayments", "rentIncreaseCapOverride"}

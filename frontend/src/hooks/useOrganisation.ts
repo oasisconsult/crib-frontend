@@ -2,7 +2,7 @@
 
 import { isAxiosError } from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { organisationsApi, type Organisation, type OrgFeatures, type UpdateOrganisationRequest, type ProvisionOrganisationRequest } from "@/services/api/organisations";
+import { organisationsApi, type Organisation, type OrgFeatures, type OrgPaymentSettings, type UpdateOrganisationRequest, type ProvisionOrganisationRequest } from "@/services/api/organisations";
 
 const ORG_KEY = ["organisation", "me"] as const;
 
@@ -45,5 +45,23 @@ export function useProvisionOrganisation() {
   return useMutation({
     mutationFn: (body: ProvisionOrganisationRequest) => organisationsApi.provision(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ORG_KEY }),
+  });
+}
+
+const PAYMENT_SETTINGS_KEY = ["organisation", "payment-settings"] as const;
+
+export function useOrgPaymentSettings() {
+  return useQuery<OrgPaymentSettings>({
+    queryKey: PAYMENT_SETTINGS_KEY,
+    queryFn: () => organisationsApi.getPaymentSettings(),
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useUpdateOrgPaymentSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: OrgPaymentSettings) => organisationsApi.updatePaymentSettings(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: PAYMENT_SETTINGS_KEY }),
   });
 }
