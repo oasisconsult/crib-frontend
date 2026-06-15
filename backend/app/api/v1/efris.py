@@ -341,11 +341,11 @@ async def get_efris_audit_log(
     ]
 
     return PaginatedResponse(
-        items=items,
+        data=items,
         total=total or 0,
         page=page,
         page_size=page_size,
-        pages=max(1, ((total or 0) + page_size - 1) // page_size),
+        has_next=(page * page_size) < (total or 0),
     )
 
 
@@ -401,11 +401,11 @@ async def get_failed_efris_payments(
     ]
 
     return PaginatedResponse(
-        items=items,
+        data=items,
         total=total or 0,
         page=page,
         page_size=page_size,
-        pages=max(1, ((total or 0) + page_size - 1) // page_size),
+        has_next=(page * page_size) < (total or 0),
     )
 
 
@@ -479,11 +479,11 @@ async def get_efris_compliance_payments(
     ]
 
     return PaginatedResponse(
-        items=items,
+        data=items,
         total=total or 0,
         page=page,
         page_size=page_size,
-        pages=max(1, ((total or 0) + page_size - 1) // page_size),
+        has_next=(page * page_size) < (total or 0),
     )
 
 

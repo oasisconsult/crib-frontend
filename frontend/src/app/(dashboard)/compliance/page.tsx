@@ -343,7 +343,7 @@ export default function CompliancePage() {
             ) : (
               <DataTable
                 columns={columns}
-                data={data?.items ?? []}
+                data={data?.data ?? []}
                 loading={loading}
                 rowKey={(p) => p.id}
                 totalItems={data?.total}
