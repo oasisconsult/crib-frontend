@@ -266,6 +266,12 @@ async def send_notification(
     return _notif_out(notif)
 
 
+async def get_notification(
+    notification_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
+) -> NotificationOut:
+    return _notif_out(await _get_notification(notification_id, org_id, db))
+
+
 async def mark_read(
     notification_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSession
 ) -> NotificationOut:

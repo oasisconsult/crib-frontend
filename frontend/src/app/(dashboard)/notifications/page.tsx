@@ -16,8 +16,9 @@ import { StatusBadge } from "@/components/common/StatusBadge";
 import { FilterBar } from "@/components/common/FilterBar";
 import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDate } from "@/utils/formatters";
-import { useNotifications, useNotificationStats, useSendNotification } from "@/hooks/useNotifications";
+import { formatDateTime } from "@/utils/formatters";
+import { useNotifications, useNotification, useNotificationStats, useSendNotification } from "@/hooks/useNotifications";
+import { Separator } from "@/components/ui/separator";
 import { cn } from "@/utils/cn";
 import type { Notification, NotificationChannel, FilterConfig } from "@/types";
 
@@ -60,11 +61,16 @@ const COLUMNS: Column<Notification>[] = [
   },
   {
     key: "subject",
-    header: "Subject",
+    header: "Subject / Preview",
     render: (n) => (
-      <span className="text-sm max-w-xs truncate block">
-        {n.subject ?? n.body?.slice(0, 60) ?? "—"}
-      </span>
+      <div>
+        <span className="text-sm max-w-xs truncate block">
+          {n.subject ?? n.body?.slice(0, 60) ?? "—"}
+        </span>
+        {n.state === "failed" && n.failureReason && (
+          <span className="text-xs text-red-500 truncate block max-w-xs">{n.failureReason}</span>
+        )}
+      </div>
     ),
   },
   {
@@ -77,7 +83,7 @@ const COLUMNS: Column<Notification>[] = [
     header: "Queued",
     sortable: true,
     render: (n) => (
-      <span className="text-muted-foreground">{formatDate(n.queuedAt)}</span>
+      <span className="text-muted-foreground text-sm">{formatDateTime(n.queuedAt)}</span>
     ),
   },
 ];
@@ -111,6 +117,133 @@ function panelFiltersToConfig(active: ActiveFilters): FilterConfig[] {
   return Object.entries(active)
     .filter(([, v]) => v)
     .map(([field, value]) => ({ field, operator: "eq" as const, value }));
+}
+
+/* ── Notification Detail Drawer ──────────────────────────────────────────── */
+
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="text-sm">{value ?? "—"}</span>
+    </div>
+  );
+}
+
+function NotificationDetailDrawer({
+  id,
+  onClose,
+}: {
+  id: string;
+  onClose: () => void;
+}) {
+  const { data: n, isLoading } = useNotification(id);
+  const meta = n ? CHANNEL_META[n.channel] : undefined;
+  const Icon = meta?.icon ?? MessageSquare;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex justify-end"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+      <div className="relative z-10 flex flex-col h-full w-full max-w-md bg-[hsl(var(--card))] border-l border-border shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Icon className="h-4 w-4 text-muted-foreground" />
+            <span className="font-semibold">{meta?.label ?? n?.channel ?? "Notification"}</span>
+            {n && <StatusBadge state={n.state} domain="notification" />}
+          </div>
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {isLoading || !n ? (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+            {isLoading ? "Loading…" : "Not found"}
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            {/* Failure banner */}
+            {n.state === "failed" && (
+              <div className="rounded-md bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-4 py-3 space-y-1">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                  <XCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="text-sm font-semibold">Delivery Failed</span>
+                </div>
+                {n.failureReason && (
+                  <p className="text-sm text-red-600 dark:text-red-400 ml-6">{n.failureReason}</p>
+                )}
+                {n.retryCount > 0 && (
+                  <p className="text-xs text-red-500/80 ml-6">Retried {n.retryCount} time{n.retryCount !== 1 ? "s" : ""}</p>
+                )}
+              </div>
+            )}
+
+            {/* Recipient */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recipient</p>
+              <div className="grid grid-cols-2 gap-3">
+                <DetailRow label="Name" value={n.recipientName} />
+                {n.recipientEmail && <DetailRow label="Email" value={<a href={`mailto:${n.recipientEmail}`} className="text-primary hover:underline">{n.recipientEmail}</a>} />}
+                {n.recipientPhone && <DetailRow label="Phone" value={<a href={`tel:${n.recipientPhone}`} className="text-primary hover:underline">{n.recipientPhone}</a>} />}
+                <DetailRow label="Trigger" value={n.trigger?.replace(/_/g, " ")} />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Message */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Message</p>
+              {n.subject && <DetailRow label="Subject" value={n.subject} />}
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Body</span>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed bg-muted/30 rounded-md px-3 py-2">{n.body}</p>
+              </div>
+              {n.templateId && (
+                <DetailRow label="Template ID" value={<span className="font-mono text-xs text-muted-foreground">{n.templateId}</span>} />
+              )}
+              {n.externalMessageId && (
+                <DetailRow label="Provider Message ID" value={<span className="font-mono text-xs text-muted-foreground">{n.externalMessageId}</span>} />
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Timeline */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Timeline</p>
+              <div className="grid grid-cols-2 gap-3">
+                <DetailRow label="Queued" value={formatDateTime(n.queuedAt)} />
+                {n.sentAt     && <DetailRow label="Sent"      value={formatDateTime(n.sentAt)} />}
+                {n.deliveredAt && <DetailRow label="Delivered" value={formatDateTime(n.deliveredAt)} />}
+                {n.readAt     && <DetailRow label="Read"      value={formatDateTime(n.readAt)} />}
+                {n.failedAt   && <DetailRow label="Failed At" value={formatDateTime(n.failedAt)} />}
+              </div>
+            </div>
+
+            {/* Context links */}
+            {(n.propertyId || n.leaseId || n.paymentId) && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Linked Records</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {n.propertyId && <DetailRow label="Property" value={<span className="font-mono text-xs">{n.propertyId.slice(0, 8)}…</span>} />}
+                    {n.leaseId    && <DetailRow label="Lease"    value={<span className="font-mono text-xs">{n.leaseId.slice(0, 8)}…</span>} />}
+                    {n.paymentId  && <DetailRow label="Payment"  value={<span className="font-mono text-xs">{n.paymentId.slice(0, 8)}…</span>} />}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /* ── Compose Dialog ──────────────────────────────────────────────────────── */
@@ -247,6 +380,7 @@ export default function NotificationsPage() {
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
   const [composing, setComposing] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const { data, isLoading } = useNotifications({
     page,
@@ -346,6 +480,7 @@ export default function NotificationsPage() {
               columns={COLUMNS}
               loading={isLoading}
               rowKey={(n) => n.id}
+              onRowClick={(n) => setSelectedId(n.id)}
               emptyTitle="No notifications found"
               emptyDescription={
                 t === "all"
@@ -360,6 +495,11 @@ export default function NotificationsPage() {
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Detail drawer */}
+      {selectedId && (
+        <NotificationDetailDrawer id={selectedId} onClose={() => setSelectedId(null)} />
+      )}
 
       {/* Compose overlay */}
       {composing && (

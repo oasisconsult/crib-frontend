@@ -146,6 +146,18 @@ async def get_stats(
     return await notification_service.get_stats(org_id=get_org_id(current_user), db=db)
 
 
+@router.get("/notifications/{notification_id}", response_model=NotificationOut)
+async def get_notification(
+    notification_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    org_id = None if current_user.has_role("superadmin") else get_org_id(current_user)
+    return await notification_service.get_notification(
+        notification_id=notification_id, org_id=org_id, db=db
+    )
+
+
 @router.post("/notifications/{notification_id}/read", response_model=NotificationOut)
 async def mark_read(
     notification_id: uuid.UUID,

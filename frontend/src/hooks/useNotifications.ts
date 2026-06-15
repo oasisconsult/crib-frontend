@@ -14,6 +14,14 @@ export function useNotifications(params?: QueryParams) {
   });
 }
 
+export function useNotification(id: string | null) {
+  return useQuery({
+    queryKey: ["notifications", id],
+    queryFn: () => notificationsApi.get(id!),
+    enabled: !!id,
+  });
+}
+
 export function useNotificationStats() {
   return useQuery({
     queryKey: queryKeys.notifications.stats(),

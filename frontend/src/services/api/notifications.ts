@@ -6,6 +6,9 @@ export const notificationsApi = {
   list: (params?: QueryParams) =>
     apiGet<PaginatedResponse<Notification>>("/notifications", toNotificationParams(params)),
 
+  get: (id: string) =>
+    apiGet<Notification>(`/notifications/${id}`),
+
   send: (data: Omit<Notification, "id" | "state" | "queuedAt" | "retryCount">) =>
     apiPost<Notification>("/notifications/send", data),
 
