@@ -1,18 +1,25 @@
 "use client";
 
 import { useEffect } from "react";
-import { LogOut, Sun, Moon } from "lucide-react";
+import { LogOut, Sun, Moon, Bell } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { AuthInitializer } from "@/components/providers/AuthInitializer";
 import { useAppStore } from "@/store/useAppStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useNotificationStats } from "@/hooks/useNotifications";
 
 function PortalNav() {
   const user = useAppStore((s) => s.user);
   const { logout } = useAuth();
   const { isDark, setPreference } = useTheme();
+  const { data: notifStats } = useNotificationStats();
+
+  const unreadCount = Math.max(
+    0,
+    (notifStats?.delivered ?? 0) - (notifStats?.read ?? 0),
+  );
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -41,6 +48,24 @@ function PortalNav() {
               <Sun className="h-4 w-4" />
             ) : (
               <Moon className="h-4 w-4" />
+            )}
+          </button>
+          <button
+            aria-label={
+              unreadCount > 0
+                ? `${unreadCount} unread notification${unreadCount === 1 ? "" : "s"}`
+                : "Notifications"
+            }
+            className="relative flex h-8 w-8 items-center justify-center rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-primary/10 transition-colors"
+          >
+            <Bell className="h-4 w-4" />
+            {unreadCount > 0 && (
+              <span
+                aria-hidden="true"
+                className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground"
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
             )}
           </button>
           {user && (
