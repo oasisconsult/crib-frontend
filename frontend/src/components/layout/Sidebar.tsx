@@ -132,6 +132,12 @@ const NAV_ITEMS: NavItem[] = [
     permission: { action: "read", resource: "analytics" },
   },
   {
+    href: "/compliance",
+    label: "EFRIS Compliance",
+    icon: BadgeCheck,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
     href: "/inspections",
     label: "Inspections",
     icon: ClipboardList,

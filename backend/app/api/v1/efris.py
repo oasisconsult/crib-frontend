@@ -97,6 +97,23 @@ class EfrisFailedPaymentOut(CamelModel):
     created_at: str
 
 
+class EfrisCompliancePaymentOut(CamelModel):
+    id: str
+    lease_id: str
+    reference: str | None
+    tenant_name: str | None
+    amount: float
+    currency: str
+    category: str
+    paid_at: str | None
+    efris_status: str | None
+    efris_receipt_number: str | None
+    efris_receipt_date: str | None
+    efris_failure_reason: str | None
+    efris_retry_count: int
+    created_at: str
+
+
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _config_out(c: OrganisationEfrisConfig) -> EfrisConfigOut:
@@ -381,6 +398,84 @@ async def get_failed_efris_payments(
             created_at=p.created_at.isoformat(),
         )
         for p in rows
+    ]
+
+    return PaginatedResponse(
+        items=items,
+        total=total or 0,
+        page=page,
+        page_size=page_size,
+        pages=max(1, ((total or 0) + page_size - 1) // page_size),
+    )
+
+
+# ── Compliance payments endpoint ──────────────────────────────────────────────
+
+@router.get(
+    "/organisations/{org_id}/efris/payments",
+    response_model=PaginatedResponse[EfrisCompliancePaymentOut],
+)
+async def get_efris_compliance_payments(
+    org_id: uuid.UUID,
+    efris_status: str | None = Query(default=None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: CurrentUser = _read,
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedResponse[EfrisCompliancePaymentOut]:
+    """All payments with EFRIS status for the compliance dashboard.
+
+    Filter by efris_status=issued|failed|pending|skipped to narrow results.
+    Joins with Lease and Tenant to surface tenant name per payment.
+    """
+    from sqlalchemy import func, or_
+    from app.models.lease import Lease
+    from app.models.tenant import Tenant
+
+    scoped_org_id = get_org_id(current_user) or org_id
+    offset = (page - 1) * page_size
+
+    base_filter = [
+        Payment.organisation_id == scoped_org_id,
+        Payment.efris_status.isnot(None),
+    ]
+    if efris_status:
+        base_filter.append(Payment.efris_status == efris_status)
+
+    total = await db.scalar(
+        select(func.count()).select_from(Payment).where(*base_filter)
+    )
+
+    rows = (await db.execute(
+        select(Payment, Tenant.first_name, Tenant.last_name)
+        .outerjoin(Lease, Lease.id == Payment.lease_id)
+        .outerjoin(Tenant, Tenant.id == Lease.tenant_id)
+        .where(*base_filter)
+        .order_by(desc(Payment.paid_at))
+        .offset(offset)
+        .limit(page_size)
+    )).all()
+
+    items = [
+        EfrisCompliancePaymentOut(
+            id=str(p.id),
+            lease_id=str(p.lease_id),
+            reference=p.reference,
+            tenant_name=(
+                f"{first_name or ''} {last_name or ''}".strip() or None
+            ),
+            amount=float(p.amount),
+            currency=p.currency,
+            category=p.category,
+            paid_at=p.paid_at.isoformat() if p.paid_at else None,
+            efris_status=p.efris_status,
+            efris_receipt_number=p.efris_receipt_number,
+            efris_receipt_date=p.efris_receipt_date.isoformat() if p.efris_receipt_date else None,
+            efris_failure_reason=p.efris_failure_reason,
+            efris_retry_count=p.efris_retry_count or 0,
+            created_at=p.created_at.isoformat(),
+        )
+        for p, first_name, last_name in rows
     ]
 
     return PaginatedResponse(

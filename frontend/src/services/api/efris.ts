@@ -61,6 +61,23 @@ export interface EfrisFailedPayment {
   createdAt: string;
 }
 
+export interface EfrisCompliancePayment {
+  id: string;
+  leaseId: string;
+  reference?: string | null;
+  tenantName?: string | null;
+  amount: number;
+  currency: string;
+  category: string;
+  paidAt?: string | null;
+  efrisStatus?: string | null;
+  efrisReceiptNumber?: string | null;
+  efrisReceiptDate?: string | null;
+  efrisFailureReason?: string | null;
+  efrisRetryCount: number;
+  createdAt: string;
+}
+
 export const efrisApi = {
   getConfig: (orgId: string) =>
     apiGet<EfrisConfig | null>(`/organisations/${orgId}/efris/config`),
@@ -87,5 +104,11 @@ export const efrisApi = {
     apiPost<{ queued: boolean; paymentId: string }>(
       `/leases/${leaseId}/payments/${paymentId}/efris/retry`,
       {},
+    ),
+
+  getCompliancePayments: (orgId: string, status?: string, page = 1, pageSize = 20) =>
+    apiGet<PaginatedResponse<EfrisCompliancePayment>>(
+      `/organisations/${orgId}/efris/payments`,
+      { ...(status ? { efrisStatus: status } : {}), page, pageSize },
     ),
 };

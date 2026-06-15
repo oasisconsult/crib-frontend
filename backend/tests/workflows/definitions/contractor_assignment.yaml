@@ -1,0 +1,70 @@
+name: contractor_assignment
+description: >
+  Focused test of contractor assignment and cancellation paths.
+  Creates a property and issue, assigns a contractor, then cancels
+  to verify the cancellation state transition works correctly.
+
+steps:
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "Assignment Test Property"
+    save_as: property
+
+  - name: create_contractor
+    action: create_contractor
+    as: manager
+    input:
+      name: "Alice Electrician"
+      specialty: electrical
+      phone: "+256700999111"
+    save_as: contractor
+
+  - name: assert_contractor_not_null
+    action: assert_field
+    input:
+      target: "${contractor.id}"
+      not_null: true
+
+  - name: report_issue
+    action: create_maintenance
+    as: manager
+    input:
+      propertyId: "${property.id}"
+      title: "Flickering lights in bedroom"
+      description: "Lights flicker when AC is on"
+      category: electrical
+      priority: medium
+      reportedBy: "Tenant"
+      reportedById: "tenant-reporter"
+    save_as: issue
+
+  - name: assign_contractor
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue.id}"
+      toState: assigned
+      contractorId: "${contractor.id}"
+    save_as: issue_assigned
+
+  - name: assert_assigned
+    action: assert_field
+    input:
+      target: "${issue_assigned.state}"
+      equals: assigned
+
+  - name: cancel_issue
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue_assigned.id}"
+      toState: cancelled
+    save_as: issue_cancelled
+
+  - name: assert_cancelled
+    action: assert_field
+    input:
+      target: "${issue_cancelled.state}"
+      equals: cancelled

@@ -1,0 +1,189 @@
+name: maintenance_lifecycle
+description: >
+  Full maintenance lifecycle: property setup → contractor creation → issue
+  reported → assigned → in progress → resolved → closed.
+  Validates state transitions and contractor assignment at each step.
+
+steps:
+  # ── Setup ────────────────────────────────────────────────────────────────────
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "E2E Maintenance Property"
+      type: flat
+    save_as: property
+
+  - name: assert_property_created
+    action: assert_field
+    input:
+      target: "${property.name}"
+      equals: "E2E Maintenance Property"
+
+  - name: create_contractor
+    action: create_contractor
+    as: manager
+    input:
+      name: "John Plumber"
+      specialty: plumbing
+      phone: "+256700111222"
+      ratePerDay: 150000
+    save_as: contractor
+
+  - name: assert_contractor_created
+    action: assert_field
+    input:
+      target: "${contractor.name}"
+      equals: "John Plumber"
+
+  # ── Report issue ─────────────────────────────────────────────────────────────
+
+  - name: report_issue
+    action: create_maintenance
+    as: manager
+    input:
+      propertyId: "${property.id}"
+      title: "Broken kitchen pipe"
+      description: "Water leaking from under the kitchen sink"
+      category: plumbing
+      priority: high
+      reportedBy: "Property Manager"
+      reportedById: "manager-1"
+    save_as: issue
+
+  - name: assert_issue_state_reported
+    action: assert_field
+    input:
+      target: "${issue.state}"
+      equals: reported
+
+  - name: assert_issue_property_linked
+    action: assert_field
+    input:
+      target: "${issue.propertyId}"
+      equals: "${property.id}"
+
+  # ── Assign contractor ────────────────────────────────────────────────────────
+
+  - name: assign_contractor
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue.id}"
+      toState: assigned
+      contractorId: "${contractor.id}"
+    save_as: issue_assigned
+    retry:
+      max: 2
+      delay: 0.3
+
+  - name: assert_state_assigned
+    action: assert_field
+    input:
+      target: "${issue_assigned.state}"
+      equals: assigned
+
+  - name: assert_contractor_linked
+    action: assert_field
+    input:
+      target: "${issue_assigned.contractorId}"
+      equals: "${contractor.id}"
+
+  # ── Start work ───────────────────────────────────────────────────────────────
+
+  - name: start_work
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue_assigned.id}"
+      toState: in_progress
+    save_as: issue_in_progress
+
+  - name: assert_state_in_progress
+    action: assert_field
+    input:
+      target: "${issue_in_progress.state}"
+      equals: in_progress
+
+  - name: assert_started_at_set
+    action: assert_field
+    input:
+      target: "${issue_in_progress.startedAt}"
+      not_null: true
+
+  # ── Update cost estimate ──────────────────────────────────────────────────────
+
+  - name: update_cost_estimate
+    action: update_maintenance
+    as: manager
+    input:
+      issueId: "${issue_in_progress.id}"
+      estimatedCost: 250000
+      notes: "Pipe replacement required, parts ordered"
+    save_as: issue_updated
+
+  - name: assert_cost_updated
+    action: assert_field
+    input:
+      target: "${issue_updated.estimatedCost}"
+      equals: "250000.0"
+
+  # ── Resolve ──────────────────────────────────────────────────────────────────
+
+  - name: resolve_issue
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue_updated.id}"
+      toState: resolved
+    save_as: issue_resolved
+
+  - name: assert_state_resolved
+    action: assert_field
+    input:
+      target: "${issue_resolved.state}"
+      equals: resolved
+
+  - name: assert_resolved_at_set
+    action: assert_field
+    input:
+      target: "${issue_resolved.resolvedAt}"
+      not_null: true
+
+  # ── Close ────────────────────────────────────────────────────────────────────
+
+  - name: close_issue
+    action: transition_maintenance
+    as: manager
+    input:
+      issueId: "${issue_resolved.id}"
+      toState: closed
+    save_as: issue_closed
+
+  - name: assert_state_closed
+    action: assert_field
+    input:
+      target: "${issue_closed.state}"
+      equals: closed
+
+  - name: assert_closed_at_set
+    action: assert_field
+    input:
+      target: "${issue_closed.closedAt}"
+      not_null: true
+
+  # ── Verify via API ────────────────────────────────────────────────────────────
+
+  - name: fetch_final_state
+    action: get_maintenance
+    as: manager
+    input:
+      issueId: "${issue_closed.id}"
+    save_as: issue_final
+
+  - name: assert_final_state_closed
+    action: assert_field
+    input:
+      target: "${issue_final.state}"
+      equals: closed
