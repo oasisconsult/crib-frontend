@@ -45,7 +45,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
-import { formatDate } from "@/utils/formatters";
+import { formatDate, formatDateTime } from "@/utils/formatters";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useInspection,
@@ -1291,7 +1291,7 @@ export default function InspectionDetailPage({ params }: Props) {
                   <Separator />
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Started</span>
-                    <span>{formatDate(inspection.startedAt)}</span>
+                    <span>{formatDateTime(inspection.startedAt)}</span>
                   </div>
                 </>
               )}
@@ -1300,7 +1300,7 @@ export default function InspectionDetailPage({ params }: Props) {
                   <Separator />
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Completed</span>
-                    <span>{formatDate(inspection.completedAt)}</span>
+                    <span>{formatDateTime(inspection.completedAt)}</span>
                   </div>
                 </>
               )}
@@ -1309,14 +1309,14 @@ export default function InspectionDetailPage({ params }: Props) {
                   <Separator />
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Approved</span>
-                    <span>{formatDate(inspection.approvedAt)}</span>
+                    <span>{formatDateTime(inspection.approvedAt)}</span>
                   </div>
                 </>
               )}
               <Separator />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Created</span>
-                <span>{formatDate(inspection.createdAt)}</span>
+                <span>{formatDateTime(inspection.createdAt)}</span>
               </div>
             </CardContent>
           </Card>

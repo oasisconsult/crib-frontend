@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { formatCurrency, formatDate } from "@/utils/formatters";
+import { formatCurrency, formatDate, formatDateTime } from "@/utils/formatters";
 import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment, useTenantWallet } from "@/hooks/usePayments";
 import { useLeases, useLease, useGenerateLeaseDocument, useConfirmLeaseTerms } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
@@ -2010,7 +2010,7 @@ export default function TenantPortalPage() {
                             {(m as any).description ?? ""}
                           </p>
                           <p className="text-[11px] text-muted-foreground/60 mt-1">
-                            {formatDate(m.createdAt)}
+                            {formatDateTime(m.createdAt)}
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">

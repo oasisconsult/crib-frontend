@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency, formatDate, formatRelative } from "@/utils/formatters";
+import { formatCurrency, formatDate, formatDateTime, formatRelative } from "@/utils/formatters";
 import { usePaymentAllocations } from "@/hooks/usePayments";
 import { RetrySuggestionBanner } from "./RetrySuggestionBanner";
 import { cn } from "@/utils/cn";
@@ -181,7 +181,7 @@ function PaymentRow({ payment, leaseId, schedules, isLast, onRetried, onViewRece
                 {formatCurrency(payment.amount, payment.currency)}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {formatDate(payment.paidAt ?? payment.createdAt)} ·{" "}
+                {formatDateTime(payment.paidAt ?? payment.createdAt)} ·{" "}
                 {formatRelative(payment.paidAt ?? payment.createdAt)}
               </p>
               {/* Failure reason inline hint */}

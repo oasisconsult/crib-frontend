@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2, Clock, TrendingUp, XCircle } from "lucide-react";
+import { formatDateTime } from "@/utils/formatters";
 import type { RentIncrease, RentIncreaseStatus } from "../types";
 
 interface Props {
@@ -28,7 +29,7 @@ export function IncreaseTimeline({ increase }: Props) {
       {isWithdrawn ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <XCircle className="h-4 w-4 text-gray-400" />
-          <span>Notice withdrawn{increase.withdrawnAt ? ` on ${new Date(increase.withdrawnAt).toLocaleDateString()}` : ""}</span>
+          <span>Notice withdrawn{increase.withdrawnAt ? ` on ${formatDateTime(increase.withdrawnAt)}` : ""}</span>
         </div>
       ) : (
         <ol className="flex items-center gap-0">

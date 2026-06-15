@@ -47,7 +47,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
-import { formatDate, formatCurrency } from "@/utils/formatters";
+import { formatDate, formatDateTime, formatCurrency } from "@/utils/formatters";
 import {
   useMaintenanceIssue,
   useUpdateMaintenanceIssue,
@@ -508,7 +508,7 @@ export default function MaintenanceDetailPage({ params }: Props) {
               <span>·</span>
               <span className="capitalize">{issue.category}</span>
               <span>·</span>
-              <span>Reported {formatDate(issue.reportedAt ?? issue.createdAt)}</span>
+              <span>Reported {formatDateTime(issue.reportedAt ?? issue.createdAt)}</span>
             </div>
           </div>
         </div>
@@ -652,14 +652,14 @@ export default function MaintenanceDetailPage({ params }: Props) {
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Reported</span>
-                  <span>{formatDate(issue.reportedAt ?? issue.createdAt)}</span>
+                  <span>{formatDateTime(issue.reportedAt ?? issue.createdAt)}</span>
                 </div>
                 {issue.assignedAt && (
                   <>
                     <Separator />
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Assigned</span>
-                      <span>{formatDate(issue.assignedAt)}</span>
+                      <span>{formatDateTime(issue.assignedAt)}</span>
                     </div>
                   </>
                 )}
@@ -668,7 +668,7 @@ export default function MaintenanceDetailPage({ params }: Props) {
                     <Separator />
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Started</span>
-                      <span>{formatDate(issue.startedAt)}</span>
+                      <span>{formatDateTime(issue.startedAt)}</span>
                     </div>
                   </>
                 )}
@@ -677,7 +677,7 @@ export default function MaintenanceDetailPage({ params }: Props) {
                     <Separator />
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Resolved</span>
-                      <span>{formatDate(issue.resolvedAt)}</span>
+                      <span>{formatDateTime(issue.resolvedAt)}</span>
                     </div>
                   </>
                 )}
@@ -686,14 +686,14 @@ export default function MaintenanceDetailPage({ params }: Props) {
                     <Separator />
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Closed</span>
-                      <span>{formatDate(issue.closedAt)}</span>
+                      <span>{formatDateTime(issue.closedAt)}</span>
                     </div>
                   </>
                 )}
                 <Separator />
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Last Updated</span>
-                  <span>{formatDate(issue.updatedAt)}</span>
+                  <span>{formatDateTime(issue.updatedAt)}</span>
                 </div>
               </CardContent>
             </Card>
