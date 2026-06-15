@@ -23,7 +23,7 @@ import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from 
 import { useTenantDocuments, useUploadTenantDocument, useDeleteTenantDocument } from "@/hooks/useTenants";
 import { useProperty, usePropertyGeocode } from "@/hooks/useProperties";
 import { usePublicSettings } from "@/hooks/useSettings";
-import { useMessages, useSendMessage } from "@/hooks/useMessages";
+import { useMessages, useSendMessage, useUnreadMessageCount } from "@/hooks/useMessages";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useAppStore } from "@/store/useAppStore";
 import { toast } from "@/store/useUIStore";
@@ -1550,15 +1550,16 @@ interface PortalBottomNavProps {
   setTab: (t: string) => void;
   hasOverdueRent: boolean;
   openRequestsCount: number;
+  unreadMessages: number;
 }
 
-function PortalBottomNav({ tab, setTab, hasOverdueRent, openRequestsCount }: PortalBottomNavProps) {
+function PortalBottomNav({ tab, setTab, hasOverdueRent, openRequestsCount, unreadMessages }: PortalBottomNavProps) {
   type Badge = null | number | "dot";
   const navItems: { value: string; label: string; icon: React.ElementType; badge: Badge }[] = [
     { value: "overview",    label: "Home",     icon: Home,          badge: null },
     { value: "payments",    label: "Pay",      icon: CreditCard,    badge: hasOverdueRent ? "dot" : null },
     { value: "maintenance", label: "Issues",   icon: Wrench,        badge: openRequestsCount > 0 ? openRequestsCount : null },
-    { value: "messages",    label: "Messages", icon: MessageCircle, badge: null },
+    { value: "messages",    label: "Messages", icon: MessageCircle, badge: unreadMessages > 0 ? unreadMessages : null },
     { value: "documents",   label: "Docs",     icon: FileText,      badge: null },
   ];
 
@@ -1643,6 +1644,8 @@ export default function TenantPortalPage() {
   );
   const { data: publicSettings } = usePublicSettings();
   const { data: paymentSettings } = useOrgPaymentSettings();
+  const { data: unreadData } = useUnreadMessageCount();
+  const unreadMessages = unreadData?.count ?? 0;
   const { mutate: generateDoc, isPending: generatingDoc } = useGenerateLeaseDocument();
   const { mutate: confirmTerms, isPending: confirmingTerms } = useConfirmLeaseTerms();
   const [termsChecked, setTermsChecked] = useState(false);
@@ -1871,6 +1874,11 @@ export default function TenantPortalPage() {
             <TabsTrigger value="messages" className="gap-1.5">
               <MessageCircle className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Messages</span>
+              {unreadMessages > 0 && (
+                <Badge variant="secondary" className="ml-1 h-4 min-w-4 px-1 text-[10px]">
+                  {unreadMessages > 99 ? "99+" : unreadMessages}
+                </Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="documents" className="gap-1.5">
               <FileText className="h-3.5 w-3.5" />
@@ -2451,6 +2459,7 @@ export default function TenantPortalPage() {
         setTab={setTab}
         hasOverdueRent={hasOverdueRent}
         openRequestsCount={openRequests.length}
+        unreadMessages={unreadMessages}
       />
     </div>
   );
