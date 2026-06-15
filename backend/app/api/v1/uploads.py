@@ -216,6 +216,25 @@ async def presign_payment_receipt(
     return await _do_presign(body, db)
 
 
+@router.post("/presign/tenant-document", response_model=PresignResponse)
+async def presign_tenant_document(
+    body: PresignRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Allow any authenticated user to upload their own ID documents or proof files.
+    Category is forced to 'document' — caller cannot override it.
+    tenant_id is injected from the calling user's profile so the key path is
+    correctly scoped (document/tenants/{tenant_id}/{uuid}/{filename}).
+    """
+    body.category = "document"
+    # Inject tenant_id from profile so key path is scoped correctly
+    if not body.tenant_id and current_user.profile.tenant_id:
+        body.tenant_id = str(current_user.profile.tenant_id)
+    return await _do_presign(body, db)
+
+
 # ── Presign endpoint (public — onboarding token auth) ─────────────────────────
 
 @router.post("/presign/onboarding/{token}", response_model=PresignResponse)

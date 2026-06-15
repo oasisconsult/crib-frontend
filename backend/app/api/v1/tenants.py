@@ -25,7 +25,7 @@ Endpoints:
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,6 +50,37 @@ router = APIRouter(prefix="/tenants", tags=["tenants"])
 
 _read  = Depends(require_org_access(allow_tenant_own=True))
 _write = Depends(require_org_access(allow_tenant_own=False))
+
+
+async def _own_tenant_or_manager(
+    tenant_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+) -> CurrentUser:
+    """
+    Document access guard:
+    - Superadmin, owner, manager → unrestricted access to any tenant in their org.
+    - Tenant role → may only access their own tenant record
+      (profile.tenant_id must match the URL {tenant_id}).
+
+    This prevents cross-tenant document reads within the same org, and allows
+    tenants to upload and delete their own documents.
+    """
+    if current_user.has_role("superadmin"):
+        return current_user
+    if current_user.org_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No organisation context in token",
+        )
+    if current_user.is_owner_or_manager():
+        return current_user
+    # Tenant: enforce own-record access only
+    if current_user.profile.tenant_id != tenant_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tenants can only access their own documents",
+        )
+    return current_user
 
 
 # ── Direct create (no invite email) ──────────────────────────────────────────
@@ -234,7 +265,7 @@ async def resend_login_credentials(
 @router.get("/{tenant_id}/documents", response_model=list[TenantDocumentOut])
 async def list_documents(
     tenant_id: uuid.UUID,
-    current_user: CurrentUser = _read,
+    current_user: CurrentUser = Depends(_own_tenant_or_manager),
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.list_documents(tenant_id, get_org_id(current_user), db)
@@ -248,7 +279,7 @@ async def list_documents(
 async def upload_document(
     tenant_id: uuid.UUID,
     body: TenantDocumentCreate,
-    current_user: CurrentUser = _write,
+    current_user: CurrentUser = Depends(_own_tenant_or_manager),
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.upload_document(tenant_id, body, get_org_id(current_user), db)
@@ -268,7 +299,7 @@ async def verify_document(
 async def delete_document(
     tenant_id: uuid.UUID,
     document_id: uuid.UUID,
-    current_user: CurrentUser = _write,
+    current_user: CurrentUser = Depends(_own_tenant_or_manager),
     db: AsyncSession = Depends(get_db),
 ):
     await svc.delete_document(tenant_id, document_id, get_org_id(current_user), db)
