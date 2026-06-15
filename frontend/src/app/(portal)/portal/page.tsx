@@ -23,14 +23,16 @@ import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from 
 import { useProperty, usePropertyGeocode } from "@/hooks/useProperties";
 import { usePublicSettings } from "@/hooks/useSettings";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useAppStore } from "@/store/useAppStore";
+import { toast } from "@/store/useUIStore";
 import { uploadsApi } from "@/services/api/uploads";
 import { cn } from "@/utils/cn";
 import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { WalletBalanceCard } from "@/components/payments/WalletBalanceCard";
 import { PaymentReceipt } from "@/components/payments/PaymentReceipt";
 import { PAYMENT_STATE_DISPLAY } from "@/types";
-import type { Payment } from "@/types";
+import type { MaintenanceIssue, Payment } from "@/types";
 import type { Message } from "@/services/api/messages";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -154,7 +156,7 @@ function PayDialog({ lease, balance, lateFeeApplied, userPhone, mobileMoneyProvi
       setReceiptName(result.name);
     } catch {
       // toast is handled by the catch — surface it to user
-      alert("Upload failed. Please try again.");
+      toast.error("Upload failed. Please try again.");
     } finally {
       setUploadingReceipt(false);
     }
@@ -780,19 +782,34 @@ function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onCl
   );
 }
 
-// ─── Dialog wrapper ───────────────────────────────────────────────────────────
+// ─── Portal sheet wrapper (Radix Dialog — focus trap, Escape, aria-modal) ────
 
-function DialogOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function PortalSheet({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center pb-3 sm:pb-0"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative z-10 w-full max-w-lg mx-4 sm:mx-auto bg-[hsl(var(--card))] rounded-t-[8px] sm:rounded-[8px] border border-border shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
-        {children}
-      </div>
-    </div>
+    <DialogPrimitive.Root open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className="fixed inset-x-0 bottom-0 z-50 outline-none sm:inset-0 sm:flex sm:items-center sm:justify-center"
+        >
+          <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
+          <div className="relative w-full sm:max-w-lg sm:mx-auto bg-[hsl(var(--card))] rounded-t-[8px] sm:rounded-[8px] border border-border shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+            {children}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
@@ -1322,7 +1339,7 @@ export default function TenantPortalPage() {
 
   const allLeases = leasesData?.data ?? [];
   const allPayments = paymentsData?.data ?? [];
-  const allMaintenance = maintenanceData?.data ?? [];
+  const allMaintenance = (maintenanceData?.data ?? []) as MaintenanceIssue[];
 
   // Find tenant's lease from list (for IDs), then fetch detail (for signatures)
   const leaseStub = allLeases.find((l) => l.tenantId === userId) ?? allLeases[0];
@@ -1358,7 +1375,7 @@ export default function TenantPortalPage() {
   const hasOverdueRent = overdueSchedule !== null;
   const overdueBalance = overdueSchedule?.balance ?? 0;
   const overdueLateFee = overdueSchedule?.lateFeeApplied ?? 0;
-  const myMaintenance = allMaintenance.filter((m) => (m as any).reportedById === userId || (m as any).reportedBy === userId);
+  const myMaintenance = allMaintenance.filter((m) => m.reportedById === userId);
   const openRequests = myMaintenance.filter((m) => !["resolved", "closed"].includes(m.state));
   const pendingSignTasks = (inspectionsData?.data ?? []).filter(
     (i: any) => i.landlordSignedAt && !i.tenantSignedAt && i.signToken,
@@ -2004,10 +2021,10 @@ export default function TenantPortalPage() {
                       <div key={m.id} className="py-3 flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <p className="text-sm font-medium capitalize">
-                            {(m as any).title ?? (m as any).category?.replace(/_/g, " ") ?? "Issue"}
+                            {m.title ?? m.category?.replace(/_/g, " ") ?? "Issue"}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                            {(m as any).description ?? ""}
+                            {m.description ?? ""}
                           </p>
                           <p className="text-[11px] text-muted-foreground/60 mt-1">
                             {formatDateTime(m.createdAt)}
@@ -2015,15 +2032,15 @@ export default function TenantPortalPage() {
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
                           <StatusBadge state={m.state} domain="maintenance" />
-                          {(m as any).priority && (
+                          {m.priority && (
                             <span className={cn(
                               "text-[10px] rounded-full px-1.5 py-0.5 font-medium capitalize",
-                              (m as any).priority === "urgent" ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" :
-                              (m as any).priority === "high"   ? "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" :
-                              (m as any).priority === "medium" ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" :
+                              m.priority === "urgent" ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" :
+                              m.priority === "high"   ? "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" :
+                              m.priority === "medium" ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" :
                               "bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800",
                             )}>
-                              {(m as any).priority}
+                              {m.priority}
                             </span>
                           )}
                         </div>
@@ -2070,7 +2087,7 @@ export default function TenantPortalPage() {
       </div>
 
       {/* ── Dialogs ───────────────────────────────────────────────── */}
-      {dialog === "pay" && myLease && (() => {
+      {myLease && (() => {
         const dueSchedule =
           overdueSchedule ??
           schedules.find((s) => s.status === "pending" || s.state === "pending") ??
@@ -2078,7 +2095,7 @@ export default function TenantPortalPage() {
         const balance = dueSchedule?.balance ?? (myLease as any).terms?.monthlyRent ?? 0;
         const lateFeeApplied = dueSchedule?.lateFeeApplied ?? 0;
         return (
-          <DialogOverlay onClose={closeDialog}>
+          <PortalSheet open={dialog === "pay"} onClose={closeDialog} title="Pay rent">
             <PayDialog
               lease={myLease as any}
               balance={balance}
@@ -2088,12 +2105,12 @@ export default function TenantPortalPage() {
               mobileMoneyNumber={user?.mobileMoneyNumber}
               onClose={closeDialog}
             />
-          </DialogOverlay>
+          </PortalSheet>
         );
       })()}
 
-      {dialog === "maintenance" && myLease && (
-        <DialogOverlay onClose={closeDialog}>
+      {myLease && (
+        <PortalSheet open={dialog === "maintenance"} onClose={closeDialog} title="New maintenance request">
           <MaintenanceDialog
             userId={userId}
             userName={user?.name ?? "Tenant"}
@@ -2102,18 +2119,18 @@ export default function TenantPortalPage() {
             unitId={myLease.unitId ?? ""}
             onClose={closeDialog}
           />
-        </DialogOverlay>
+        </PortalSheet>
       )}
 
-      {selectedPayment && (
-        <DialogOverlay onClose={closeDialog}>
+      <PortalSheet open={!!selectedPayment} onClose={closeDialog} title="Payment details">
+        {selectedPayment && (
           <TenantPaymentDetailSheet
             payment={selectedPayment}
             leaseId={myLease?.id ?? ""}
             onClose={closeDialog}
           />
-        </DialogOverlay>
-      )}
+        )}
+      </PortalSheet>
 
       <PaymentReceipt
         payment={receiptPayment}
