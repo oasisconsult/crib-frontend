@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/select";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -175,7 +176,7 @@ function AssignModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <DialogBody className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="assign-contractor">From directory</Label>
             {isLoading ? (
@@ -231,7 +232,7 @@ function AssignModal({
               aria-label="Enter contractor name manually"
             />
           </div>
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
