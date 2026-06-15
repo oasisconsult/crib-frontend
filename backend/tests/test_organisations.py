@@ -290,3 +290,113 @@ async def test_unit_naming_null_when_not_set(client: AsyncClient):
     assert resp.status_code == 200
     # Fresh org may have unitNaming=null or a value from earlier tests — just check key present
     assert "unitNaming" in resp.json()
+
+
+# ── GET /organisations/me/payment-settings ────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_get_payment_settings_empty_by_default(client: AsyncClient):
+    """Payment settings should return all-null fields before any config is saved."""
+    resp = await client.get(
+        "/api/v1/organisations/me/payment-settings",
+        headers=auth_headers("manager-1"),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "bankName" in body
+    assert "bankAccountNumber" in body
+    assert body["bankName"] is None
+    assert body["bankAccountNumber"] is None
+
+
+@pytest.mark.asyncio
+async def test_manager_can_update_payment_settings(client: AsyncClient):
+    """Manager can PATCH payment settings — response echoes saved values."""
+    resp = await client.patch(
+        "/api/v1/organisations/me/payment-settings",
+        headers=auth_headers("manager-1"),
+        json={
+            "bankName": "Stanbic Bank",
+            "bankAccountNumber": "9030012345678",
+            "bankAccountName": "Crib Properties Ltd",
+            "bankBranch": "Kampala Road",
+            "swiftCode": "SBICUGKA",
+        },
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["bankName"] == "Stanbic Bank"
+    assert body["bankAccountNumber"] == "9030012345678"
+    assert body["bankAccountName"] == "Crib Properties Ltd"
+    assert body["bankBranch"] == "Kampala Road"
+    assert body["swiftCode"] == "SBICUGKA"
+
+
+@pytest.mark.asyncio
+async def test_get_payment_settings_returns_saved_values(client: AsyncClient):
+    """GET after PATCH should return the persisted values."""
+    await client.patch(
+        "/api/v1/organisations/me/payment-settings",
+        headers=auth_headers("manager-1"),
+        json={"bankName": "Centenary Bank", "mtnPaybill": "*165*9*1234#"},
+    )
+    resp = await client.get(
+        "/api/v1/organisations/me/payment-settings",
+        headers=auth_headers("manager-1"),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["bankName"] == "Centenary Bank"
+    assert body["mtnPaybill"] == "*165*9*1234#"
+
+
+@pytest.mark.asyncio
+async def test_partial_update_preserves_existing_fields(client: AsyncClient):
+    """Sending only bankName in PATCH should not clear other previously saved fields."""
+    await client.patch(
+        "/api/v1/organisations/me/payment-settings",
+        headers=auth_headers("manager-1"),
+        json={"bankName": "Equity Bank", "airtelPaybill": "*185*2*5678#"},
+    )
+    # Patch only one field
+    await client.patch(
+        "/api/v1/organisations/me/payment-settings",
+        headers=auth_headers("manager-1"),
+        json={"bankName": "DFCU Bank"},
+    )
+    resp = await client.get(
+        "/api/v1/organisations/me/payment-settings",
+        headers=auth_headers("manager-1"),
+    )
+    body = resp.json()
+    assert body["bankName"] == "DFCU Bank"
+    # airtelPaybill set in first PATCH should still be present
+    assert body["airtelPaybill"] == "*185*2*5678#"
+
+
+@pytest.mark.asyncio
+async def test_tenant_can_read_payment_settings(client: AsyncClient):
+    """Tenant role should be able to GET payment settings (needed to pay rent)."""
+    resp = await client.get(
+        "/api/v1/organisations/me/payment-settings",
+        headers=auth_headers("tenant-1"),
+    )
+    assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_tenant_cannot_update_payment_settings(client: AsyncClient):
+    """Tenant role must not be able to PATCH payment settings."""
+    resp = await client.patch(
+        "/api/v1/organisations/me/payment-settings",
+        headers=auth_headers("tenant-1"),
+        json={"bankName": "Hacked Bank"},
+    )
+    assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_unauthenticated_cannot_read_payment_settings(client: AsyncClient):
+    """Unauthenticated request should be rejected."""
+    resp = await client.get("/api/v1/organisations/me/payment-settings")
+    assert resp.status_code in (401, 403)

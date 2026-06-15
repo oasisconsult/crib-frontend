@@ -24,7 +24,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.tenant import OnboardingState, Tenant, TenantDocument, TenantInvite
+from app.models.tenant import IdDocumentType, OnboardingState, Tenant, TenantDocument, TenantInvite
 from tests.conftest import auth_headers
 from tests.factories import make_organisation, make_property, make_tenant
 
@@ -365,5 +365,207 @@ async def test_cross_org_tenant_returns_404(client: AsyncClient, org, other_org,
 async def test_tenant_role_cannot_delete(client: AsyncClient, org, tenant):
     resp = await client.delete(
         f"/api/v1/tenants/{tenant.id}", headers=auth_headers("tenant-1")
+    )
+    assert resp.status_code == 403
+
+
+# ── Tenant document ownership (Step 2) ───────────────────────────────────────
+#
+# Each test needs a Tenant whose profile.tenant_id is wired to a dev user.
+# We:
+#   1. Create a Tenant row in org_dev.
+#   2. Hit GET /me as the dev user to trigger _upsert_profile.
+#   3. Set profile.tenant_id = tenant.id directly in the DB.
+#
+# This mirrors how a real tenant gets their profile linked during onboarding.
+
+from datetime import datetime, timezone as _tz
+
+from app.models.profile import Profile
+from sqlalchemy import select as _select
+
+
+async def _link_tenant_to_profile(db: AsyncSession, dev_user_sub: str, tenant):
+    """Bootstrap the profile row (via /me) then link tenant_id."""
+    result = await db.execute(
+        _select(Profile).where(Profile.logto_sub == dev_user_sub)
+    )
+    profile = result.scalar_one_or_none()
+    if profile is None:
+        raise RuntimeError(f"Profile for {dev_user_sub} not found — call GET /me first")
+    profile.tenant_id = tenant.id
+    await db.flush()
+    return profile
+
+
+@pytest.fixture
+async def owned_tenant(client: AsyncClient, db_session: AsyncSession, org):
+    """A Tenant row in org_dev whose profile is linked to the tenant-1 dev user."""
+    t = await make_tenant(db_session, org, first_name="Own", last_name="Tenant",
+                          email="own@test.ug")
+    # Bootstrap the profile row
+    await client.get("/api/v1/me", headers=auth_headers("tenant-1"))
+    await _link_tenant_to_profile(db_session, "dev_tenant1", t)
+    return t
+
+
+@pytest.fixture
+async def other_tenant(db_session: AsyncSession, org):
+    """A second Tenant in the same org — not linked to tenant-1."""
+    return await make_tenant(db_session, org, first_name="Other", last_name="Tenant",
+                             email="other@test.ug")
+
+
+async def _seed_doc(db_session: AsyncSession, tenant):
+    doc = TenantDocument(
+        tenant_id=tenant.id, type=IdDocumentType.passport, name="passport.pdf",
+        url="https://minio.local/bucket/passport.pdf",
+        mime_type="application/pdf", size_bytes=50000,
+        verified=False, uploaded_at=datetime.now(_tz.utc),
+    )
+    db_session.add(doc)
+    await db_session.flush()
+    return doc
+
+
+# ── Own-tenant list ────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_tenant_can_list_own_documents(
+    client: AsyncClient, db_session: AsyncSession, owned_tenant
+):
+    """A tenant can list documents for their own tenant record."""
+    doc = await _seed_doc(db_session, owned_tenant)
+    resp = await client.get(
+        f"/api/v1/tenants/{owned_tenant.id}/documents",
+        headers=auth_headers("tenant-1"),
+    )
+    assert resp.status_code == 200
+    assert any(d["id"] == str(doc.id) for d in resp.json())
+
+
+@pytest.mark.asyncio
+async def test_tenant_cannot_list_other_tenant_documents(
+    client: AsyncClient, db_session: AsyncSession, other_tenant
+):
+    """A tenant must not be able to read documents belonging to another tenant."""
+    await _seed_doc(db_session, other_tenant)
+    resp = await client.get(
+        f"/api/v1/tenants/{other_tenant.id}/documents",
+        headers=auth_headers("tenant-1"),
+    )
+    assert resp.status_code == 403
+
+
+# ── Own-tenant upload ──────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_tenant_can_upload_own_document(
+    client: AsyncClient, owned_tenant
+):
+    """A tenant can POST a document to their own tenant record."""
+    resp = await client.post(
+        f"/api/v1/tenants/{owned_tenant.id}/documents",
+        headers=auth_headers("tenant-1"),
+        json={
+            "type": "national_id",
+            "name": "My National ID",
+            "url": "https://minio.local/bucket/nid.pdf",
+            "mimeType": "application/pdf",
+            "sizeBytes": 102400,
+        },
+    )
+    assert resp.status_code == 201
+    assert resp.json()["type"] == "national_id"
+    assert resp.json()["verified"] is False
+
+
+@pytest.mark.asyncio
+async def test_tenant_cannot_upload_to_other_tenant(
+    client: AsyncClient, other_tenant
+):
+    """A tenant must not be able to upload documents to another tenant's record."""
+    resp = await client.post(
+        f"/api/v1/tenants/{other_tenant.id}/documents",
+        headers=auth_headers("tenant-1"),
+        json={
+            "type": "passport",
+            "name": "Other Passport",
+            "url": "https://minio.local/bucket/other.pdf",
+            "mimeType": "application/pdf",
+            "sizeBytes": 50000,
+        },
+    )
+    assert resp.status_code == 403
+
+
+# ── Own-tenant delete ──────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_tenant_can_delete_own_document(
+    client: AsyncClient, db_session: AsyncSession, owned_tenant
+):
+    """A tenant can delete a document from their own record."""
+    doc = await _seed_doc(db_session, owned_tenant)
+    resp = await client.delete(
+        f"/api/v1/tenants/{owned_tenant.id}/documents/{doc.id}",
+        headers=auth_headers("tenant-1"),
+    )
+    assert resp.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_tenant_cannot_delete_other_tenant_document(
+    client: AsyncClient, db_session: AsyncSession, other_tenant
+):
+    """A tenant must not be able to delete another tenant's document."""
+    doc = await _seed_doc(db_session, other_tenant)
+    resp = await client.delete(
+        f"/api/v1/tenants/{other_tenant.id}/documents/{doc.id}",
+        headers=auth_headers("tenant-1"),
+    )
+    assert resp.status_code == 403
+
+
+# ── Verify stays manager-only ─────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_tenant_cannot_verify_document(
+    client: AsyncClient, db_session: AsyncSession, owned_tenant
+):
+    """PATCH /verify must remain manager-only even for the tenant's own record."""
+    doc = await _seed_doc(db_session, owned_tenant)
+    resp = await client.patch(
+        f"/api/v1/tenants/{owned_tenant.id}/documents/{doc.id}/verify",
+        headers=auth_headers("tenant-1"),
+    )
+    assert resp.status_code == 403
+
+
+# ── Presign tenant-document endpoint ──────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_presign_tenant_document_accessible_to_tenant(client: AsyncClient):
+    """POST /upload/presign/tenant-document should succeed for a tenant-role user."""
+    resp = await client.post(
+        "/api/v1/upload/presign/tenant-document",
+        headers=auth_headers("tenant-1"),
+        json={"filename": "id_scan.pdf", "mimeType": "application/pdf", "category": "document"},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "uploadUrl" in body
+    assert "publicUrl" in body
+    # Category is forced to 'document' by the endpoint — key path must reflect this
+    assert "document" in body["publicUrl"].lower() or "document" in body["key"].lower()
+
+
+@pytest.mark.asyncio
+async def test_main_presign_blocks_tenant(client: AsyncClient):
+    """POST /upload/presign (staff endpoint) must reject tenant-role users."""
+    resp = await client.post(
+        "/api/v1/upload/presign",
+        headers=auth_headers("tenant-1"),
+        json={"filename": "id.pdf", "mimeType": "application/pdf", "category": "document"},
     )
     assert resp.status_code == 403
