@@ -20,6 +20,7 @@ import { formatCurrency, formatDate, formatDateTime } from "@/utils/formatters";
 import { usePayments, useRecordPayment, useRentSchedule, useCancelPayment, useTenantWallet } from "@/hooks/usePayments";
 import { useLeases, useLease, useGenerateLeaseDocument, useConfirmLeaseTerms } from "@/hooks/useLeases";
 import { useMaintenanceIssues, useCreateMaintenanceIssue, useInspections } from "@/hooks/useInspections";
+import { useTenantDocuments, useUploadTenantDocument, useDeleteTenantDocument } from "@/hooks/useTenants";
 import { useProperty, usePropertyGeocode } from "@/hooks/useProperties";
 import { usePublicSettings } from "@/hooks/useSettings";
 import { useMessages, useSendMessage } from "@/hooks/useMessages";
@@ -34,7 +35,7 @@ import { PaymentTimeline } from "@/components/payments/PaymentTimeline";
 import { WalletBalanceCard } from "@/components/payments/WalletBalanceCard";
 import { PaymentReceipt } from "@/components/payments/PaymentReceipt";
 import { PAYMENT_STATE_DISPLAY } from "@/types";
-import type { MaintenanceIssue, Payment } from "@/types";
+import type { MaintenanceIssue, Payment, TenantDocument } from "@/types";
 import type { Message } from "@/services/api/messages";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -1349,6 +1350,199 @@ function HowToFindUsCard({ geocode, address, whatsappNumber, navUrl, landmarkDes
   );
 }
 
+// ─── Documents Tab ───────────────────────────────────────────────────────────
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  passport: "Passport",
+  national_id: "National ID",
+  driving_licence: "Driving Licence",
+  proof_of_income: "Proof of Income",
+  reference_letter: "Reference Letter",
+  bank_statement: "Bank Statement",
+  other: "Other",
+};
+const DOC_TYPES = Object.keys(DOC_TYPE_LABELS) as TenantDocument["type"][];
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function DocumentsTab({ tenantId }: { tenantId: string }) {
+  const [selectedType, setSelectedType] = useState<TenantDocument["type"]>("passport");
+  const [isUploading, setIsUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const { data: docs, isLoading } = useTenantDocuments(tenantId);
+  const { mutate: registerDoc } = useUploadTenantDocument();
+  const { mutate: deleteDoc } = useDeleteTenantDocument();
+
+  async function handleFileSelect(file: File) {
+    setIsUploading(true);
+    try {
+      const result = await uploadsApi.presignAndUpload(file, { category: "tenant_document" });
+      registerDoc({
+        tenantId,
+        data: {
+          type: selectedType,
+          name: file.name,
+          url: result.url,
+          mimeType: file.type || "application/octet-stream",
+          sizeBytes: file.size,
+        },
+      });
+    } catch {
+      toast.error("Upload failed. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <SectionHeading>My Documents</SectionHeading>
+
+      {/* Upload card */}
+      <Card>
+        <CardContent className="pt-4 space-y-3">
+          <p className="text-sm font-medium text-foreground">Upload a Document</p>
+          <div className="flex gap-2">
+            <Select
+              value={selectedType}
+              onValueChange={(v) => setSelectedType(v as TenantDocument["type"])}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DOC_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {DOC_TYPE_LABELS[t]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <label
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium cursor-pointer select-none",
+                "hover:bg-primary/5 hover:border-primary/40 transition-all",
+                isUploading && "pointer-events-none opacity-50",
+              )}
+            >
+              {isUploading
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Upload className="h-4 w-4" />}
+              {isUploading ? "Uploading…" : "Choose File"}
+              <input
+                type="file"
+                className="sr-only"
+                disabled={isUploading}
+                accept="image/*,application/pdf"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFileSelect(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+          </div>
+          <p className="text-xs text-muted-foreground">Accepted: PDF, JPG, PNG · Max 10 MB</p>
+        </CardContent>
+      </Card>
+
+      {/* Document list */}
+      <Card>
+        <CardContent className="pt-4">
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading documents…
+            </div>
+          ) : !docs || docs.length === 0 ? (
+            <div className="text-center py-10">
+              <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">
+                Upload your ID or supporting documents above.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {docs.map((doc) => (
+                <div key={doc.id} className="py-3 flex items-start gap-3">
+                  <FileText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium">
+                        {DOC_TYPE_LABELS[doc.type] ?? doc.type}
+                      </span>
+                      {doc.verified ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[11px] font-medium">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Verified
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">
+                          <Clock className="h-3 w-3" />
+                          Pending review
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{doc.name}</p>
+                    <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                      {formatBytes(doc.sizeBytes)} · {formatDate(doc.uploadedAt)}
+                    </p>
+                  </div>
+                  {/* Only allow deletion of unverified docs */}
+                  {!doc.verified && (
+                    deletingId === doc.id ? (
+                      <div className="flex gap-1 shrink-0 items-center">
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => { deleteDoc({ tenantId, documentId: doc.id }); setDeletingId(null); }}
+                        >
+                          Delete
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setDeletingId(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="icon-sm"
+                        variant="ghost"
+                        className="shrink-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeletingId(doc.id)}
+                        aria-label={`Delete ${DOC_TYPE_LABELS[doc.type] ?? doc.type}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="rounded-[6px] border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
+        <p className="font-medium text-foreground mb-1">Document security</p>
+        Your documents are stored securely and are only visible to you and your property manager.
+        Verified documents cannot be deleted.
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 type Dialog = "pay" | "maintenance" | null;
@@ -1582,7 +1776,7 @@ export default function TenantPortalPage() {
         )}
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:flex">
+          <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:flex">
             <TabsTrigger value="overview" className="gap-1.5">
               <Home className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Overview</span>
@@ -1617,6 +1811,10 @@ export default function TenantPortalPage() {
             <TabsTrigger value="messages" className="gap-1.5">
               <MessageCircle className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Messages</span>
+            </TabsTrigger>
+            <TabsTrigger value="documents" className="gap-1.5">
+              <FileText className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Documents</span>
             </TabsTrigger>
           </TabsList>
 
@@ -2108,6 +2306,20 @@ export default function TenantPortalPage() {
               <Card>
                 <CardContent className="py-12 text-center">
                   <MessageCircle className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No active lease found.</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* ── Documents ─────────────────────────────────────────────── */}
+          <TabsContent value="documents" className="mt-4">
+            {myLease?.tenantId ? (
+              <DocumentsTab tenantId={myLease.tenantId} />
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <FileText className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground">No active lease found.</p>
                 </CardContent>
               </Card>
