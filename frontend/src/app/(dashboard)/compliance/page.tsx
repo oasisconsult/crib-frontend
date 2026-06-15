@@ -330,7 +330,7 @@ export default function CompliancePage() {
 
         {(["all", "issued", "failed", "pending", "skipped"] as EfrisTab[]).map((t) => (
           <TabsContent key={t} value={t} className="mt-4">
-            {data && data.items.length === 0 && !loading ? (
+            {data && data.data.length === 0 && !loading ? (
               <EmptyState
                 icon={ReceiptText}
                 title="No transactions found"
