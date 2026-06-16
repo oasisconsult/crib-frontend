@@ -1578,11 +1578,11 @@ function PortalBottomNav({ tab, setTab, hasOverdueRent, openRequestsCount, unrea
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "relative flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+                isActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground hover:text-foreground",
               )}
             >
               {isActive && (
-                <span aria-hidden="true" className="absolute top-0 inset-x-3 h-0.5 bg-primary rounded-b-sm" />
+                <span aria-hidden="true" className="absolute top-0 inset-x-3 h-0.5 bg-emerald-500 rounded-b-sm" />
               )}
               <div className="relative">
                 <Icon className="h-5 w-5" />
@@ -1590,7 +1590,7 @@ function PortalBottomNav({ tab, setTab, hasOverdueRent, openRequestsCount, unrea
                   <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
                 )}
                 {typeof badge === "number" && (
-                  <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-bold text-primary-foreground">
+                  <span aria-hidden="true" className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-0.5 text-[9px] font-bold text-white">
                     {badge > 9 ? "9+" : badge}
                   </span>
                 )}
