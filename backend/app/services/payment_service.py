@@ -21,7 +21,7 @@ import csv
 import io
 from locale import currency
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
@@ -1363,21 +1363,6 @@ async def export_payments_csv(
                     "method", "reference", "payment_status", "paid_at"]
     columns = payment_settings.get("statementColumns", default_cols)
 
-    # Fetch schedules with their payments
-    sched_result = await db.execute(
-        select(RentSchedule)
-        .where(RentSchedule.lease_id == lease_id)
-        .order_by(RentSchedule.due_date.asc())
-    )
-    schedules = sched_result.scalars().all()
-
-    # UTF-8 BOM ensures Excel opens the file with correct encoding (prevents
-    # em dashes and other non-ASCII chars from corrupting as â€").
-    output = io.StringIO()
-    output.write("﻿")
-    writer = csv.writer(output)
-    writer.writerow(columns)
-
     _SUCCESS_STATUSES = [
         PaymentStatus.confirmed,
         PaymentStatus.completed,
@@ -1385,23 +1370,58 @@ async def export_payments_csv(
         PaymentStatus.allocated,
     ]
 
-    for s in schedules:
-        # Fetch all successful payments linked to this schedule
-        pay_result = await db.execute(
-            select(Payment).where(
-                Payment.rent_schedule_id == s.id,
-                Payment.status.in_(_SUCCESS_STATUSES),
-            ).order_by(Payment.paid_at.asc())
-        )
-        payments = pay_result.scalars().all()
+    # Fetch schedules ordered by due date
+    sched_result = await db.execute(
+        select(RentSchedule)
+        .where(RentSchedule.lease_id == lease_id)
+        .order_by(RentSchedule.due_date.asc())
+    )
+    schedules = sched_result.scalars().all()
 
-        if payments:
-            for p in payments:
-                row = _build_csv_row(s, p, columns, lease.currency)
-                writer.writerow(row)
-        else:
-            row = _build_csv_row(s, None, columns, lease.currency)
-            writer.writerow(row)
+    # Fetch ALL successful rent payments for the lease in one query.
+    # rent_schedule_id is NULL on most payments (they are linked to the
+    # lease, not to individual schedules), so we match by date instead.
+    pay_result = await db.execute(
+        select(Payment).where(
+            Payment.lease_id == lease_id,
+            Payment.category == "rent",
+            Payment.status.in_(_SUCCESS_STATUSES),
+        ).order_by(Payment.paid_at.asc())
+    )
+    all_payments = list(pay_result.scalars().all())
+
+    def _payment_for_schedule(s: RentSchedule) -> Payment | None:
+        """
+        Return the first unmatched payment whose paid_at falls within the
+        schedule's period or up to 45 days after the due_date (late payments).
+        Payments explicitly linked via rent_schedule_id take priority.
+        """
+        window_end = s.due_date + timedelta(days=45)
+        # Priority 1: explicitly linked
+        for p in all_payments:
+            if p.rent_schedule_id == s.id:
+                return p
+        # Priority 2: paid_at within the schedule's coverage window
+        for p in all_payments:
+            if p.rent_schedule_id is not None:
+                continue  # already claimed by another schedule
+            if p.paid_at is None:
+                continue
+            paid_date = p.paid_at.date() if hasattr(p.paid_at, "date") else p.paid_at
+            if s.period_start <= paid_date <= window_end:
+                return p
+        return None
+
+    # UTF-8 BOM ensures Excel opens the file with correct encoding (prevents
+    # non-ASCII chars from corrupting as â€").
+    output = io.StringIO()
+    output.write("﻿")
+    writer = csv.writer(output)
+    writer.writerow(columns)
+
+    for s in schedules:
+        p = _payment_for_schedule(s)
+        writer.writerow(_build_csv_row(s, p, columns, lease.currency))
 
     return output.getvalue()
 
