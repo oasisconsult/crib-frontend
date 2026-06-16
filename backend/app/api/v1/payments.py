@@ -22,6 +22,7 @@ Endpoints:
   PATCH  /leases/{id}/deposit/return
   GET    /leases/{id}/ledger
   GET    /leases/{id}/ledger/entries
+  GET    /leases/{id}/statement
 """
 
 import uuid
@@ -508,4 +509,19 @@ async def list_ledger_entries(
         page_size=raw["page_size"],
         has_next=raw["has_next"],
         current_balance=raw["current_balance"],
+    )
+
+
+@router.get("/{lease_id}/statement")
+async def get_statement(
+    lease_id: uuid.UUID,
+    current_user=_read,
+    db: AsyncSession = Depends(get_db),
+):
+    """Download a CSV rent statement for this lease (all schedules + payments)."""
+    csv_data = await svc.export_payments_csv(lease_id, get_org_id(current_user), db)
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="statement_{lease_id}.csv"'},
     )
