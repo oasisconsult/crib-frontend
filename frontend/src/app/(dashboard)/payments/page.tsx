@@ -181,7 +181,10 @@ export default function PaymentsPage() {
   const exportUrl = useMemo(() => {
     const params = new URLSearchParams();
     const tabStatuses = TAB_FILTERS[tab as keyof typeof TAB_FILTERS] ?? [];
-    if (tabStatuses.length) params.set("states", (tabStatuses[0].value as string[]).join(","));
+    if (tabStatuses.length) {
+      const val = tabStatuses[0].value;
+      params.set("states", Array.isArray(val) ? val.join(",") : String(val));
+    }
     if (activeFilters.category) params.set("category", activeFilters.category);
     if (search) params.set("search", search);
     if (dateFrom) params.set("dateFrom", dateFrom);
