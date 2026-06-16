@@ -1,6 +1,5 @@
-from pathlib import Path
 
-content = """# CRIB TENANT PORTAL — WORKFLOW ENGINE TEST HARNESS
+# CRIB TENANT PORTAL — WORKFLOW ENGINE TEST HARNESS
 
 ## Objective
 

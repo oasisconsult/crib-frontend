@@ -389,3 +389,23 @@ async def update_features(
         contact_email=settings_blob.get("contact_email"),
         features=settings_blob.get("features", {}),
     )
+
+
+# ── Feature resolution helper ─────────────────────────────────────────────────
+
+async def resolve_org_features(org: Organisation, db: AsyncSession) -> dict:
+    """
+    Return the effective feature flags for an org.
+
+    Merges subscription-plan features (base) with org-level overrides
+    stored in org.settings["features"]. Org overrides win on conflict.
+    Used by payments.py (manualPayments gate) and admin.py (feature inspect).
+    """
+    from app.services.subscription_limits import _get_active_plan_limits
+    try:
+        limits = await _get_active_plan_limits(org.id, db)
+        plan_features: dict = limits.get("features", {})
+    except Exception:
+        plan_features = {}
+    org_overrides: dict = (org.settings or {}).get("features", {})
+    return {**plan_features, **org_overrides}
