@@ -102,4 +102,16 @@ export const queryKeys = {
     template: (id: string) => ["notifications", "templates", id] as const,
     stats: () => ["notifications", "stats"] as const,
   },
+  // Reports
+  reports: {
+    portfolio:            ()             => ["reports", "portfolio"] as const,
+    rentCollection:       (p?: object)  => ["reports", "rent-collection", p] as const,
+    rentArrears:          (p?: object)  => ["reports", "rent-arrears", p] as const,
+    occupancy:            (p?: object)  => ["reports", "occupancy", p] as const,
+    maintenanceOverview:  (p?: object)  => ["reports", "maintenance-overview", p] as const,
+    maintenanceCosts:     (p?: object)  => ["reports", "maintenance-costs", p] as const,
+    contractors:          (p?: object)  => ["reports", "contractors", p] as const,
+    leaseExpiry:          ()            => ["reports", "lease-expiry"] as const,
+    incomeExpense:        (p?: object)  => ["reports", "income-expense", p] as const,
+  },
 } as const;

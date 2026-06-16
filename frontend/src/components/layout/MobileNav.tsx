@@ -15,6 +15,7 @@ import {
   Settings,
   Wrench,
   Shield,
+  FileBarChart2,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -79,6 +80,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/analytics",
     label: "Analytics",
     icon: BarChart3,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/reports",
+    label: "Reports",
+    icon: FileBarChart2,
     roles: ["owner", "manager", "superadmin"],
   },
   {

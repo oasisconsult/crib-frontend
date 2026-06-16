@@ -45,6 +45,8 @@ cryptography = "44.0.0"
 
 # PDF generation
 weasyprint = "62.3"
+# Excel export
+openpyxl = ">=3.1,<4.0"
 pydyf = ">=0.10.0,<0.12.0"  # WeasyPrint 62.x calls transform() removed in pydyf 0.12.0
 jinja2 = "3.1.5"
 
