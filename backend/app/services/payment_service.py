@@ -1371,16 +1371,26 @@ async def export_payments_csv(
     )
     schedules = sched_result.scalars().all()
 
+    # UTF-8 BOM ensures Excel opens the file with correct encoding (prevents
+    # em dashes and other non-ASCII chars from corrupting as â€").
     output = io.StringIO()
+    output.write("﻿")
     writer = csv.writer(output)
     writer.writerow(columns)
 
+    _SUCCESS_STATUSES = [
+        PaymentStatus.confirmed,
+        PaymentStatus.completed,
+        PaymentStatus.reconciled,
+        PaymentStatus.allocated,
+    ]
+
     for s in schedules:
-        # Fetch confirmed payments for this schedule
+        # Fetch all successful payments linked to this schedule
         pay_result = await db.execute(
             select(Payment).where(
                 Payment.rent_schedule_id == s.id,
-                Payment.status == PaymentStatus.confirmed,
+                Payment.status.in_(_SUCCESS_STATUSES),
             ).order_by(Payment.paid_at.asc())
         )
         payments = pay_result.scalars().all()
@@ -1759,6 +1769,15 @@ async def list_late_fees_org(
     }
 
 
+def _fmt_date(d) -> str:
+    """Format a date as DD/MM/YYYY (British) for CSV/Excel output."""
+    if d is None:
+        return ""
+    if hasattr(d, "strftime"):
+        return d.strftime("%d/%m/%Y")
+    return str(d)
+
+
 def _build_csv_row(
     s: RentSchedule,
     p: Payment | None,
@@ -1767,8 +1786,8 @@ def _build_csv_row(
 ) -> list:
     balance = round(float(s.amount_due) + float(s.late_fee_applied) - float(s.amount_paid), 2)
     mapping = {
-        "period": f"{s.period_start} – {s.period_end}",
-        "due_date": str(s.due_date),
+        "period": f"{_fmt_date(s.period_start)} - {_fmt_date(s.period_end)}",
+        "due_date": _fmt_date(s.due_date),
         "amount_due": float(s.amount_due),
         "amount_paid": float(s.amount_paid),
         "late_fee": float(s.late_fee_applied),
@@ -1779,7 +1798,7 @@ def _build_csv_row(
         "method": p.method if p else "",
         "reference": p.reference if p else "",
         "payment_status": p.status if p else "",
-        "paid_at": p.paid_at.isoformat() if p and p.paid_at else "",
+        "paid_at": _fmt_date(p.paid_at) if p and p.paid_at else "",
         "currency": currency,
     }
     return [mapping.get(col, "") for col in columns]
