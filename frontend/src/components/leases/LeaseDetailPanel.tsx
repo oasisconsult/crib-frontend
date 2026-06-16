@@ -287,6 +287,16 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                 Record Payment
               </Button>
             )}
+            {lease.state === "active" && (
+              <a
+                href={`/api/v1/leases/${lease.id}/statement`}
+                download={`statement-${lease.reference}.csv`}
+                className="inline-flex items-center gap-1.5 rounded-[5px] border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Statement CSV
+              </a>
+            )}
             {canSend && (
               <Button size="sm" onClick={() => handleTransition("LEASE_SENT")}>
                 <Send className="h-3.5 w-3.5" />

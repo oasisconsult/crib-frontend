@@ -2124,10 +2124,22 @@ export default function TenantPortalPage() {
             {myLease && (
               <div className="flex items-center justify-between">
                 <SectionHeading>Payment Records</SectionHeading>
-                <Button size="sm" onClick={() => setDialog("pay")}>
-                  <CreditCard className="h-3.5 w-3.5" />
-                  Pay Rent
-                </Button>
+                <div className="flex items-center gap-2">
+                  {myPayments.length > 0 && (
+                    <a
+                      href={`/api/v1/leases/${myLease.id}/statement`}
+                      download={`statement-${myLease.reference}.csv`}
+                      className="inline-flex items-center gap-1.5 rounded-[5px] border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <FileDown className="h-3.5 w-3.5" />
+                      Statement
+                    </a>
+                  )}
+                  <Button size="sm" onClick={() => setDialog("pay")}>
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Pay Rent
+                  </Button>
+                </div>
               </div>
             )}
 
