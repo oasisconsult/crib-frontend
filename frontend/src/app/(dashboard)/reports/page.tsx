@@ -176,40 +176,44 @@ function RentCollectionTab() {
         <DateRange from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
         <ExportBtn report="rent-collection" params={params} label="Collection" />
       </div>
-      <div className="overflow-x-auto rounded-[8px] border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              {["Property", "Due", "Collected", "Outstanding", "Rate", "Paid", "Overdue"].map((h) => (
-                <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 7 }).map((__, j) => (
-                    <td key={j} className="px-3 py-3"><Skeleton /></td>
-                  ))}</tr>
-                ))
-              : (data ?? []).map((r) => (
-                  <tr key={r.propertyId} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-3 py-3 font-medium">{r.propertyName}</td>
-                    <td className="px-3 py-3 tabular-nums">{formatCurrency(r.rentDue, CURRENCY)}</td>
-                    <td className="px-3 py-3 tabular-nums text-emerald-600 font-medium">{formatCurrency(r.rentCollected, CURRENCY)}</td>
-                    <td className="px-3 py-3 tabular-nums text-red-600">{formatCurrency(r.outstanding, CURRENCY)}</td>
-                    <td className="px-3 py-3">
-                      <span className={`font-semibold ${r.collectionPct >= 90 ? "text-emerald-600" : r.collectionPct >= 70 ? "text-amber-600" : "text-red-600"}`}>
-                        {r.collectionPct}%
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 tabular-nums">{r.paidCount}</td>
-                    <td className="px-3 py-3 tabular-nums text-red-500">{r.overdueCount}</td>
-                  </tr>
-                ))
-            }
-          </tbody>
-        </table>
+      <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                {["Property", "Due", "Collected", "Outstanding", "Rate", "Paid", "Overdue"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-b border-[hsl(var(--border))]">{Array.from({ length: 7 }).map((__, j) => (
+                      <td key={j} className="px-4 py-3"><Skeleton /></td>
+                    ))}</tr>
+                  ))
+                : (data ?? []).length === 0
+                  ? <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No rent collection data for this period</td></tr>
+                  : (data ?? []).map((r) => (
+                    <tr key={r.propertyId} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/50 transition-colors">
+                      <td className="px-4 py-3 font-medium">{r.propertyName}</td>
+                      <td className="px-4 py-3 tabular-nums">{formatCurrency(r.rentDue, CURRENCY)}</td>
+                      <td className="px-4 py-3 tabular-nums text-emerald-600 font-medium">{formatCurrency(r.rentCollected, CURRENCY)}</td>
+                      <td className="px-4 py-3 tabular-nums text-red-600">{formatCurrency(r.outstanding, CURRENCY)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`font-semibold ${r.collectionPct >= 90 ? "text-emerald-600" : r.collectionPct >= 70 ? "text-amber-600" : "text-red-600"}`}>
+                          {r.collectionPct}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">{r.paidCount}</td>
+                      <td className="px-4 py-3 tabular-nums text-red-500">{r.overdueCount}</td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -269,39 +273,43 @@ function RentArrearsTab() {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-[8px] border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              {["Tenant", "Property", "Unit", "Due Date", "Amount Owed", "Days Overdue"].map((h) => (
-                <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 6 }).map((__, j) => (
-                    <td key={j} className="px-3 py-3"><Skeleton /></td>
-                  ))}</tr>
-                ))
-              : rows.map((r, i) => (
-                  <tr key={`${r.tenantId}-${r.dueDate}-${i}`} className="hover:bg-muted/30">
-                    <td className="px-3 py-3 font-medium">{r.tenantName}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{r.propertyName}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{r.unitName ?? "—"}</td>
-                    <td className="px-3 py-3">{formatDate(r.dueDate)}</td>
-                    <td className="px-3 py-3 font-semibold text-red-600 tabular-nums">{formatCurrency(r.amountOwed, CURRENCY)}</td>
-                    <td className="px-3 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${BUCKET_COLORS[bucket]}`}>
-                        {r.daysOverdue}d
-                      </span>
-                    </td>
-                  </tr>
-                ))
-            }
-          </tbody>
-        </table>
+      <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                {["Tenant", "Property", "Unit", "Due Date", "Amount Owed", "Days Overdue"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-b border-[hsl(var(--border))]">{Array.from({ length: 6 }).map((__, j) => (
+                      <td key={j} className="px-4 py-3"><Skeleton /></td>
+                    ))}</tr>
+                  ))
+                : rows.length === 0
+                  ? <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No arrears in this bucket</td></tr>
+                  : rows.map((r, i) => (
+                    <tr key={`${r.tenantId}-${r.dueDate}-${i}`} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/50 transition-colors">
+                      <td className="px-4 py-3 font-medium">{r.tenantName}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.propertyName}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.unitName ?? "—"}</td>
+                      <td className="px-4 py-3">{formatDate(r.dueDate)}</td>
+                      <td className="px-4 py-3 font-semibold text-red-600 tabular-nums">{formatCurrency(r.amountOwed, CURRENCY)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${BUCKET_COLORS[bucket]}`}>
+                          {r.daysOverdue}d
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -322,39 +330,43 @@ function OccupancyTab() {
           <KpiCard label="Lost Revenue" value={formatCurrency(data.totals.monthlyRentLostEst, CURRENCY)} icon={TrendingUp} color="bg-red-50 text-red-600 dark:bg-red-500/15" sub="monthly estimate" />
         </div>
       )}
-      <div className="overflow-x-auto rounded-[8px] border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              {["Property", "Total", "Occupied", "Vacant", "Vacancy %", "Lost Rent/mo"].map((h) => (
-                <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 6 }).map((__, j) => (
-                    <td key={j} className="px-3 py-3"><Skeleton /></td>
-                  ))}</tr>
-                ))
-              : (data?.properties ?? []).map((r) => (
-                  <tr key={r.propertyId} className="hover:bg-muted/30">
-                    <td className="px-3 py-3 font-medium">{r.propertyName}</td>
-                    <td className="px-3 py-3 tabular-nums">{r.totalUnits}</td>
-                    <td className="px-3 py-3 tabular-nums text-emerald-600">{r.occupied}</td>
-                    <td className="px-3 py-3 tabular-nums text-amber-600">{r.vacant}</td>
-                    <td className="px-3 py-3">
-                      <span className={`font-semibold ${r.vacancyPct === 0 ? "text-emerald-600" : r.vacancyPct < 20 ? "text-amber-600" : "text-red-600"}`}>
-                        {r.vacancyPct}%
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 tabular-nums text-red-500">{formatCurrency(r.monthlyRentLost, CURRENCY)}</td>
-                  </tr>
-                ))
-            }
-          </tbody>
-        </table>
+      <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                {["Property", "Total", "Occupied", "Vacant", "Vacancy %", "Lost Rent/mo"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-b border-[hsl(var(--border))]">{Array.from({ length: 6 }).map((__, j) => (
+                      <td key={j} className="px-4 py-3"><Skeleton /></td>
+                    ))}</tr>
+                  ))
+                : (data?.properties ?? []).length === 0
+                  ? <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">No properties found</td></tr>
+                  : (data?.properties ?? []).map((r) => (
+                    <tr key={r.propertyId} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/50 transition-colors">
+                      <td className="px-4 py-3 font-medium">{r.propertyName}</td>
+                      <td className="px-4 py-3 tabular-nums">{r.totalUnits}</td>
+                      <td className="px-4 py-3 tabular-nums text-emerald-600">{r.occupied}</td>
+                      <td className="px-4 py-3 tabular-nums text-amber-600">{r.vacant}</td>
+                      <td className="px-4 py-3">
+                        <span className={`font-semibold ${r.vacancyPct === 0 ? "text-emerald-600" : r.vacancyPct < 20 ? "text-amber-600" : "text-red-600"}`}>
+                          {r.vacancyPct}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums text-red-500">{formatCurrency(r.monthlyRentLost, CURRENCY)}</td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -415,30 +427,39 @@ function MaintenanceTab() {
         </Card>
       </div>
 
-      {(overview?.byProperty ?? []).length > 0 && (
-        <div className="overflow-x-auto rounded-[8px] border border-border">
+      <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)]">
+        <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
                 {["Property", "Open", "In Progress", "Resolved", "Total"].map((h) => (
-                  <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">{h}</th>
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
-              {(overview?.byProperty ?? []).map((r) => (
-                <tr key={r.propertyId} className="hover:bg-muted/30">
-                  <td className="px-3 py-3 font-medium">{r.propertyName}</td>
-                  <td className="px-3 py-3 tabular-nums text-red-500">{r.open}</td>
-                  <td className="px-3 py-3 tabular-nums text-amber-500">{r.inProgress}</td>
-                  <td className="px-3 py-3 tabular-nums text-emerald-600">{r.resolved}</td>
-                  <td className="px-3 py-3 tabular-nums">{r.total}</td>
-                </tr>
-              ))}
+            <tbody>
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-b border-[hsl(var(--border))]">{Array.from({ length: 5 }).map((__, j) => (
+                      <td key={j} className="px-4 py-3"><Skeleton /></td>
+                    ))}</tr>
+                  ))
+                : (overview?.byProperty ?? []).length === 0
+                  ? <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground">No maintenance data</td></tr>
+                  : (overview?.byProperty ?? []).map((r) => (
+                    <tr key={r.propertyId} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/50 transition-colors">
+                      <td className="px-4 py-3 font-medium">{r.propertyName}</td>
+                      <td className="px-4 py-3 tabular-nums text-red-500">{r.open}</td>
+                      <td className="px-4 py-3 tabular-nums text-amber-500">{r.inProgress}</td>
+                      <td className="px-4 py-3 tabular-nums text-emerald-600">{r.resolved}</td>
+                      <td className="px-4 py-3 tabular-nums">{r.total}</td>
+                    </tr>
+                  ))
+              }
             </tbody>
           </table>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -473,44 +494,48 @@ function LeaseExpiryTab() {
         <ExportBtn report="lease-expiry" label="Expiry" />
       </div>
 
-      <div className="overflow-x-auto rounded-[8px] border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              {["Reference", "Tenant", "Property", "Unit", "End Date", "Days Left", "Monthly Rent"].map((h) => (
-                <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {isLoading
-              ? Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 7 }).map((__, j) => (
-                    <td key={j} className="px-3 py-3"><Skeleton /></td>
-                  ))}</tr>
-                ))
-              : rows.map((r) => (
-                  <tr key={r.leaseId} className="hover:bg-muted/30">
-                    <td className="px-3 py-3 font-mono text-xs">{r.leaseRef}</td>
-                    <td className="px-3 py-3 font-medium">{r.tenantName}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{r.propertyName}</td>
-                    <td className="px-3 py-3 text-muted-foreground">{r.unitName ?? "—"}</td>
-                    <td className="px-3 py-3">{formatDate(r.endDate)}</td>
-                    <td className="px-3 py-3">
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        r.daysUntilExpiry <= 30 ? "bg-red-50 text-red-700" :
-                        r.daysUntilExpiry <= 60 ? "bg-amber-50 text-amber-700" :
-                        "bg-muted text-muted-foreground"
-                      }`}>
-                        {r.daysUntilExpiry}d
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 tabular-nums font-medium">{formatCurrency(r.monthlyRent, r.currency)}</td>
-                  </tr>
-                ))
-            }
-          </tbody>
-        </table>
+      <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                {["Reference", "Tenant", "Property", "Unit", "End Date", "Days Left", "Monthly Rent"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i} className="border-b border-[hsl(var(--border))]">{Array.from({ length: 7 }).map((__, j) => (
+                      <td key={j} className="px-4 py-3"><Skeleton /></td>
+                    ))}</tr>
+                  ))
+                : rows.length === 0
+                  ? <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No leases expiring in this window</td></tr>
+                  : rows.map((r) => (
+                    <tr key={r.leaseId} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/50 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs">{r.leaseRef}</td>
+                      <td className="px-4 py-3 font-medium">{r.tenantName}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.propertyName}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.unitName ?? "—"}</td>
+                      <td className="px-4 py-3">{formatDate(r.endDate)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          r.daysUntilExpiry <= 30 ? "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400" :
+                          r.daysUntilExpiry <= 60 ? "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" :
+                          "bg-muted text-muted-foreground"
+                        }`}>
+                          {r.daysUntilExpiry}d
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums font-medium">{formatCurrency(r.monthlyRent, r.currency)}</td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -578,37 +603,41 @@ function IncomeExpenseTab() {
         </CardContent></Card>
       </div>
 
-      <div className="overflow-x-auto rounded-[8px] border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              {["Period", "Revenue", "Expenses", "Net Income"].map((h) => (
-                <th key={h} className="px-3 py-2.5 text-left text-xs font-semibold text-muted-foreground">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {isLoading
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 4 }).map((__, j) => (
-                    <td key={j} className="px-3 py-3"><Skeleton /></td>
-                  ))}</tr>
-                ))
-              : (data ?? []).map((r) => (
-                  <tr key={r.periodStart} className="hover:bg-muted/30">
-                    <td className="px-3 py-3 font-medium">{r.period}</td>
-                    <td className="px-3 py-3 tabular-nums text-emerald-600">{formatCurrency(r.revenue, CURRENCY)}</td>
-                    <td className="px-3 py-3 tabular-nums text-red-600">{formatCurrency(r.expenses, CURRENCY)}</td>
-                    <td className="px-3 py-3">
-                      <span className={`font-semibold tabular-nums ${r.netIncome >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                        {formatCurrency(r.netIncome, CURRENCY)}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-            }
-          </tbody>
-        </table>
+      <div className="overflow-hidden rounded-[6px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-[var(--shadow-sm)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))]">
+                {["Period", "Revenue", "Expenses", "Net Income"].map((h) => (
+                  <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-[hsl(var(--muted-foreground))] whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {isLoading
+                ? Array.from({ length: 6 }).map((_, i) => (
+                    <tr key={i} className="border-b border-[hsl(var(--border))]">{Array.from({ length: 4 }).map((__, j) => (
+                      <td key={j} className="px-4 py-3"><Skeleton /></td>
+                    ))}</tr>
+                  ))
+                : (data ?? []).length === 0
+                  ? <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-muted-foreground">No income/expense data</td></tr>
+                  : (data ?? []).map((r) => (
+                    <tr key={r.periodStart} className="border-b border-[hsl(var(--border))] hover:bg-[hsl(var(--muted))]/50 transition-colors">
+                      <td className="px-4 py-3 font-medium">{r.period}</td>
+                      <td className="px-4 py-3 tabular-nums text-emerald-600">{formatCurrency(r.revenue, CURRENCY)}</td>
+                      <td className="px-4 py-3 tabular-nums text-red-600">{formatCurrency(r.expenses, CURRENCY)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`font-semibold tabular-nums ${r.netIncome >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                          {formatCurrency(r.netIncome, CURRENCY)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

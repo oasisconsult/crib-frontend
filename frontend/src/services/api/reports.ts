@@ -167,20 +167,20 @@ function qs(params: Record<string, unknown>): string {
 
 export const reportsApi = {
   portfolio: () =>
-    apiGet<PortfolioSummary>("/api/v1/reports/portfolio").then(camel<PortfolioSummary>),
+    apiGet<PortfolioSummary>("/reports/portfolio").then(camel<PortfolioSummary>),
 
   rentCollection: (params?: { dateFrom?: string; dateTo?: string; propertyId?: string }) =>
-    apiGet<RentCollectionRow[]>(`/api/v1/reports/rent-collection${qs(params ?? {})}`).then(
+    apiGet<RentCollectionRow[]>(`/reports/rent-collection${qs(params ?? {})}`).then(
       camel<RentCollectionRow[]>,
     ),
 
   rentArrears: (params?: { propertyId?: string }) =>
-    apiGet<RentArrearsReport>(`/api/v1/reports/rent-arrears${qs(params ?? {})}`).then(
+    apiGet<RentArrearsReport>(`/reports/rent-arrears${qs(params ?? {})}`).then(
       camel<RentArrearsReport>,
     ),
 
   occupancy: (params?: { propertyId?: string }) =>
-    apiGet<OccupancyReport>(`/api/v1/reports/occupancy${qs(params ?? {})}`).then(
+    apiGet<OccupancyReport>(`/reports/occupancy${qs(params ?? {})}`).then(
       camel<OccupancyReport>,
     ),
 
@@ -190,28 +190,29 @@ export const reportsApi = {
     dateFrom?: string;
     dateTo?: string;
   }) =>
-    apiGet<MaintenanceOverview>(`/api/v1/reports/maintenance/overview${qs(params ?? {})}`).then(
+    apiGet<MaintenanceOverview>(`/reports/maintenance/overview${qs(params ?? {})}`).then(
       camel<MaintenanceOverview>,
     ),
 
   maintenanceCosts: (params?: { propertyId?: string; dateFrom?: string; dateTo?: string }) =>
-    apiGet<MaintenanceCostReport>(`/api/v1/reports/maintenance/costs${qs(params ?? {})}`).then(
+    apiGet<MaintenanceCostReport>(`/reports/maintenance/costs${qs(params ?? {})}`).then(
       camel<MaintenanceCostReport>,
     ),
 
   contractors: (params?: { dateFrom?: string; dateTo?: string }) =>
-    apiGet<ContractorPerformanceRow[]>(`/api/v1/reports/contractors${qs(params ?? {})}`).then(
+    apiGet<ContractorPerformanceRow[]>(`/reports/contractors${qs(params ?? {})}`).then(
       camel<ContractorPerformanceRow[]>,
     ),
 
   leaseExpiry: () =>
-    apiGet<LeaseExpiryReport>("/api/v1/reports/lease-expiry").then(camel<LeaseExpiryReport>),
+    apiGet<LeaseExpiryReport>("/reports/lease-expiry").then(camel<LeaseExpiryReport>),
 
   incomeExpense: (params?: { groupBy?: string; months?: number }) =>
-    apiGet<IncomeExpenseRow[]>(`/api/v1/reports/income-expense${qs(params ?? {})}`).then(
+    apiGet<IncomeExpenseRow[]>(`/reports/income-expense${qs(params ?? {})}`).then(
       camel<IncomeExpenseRow[]>,
     ),
 
+  // exportUrl is used in <a href> directly (not via axios), so it needs the full /api/v1/ prefix
   exportUrl: (
     report: "rent-collection" | "rent-arrears" | "lease-expiry" | "income-expense",
     params: Record<string, unknown> = {},
