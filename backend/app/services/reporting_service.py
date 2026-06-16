@@ -946,7 +946,7 @@ async def get_income_expense_report(
                 date_trunc('{trunc}', p.paid_at AT TIME ZONE 'UTC') AS period_start,
                 SUM(p.amount) AS total
             FROM payments p
-            WHERE p.status = ANY(:pay_statuses)
+            WHERE p.status::text = ANY(:pay_statuses)
               AND p.paid_at IS NOT NULL
               AND p.paid_at >= :start::date::timestamptz
               AND p.paid_at < (:today::date + interval '1 day')::timestamptz
