@@ -275,7 +275,10 @@ async def get_rent_collection_report(
     df = date_from or date.today().replace(day=1)
     dt = date_to   or date.today()
 
-    # CTE: schedules in date range for active leases, grouped by property
+    # rent_collected = sum of amount_paid on schedules in the period.
+    # amount_paid is updated by the payment allocation flow as payments are
+    # confirmed and linked to schedules (via rent_schedule_id or period match).
+    # GREATEST(..., 0) prevents negative outstanding when schedules are overpaid.
     prop_filter = "AND l.property_id = :property_id" if property_id else ""
     org_filter  = "AND l.organisation_id = :org_id"  if org_id     else ""
 
@@ -304,7 +307,8 @@ async def get_rent_collection_report(
             COALESCE(s.schedules_count, 0) AS schedules_count,
             COALESCE(s.rent_due, 0)        AS rent_due,
             COALESCE(s.rent_collected, 0)  AS rent_collected,
-            COALESCE(s.rent_due, 0) - COALESCE(s.rent_collected, 0) AS outstanding,
+            GREATEST(COALESCE(s.rent_due, 0) - COALESCE(s.rent_collected, 0), 0)
+                                           AS outstanding,
             CASE WHEN COALESCE(s.rent_due, 0) > 0
                  THEN ROUND(COALESCE(s.rent_collected, 0) / s.rent_due * 100, 1)
                  ELSE 0 END AS collection_pct,
@@ -929,6 +933,7 @@ async def get_income_expense_report(
 
     sql = text(f"""
         WITH periods AS (
+            -- date_trunc on a date returns timestamp (no TZ) — matches revenue/expenses
             SELECT generate_series(
                 date_trunc('{trunc}', :start::date),
                 date_trunc('{trunc}', :today::date),
@@ -937,24 +942,26 @@ async def get_income_expense_report(
         ),
         revenue AS (
             SELECT
-                date_trunc('{trunc}', p.paid_at) AS period_start,
+                -- AT TIME ZONE 'UTC' on timestamptz → timestamp (no TZ), same as periods
+                date_trunc('{trunc}', p.paid_at AT TIME ZONE 'UTC') AS period_start,
                 SUM(p.amount) AS total
             FROM payments p
             WHERE p.status = ANY(:pay_statuses)
-              AND p.paid_at >= :start
-              AND p.paid_at < :today + interval '1 day'
+              AND p.paid_at IS NOT NULL
+              AND p.paid_at >= :start::date::timestamptz
+              AND p.paid_at < (:today::date + interval '1 day')::timestamptz
               {org_pay_filter}
             GROUP BY 1
         ),
         expenses AS (
             SELECT
-                date_trunc('{trunc}', m.resolved_at) AS period_start,
+                date_trunc('{trunc}', m.resolved_at AT TIME ZONE 'UTC') AS period_start,
                 SUM(m.actual_cost) AS total
             FROM maintenance_issues m
             WHERE m.resolved_at IS NOT NULL
               AND m.actual_cost IS NOT NULL
-              AND m.resolved_at >= :start
-              AND m.resolved_at < :today + interval '1 day'
+              AND m.resolved_at >= :start::date::timestamptz
+              AND m.resolved_at < (:today::date + interval '1 day')::timestamptz
               {org_maint_filter}
             GROUP BY 1
         )
