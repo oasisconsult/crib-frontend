@@ -6,6 +6,7 @@ allowing dashboards and reports to list all payments / schedules / late fees
 across all leases in one call.
 
 GET  /payments                   list all payments for the org
+GET  /payments/export            download all payments as CSV (with filters)
 POST /payments                   create a payment (lease_id in body)
 GET  /payments/{id}              get single payment
 PATCH /payments/{id}/confirm     confirm a pending payment
@@ -15,8 +16,10 @@ GET  /late-fees                  list all late fees for the org
 """
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_org_id, get_tenant_record, require_org_access
@@ -34,6 +37,39 @@ _write = Depends(require_org_access(allow_tenant_own=False))
 payments_router = APIRouter(prefix="/payments", tags=["payments"])
 
 
+# NOTE: /payments/export must be registered BEFORE /{payment_id} to prevent
+# FastAPI matching "export" as a UUID payment ID.
+@payments_router.get("/export", dependencies=[require_permission("read", "payment")])
+async def export_payments(
+    payment_status: str | None = Query(None, alias="status"),
+    states: str | None = Query(None),
+    category: str | None = Query(None),
+    search: str | None = Query(None),
+    date_from: datetime | None = Query(None, alias="dateFrom"),
+    date_to: datetime | None = Query(None, alias="dateTo"),
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """Download all org payments matching current filters as a CSV file."""
+    org_id = get_org_id(current_user)
+    status_list = [s.strip() for s in states.split(",")] if states else ([payment_status] if payment_status else None)
+    csv_data = await svc.export_org_payments_csv(
+        org_id, db,
+        status_filters=status_list,
+        category=category,
+        search=search,
+        paid_after=date_from,
+        paid_before=date_to,
+    )
+    from datetime import date as _date
+    filename = f"payments-{_date.today().isoformat()}.csv"
+    return Response(
+        content=csv_data,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @payments_router.get("", response_model=dict, dependencies=[require_permission("read", "payment")])
 async def list_payments(
     lease_id: uuid.UUID | None = Query(None, alias="leaseId"),
@@ -41,6 +77,8 @@ async def list_payments(
     states: str | None = Query(None),
     category: str | None = Query(None),
     search: str | None = Query(None),
+    date_from: datetime | None = Query(None, alias="dateFrom"),
+    date_to: datetime | None = Query(None, alias="dateTo"),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100, alias="pageSize"),
     current_user: CurrentUser = _read,
@@ -64,6 +102,8 @@ async def list_payments(
         lease_id_filter=lease_id,
         tenant_id_filter=tenant_id_filter,
         landlord_profile_id=landlord_id,
+        paid_after=date_from,
+        paid_before=date_to,
         page=page,
         page_size=page_size,
     )

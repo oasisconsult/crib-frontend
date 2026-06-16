@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { CreditCard, TrendingUp, AlertTriangle, CheckCircle2, Download, X as XIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -166,13 +166,29 @@ export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<ActiveFilters>({});
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const { data, isLoading } = usePayments({
     page,
     pageSize: PAGE_SIZE,
     search: search || undefined,
     filters: [...(TAB_FILTERS[tab as keyof typeof TAB_FILTERS] ?? []), ...panelFiltersToConfig(activeFilters)],
+    ...(dateFrom ? { dateFrom } : {}),
+    ...(dateTo   ? { dateTo }   : {}),
   });
+
+  const exportUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    const tabStatuses = TAB_FILTERS[tab as keyof typeof TAB_FILTERS] ?? [];
+    if (tabStatuses.length) params.set("states", (tabStatuses[0].value as string[]).join(","));
+    if (activeFilters.category) params.set("category", activeFilters.category);
+    if (search) params.set("search", search);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo)   params.set("dateTo",   dateTo);
+    const qs = params.toString();
+    return `/api/v1/payments/export${qs ? `?${qs}` : ""}`;
+  }, [tab, activeFilters, search, dateFrom, dateTo]);
 
   const { data: overdueData, isLoading: overdueLoading } = useOverdueSchedules({ page, pageSize: PAGE_SIZE });
   const { data: stats } = useDashboardStats();
@@ -192,6 +208,8 @@ export default function PaymentsPage() {
     setPage(1);
   };
 
+  const handleDateChange = () => setPage(1);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -202,13 +220,23 @@ export default function PaymentsPage() {
             Rent collection, deposits, and payment tracking
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push("/payments/reconciliation")}
-        >
-          Mobile Money Reconciliation
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <a
+            href={exportUrl}
+            download
+            className="inline-flex items-center gap-1.5 rounded-[6px] border border-border bg-background px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </a>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/payments/reconciliation")}
+          >
+            Mobile Money Reconciliation
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -257,12 +285,41 @@ export default function PaymentsPage() {
 
       {/* Toolbar */}
       <div className="space-y-2">
-        <FilterBar
-          search={search}
-          onSearchChange={handleSearchChange}
-          placeholder="Search by reference or tenant..."
-          className="max-w-sm"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <FilterBar
+            search={search}
+            onSearchChange={handleSearchChange}
+            placeholder="Search by reference or tenant..."
+            className="max-w-sm"
+          />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="font-medium">From</span>
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(e) => { setDateFrom(e.target.value); handleDateChange(); }}
+              className="rounded-[6px] border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <span className="font-medium">To</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(e) => { setDateTo(e.target.value); handleDateChange(); }}
+              className="rounded-[6px] border border-border bg-background px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            {(dateFrom || dateTo) && (
+              <button
+                onClick={() => { setDateFrom(""); setDateTo(""); setPage(1); }}
+                className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                aria-label="Clear date range"
+              >
+                <XIcon className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
         <FilterPanel
           fields={FILTER_FIELDS}
           value={activeFilters}

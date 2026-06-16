@@ -40,6 +40,8 @@ export interface QueryParams {
   sort?: SortConfig;
   filters?: FilterConfig[];
   search?: string;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 // ─── Analytics types ──────────────────────────────────────────────────────────

@@ -49,6 +49,8 @@ export function toPaymentParams(params?: QueryParams): Record<string, unknown> |
   if (params.page != null) out.page = params.page;
   if (params.pageSize != null) out.pageSize = params.pageSize;
   if (params.search) out.search = params.search;
+  if (params.dateFrom) out.dateFrom = params.dateFrom;
+  if (params.dateTo)   out.dateTo   = params.dateTo;
   if (params.filters) {
     for (const f of params.filters) {
       if (f.field === "state") {

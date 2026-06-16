@@ -1407,6 +1407,8 @@ async def list_payments_org(
     lease_id_filter: uuid.UUID | None = None,
     tenant_id_filter: uuid.UUID | None = None,
     landlord_profile_id: uuid.UUID | None = None,
+    paid_after: datetime | None = None,
+    paid_before: datetime | None = None,
     page: int = 1,
     page_size: int = 20,
 ) -> dict:
@@ -1438,6 +1440,10 @@ async def list_payments_org(
         q = q.join(Lease, Lease.id == Payment.lease_id).where(
             Lease.tenant_id == tenant_id_filter
         )
+    if paid_after:
+        q = q.where(Payment.paid_at >= paid_after)
+    if paid_before:
+        q = q.where(Payment.paid_at <= paid_before)
 
     total = await db.scalar(select(func.count()).select_from(q.subquery())) or 0
     q = q.order_by(Payment.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
@@ -1484,6 +1490,79 @@ async def list_payments_org(
         "hasNext": (page * page_size) < total,
         "totalPages": (total + page_size - 1) // page_size if page_size > 0 else 0,
     }
+
+
+async def export_org_payments_csv(
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+    status_filters: list[str] | None = None,
+    category: str | None = None,
+    search: str | None = None,
+    paid_after: datetime | None = None,
+    paid_before: datetime | None = None,
+    limit: int = 10_000,
+) -> str:
+    """Return a CSV of all org payments matching the given filters (no pagination)."""
+    from app.models.lease import Lease as _Lease
+
+    q = org_scope(select(Payment), Payment.organisation_id, org_id)
+    if status_filters:
+        q = q.where(Payment.status.in_(status_filters))
+    if category:
+        q = q.where(Payment.category == category)
+    if search:
+        q = q.where(Payment.reference.ilike(f"%{search}%"))
+    if paid_after:
+        q = q.where(Payment.paid_at >= paid_after)
+    if paid_before:
+        q = q.where(Payment.paid_at <= paid_before)
+    q = q.order_by(Payment.paid_at.desc().nullslast(), Payment.created_at.desc()).limit(limit)
+
+    payments = (await db.execute(q)).scalars().all()
+
+    # Batch-enrich with tenant/unit/property names
+    lease_ids = {p.lease_id for p in payments}
+    lease_map: dict = {}
+    tenant_map: dict = {}
+    unit_map: dict = {}
+    property_map: dict = {}
+
+    if lease_ids:
+        leases = (await db.execute(select(_Lease).where(_Lease.id.in_(lease_ids)))).scalars().all()
+        lease_map = {l.id: l for l in leases}
+        tenant_ids = {l.tenant_id for l in leases if l.tenant_id}
+        unit_ids   = {l.unit_id   for l in leases if l.unit_id}
+        prop_ids   = {l.property_id for l in leases if l.property_id}
+        if tenant_ids:
+            tenants = (await db.execute(select(TenantModel).where(TenantModel.id.in_(tenant_ids)))).scalars().all()
+            tenant_map = {t.id: f"{t.first_name} {t.last_name}" for t in tenants}
+        if unit_ids:
+            units = (await db.execute(select(Unit).where(Unit.id.in_(unit_ids)))).scalars().all()
+            unit_map = {u.id: u.name for u in units}
+        if prop_ids:
+            props = (await db.execute(select(Property).where(Property.id.in_(prop_ids)))).scalars().all()
+            property_map = {pr.id: pr.name for pr in props}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Reference", "Tenant", "Property", "Unit", "Type", "Status",
+                     "Amount", "Currency", "Method", "Paid On", "Created At"])
+    for p in payments:
+        lease = lease_map.get(p.lease_id)
+        writer.writerow([
+            p.reference or "",
+            tenant_map.get(lease.tenant_id, "") if lease and lease.tenant_id else "",
+            property_map.get(lease.property_id, "") if lease and lease.property_id else "",
+            unit_map.get(lease.unit_id, "") if lease and lease.unit_id else "",
+            (p.category or "").replace("_", " ").title(),
+            p.status or "",
+            float(p.amount),
+            p.currency or "",
+            (p.method or "").replace("_", " ").title(),
+            p.paid_at.strftime("%Y-%m-%d") if p.paid_at else "",
+            p.created_at.strftime("%Y-%m-%d") if p.created_at else "",
+        ])
+    return output.getvalue()
 
 
 async def get_payment_by_org(
