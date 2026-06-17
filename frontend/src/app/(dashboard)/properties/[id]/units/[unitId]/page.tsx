@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/select";
 import { PageSkeleton } from "@/components/common/LoadingSkeleton";
 import { formatCurrency, formatDate } from "@/utils/formatters";
+import { ScreeningPanel } from "@/features/screenings/components/ScreeningPanel";
 import { useUnit, useProperty, useUpdateUnit } from "@/hooks/useProperties";
 import { useTenant } from "@/hooks/useTenants";
 import { useLease } from "@/hooks/useLeases";
@@ -792,6 +793,9 @@ export default function UnitDetailPage({ params }: Props) {
               </CardContent>
             </Card>
           )}
+
+          {/* ── Tenant Screenings ──────────────────────── */}
+          <ScreeningPanel unitId={unitId} canManage={canEdit} />
 
           {/* ── Quick actions ──────────────────────────── */}
           <div className="flex flex-wrap gap-2">
