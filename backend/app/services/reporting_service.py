@@ -931,12 +931,17 @@ async def get_income_expense_report(
     org_pay_filter  = "AND p.organisation_id = :org_id" if org_id else ""
     org_maint_filter = "AND m.organisation_id = :org_id" if org_id else ""
 
+    # Inline start/today as ISO literals — asyncpg mishandles :param::cast notation
+    # in text() when params are named. These are server-generated dates, not user input.
+    start_iso = start.isoformat()
+    today_iso = today.isoformat()
+
     sql = text(f"""
         WITH periods AS (
             -- date_trunc on a date returns timestamp (no TZ) — matches revenue/expenses
             SELECT generate_series(
-                date_trunc('{trunc}', :start::date),
-                date_trunc('{trunc}', :today::date),
+                date_trunc('{trunc}', '{start_iso}'::date),
+                date_trunc('{trunc}', '{today_iso}'::date),
                 '{series_step}'::interval
             ) AS period_start
         ),
@@ -946,10 +951,10 @@ async def get_income_expense_report(
                 date_trunc('{trunc}', p.paid_at AT TIME ZONE 'UTC') AS period_start,
                 SUM(p.amount) AS total
             FROM payments p
-            WHERE p.status::text = ANY(:pay_statuses)
+            WHERE p.status::text = ANY(ARRAY['confirmed','completed','reconciled','allocated']::text[])
               AND p.paid_at IS NOT NULL
-              AND p.paid_at >= :start::date::timestamptz
-              AND p.paid_at < (:today::date + interval '1 day')::timestamptz
+              AND p.paid_at >= '{start_iso}'::date::timestamptz
+              AND p.paid_at < ('{today_iso}'::date + interval '1 day')::timestamptz
               {org_pay_filter}
             GROUP BY 1
         ),
@@ -960,8 +965,8 @@ async def get_income_expense_report(
             FROM maintenance_issues m
             WHERE m.resolved_at IS NOT NULL
               AND m.actual_cost IS NOT NULL
-              AND m.resolved_at >= :start::date::timestamptz
-              AND m.resolved_at < (:today::date + interval '1 day')::timestamptz
+              AND m.resolved_at >= '{start_iso}'::date::timestamptz
+              AND m.resolved_at < ('{today_iso}'::date + interval '1 day')::timestamptz
               {org_maint_filter}
             GROUP BY 1
         )
@@ -976,11 +981,7 @@ async def get_income_expense_report(
         ORDER BY pe.period_start ASC
     """)
 
-    params: dict = {
-        "start": start,
-        "today": today,
-        "pay_statuses": _SUCCESS_PAYMENT_STATUSES,
-    }
+    params: dict = {}
     if org_id:
         params["org_id"] = str(org_id)
 

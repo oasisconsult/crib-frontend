@@ -57,7 +57,7 @@ def upgrade() -> None:
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
                   server_default=sa.text("now()")),
     )
-    op.create_index("ix_signing_otps_lease_id", "signing_otps", ["lease_id"])
+    # Note: ix_signing_otps_lease_id is auto-created by index=True on the column above.
 
 
 def downgrade() -> None:
