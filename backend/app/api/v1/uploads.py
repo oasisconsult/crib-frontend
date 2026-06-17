@@ -235,6 +235,20 @@ async def presign_tenant_document(
     return await _do_presign(body, db)
 
 
+@router.post("/presign/maintenance-photo", response_model=PresignResponse)
+async def presign_maintenance_photo(
+    body: PresignRequest,
+    _: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Allow any authenticated user (including tenants) to upload maintenance issue photos.
+    Category is forced to 'inspection_photo' — caller cannot override it.
+    """
+    body.category = "inspection_photo"
+    return await _do_presign(body, db)
+
+
 # ── Presign endpoint (public — onboarding token auth) ─────────────────────────
 
 @router.post("/presign/onboarding/{token}", response_model=PresignResponse)

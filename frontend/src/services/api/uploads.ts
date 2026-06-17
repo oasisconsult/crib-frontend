@@ -12,7 +12,7 @@ interface UploadOptions {
   tenantId?: string;
   leaseId?: string;
   inspectionId?: string;
-  category: "document" | "signature" | "inspection_photo" | "property_image" | "payment_receipt" | "tenant_document";
+  category: "document" | "signature" | "inspection_photo" | "property_image" | "payment_receipt" | "tenant_document" | "maintenance_photo";
   /** If provided, uses the public onboarding presign endpoint (no JWT required). */
   onboardingToken?: string;
 }
@@ -29,6 +29,7 @@ function _presignEndpoint(options: UploadOptions): string {
   if (options.onboardingToken) return `/upload/presign/onboarding/${options.onboardingToken}`;
   if (options.category === "payment_receipt") return "/upload/presign/payment-receipt";
   if (options.category === "tenant_document") return "/upload/presign/tenant-document";
+  if (options.category === "maintenance_photo") return "/upload/presign/maintenance-photo";
   return "/upload/presign";
 }
 
