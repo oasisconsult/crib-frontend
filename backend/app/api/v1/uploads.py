@@ -31,6 +31,130 @@ from app.core.storage import get_storage_provider
 from app.schemas.common import CamelModel
 from app.services import settings_service
 
+
+def _parse_uuid(s: str) -> _uuid.UUID | None:
+    try:
+        return _uuid.UUID(s)
+    except (ValueError, AttributeError):
+        return None
+
+
+async def _authorize_key(key: str, current_user: CurrentUser, db: AsyncSession) -> None:
+    """
+    Enforce ownership before serving a private file.
+
+    Key prefixes produced by _build_key:
+      documents/tenants/{tenant_id}/...        category=document
+      signatures/tenants/{tenant_id}/...       category=signature
+      inspections/{inspection_id}/...          category=inspection_photo
+      properties/{anything}/...               category=property_image
+      {category}/leases/{lease_id}/...        with lease_id
+      {category}/misc/...                     fallback
+
+    Access matrix:
+      superadmin           → always allow
+      owner / manager      → entity must belong to their org
+      tenant               → may only access their own tenant documents/signatures,
+                             and leases / inspections linked to their tenant record
+    """
+    from app.models.inspection import Inspection
+    from app.models.lease import Lease
+    from app.models.tenant import Tenant
+
+    if current_user.has_role("superadmin"):
+        return
+
+    parts = key.split("/")
+
+    # ── documents/tenants/{tenant_id}/... or signatures/tenants/{tenant_id}/... ──
+    if parts[0] in ("documents", "signatures") and len(parts) >= 3 and parts[1] == "tenants":
+        tid = _parse_uuid(parts[2])
+        if tid is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+        if current_user.is_owner_or_manager():
+            ok = await db.scalar(
+                select(Tenant.id).where(
+                    Tenant.id == tid,
+                    Tenant.organisation_id == current_user.org_id,
+                    Tenant.deleted_at.is_(None),
+                )
+            )
+            if not ok:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        else:
+            # Tenant role: only their own documents
+            profile_tid = getattr(getattr(current_user, "profile", None), "tenant_id", None)
+            if profile_tid != tid:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        return
+
+    # ── inspections/{inspection_id}/... ──────────────────────────────────────────
+    if parts[0] == "inspections" and len(parts) >= 2:
+        iid = _parse_uuid(parts[1])
+        if iid is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+        insp = await db.scalar(select(Inspection).where(Inspection.id == iid))
+        if not insp:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+
+        if current_user.is_owner_or_manager():
+            if insp.organisation_id != current_user.org_id:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        else:
+            profile_tid = getattr(getattr(current_user, "profile", None), "tenant_id", None)
+            if not profile_tid:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            lease = await db.scalar(
+                select(Lease.id).where(
+                    Lease.id == insp.lease_id,
+                    Lease.tenant_id == profile_tid,
+                )
+            )
+            if not lease:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        return
+
+    # ── {category}/leases/{lease_id}/... ─────────────────────────────────────────
+    if len(parts) >= 3 and parts[1] == "leases":
+        lid = _parse_uuid(parts[2])
+        if lid is None:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+        if current_user.is_owner_or_manager():
+            ok = await db.scalar(
+                select(Lease.id).where(
+                    Lease.id == lid,
+                    Lease.organisation_id == current_user.org_id,
+                )
+            )
+            if not ok:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        else:
+            profile_tid = getattr(getattr(current_user, "profile", None), "tenant_id", None)
+            if not profile_tid:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+            ok = await db.scalar(
+                select(Lease.id).where(
+                    Lease.id == lid,
+                    Lease.tenant_id == profile_tid,
+                )
+            )
+            if not ok:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        return
+
+    # ── properties/... (property images) — managers/owners only ─────────────────
+    if parts[0] == "properties":
+        if not current_user.is_owner_or_manager():
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        return
+
+    # ── Unknown prefix — require manager/owner at minimum ────────────────────────
+    if not current_user.is_owner_or_manager():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
 router = APIRouter(prefix="/upload", tags=["uploads"])
 
 _staff = Depends(require_org_access(allow_tenant_own=False))
@@ -339,7 +463,7 @@ async def presign_upload_onboarding(
 @router.get("/serve/{key:path}")
 async def serve_file(
     key: str,
-    _: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -348,13 +472,20 @@ async def serve_file(
     The browser cannot reach MinIO directly (private bucket, internal network).
     This endpoint downloads the file server-side and streams it back to the
     authenticated caller. Used for inspection photos, tenant documents, etc.
+
+    Ownership is enforced via _authorize_key: managers/owners may access any
+    file belonging to their org; tenants may only access their own documents,
+    signatures, and files linked to their lease.
     """
     import mimetypes
     from fastapi.responses import Response as _Response
 
-    # Basic path-traversal guard — key must not escape its prefix
+    # Path-traversal guard
     if ".." in key or key.startswith("/"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid key")
+
+    # Ownership check — raises 403 if the caller does not own the referenced entity
+    await _authorize_key(key, current_user, db)
 
     config = await settings_service.get_storage_config(db)
     try:
@@ -443,8 +574,15 @@ async def local_upload(key: str, request: Request):
 
 
 @router.get("/local/{key:path}")
-async def local_serve(key: str):
-    """Dev-only: serve a locally stored upload."""
+async def local_serve(
+    key: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Dev-only: serve a locally stored upload (ownership-gated, same rules as /serve/)."""
+    if ".." in key or key.startswith("/"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid key")
+    await _authorize_key(key, current_user, db)
     path = os.path.join(_UPLOAD_DIR, key.replace("/", os.sep))
     if not os.path.isfile(path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
