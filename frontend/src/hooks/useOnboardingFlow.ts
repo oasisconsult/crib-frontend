@@ -71,12 +71,22 @@ export function useConfirmOnboardingPayment(token: string) {
   });
 }
 
+/**
+ * Request a 6-digit signing OTP sent to the tenant's registered email.
+ * Call before showing the signature canvas.
+ */
+export function useRequestSigningOtp(token: string) {
+  return useMutation({
+    mutationFn: () => onboardingFlowApi.requestSigningOtp(token),
+  });
+}
+
 /** Sign final agreement. Auto-activates lease on success. */
 export function useSignAgreement(token: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (signatureDataUrl: string) =>
-      onboardingFlowApi.signAgreement(token, signatureDataUrl),
+    mutationFn: ({ signatureDataUrl, otpCode }: { signatureDataUrl: string; otpCode?: string }) =>
+      onboardingFlowApi.signAgreement(token, signatureDataUrl, otpCode),
     onSuccess: () => qc.invalidateQueries({ queryKey: onboardingKeys.flow(token) }),
   });
 }

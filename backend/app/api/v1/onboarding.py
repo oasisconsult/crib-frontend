@@ -5,15 +5,16 @@ All routes except /payment/{pid}/confirm are public (no JWT required).
 The onboarding invite token is the credential.
 
 Routes:
-  GET  /tenants/onboarding/{token}/flow    → full state for wizard resume
-  POST /tenants/onboarding/{token}/preview → generate/return agreement preview
-  POST /tenants/onboarding/{token}/accept-terms  → record terms acceptance
-  POST /tenants/onboarding/{token}/payment → submit onboarding payments
+  GET  /tenants/onboarding/{token}/flow                → full state for wizard resume
+  POST /tenants/onboarding/{token}/preview             → generate/return agreement preview
+  POST /tenants/onboarding/{token}/accept-terms        → record terms acceptance
+  POST /tenants/onboarding/{token}/payment             → submit onboarding payments
   POST /tenants/onboarding/{token}/payment/{pid}/confirm → manager confirms a payment
-  POST /tenants/onboarding/{token}/sign    → tenant signs final agreement
+  POST /tenants/onboarding/{token}/request-signing-otp → send OTP to tenant email
+  POST /tenants/onboarding/{token}/sign                → tenant signs final agreement
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_org_access
@@ -24,6 +25,7 @@ from app.schemas.onboarding import (
     OnboardingPaymentCreate,
     OnboardingPaymentOut,
     OnboardingSignBody,
+    OtpRequestOut,
     TermsAcceptBody,
     TermsAcceptOut,
 )
@@ -128,6 +130,25 @@ async def confirm_payment(
     return await svc.confirm_onboarding_payment(token, payment_id, db)
 
 
+# ── OTP for signing identity verification ─────────────────────────────────────
+
+@router.post(
+    "/{token}/request-signing-otp",
+    response_model=OtpRequestOut,
+    status_code=status.HTTP_200_OK,
+)
+async def request_signing_otp(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Send a 6-digit verification code to the tenant's registered email address.
+    The code is required when calling /sign to prove email ownership.
+    Calling this endpoint again invalidates the previous code.
+    """
+    return await svc.request_signing_otp(token, db)
+
+
 # ── Signing ────────────────────────────────────────────────────────────────────
 
 @router.post(
@@ -137,11 +158,15 @@ async def confirm_payment(
 async def sign_agreement(
     token: str,
     body: OnboardingSignBody,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
     """
     Tenant signs the final agreement.
+    If body.otp_code is provided, it is verified against the email OTP sent to the tenant.
     Validates snapshot integrity (final == preview), then auto-activates the lease.
     Returns the activated LeaseOut.
     """
-    return await svc.sign_agreement(token, body, db)
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
+    return await svc.sign_agreement(token, body, db, client_ip=client_ip, user_agent=user_agent)

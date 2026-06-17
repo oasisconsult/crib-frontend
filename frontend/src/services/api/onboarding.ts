@@ -49,7 +49,19 @@ export const onboardingFlowApi = {
   confirmPayment: (token: string, paymentId: string) =>
     apiPost<OnboardingPaymentResult>(`${base(token)}/payment/${paymentId}/confirm`),
 
+  /**
+   * Request a 6-digit OTP sent to the tenant's registered email.
+   * Call this when the tenant reaches the sign step, before showing the canvas.
+   */
+  requestSigningOtp: (token: string) =>
+    apiPost<{ leaseId: string; emailMasked: string; expiresInMinutes: number }>(
+      `${base(token)}/request-signing-otp`,
+    ),
+
   /** Sign final agreement — auto-activates the lease on success. */
-  signAgreement: (token: string, signatureDataUrl: string) =>
-    apiPost<Record<string, unknown>>(`${base(token)}/sign`, { signatureDataUrl }),
+  signAgreement: (token: string, signatureDataUrl: string, otpCode?: string) =>
+    apiPost<Record<string, unknown>>(`${base(token)}/sign`, {
+      signatureDataUrl,
+      ...(otpCode ? { otpCode } : {}),
+    }),
 };

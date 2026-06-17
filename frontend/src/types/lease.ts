@@ -61,6 +61,7 @@ export interface Lease {
   terminationReason?: string;
   // Documents
   documentUrl?: string;
+  sealedPdfUrl?: string;      // cryptographically sealed agreement (set after both parties sign)
   // Onboarding / import
   termsAcceptedAt?: string;
   agreementPreviewSnapshot?: Record<string, unknown>;

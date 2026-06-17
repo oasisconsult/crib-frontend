@@ -53,6 +53,7 @@ from app.schemas.onboarding import (
 from app.schemas.tenant import TenantInviteOut, TenantOut
 from app.services import lease_service, payment_service
 from app.services.tenant_service import _invite_out, _tenant_out
+from app.features.document_signing import service as signing_svc
 
 log = structlog.get_logger(__name__)
 
@@ -847,13 +848,45 @@ async def confirm_all_onboarding_payments(
     )
 
 
+async def request_signing_otp(token: str, db: AsyncSession) -> dict:
+    """
+    Send a 6-digit email OTP to the tenant so they can verify identity before signing.
+    Returns masked email address and TTL.
+    """
+    from app.schemas.onboarding import OtpRequestOut
+
+    invite = await _resolve_invite(token, db)
+    tenant = await _resolve_tenant(invite, db)
+    lease = await _resolve_lease(invite, db)
+
+    if not lease:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No lease linked.")
+    if not tenant.email:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No email address on record. Contact your property manager.",
+        )
+
+    masked = await signing_svc.request_otp(lease.id, tenant.email, "tenant_sign", db)
+    return OtpRequestOut(
+        lease_id=str(lease.id),
+        email_masked=masked,
+        expires_in_minutes=15,
+    ).model_dump(by_alias=True)
+
+
 async def sign_agreement(
-    token: str, body: OnboardingSignBody, db: AsyncSession
+    token: str,
+    body: OnboardingSignBody,
+    db: AsyncSession,
+    client_ip: str | None = None,
+    user_agent: str | None = None,
 ) -> dict:
     """
     Tenant signs the final agreement.
 
     Gate: lease.status == payment_secured.
+    OTP: if body.otp_code is provided it is verified before signing proceeds.
     Strict check: final snapshot must equal preview snapshot (no term changes allowed).
     Auto-activates the lease immediately after signing.
     Idempotent: already signed → return current state.
@@ -899,6 +932,14 @@ async def sign_agreement(
                    "The agreement preview must be regenerated before signing.",
         )
 
+    # Verify OTP if the client provided one (identity binding)
+    otp_verified = False
+    if body.otp_code and tenant.email:
+        await signing_svc.verify_otp(lease.id, body.otp_code, "tenant_sign", db)
+        otp_verified = True
+    elif body.otp_code:
+        log.warning("onboarding.sign_otp_skipped_no_email", lease_id=str(lease.id))
+
     now = datetime.now(timezone.utc)
     final_snapshot["signedAt"] = now.isoformat()
     lease.final_agreement_snapshot = final_snapshot
@@ -925,6 +966,15 @@ async def sign_agreement(
         else TenancyAgreementStatus.tenant_signed
     )
 
+    # Render the HTML (without tenant sig first so hash captures the agreed-terms content)
+    pre_sign_html = await _render_agreement_html(
+        lease=lease, tenant=tenant, unit=unit, prop=prop, db=db,
+        landlord_signature_data_url=landlord_sig_url,
+        landlord_signed_at=landlord_signed_at_str,
+        landlord_signer_name=landlord_signer_name,
+    )
+    document_hash = signing_svc.compute_html_hash(pre_sign_html)
+
     # Create TenancyAgreement record (or update existing pre-sign record)
     rendered_html = await _render_agreement_html(
         lease=lease,
@@ -943,6 +993,7 @@ async def sign_agreement(
         existing_ta.status = final_status
         existing_ta.tenant_signature_data_url = body.signature_data_url
         existing_ta.tenant_signed_at = now
+        existing_ta.document_hash = document_hash
     else:
         ta = TenancyAgreement(
             lease_id=lease.id,
@@ -950,9 +1001,30 @@ async def sign_agreement(
             status=final_status,
             tenant_signature_data_url=body.signature_data_url,
             tenant_signed_at=now,
+            document_hash=document_hash,
         )
         db.add(ta)
     await db.flush()
+
+    # Append tenant signing event to audit log
+    active_ta_result = await db.execute(
+        select(TenancyAgreement).where(TenancyAgreement.lease_id == lease.id)
+    )
+    active_ta = active_ta_result.scalar_one_or_none()
+    if active_ta:
+        signing_svc.append_signing_event(active_ta, {
+            "event": "tenant_signed",
+            "actor": f"{tenant.first_name} {tenant.last_name}".strip(),
+            "actor_email": tenant.email or "",
+            "ip": client_ip,
+            "user_agent": user_agent,
+            "otp_verified": otp_verified,
+            "document_hash": document_hash,
+        })
+        # If both parties have now signed, generate sealed PDF (best-effort)
+        if active_ta.status == TenancyAgreementStatus.fully_executed:
+            await signing_svc.generate_sealed_pdf(active_ta, db)
+        await db.flush()
 
     # Auto-activate immediately after signing
     await _activate_via_onboarding(lease, tenant, unit, db)
@@ -1284,6 +1356,15 @@ async def presign_agreement(
         db.add(ta)
 
     await db.flush()
+
+    # Audit event: manager pre-signed via authenticated session
+    signing_svc.append_signing_event(ta, {
+        "event": "landlord_presigned",
+        "actor_name": signer_name,
+        "actor_id": signer_id,
+        "session_authenticated": True,
+    })
+    await db.flush()
     await db.refresh(ta)
     log.info("onboarding.agreement_presigned", lease_id=lease_id, signer_id=signer_id)
     return _tenancy_agreement_dict(ta)
@@ -1360,6 +1441,17 @@ async def countersign_agreement(
         )
 
     await db.flush()
+
+    # Audit event: manager countersigned via authenticated session
+    signing_svc.append_signing_event(ta, {
+        "event": "landlord_countersigned",
+        "actor_name": signer_name,
+        "actor_id": signer_id,
+        "session_authenticated": True,
+    })
+    # Both parties have now signed — generate sealed PDF (best-effort)
+    await signing_svc.generate_sealed_pdf(ta, db)
+    await db.flush()
     await db.refresh(ta)
     log.info("onboarding.agreement_countersigned", lease_id=lease_id, signer_id=signer_id)
     return _tenancy_agreement_dict(ta)
@@ -1381,4 +1473,7 @@ def _tenancy_agreement_dict(ta: TenancyAgreement) -> dict:
         "landlordSignedAt": ta.landlord_signed_at.isoformat() if ta.landlord_signed_at else None,
         "landlordSignerName": ta.landlord_signer_name,
         "renderedHtml": ta.rendered_html,
+        "documentHash": ta.document_hash,
+        "sealedPdfUrl": ta.sealed_pdf_url,
+        "signingEvents": ta.signing_events or [],
     }

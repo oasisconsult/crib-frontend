@@ -547,6 +547,18 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
                     Counter-sign Agreement
                   </Button>
                 )}
+                {lease.sealedPdfUrl && (
+                  <Button size="sm" variant="outline" className="w-full mt-1" asChild>
+                    <a
+                      href={`/api/v1/leases/${lease.id}/agreement/sealed.pdf`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Download Sealed Agreement
+                    </a>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           );

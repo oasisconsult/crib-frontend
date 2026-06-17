@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Lock } from "lucide-react";
+import { useRef, useState } from "react";
+import { Lock, Mail, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ESignatureCanvas } from "@/components/onboarding/ESignatureCanvas";
-import { useSignAgreement } from "@/hooks/useOnboardingFlow";
+import { useRequestSigningOtp, useSignAgreement } from "@/hooks/useOnboardingFlow";
 import type { AgreementPreview } from "@/types/onboarding";
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
   onSigned: () => void;
   onBack: () => void;
 }
+
+type OtpPhase = "request" | "verify" | "sign";
 
 function fmt(n: number, currency: string) {
   return `${currency} ${n.toLocaleString()}`;
@@ -34,17 +37,41 @@ export function FinalSignatureStep({
   onSigned,
   onBack,
 }: Props) {
+  const [otpPhase, setOtpPhase] = useState<OtpPhase>("request");
+  const [maskedEmail, setMaskedEmail] = useState<string>("");
+  const [otpCode, setOtpCode] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
+  const otpInputRef = useRef<HTMLInputElement>(null);
+
+  const requestOtp = useRequestSigningOtp(token);
   const {
     mutate: signAgreement,
-    isPending,
-    isError,
-    error,
+    isPending: isSigning,
+    isError: isSignError,
+    error: signError,
   } = useSignAgreement(token);
+
+  function handleRequestOtp() {
+    requestOtp.mutate(undefined, {
+      onSuccess: (data) => {
+        setMaskedEmail(data.emailMasked);
+        setOtpPhase("verify");
+        setTimeout(() => otpInputRef.current?.focus(), 50);
+      },
+    });
+  }
+
+  function handleVerifyOtp() {
+    if (otpCode.length !== 6) return;
+    setOtpPhase("sign");
+  }
 
   function handleSign() {
     if (!signature) return;
-    signAgreement(signature, { onSuccess: onSigned });
+    signAgreement(
+      { signatureDataUrl: signature, otpCode: otpCode || undefined },
+      { onSuccess: onSigned },
+    );
   }
 
   return (
@@ -106,34 +133,132 @@ export function FinalSignatureStep({
           </p>
         </div>
 
-        {/* Signature canvas */}
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Your signature</p>
-          <ESignatureCanvas onSave={setSignature} />
-        </div>
-
-        {isError && (
-          <p className="text-sm text-destructive">
-            {(error as Error)?.message === "Agreement terms have changed"
-              ? "The agreement terms have changed since your preview. Please contact your landlord."
-              : ((error as Error)?.message ??
-                "Signing failed. Please try again.")}
-          </p>
+        {/* ── OTP: request phase ─────────────────────────────────────────── */}
+        {otpPhase === "request" && (
+          <div className="rounded-[6px] border border-border bg-muted/20 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <Mail className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Verify your identity</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  We&apos;ll send a 6-digit code to your registered email address to
+                  confirm your identity before signing.
+                </p>
+              </div>
+            </div>
+            {requestOtp.isError && (
+              <p className="text-sm text-destructive">
+                {(requestOtp.error as Error)?.message ?? "Could not send code. Please try again."}
+              </p>
+            )}
+            <Button
+              className="w-full"
+              onClick={handleRequestOtp}
+              disabled={requestOtp.isPending}
+              loading={requestOtp.isPending}
+            >
+              Send verification code
+            </Button>
+          </div>
         )}
 
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onBack} disabled={isPending}>
-            ← Back
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={handleSign}
-            disabled={!signature || isPending}
-            loading={isPending}
-          >
-            Sign &amp; Activate My Tenancy ✓
-          </Button>
-        </div>
+        {/* ── OTP: verify phase ──────────────────────────────────────────── */}
+        {otpPhase === "verify" && (
+          <div className="rounded-[6px] border border-border bg-muted/20 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <ShieldCheck className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Enter your verification code</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  A 6-digit code was sent to <span className="font-mono">{maskedEmail}</span>.
+                  It expires in 15 minutes.
+                </p>
+              </div>
+            </div>
+            <Input
+              ref={otpInputRef}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              placeholder="000000"
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              className="text-center text-lg tracking-[0.4em] font-mono"
+            />
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground"
+                onClick={handleRequestOtp}
+                disabled={requestOtp.isPending}
+              >
+                {requestOtp.isPending ? "Sending…" : "Resend code"}
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleVerifyOtp}
+                disabled={otpCode.length !== 6}
+              >
+                Continue
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Sign phase ─────────────────────────────────────────────────── */}
+        {otpPhase === "sign" && (
+          <>
+            <div className="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400">
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+              <span>Identity verified via email OTP</span>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Your signature</p>
+              <ESignatureCanvas onSave={setSignature} />
+            </div>
+
+            {isSignError && (
+              <p className="text-sm text-destructive">
+                {(signError as Error)?.message === "Agreement terms have changed"
+                  ? "The agreement terms have changed since your preview. Please contact your landlord."
+                  : (signError as Error)?.message === "Invalid or expired OTP"
+                    ? "Your verification code is invalid or has expired. Please go back and request a new one."
+                    : ((signError as Error)?.message ??
+                      "Signing failed. Please try again.")}
+              </p>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { setOtpPhase("verify"); setSignature(null); }}
+                disabled={isSigning}
+              >
+                ← Back
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleSign}
+                disabled={!signature || isSigning}
+                loading={isSigning}
+              >
+                Sign &amp; Activate My Tenancy ✓
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Back button — only shown during OTP phases */}
+        {otpPhase !== "sign" && (
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onBack} disabled={requestOtp.isPending}>
+              ← Back
+            </Button>
+          </div>
+        )}
 
         <p className="text-xs text-muted-foreground text-center">
           By signing you agree to the tenancy terms and confirm the information

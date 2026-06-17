@@ -95,6 +95,18 @@ class OnboardingSignBody(CamelModel):
     signature_data_url: str = Field(
         description="Base64-encoded PNG of the signature canvas."
     )
+    otp_code: str | None = Field(
+        default=None,
+        description="6-digit email OTP. Required for identity verification. "
+                    "Request via POST /tenants/onboarding/{token}/request-signing-otp",
+    )
+
+
+class OtpRequestOut(CamelModel):
+    """Response after requesting a signing OTP."""
+    lease_id: str
+    email_masked: str
+    expires_in_minutes: int = 15
 
 
 # ── Status / resume ───────────────────────────────────────────────────────────

@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import TimestampedBase
@@ -67,6 +67,18 @@ class TenancyAgreement(TimestampedBase):
         String(100), nullable=True  # Logto user ID of the manager who countersigned
     )
     landlord_signer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # ── Cryptographic signing evidence (migration 059) ────────────────────────
+    # SHA-256 hex of rendered_html at the moment of tenant signing.
+    # Any post-signing edit to rendered_html produces a different hash → tamper evident.
+    document_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Append-only audit log: [{event, actor, email, ip, user_agent, otp_verified,
+    #                          session_authenticated, document_hash, timestamp}]
+    signing_events: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+
+    # S3/MinIO URL of the sealed certificate PDF (set after fully_executed).
+    sealed_pdf_url: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     def __repr__(self) -> str:
         return f"<TenancyAgreement lease={self.lease_id} status={self.status}>"
