@@ -75,6 +75,7 @@ export interface Contractor {
 
 export interface MaintenanceIssue {
   id: string;
+  reference?: string;
   state: MaintenanceState;
   // Location
   propertyId: string;

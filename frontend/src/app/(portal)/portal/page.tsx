@@ -1679,6 +1679,119 @@ function PortalBottomNav({ tab, setTab, hasOverdueRent, openRequestsCount, unrea
   );
 }
 
+// ─── Maintenance detail sheet ─────────────────────────────────────────────────
+
+const PRIORITY_COLORS: Record<string, string> = {
+  urgent: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800",
+  high:   "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800",
+  medium: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
+  low:    "bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800",
+};
+
+function MaintenanceDetailSheet({ issue, onClose }: { issue: MaintenanceIssue; onClose: () => void }) {
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="space-y-2 border-b border-border pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-base font-semibold leading-snug">{issue.title}</h2>
+          <StatusBadge state={issue.state} domain="maintenance" />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {issue.reference && (
+            <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+              {issue.reference}
+            </span>
+          )}
+          {issue.priority && (
+            <span className={cn("text-[10px] rounded-full px-1.5 py-0.5 font-medium capitalize border", PRIORITY_COLORS[issue.priority])}>
+              {issue.priority}
+            </span>
+          )}
+          {issue.category && (
+            <span className="text-[10px] rounded-full px-1.5 py-0.5 font-medium capitalize border border-border bg-muted text-muted-foreground">
+              {issue.category.replace(/_/g, " ")}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Details grid */}
+      <div className="space-y-3 text-sm">
+        {(issue.propertyName || issue.unitName) && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Location</span>
+            <span className="font-medium text-right">
+              {[issue.unitName, issue.propertyName].filter(Boolean).join(", ")}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between gap-4">
+          <span className="text-muted-foreground">Reported</span>
+          <span className="font-medium">{formatDateTime(issue.reportedAt || issue.createdAt)}</span>
+        </div>
+        {issue.assignedTo && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Assigned to</span>
+            <span className="font-medium">{issue.assignedTo}</span>
+          </div>
+        )}
+        {issue.assignedAt && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Assigned at</span>
+            <span className="font-medium">{formatDateTime(issue.assignedAt)}</span>
+          </div>
+        )}
+        {issue.resolvedAt && (
+          <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground">Resolved</span>
+            <span className="font-medium">{formatDateTime(issue.resolvedAt)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Description */}
+      {issue.description && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Description</p>
+          <p className="text-sm leading-relaxed whitespace-pre-line">{issue.description}</p>
+        </div>
+      )}
+
+      {/* Resolution notes */}
+      {issue.notes && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Resolution notes</p>
+          <p className="text-sm leading-relaxed whitespace-pre-line">{issue.notes}</p>
+        </div>
+      )}
+
+      {/* Photos */}
+      {(issue.photoUrls ?? []).length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Photos</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(issue.photoUrls ?? []).map((url) => (
+              <a key={url} href={toDisplayUrl(url)} target="_blank" rel="noopener noreferrer"
+                 className="block aspect-square rounded-[6px] overflow-hidden border bg-muted">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={toDisplayUrl(url)} alt="Issue photo" className="w-full h-full object-cover" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={onClose}
+        className="w-full mt-2 rounded-[6px] border border-border py-2 text-sm font-medium hover:bg-muted transition-colors"
+      >
+        Close
+      </button>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 type Dialog = "pay" | "maintenance" | null;
@@ -1688,6 +1801,7 @@ export default function TenantPortalPage() {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [receiptPayment, setReceiptPayment] = useState<Payment | null>(null);
+  const [selectedMaintenance, setSelectedMaintenance] = useState<MaintenanceIssue | null>(null);
 
   const user = useAppStore((s) => s.user);
   const userId = user?.id ?? "";
@@ -2401,7 +2515,7 @@ export default function TenantPortalPage() {
                 ) : (
                   <div className="space-y-0 divide-y divide-border/50">
                     {myMaintenance.map((m) => (
-                      <div key={m.id} className="py-3 space-y-2">
+                      <div key={m.id} className="py-3 space-y-2 cursor-pointer rounded-[6px] hover:bg-muted/50 px-2 -mx-2 transition-colors" onClick={() => setSelectedMaintenance(m)}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
                             <p className="text-sm font-medium capitalize">
@@ -2557,6 +2671,19 @@ export default function TenantPortalPage() {
         open={!!receiptPayment}
         onClose={() => setReceiptPayment(null)}
       />
+
+      <PortalSheet
+        open={!!selectedMaintenance}
+        onClose={() => setSelectedMaintenance(null)}
+        title="Maintenance request"
+      >
+        {selectedMaintenance && (
+          <MaintenanceDetailSheet
+            issue={selectedMaintenance}
+            onClose={() => setSelectedMaintenance(null)}
+          />
+        )}
+      </PortalSheet>
 
       <PortalBottomNav
         tab={tab}

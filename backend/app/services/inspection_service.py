@@ -1337,15 +1337,29 @@ async def create_maintenance_issue(
             f"{issue.title} ({issue.reference}). Please review in Crib."
         )
 
+        prop_id_str = str(issue.property_id) if issue.property_id else None
+
         _pending: list[str] = []
         async with db.begin_nested():
-            # 1 — Email + WhatsApp to each owner/manager in the org
+            # 1 — Email + WhatsApp to owners/managers (org-wide) and caretakers
+            #     scoped to this property.
+            from sqlalchemy import cast as _cast, String as _String
             managers = list(await db.scalars(
                 select(Profile).where(
                     Profile.organisation_id == org_id,
                     Profile.role.in_(["owner", "manager"]),
                 )
             ))
+            if prop_id_str:
+                caretakers = list(await db.scalars(
+                    select(Profile).where(
+                        Profile.organisation_id == org_id,
+                        Profile.role == "caretaker",
+                        Profile.caretaker_property_ids.contains([prop_id_str]),
+                    )
+                ))
+                managers = managers + caretakers
+
             manager_emails_sent: set[str] = set()
             for mgr in managers:
                 if mgr.email and mgr.email not in manager_emails_sent:
