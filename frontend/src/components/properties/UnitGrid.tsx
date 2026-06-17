@@ -121,10 +121,10 @@ const UnitCard = React.memo(function UnitCard({
             <span className="text-[10px] rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 font-medium">SC</span>
           )}
           {unit.hasDomesticQuarters && (
-            <span className="text-[10px] rounded-full bg-muted/70 text-muted-foreground px-1.5 py-0.5 font-medium">BQ</span>
+            <span className="chip">BQ</span>
           )}
           {unit.furnishedStatus && unit.furnishedStatus !== "unfurnished" && (
-            <span className="text-[10px] rounded-full bg-muted/70 text-muted-foreground px-1.5 py-0.5 font-medium capitalize">
+            <span className="chip capitalize">
               {unit.furnishedStatus === "semi_furnished" ? "Semi" : "Furnished"}
             </span>
           )}
@@ -210,10 +210,10 @@ const UnitRow = React.memo(function UnitRow({
             <span className="text-[10px] rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 font-medium">SC</span>
           )}
           {unit.hasDomesticQuarters && (
-            <span className="text-[10px] rounded-full bg-muted/70 text-muted-foreground px-1.5 py-0.5 font-medium">BQ</span>
+            <span className="chip">BQ</span>
           )}
           {unit.furnishedStatus && unit.furnishedStatus !== "unfurnished" && (
-            <span className="text-[10px] rounded-full bg-muted/70 text-muted-foreground px-1.5 py-0.5 font-medium">
+            <span className="chip">
               {unit.furnishedStatus === "semi_furnished" ? "Semi" : "Furn."}
             </span>
           )}

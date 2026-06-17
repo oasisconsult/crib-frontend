@@ -1699,9 +1699,7 @@ function MaintenanceDetailSheet({ issue, onClose }: { issue: MaintenanceIssue; o
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {issue.reference && (
-            <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-              {issue.reference}
-            </span>
+            <span className="chip chip-ref">{issue.reference}</span>
           )}
           {issue.priority && (
             <span className={cn("text-[10px] rounded-full px-1.5 py-0.5 font-medium capitalize border", PRIORITY_COLORS[issue.priority])}>
@@ -1709,9 +1707,7 @@ function MaintenanceDetailSheet({ issue, onClose }: { issue: MaintenanceIssue; o
             </span>
           )}
           {issue.category && (
-            <span className="text-[10px] rounded-full px-1.5 py-0.5 font-medium capitalize border border-border bg-muted text-muted-foreground">
-              {issue.category.replace(/_/g, " ")}
-            </span>
+            <span className="chip capitalize">{issue.category.replace(/_/g, " ")}</span>
           )}
         </div>
       </div>

@@ -297,6 +297,30 @@ body {
   letter-spacing: -0.01em;
 }
 
+/* ─── CHIPS / INLINE PILLS ────────────────────────────────────────────────
+   Use .chip for reference numbers, category labels, and metadata tags.
+   Never use bg-muted as a chip fill — it renders as dark grey in dark mode.
+   ──────────────────────────────────────────────────────────────────────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid hsl(var(--border));
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  background: transparent;
+}
+
+.chip-ref {
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: -0.01em;
+}
+
 /* ─── PAGE LAYOUT ────────────────────────────────────────────────────────── */
 
 .ds-sidebar {
