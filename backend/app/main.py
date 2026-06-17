@@ -249,6 +249,7 @@ def create_app() -> FastAPI:
         # cannot be patched in the vendored copy; it must live here.
         context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/demo-bookings")
         context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/demo-bookings/contact")
+        context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/listings")
 
         configure_db_dependency(get_db)
         application.add_middleware(
@@ -336,6 +337,9 @@ def create_app() -> FastAPI:
     application.include_router(demo_bookings.router, prefix=settings.api_prefix)
     # Public contact info (support email/phone/WhatsApp) shown on the marketing site
     application.include_router(contact_info.public_router, prefix=settings.api_prefix)
+    # Public vacancy listings — organisations opt in via settings.listings_enabled
+    from app.api.v1 import listings as listings_module
+    application.include_router(listings_module.public_router, prefix=settings.api_prefix)
 
     # ── Subscription & Billing ────────────────────────────────────────────────
     from app.api.v1 import subscriptions, billing_payments, invoices, admin_billing
