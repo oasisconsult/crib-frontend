@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   FileText, Calendar, CreditCard, Building2,
-  Send, CheckCircle, XCircle, AlertTriangle, Download, Loader2, Copy, Link, Edit,
+  Send, CheckCircle, XCircle, AlertTriangle, Download, FileDown, Loader2, Copy, Link, Edit,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -288,14 +288,24 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
               </Button>
             )}
             {lease.state === "active" && (
-              <a
-                href={`/api/v1/leases/${lease.id}/statement`}
-                download={`statement-${lease.reference}.csv`}
-                className="inline-flex items-center gap-1.5 rounded-[5px] border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Statement CSV
-              </a>
+              <div className="flex items-center gap-1">
+                <a
+                  href={`/api/v1/leases/${lease.id}/statement/pdf`}
+                  download={`statement-${lease.id.slice(0, 8)}.pdf`}
+                  className="inline-flex items-center gap-1.5 rounded-[5px] border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  Statement PDF
+                </a>
+                <a
+                  href={`/api/v1/leases/${lease.id}/statement`}
+                  download={`statement-${lease.id.slice(0, 8)}.csv`}
+                  className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Download CSV"
+                >
+                  CSV
+                </a>
+              </div>
             )}
             {canSend && (
               <Button size="sm" onClick={() => handleTransition("LEASE_SENT")}>

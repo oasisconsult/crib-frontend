@@ -23,6 +23,7 @@ Endpoints:
   GET    /leases/{id}/ledger
   GET    /leases/{id}/ledger/entries
   GET    /leases/{id}/statement
+  GET    /leases/{id}/statement/pdf
 """
 
 import uuid
@@ -524,4 +525,23 @@ async def get_statement(
         content=csv_data,
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="statement_{lease_id}.csv"'},
+    )
+
+
+@router.get("/{lease_id}/statement/pdf")
+async def get_statement_pdf(
+    lease_id: uuid.UUID,
+    month: str | None = Query(None, description="Filter to one month: YYYY-MM"),
+    current_user=_read,
+    db: AsyncSession = Depends(get_db),
+):
+    """Download a formatted PDF rent statement. Optionally filter to one month (YYYY-MM)."""
+    from app.features.statement.service import generate_statement_pdf
+
+    pdf_bytes = await generate_statement_pdf(lease_id, get_org_id(current_user), db, month)
+    filename = f"statement_{str(lease_id)[:8]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )

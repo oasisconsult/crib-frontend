@@ -2311,14 +2311,24 @@ export default function TenantPortalPage() {
                 <SectionHeading>Payment Records</SectionHeading>
                 <div className="flex items-center gap-2">
                   {myPayments.length > 0 && (
-                    <a
-                      href={`/api/v1/leases/${myLease.id}/statement`}
-                      download={`statement-${myLease.reference}.csv`}
-                      className="inline-flex items-center gap-1.5 rounded-[5px] border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <FileDown className="h-3.5 w-3.5" />
-                      Statement
-                    </a>
+                    <div className="flex items-center gap-1">
+                      <a
+                        href={`/api/v1/leases/${myLease.id}/statement/pdf`}
+                        download={`statement-${myLease.id.slice(0, 8)}.pdf`}
+                        className="inline-flex items-center gap-1.5 rounded-[5px] border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <FileDown className="h-3.5 w-3.5" />
+                        Statement PDF
+                      </a>
+                      <a
+                        href={`/api/v1/leases/${myLease.id}/statement`}
+                        download={`statement-${myLease.id.slice(0, 8)}.csv`}
+                        className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        title="Download CSV"
+                      >
+                        CSV
+                      </a>
+                    </div>
                   )}
                   <Button size="sm" onClick={() => setDialog("pay")}>
                     <CreditCard className="h-3.5 w-3.5" />

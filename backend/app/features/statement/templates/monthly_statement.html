@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Rent Statement — {{ lease_ref }}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.5;
+      color: #1a1a1a;
+      background: #fff;
+      padding: 36pt 48pt;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2pt solid #1a1a1a;
+      padding-bottom: 14pt;
+      margin-bottom: 20pt;
+    }
+    .org-name  { font-size: 15pt; font-weight: 700; }
+    .org-sub   { font-size: 9pt; color: #555; margin-top: 3pt; }
+    .doc-meta  { text-align: right; }
+    .doc-type  { font-size: 13pt; font-weight: 700; color: #1a1a1a; }
+    .doc-ref   { font-size: 9pt; color: #888; margin-top: 3pt; }
+
+    /* ── Info grid ── */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12pt;
+      margin-bottom: 20pt;
+    }
+    .info-box {
+      border: 1pt solid #d1d5db;
+      border-radius: 4pt;
+      padding: 10pt 12pt;
+    }
+    .info-box-label {
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #888;
+      font-weight: 600;
+      margin-bottom: 5pt;
+    }
+    .info-line { font-size: 9.5pt; color: #1a1a1a; margin-bottom: 1.5pt; }
+    .info-line strong { font-weight: 600; }
+
+    /* ── Period banner ── */
+    .period-banner {
+      background: #f3f4f6;
+      border-radius: 4pt;
+      padding: 8pt 12pt;
+      margin-bottom: 18pt;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .period-text { font-size: 10pt; font-weight: 600; color: #374151; }
+    .period-sub  { font-size: 8.5pt; color: #6b7280; margin-top: 1pt; }
+    .balance-chip {
+      font-size: 9.5pt;
+      font-weight: 700;
+      padding: 3pt 10pt;
+      border-radius: 100pt;
+    }
+    .balance-chip.paid     { background: #dcfce7; color: #166534; }
+    .balance-chip.owed     { background: #fef2f2; color: #991b1b; }
+    .balance-chip.nil      { background: #f0f9ff; color: #0369a1; }
+
+    /* ── Table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 18pt;
+      font-size: 9pt;
+    }
+    thead th {
+      background: #1a1a1a;
+      color: #fff;
+      font-weight: 600;
+      text-align: left;
+      padding: 6pt 8pt;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    thead th.right { text-align: right; }
+    tbody tr:nth-child(even) { background: #f9fafb; }
+    tbody td {
+      padding: 6pt 8pt;
+      border-bottom: 0.5pt solid #e5e7eb;
+      vertical-align: top;
+    }
+    tbody td.right  { text-align: right; }
+    tbody td.center { text-align: center; }
+    .badge {
+      display: inline-block;
+      font-size: 7.5pt;
+      font-weight: 600;
+      padding: 1.5pt 6pt;
+      border-radius: 100pt;
+      white-space: nowrap;
+    }
+    .badge-paid   { background: #dcfce7; color: #166534; }
+    .badge-partial{ background: #fef9c3; color: #854d0e; }
+    .badge-late   { background: #ffedd5; color: #9a3412; }
+    .badge-unpaid { background: #fef2f2; color: #991b1b; }
+
+    /* ── Summary row ── */
+    .summary-table {
+      width: 40%;
+      margin-left: auto;
+      border-collapse: collapse;
+      margin-bottom: 24pt;
+      font-size: 9.5pt;
+    }
+    .summary-table td { padding: 4pt 8pt; }
+    .summary-table td:last-child { text-align: right; font-weight: 600; }
+    .summary-table tr.total td {
+      border-top: 1pt solid #1a1a1a;
+      font-weight: 700;
+      font-size: 10.5pt;
+      padding-top: 6pt;
+    }
+    .summary-table tr.total td:first-child { color: #374151; }
+
+    /* ── Footer ── */
+    .footer {
+      border-top: 1pt solid #d1d5db;
+      padding-top: 10pt;
+      font-size: 8pt;
+      color: #9ca3af;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="org-name">{{ org_name }}</div>
+      {% if org_contact %}
+      <div class="org-sub">{{ org_contact }}</div>
+      {% endif %}
+    </div>
+    <div class="doc-meta">
+      <div class="doc-type">Rent Statement</div>
+      <div class="doc-ref">Ref: {{ lease_ref }}</div>
+      <div class="doc-ref">Generated: {{ generated_at }}</div>
+    </div>
+  </div>
+
+  <!-- Info grid -->
+  <div class="info-grid">
+    <div class="info-box">
+      <div class="info-box-label">Tenant</div>
+      <div class="info-line"><strong>{{ tenant_name }}</strong></div>
+      {% if tenant_email %}<div class="info-line">{{ tenant_email }}</div>{% endif %}
+      {% if tenant_phone %}<div class="info-line">{{ tenant_phone }}</div>{% endif %}
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">Property / Unit</div>
+      <div class="info-line"><strong>{{ property_name }}</strong></div>
+      {% if unit_name %}<div class="info-line">{{ unit_name }}</div>{% endif %}
+      {% if property_address %}<div class="info-line">{{ property_address }}</div>{% endif %}
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">Lease Terms</div>
+      <div class="info-line">From <strong>{{ lease_start }}</strong>{% if lease_end %} to <strong>{{ lease_end }}</strong>{% else %} (rolling){% endif %}</div>
+      <div class="info-line">Monthly rent: <strong>{{ currency }} {{ "{:,.0f}".format(monthly_rent) }}</strong></div>
+    </div>
+    <div class="info-box">
+      <div class="info-box-label">Statement Period</div>
+      <div class="info-line"><strong>{{ period_label }}</strong></div>
+      <div class="info-line">{{ rows|length }} schedule(s) shown</div>
+    </div>
+  </div>
+
+  <!-- Period / balance banner -->
+  <div class="period-banner">
+    <div>
+      <div class="period-text">{{ period_label }}</div>
+      <div class="period-sub">{{ rows|length }} payment period{{ 's' if rows|length != 1 else '' }}</div>
+    </div>
+    <div>
+      {% if closing_balance > 0 %}
+        <span class="balance-chip owed">Balance due: {{ currency }} {{ "{:,.0f}".format(closing_balance) }}</span>
+      {% elif closing_balance < 0 %}
+        <span class="balance-chip paid">Credit: {{ currency }} {{ "{:,.0f}".format(closing_balance|abs) }}</span>
+      {% else %}
+        <span class="balance-chip nil">No balance due</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Schedules table -->
+  <table>
+    <thead>
+      <tr>
+        <th>Period</th>
+        <th>Due Date</th>
+        <th class="right">Amount Due</th>
+        <th class="right">Amount Paid</th>
+        <th>Paid On</th>
+        <th>Method</th>
+        <th class="right">Running Balance</th>
+        <th class="center">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.period }}</td>
+        <td>{{ row.due_date }}</td>
+        <td class="right">{{ "{:,.0f}".format(row.amount_due) }}</td>
+        <td class="right">{{ "{:,.0f}".format(row.amount_paid) if row.amount_paid else "—" }}</td>
+        <td>{{ row.paid_at or "—" }}</td>
+        <td>{{ row.method or "—" }}</td>
+        <td class="right">{{ "{:,.0f}".format(row.balance) }}</td>
+        <td class="center">
+          {% if row.status == "paid" %}
+            <span class="badge badge-paid">Paid</span>
+          {% elif row.status == "partial" %}
+            <span class="badge badge-partial">Partial</span>
+          {% elif row.status == "late" %}
+            <span class="badge badge-late">Late</span>
+          {% else %}
+            <span class="badge badge-unpaid">Unpaid</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="8" style="text-align:center;color:#9ca3af;padding:16pt;">No schedule records for this period.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Summary -->
+  <table class="summary-table">
+    <tr>
+      <td>Total Due</td>
+      <td>{{ currency }} {{ "{:,.0f}".format(total_due) }}</td>
+    </tr>
+    <tr>
+      <td>Total Paid</td>
+      <td>{{ currency }} {{ "{:,.0f}".format(total_paid) }}</td>
+    </tr>
+    <tr class="total">
+      <td>Closing Balance</td>
+      <td>{{ currency }} {{ "{:,.0f}".format(closing_balance) }}</td>
+    </tr>
+  </table>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>Generated by Crib Property Management — {{ generated_at }}</span>
+    <span>{{ org_name }}</span>
+  </div>
+
+</body>
+</html>
