@@ -1306,45 +1306,153 @@ async def create_maintenance_issue(
     await db.flush()
     await db.refresh(issue)
 
-    # Notify org manager of the new maintenance request.
+    # Notify org managers + tenant of new maintenance request.
     # Savepoint isolates notification failures from the outer transaction.
     _create_notif_ids: list[str] = []
     try:
         from app.models.notification import Notification, NotificationState
         from app.models.organisation import Organisation
+        from app.models.profile import Profile
+
         org = await db.scalar(select(Organisation).where(Organisation.id == org_id))
-        if org and org.billing_email:
-            prop = await db.scalar(select(Property).where(Property.id == issue.property_id)) if issue.property_id else None
-            unit = await db.scalar(select(Unit).where(Unit.id == issue.unit_id)) if issue.unit_id else None
-            location = prop.name if prop else "a property"
-            if unit:
-                location = f"{unit.name}, {location}"
-            _pending: list[str] = []
-            async with db.begin_nested():
-                notif = Notification(
+        prop = await db.scalar(select(Property).where(Property.id == issue.property_id)) if issue.property_id else None
+        unit = await db.scalar(select(Unit).where(Unit.id == issue.unit_id)) if issue.unit_id else None
+        location = prop.name if prop else "a property"
+        if unit:
+            location = f"{unit.name}, {location}"
+
+        _now = datetime.now(timezone.utc)
+        priority_str = issue.priority.upper() if isinstance(issue.priority, str) else issue.priority.value.upper()
+        category_str = issue.category.title() if isinstance(issue.category, str) else issue.category.value.title()
+        manager_email_body = (
+            f"A new [{priority_str}] maintenance request has been logged for {location}.\n\n"
+            f"Reference: {issue.reference}\n"
+            f"Category: {category_str}\n"
+            f"Title: {issue.title}\n\n"
+            f"{('Details: ' + issue.description) if issue.description else ''}\n\n"
+            f"Please review and assign this request in the Crib maintenance queue."
+        )
+        manager_wa_body = (
+            f"New [{priority_str}] maintenance request for {location}: "
+            f"{issue.title} ({issue.reference}). Please review in Crib."
+        )
+
+        _pending: list[str] = []
+        async with db.begin_nested():
+            # 1 — Email + WhatsApp to each owner/manager in the org
+            managers = list(await db.scalars(
+                select(Profile).where(
+                    Profile.organisation_id == org_id,
+                    Profile.role.in_(["owner", "manager"]),
+                )
+            ))
+            manager_emails_sent: set[str] = set()
+            for mgr in managers:
+                if mgr.email and mgr.email not in manager_emails_sent:
+                    mn = Notification(
+                        organisation_id=org_id,
+                        channel="email",
+                        trigger="maintenance_new_request",
+                        state=NotificationState.queued,
+                        recipient_name=mgr.display_name or mgr.email,
+                        recipient_email=mgr.email,
+                        subject=f"New Maintenance Request: {issue.title}",
+                        body=manager_email_body,
+                        queued_at=_now,
+                    )
+                    db.add(mn)
+                    await db.flush()
+                    _pending.append(str(mn.id))
+                    manager_emails_sent.add(mgr.email)
+                if mgr.phone:
+                    wn = Notification(
+                        organisation_id=org_id,
+                        channel="whatsapp",
+                        trigger="maintenance_new_request",
+                        state=NotificationState.queued,
+                        recipient_name=mgr.display_name or mgr.phone,
+                        recipient_phone=mgr.phone,
+                        subject=None,
+                        body=manager_wa_body,
+                        queued_at=_now,
+                    )
+                    db.add(wn)
+                    await db.flush()
+                    _pending.append(str(wn.id))
+
+            # Fallback: billing_email if no manager profiles have an email address
+            if not manager_emails_sent and org and org.billing_email:
+                bn = Notification(
                     organisation_id=org_id,
                     channel="email",
                     trigger="maintenance_new_request",
                     state=NotificationState.queued,
-                    recipient_name=org.name,
+                    recipient_name=org.name if org else "Manager",
                     recipient_email=org.billing_email,
                     subject=f"New Maintenance Request: {issue.title}",
-                    body=(
-                        f"A new [{issue.priority.upper()}] maintenance request has been logged for {location}.\n\n"
-                        f"Reference: {issue.reference}\n"
-                        f"Category: {issue.category.title()}\n"
-                        f"Title: {issue.title}\n\n"
-                        f"{('Details: ' + issue.description) if issue.description else ''}\n\n"
-                        f"Please review and assign this request in the Crib maintenance queue."
-                    ),
-                    queued_at=datetime.now(timezone.utc),
+                    body=manager_email_body,
+                    queued_at=_now,
                 )
-                db.add(notif)
+                db.add(bn)
                 await db.flush()
-                _pending.append(str(notif.id))
-            _create_notif_ids = _pending
+                _pending.append(str(bn.id))
+
+            # 2 — Confirmation to tenant when a lease is linked
+            if issue.lease_id:
+                from app.models.tenant import Tenant as _MaintTenant
+                lease = await db.scalar(select(Lease).where(Lease.id == issue.lease_id))
+                if lease and lease.tenant_id:
+                    tenant = await db.scalar(select(_MaintTenant).where(_MaintTenant.id == lease.tenant_id))
+                    if tenant and tenant.email:
+                        tenant_name = f"{tenant.first_name or ''} {tenant.last_name or ''}".strip() or tenant.email
+                        org_name = org.name if org else "Your Property Manager"
+                        tn = Notification(
+                            organisation_id=org_id,
+                            channel="email",
+                            trigger="maintenance_new_request",
+                            state=NotificationState.queued,
+                            recipient_name=tenant_name,
+                            recipient_email=tenant.email,
+                            subject=f"Maintenance Request Received: {issue.title}",
+                            body=(
+                                f"Dear {tenant_name},\n\n"
+                                f"Your maintenance request has been received and is being reviewed.\n\n"
+                                f"Reference: {issue.reference}\n"
+                                f"Title: {issue.title}\n"
+                                f"Priority: {priority_str.title()}\n\n"
+                                f"We will notify you once it has been assigned to a technician.\n\n"
+                                f"Best regards,\n{org_name}"
+                            ),
+                            queued_at=_now,
+                        )
+                        db.add(tn)
+                        await db.flush()
+                        _pending.append(str(tn.id))
+
+                        tenant_phone = tenant.whatsapp_number or tenant.phone
+                        if tenant_phone:
+                            twa = Notification(
+                                organisation_id=org_id,
+                                channel="whatsapp",
+                                trigger="maintenance_new_request",
+                                state=NotificationState.queued,
+                                recipient_name=tenant_name,
+                                recipient_phone=tenant_phone,
+                                subject=None,
+                                body=(
+                                    f"Hi {tenant_name}, your maintenance request '{issue.title}' "
+                                    f"({issue.reference}) has been received and is being reviewed. "
+                                    f"We'll update you once it's assigned."
+                                ),
+                                queued_at=_now,
+                            )
+                            db.add(twa)
+                            await db.flush()
+                            _pending.append(str(twa.id))
+
+        _create_notif_ids = _pending
     except Exception:
-        log.warning("maintenance.create.notify_manager.failed", extra={"issue_id": str(issue.id)}, exc_info=True)
+        log.warning("maintenance.create.notify.failed", extra={"issue_id": str(issue.id)}, exc_info=True)
     if _create_notif_ids:
         from app.worker.tasks.notifications import deliver_notification
         for _nid in _create_notif_ids:
