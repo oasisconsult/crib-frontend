@@ -21,6 +21,7 @@ import { CountersignAgreementModal } from "./CountersignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { IncreaseHistoryPanel } from "@/features/rent-increase/components/IncreaseHistoryPanel";
 import { EvictionNoticePanel } from "@/features/eviction-notice/components/EvictionNoticePanel";
+import { UtilityPanel } from "@/features/utilities/components/UtilityPanel";
 import { MoveInInspectionPanel } from "@/features/inspections/components/MoveInInspectionPanel";
 import { MoveOutInspectionPanel } from "@/features/inspections/components/MoveOutInspectionPanel";
 import { DepositPanel } from "@/components/payments/DepositPanel";
@@ -629,6 +630,14 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
       <EvictionNoticePanel
         leaseId={lease.id}
         leaseStatus={lease.state}
+      />
+
+      {/* Utility Charges */}
+      <UtilityPanel
+        leaseId={lease.id}
+        currency={lease.terms.currency}
+        leaseStatus={lease.state}
+        canManage={canManageOrg}
       />
 
       {/* Messages */}

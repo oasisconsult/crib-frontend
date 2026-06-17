@@ -39,6 +39,7 @@ class PaymentCategory(str, enum.Enum):
     rent      = "rent"
     deposit   = "deposit"
     late_fee  = "late_fee"
+    utility   = "utility"
     other     = "other"
 
 
