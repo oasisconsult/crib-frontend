@@ -1,12 +1,20 @@
 name: Deploy Crib to Staging
 
 on:
-  push:
+  # Deploy only after CI passes on main — prevents broken builds reaching staging
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
+  # Keep manual trigger for hotfix deploys that bypass the CI gate
   workflow_dispatch:
 
 jobs:
   deploy:
+    # Skip if triggered by a failed CI run
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: self-hosted   # self-hosted runner on the staging VPS — no SSH needed
     environment: staging
 
