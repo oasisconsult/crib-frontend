@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, AlertTriangle } from "lucide-react";
+import { useState, useRef } from "react";
+import { Plus, AlertTriangle, Camera, ImageIcon, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,17 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useProperties } from "@/hooks/useProperties";
 import { useRouter } from "next/navigation";
 import { cn } from "@/utils/cn";
+import { uploadsApi } from "@/services/api/uploads";
+import { toast } from "@/store/useUIStore";
 import type { MaintenanceIssue, FilterConfig } from "@/types";
+
+function toDisplayUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("/api/v1/upload/") || url.startsWith("/api/upload/local/")) return url;
+  const idx = url.indexOf("inspection_photo/");
+  if (idx !== -1) return `/api/v1/upload/serve/${url.slice(idx)}`;
+  return url;
+}
 
 const PAGE_SIZE = 20;
 
@@ -145,6 +155,27 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("plumbing");
   const [priority, setPriority] = useState("medium");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    e.target.value = "";
+    setUploading(true);
+    try {
+      const results = await Promise.all(
+        files.map((f) => uploadsApi.uploadFile(f, { category: "inspection_photo" })),
+      );
+      setPhotoUrls((prev) => [...prev, ...results.map((r) => r.url)]);
+    } catch {
+      toast.error("Failed to upload photos");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -160,7 +191,7 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
         category: category as "plumbing",
         priority: priority as "medium",
         reportedAt: new Date().toISOString(),
-        photoUrls: [],
+        photoUrls,
       },
       { onSuccess: onClose },
     );
@@ -207,10 +238,57 @@ function NewIssueDialog({ onClose }: { onClose: () => void }) {
           </Select>
         </div>
       </div>
+
+      {/* Photo upload */}
+      <div className="space-y-2">
+        <Label>Photos <span className="text-muted-foreground font-normal">(optional)</span></Label>
+        <div className="flex items-center gap-2">
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleFiles} disabled={uploading} />
+          <button
+            type="button"
+            onClick={() => cameraRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+            Camera
+          </button>
+          <input ref={galleryRef} type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} disabled={uploading} />
+          <button
+            type="button"
+            onClick={() => galleryRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent transition-colors disabled:opacity-50"
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+            Gallery
+          </button>
+          {uploading && <span className="text-xs text-muted-foreground">Uploading…</span>}
+        </div>
+        {photoUrls.length > 0 && (
+          <div className="grid grid-cols-4 gap-2">
+            {photoUrls.map((url) => (
+              <div key={url} className="group relative aspect-square rounded-[6px] overflow-hidden bg-muted border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={toDisplayUrl(url)} alt="Issue photo" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setPhotoUrls((prev) => prev.filter((u) => u !== url))}
+                  className="absolute top-1 right-1 hidden group-hover:flex items-center justify-center h-5 w-5 rounded-full bg-black/60 text-white hover:bg-destructive transition-colors"
+                  aria-label="Remove photo"
+                >
+                  <Trash2 className="h-2.5 w-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <Separator />
       <div className="flex justify-end gap-3">
         <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-        <Button type="submit" disabled={!propertyId || !title || isPending}>
+        <Button type="submit" disabled={!propertyId || !title || isPending || uploading}>
           {isPending ? "Reporting…" : "Report Issue"}
         </Button>
       </div>

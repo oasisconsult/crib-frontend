@@ -198,7 +198,7 @@ function PhotoSection({
     return (
       <div className="flex items-center gap-3 rounded-[6px] border border-dashed bg-muted/20 px-4 py-3">
         <Camera className="h-4 w-4 text-muted-foreground/50 shrink-0" />
-        <span className="text-sm text-muted-foreground">Completion photos</span>
+        <span className="text-sm text-muted-foreground">Photos</span>
         <div className="flex items-center gap-2 ml-auto">
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleFiles} disabled={uploading} />
           <button
@@ -232,7 +232,7 @@ function PhotoSection({
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <CardTitle className="text-base flex items-center gap-2">
               <Camera className="h-4 w-4" />
-              Completion Photos
+              Photos
               {photos.length > 0 && (
                 <Badge variant="secondary" className="ml-1">{photos.length}</Badge>
               )}
@@ -270,7 +270,7 @@ function PhotoSection({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={toDisplayUrl(url)}
-                  alt="Completion photo"
+                  alt="Issue photo"
                   className="w-full h-full object-cover cursor-pointer transition-opacity group-hover:opacity-90"
                   onClick={() => setLightbox(url)}
                 />

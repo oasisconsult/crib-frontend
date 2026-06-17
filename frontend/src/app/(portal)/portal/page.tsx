@@ -5,7 +5,7 @@ import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download, FileDown,
   Smartphone, Building2, Banknote, Calendar, MessageCircle,
-  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload, PenLine, ClipboardList,
+  Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload, PenLine, ClipboardList, ImageIcon, Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +42,14 @@ import type { Message } from "@/services/api/messages";
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return <h2 className="text-base font-semibold text-foreground mb-3">{children}</h2>;
+}
+
+function toDisplayUrl(url: string): string {
+  if (!url) return url;
+  if (url.startsWith("/api/v1/upload/") || url.startsWith("/api/upload/local/")) return url;
+  const idx = url.indexOf("inspection_photo/");
+  if (idx !== -1) return `/api/v1/upload/serve/${url.slice(idx)}`;
+  return url;
 }
 
 // ─── Payment method config ───────────────────────────────────────────────────
@@ -718,7 +726,28 @@ function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onCl
   const [category, setCategory] = useState("plumbing");
   const [priority, setPriority] = useState<typeof PRIORITIES[number]>("medium");
   const [description, setDescription] = useState("");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
   const { mutate, isPending, isSuccess } = useCreateMaintenanceIssue();
+
+  async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+    e.target.value = "";
+    setUploading(true);
+    try {
+      const results = await Promise.all(
+        files.map((f) => uploadsApi.uploadFile(f, { category: "inspection_photo" })),
+      );
+      setPhotoUrls((prev) => [...prev, ...results.map((r) => r.url)]);
+    } catch {
+      toast.error("Failed to upload photos");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   function handleSubmit() {
     if (!description.trim()) return;
@@ -726,6 +755,7 @@ function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onCl
       category,
       priority,
       description,
+      photoUrls,
       reportedBy: userName || "Tenant",
       reportedById: userId,
       leaseId,
@@ -804,7 +834,52 @@ function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onCl
         />
       </div>
 
-      <Button className="w-full" disabled={!description.trim() || isPending} onClick={handleSubmit}>
+      {/* Photo upload */}
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Photos <span className="normal-case font-normal">(optional)</span></p>
+        <div className="flex items-center gap-2">
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleFiles} disabled={uploading} />
+          <button
+            type="button"
+            onClick={() => cameraRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-2 text-xs font-medium shadow-sm hover:bg-accent transition-colors disabled:opacity-50 flex-1"
+          >
+            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+            Take Photo
+          </button>
+          <input ref={galleryRef} type="file" accept="image/*" multiple className="sr-only" onChange={handleFiles} disabled={uploading} />
+          <button
+            type="button"
+            onClick={() => galleryRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1.5 rounded-[5px] border border-input bg-background px-3 py-2 text-xs font-medium shadow-sm hover:bg-accent transition-colors disabled:opacity-50 flex-1"
+          >
+            <ImageIcon className="h-3.5 w-3.5" />
+            Choose from Gallery
+          </button>
+        </div>
+        {photoUrls.length > 0 && (
+          <div className="grid grid-cols-4 gap-2">
+            {photoUrls.map((url) => (
+              <div key={url} className="group relative aspect-square rounded-[6px] overflow-hidden bg-muted border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={toDisplayUrl(url)} alt="Issue photo" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setPhotoUrls((prev) => prev.filter((u) => u !== url))}
+                  className="absolute top-1 right-1 hidden group-hover:flex items-center justify-center h-5 w-5 rounded-full bg-black/60 text-white hover:bg-destructive transition-colors"
+                  aria-label="Remove photo"
+                >
+                  <Trash2 className="h-2.5 w-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Button className="w-full" disabled={!description.trim() || isPending || uploading} onClick={handleSubmit}>
         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
         {isPending ? "Submitting…" : "Submit Request"}
       </Button>
@@ -2326,32 +2401,49 @@ export default function TenantPortalPage() {
                 ) : (
                   <div className="space-y-0 divide-y divide-border/50">
                     {myMaintenance.map((m) => (
-                      <div key={m.id} className="py-3 flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium capitalize">
-                            {m.title ?? m.category?.replace(/_/g, " ") ?? "Issue"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                            {m.description ?? ""}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground/60 mt-1">
-                            {formatDateTime(m.createdAt)}
-                          </p>
+                      <div key={m.id} className="py-3 space-y-2">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium capitalize">
+                              {m.title ?? m.category?.replace(/_/g, " ") ?? "Issue"}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                              {m.description ?? ""}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground/60 mt-1">
+                              {formatDateTime(m.createdAt)}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <StatusBadge state={m.state} domain="maintenance" />
+                            {m.priority && (
+                              <span className={cn(
+                                "text-[10px] rounded-full px-1.5 py-0.5 font-medium capitalize",
+                                m.priority === "urgent" ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" :
+                                m.priority === "high"   ? "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" :
+                                m.priority === "medium" ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" :
+                                "bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800",
+                              )}>
+                                {m.priority}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex flex-col items-end gap-1 shrink-0">
-                          <StatusBadge state={m.state} domain="maintenance" />
-                          {m.priority && (
-                            <span className={cn(
-                              "text-[10px] rounded-full px-1.5 py-0.5 font-medium capitalize",
-                              m.priority === "urgent" ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800" :
-                              m.priority === "high"   ? "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-800" :
-                              m.priority === "medium" ? "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800" :
-                              "bg-teal-50 text-teal-700 border border-teal-200 dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800",
-                            )}>
-                              {m.priority}
-                            </span>
-                          )}
-                        </div>
+                        {(m.photoUrls ?? []).length > 0 && (
+                          <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                            {(m.photoUrls ?? []).slice(0, 5).map((url) => (
+                              <div key={url} className="relative shrink-0 h-14 w-14 rounded-[5px] overflow-hidden border bg-muted">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={toDisplayUrl(url)} alt="Issue photo" className="w-full h-full object-cover" />
+                              </div>
+                            ))}
+                            {(m.photoUrls ?? []).length > 5 && (
+                              <div className="shrink-0 h-14 w-14 rounded-[5px] border bg-muted flex items-center justify-center">
+                                <span className="text-xs text-muted-foreground font-medium">+{(m.photoUrls ?? []).length - 5}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
