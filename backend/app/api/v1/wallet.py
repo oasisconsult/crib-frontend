@@ -7,6 +7,7 @@ Endpoints:
 """
 
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -56,12 +57,19 @@ async def get_tenant_wallet(
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    """Return the tenant's current wallet balance. Returns 404 if no wallet exists yet."""
+    """Return the tenant's current wallet balance. Returns a zero-balance wallet if none exists yet."""
     wallet = await get_wallet(db, tenant_id)
     if not wallet:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Wallet not found — tenant has no recorded payments yet",
+        now = datetime.now(timezone.utc).isoformat()
+        org_id = str(get_org_id(current_user) or "")
+        return WalletOut(
+            id="",
+            tenant_id=str(tenant_id),
+            organisation_id=org_id,
+            balance=0.0,
+            currency="UGX",
+            created_at=now,
+            updated_at=now,
         )
     # Tenants may only view their own wallet; org members can view any wallet in their org.
     if (

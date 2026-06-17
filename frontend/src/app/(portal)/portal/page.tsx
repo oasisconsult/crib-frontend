@@ -739,7 +739,7 @@ function MaintenanceDialog({ userId, userName, leaseId, propertyId, unitId, onCl
     setUploading(true);
     try {
       const results = await Promise.all(
-        files.map((f) => uploadsApi.presignAndUpload(f, { category: "maintenance_photo" })),
+        files.map((f) => uploadsApi.uploadMaintenancePhoto(f)),
       );
       setPhotoUrls((prev) => [...prev, ...results.map((r) => r.url)]);
     } catch {

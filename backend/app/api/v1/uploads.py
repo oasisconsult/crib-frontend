@@ -235,6 +235,37 @@ async def presign_tenant_document(
     return await _do_presign(body, db)
 
 
+@router.post("/file/maintenance-photo", response_model=PresignResponse)
+async def upload_maintenance_photo_proxy(
+    file: UploadFile = File(...),
+    _: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Proxy upload for maintenance issue photos accessible to any authenticated user (including tenants).
+    Uses the backend as a relay to MinIO — the browser never needs to reach MinIO directly.
+    Category is forced to 'inspection_photo'.
+    """
+    config = await settings_service.get_storage_config(db)
+    try:
+        provider = get_storage_provider(config, local_base_url=get_settings().storage_local_base_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    key = _build_key("inspection_photo", file.filename or "upload")
+    data = await file.read()
+    mime = file.content_type or "application/octet-stream"
+    public = await provider.upload(key, data, mime)
+
+    return PresignResponse(
+        upload_url="",
+        public_url=public,
+        key=key,
+        expires_in=0,
+        provider=config.get("provider", "local"),
+    )
+
+
 @router.post("/presign/maintenance-photo", response_model=PresignResponse)
 async def presign_maintenance_photo(
     body: PresignRequest,

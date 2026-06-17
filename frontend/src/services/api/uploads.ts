@@ -78,6 +78,28 @@ export const uploadsApi = {
     };
   },
 
+  async uploadMaintenancePhoto(
+    file: File,
+    onProgress?: (percent: number) => void,
+  ): Promise<UploadResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const { publicUrl, key } = await apiPostForm<PresignedUrl>(
+      "/upload/file/maintenance-photo",
+      formData,
+      onProgress,
+    );
+
+    return {
+      url: publicUrl,
+      key,
+      name: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+    };
+  },
+
   async uploadFile(
     file: File,
     options: UploadOptions,
