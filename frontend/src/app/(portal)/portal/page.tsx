@@ -2515,7 +2515,7 @@ export default function TenantPortalPage() {
                 ) : (
                   <div className="space-y-0 divide-y divide-border/50">
                     {myMaintenance.map((m) => (
-                      <div key={m.id} className="py-3 space-y-2 cursor-pointer rounded-[6px] hover:bg-muted/50 px-2 -mx-2 transition-colors" onClick={() => setSelectedMaintenance(m)}>
+                      <div key={m.id} className="py-3 space-y-2 cursor-pointer rounded-[6px] active:bg-muted/40 px-2 -mx-2 transition-colors" onClick={() => setSelectedMaintenance(m)}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
                             <p className="text-sm font-medium capitalize">
