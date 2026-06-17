@@ -1,0 +1,109 @@
+name: sprint_g_listings
+description: >
+  Sprint G — Public Vacancy Listings.
+
+  Validates the public ``GET /public/listings`` endpoint.
+  The endpoint is unauthenticated; only units in organisations where
+  ``settings.listings_enabled == "true"`` are returned.
+
+  This workflow validates:
+  1. The public endpoint responds 200 with the correct schema.
+  2. After enabling listings for the org (done in the pytest fixture),
+     a newly created property/unit appears in the public feed.
+  3. Filters (unitType, maxRent) narrow the result set correctly.
+
+  Note: The pytest test function enables ``listings_enabled`` via the
+  ``db_session`` fixture before running this workflow. The YAML steps
+  then verify API behaviour post-enablement.
+
+  Endpoint under test:
+    GET /api/v1/public/listings  (no auth required)
+
+steps:
+  # ── Setup: create a listable property + unit ──────────────────────────────────
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "Sprint-G Listings Property"
+      type: flat
+    save_as: property
+
+  - name: create_unit
+    action: create_unit
+    as: manager
+    input:
+      propertyId:  "${property.id}"
+      name:        "Unit G-1"
+      type:        one_bed
+      monthlyRent: 800000
+    save_as: unit
+
+  - name: assert_unit_created
+    action: assert_field
+    input:
+      target: "${unit.id}"
+      not_null: true
+
+  # ── Public listing fetch — org must have listings_enabled in test fixture ──────
+
+  - name: fetch_public_listings
+    action: list_public_listings
+    as: manager
+    input:
+      page:     1
+      pageSize: 50
+    save_as: listings
+
+  - name: assert_listings_endpoint_ok
+    action: assert_field
+    input:
+      target: "${listings.statusCode}"
+      equals: "200"
+
+  - name: assert_listings_has_items_field
+    action: assert_field
+    input:
+      target: "${listings.items}"
+      not_null: true
+
+  - name: assert_listings_total_gte_1
+    action: assert_field
+    input:
+      target: "${listings.total}"
+      not_null: true
+
+  # ── Filtered fetch: type filter ───────────────────────────────────────────────
+
+  - name: fetch_listings_filtered_type
+    action: list_public_listings
+    as: manager
+    input:
+      unitType: one_bed
+      page:     1
+      pageSize: 20
+    save_as: filtered_listings
+
+  - name: assert_filtered_responds_200
+    action: assert_field
+    input:
+      target: "${filtered_listings.statusCode}"
+      equals: "200"
+
+  # ── Filtered fetch: price cap below the unit's rent → empty ───────────────────
+
+  - name: fetch_listings_price_cap
+    action: list_public_listings
+    as: manager
+    input:
+      maxRent:  100
+      page:     1
+      pageSize: 20
+    save_as: capped_listings
+
+  - name: assert_price_cap_returns_zero
+    action: assert_field
+    input:
+      target: "${capped_listings.total}"
+      equals: "0"

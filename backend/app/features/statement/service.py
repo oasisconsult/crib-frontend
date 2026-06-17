@@ -128,7 +128,7 @@ async def generate_statement_pdf(
     for s in schedules:
         p           = _payment_for(s)
         amount_due  = float(s.amount_due)
-        late_fee    = float(str(s.late_fee)) if s.late_fee else 0.0
+        late_fee    = float(s.late_fee_applied) if s.late_fee_applied else 0.0
         charge      = amount_due + late_fee
         amount_paid = float(p.amount) if p else 0.0
         running     = round(running + charge - amount_paid, 2)

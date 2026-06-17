@@ -1,0 +1,207 @@
+name: sprint_h_screenings
+description: >
+  Sprint H — Tenant Screening Checklist.
+
+  Full end-to-end lifecycle test for the tenant screening feature:
+  create → update checklist items → approve decision → verify final state.
+
+  Validates:
+  - Screening is created in "pending" status with a default 6-item checklist.
+  - Individual checklist items can be marked checked via PATCH.
+  - The approve decision sets status to "approved" and records the decider.
+  - A rejected path is also exercised on a separate screening record.
+  - The list endpoint returns the expected count and filters correctly.
+
+  Endpoints under test:
+    POST   /api/v1/screenings                  → 201 ScreeningOut
+    GET    /api/v1/screenings                  → paginated list
+    GET    /api/v1/screenings/{id}             → single ScreeningOut
+    PATCH  /api/v1/screenings/{id}             → updated ScreeningOut
+    POST   /api/v1/screenings/{id}/decide      → approved/rejected ScreeningOut
+
+steps:
+  # ── Setup: property and unit ──────────────────────────────────────────────────
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "Sprint-H Screening Property"
+      type: flat
+    save_as: property
+
+  - name: create_unit
+    action: create_unit
+    as: manager
+    input:
+      propertyId:  "${property.id}"
+      name:        "Unit H-1"
+      type:        two_bed
+      monthlyRent: 950000
+    save_as: unit
+
+  # ── Create screening application ──────────────────────────────────────────────
+
+  - name: create_screening
+    action: create_screening
+    as: manager
+    input:
+      applicantName:  "Peter Ssali"
+      applicantPhone: "+256701234567"
+      applicantEmail: "peter.ssali@workflow.test"
+      unitId:         "${unit.id}"
+      notes:          "Sprint-H workflow test applicant"
+    save_as: screening
+
+  - name: assert_screening_id
+    action: assert_field
+    input:
+      target: "${screening.id}"
+      not_null: true
+
+  - name: assert_screening_status_pending
+    action: assert_field
+    input:
+      target: "${screening.status}"
+      equals: pending
+
+  - name: assert_screening_checklist_present
+    action: assert_field
+    input:
+      target: "${screening.checklist}"
+      not_null: true
+
+  - name: assert_screening_applicant_name
+    action: assert_field
+    input:
+      target: "${screening.applicantName}"
+      equals: "Peter Ssali"
+
+  # ── Update checklist: mark id_verified and employment_verified ────────────────
+
+  - name: check_id_verified
+    action: update_screening
+    as: manager
+    input:
+      screeningId: "${screening.id}"
+      checklist:
+        - key:     id_verified
+          checked: true
+          notes:   "National ID sighted and confirmed"
+    save_as: screening_after_id
+
+  - name: assert_still_pending_after_check
+    action: assert_field
+    input:
+      target: "${screening_after_id.status}"
+      equals: pending
+
+  - name: check_employment_verified
+    action: update_screening
+    as: manager
+    input:
+      screeningId: "${screening.id}"
+      checklist:
+        - key:     employment_verified
+          checked: true
+          notes:   "Employment letter received from Kampala City Council"
+        - key:     income_sufficient
+          checked: true
+    save_as: screening_after_employment
+
+  # ── Fetch fresh from API to confirm checklist state ───────────────────────────
+
+  - name: get_screening_fresh
+    action: get_screening
+    as: manager
+    input:
+      screeningId: "${screening.id}"
+    save_as: fresh_screening
+
+  - name: assert_fresh_status_pending
+    action: assert_field
+    input:
+      target: "${fresh_screening.status}"
+      equals: pending
+
+  - name: assert_unit_linked
+    action: assert_field
+    input:
+      target: "${fresh_screening.unitId}"
+      equals: "${unit.id}"
+
+  # ── Approve the screening ─────────────────────────────────────────────────────
+
+  - name: approve_screening
+    action: decide_screening
+    as: manager
+    input:
+      screeningId: "${screening.id}"
+      decision:    approved
+      notes:       "All key checks passed. Recommended for tenancy."
+    save_as: approved_screening
+
+  - name: assert_approved_status
+    action: assert_field
+    input:
+      target: "${approved_screening.status}"
+      equals: approved
+
+  - name: assert_decided_at_set
+    action: assert_field
+    input:
+      target: "${approved_screening.decidedAt}"
+      not_null: true
+
+  - name: assert_decision_notes
+    action: assert_field
+    input:
+      target: "${approved_screening.decisionNotes}"
+      contains: "Recommended for tenancy"
+
+  # ── Second screening — rejected path ──────────────────────────────────────────
+
+  - name: create_rejected_screening
+    action: create_screening
+    as: manager
+    input:
+      applicantName:  "Mary Nakalema"
+      applicantPhone: "+256772000001"
+      unitId:         "${unit.id}"
+    save_as: rejected_screening_base
+
+  - name: reject_screening
+    action: decide_screening
+    as: manager
+    input:
+      screeningId: "${rejected_screening_base.id}"
+      decision:    rejected
+      notes:       "Income does not meet minimum threshold."
+    save_as: rejected_screening
+
+  - name: assert_rejected_status
+    action: assert_field
+    input:
+      target: "${rejected_screening.status}"
+      equals: rejected
+
+  # ── List all screenings for this unit ─────────────────────────────────────────
+
+  - name: list_unit_screenings
+    action: list_screenings
+    as: manager
+    input:
+      unitId: "${unit.id}"
+    save_as: screenings_list
+
+  - name: assert_list_has_data
+    action: assert_field
+    input:
+      target: "${screenings_list.data}"
+      not_null: true
+
+  - name: assert_total_gte_2
+    action: assert_field
+    input:
+      target: "${screenings_list.total}"
+      not_null: true

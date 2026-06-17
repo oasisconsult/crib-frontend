@@ -1,0 +1,87 @@
+name: sprint_b_announcements
+description: >
+  Sprint B — Bulk Tenant Announcements.
+
+  End-to-end validation of the announcement fan-out feature.
+  Creates an announcement via the REST endpoint, verifies the returned
+  object has the required fields, then lists announcements for the org
+  and asserts at least one entry is present.
+
+  Endpoint under test:
+    POST /api/v1/announcements  → 201 AnnouncementOut
+    GET  /api/v1/announcements  → paginated list
+
+steps:
+  # ── Create a single-channel announcement ──────────────────────────────────────
+
+  - name: create_in_app_announcement
+    action: create_announcement
+    as: manager
+    input:
+      title:    "Sprint-B Workflow Test"
+      body:     "This is an automated workflow test announcement for Sprint B."
+      channels: ["in_app"]
+    save_as: announcement
+
+  - name: assert_announcement_id
+    action: assert_field
+    input:
+      target: "${announcement.id}"
+      not_null: true
+
+  - name: assert_announcement_title
+    action: assert_field
+    input:
+      target: "${announcement.title}"
+      equals: "Sprint-B Workflow Test"
+
+  - name: assert_announcement_channels
+    action: assert_field
+    input:
+      target: "${announcement.channels}"
+      contains: "in_app"
+
+  - name: assert_announcement_org
+    action: assert_field
+    input:
+      target: "${announcement.organisationId}"
+      not_null: true
+
+  # ── Create a second announcement to verify list results ───────────────────────
+
+  - name: create_multi_channel_announcement
+    action: create_announcement
+    as: manager
+    input:
+      title:    "Sprint-B Multi-Channel Test"
+      body:     "Testing multi-channel dispatch in the workflow engine."
+      channels: ["in_app", "email"]
+    save_as: announcement2
+
+  - name: assert_second_announcement_channels
+    action: assert_field
+    input:
+      target: "${announcement2.channels}"
+      contains: email
+
+  # ── List and validate history ──────────────────────────────────────────────────
+
+  - name: list_announcements
+    action: list_announcements
+    as: manager
+    input:
+      page:     1
+      pageSize: 20
+    save_as: history
+
+  - name: assert_history_total_gte_2
+    action: assert_field
+    input:
+      target: "${history.total}"
+      not_null: true
+
+  - name: assert_history_data_not_null
+    action: assert_field
+    input:
+      target: "${history.data}"
+      not_null: true

@@ -1,0 +1,103 @@
+name: sprint_i_cicd
+description: >
+  Sprint I — GitHub Actions CI/CD Pipeline.
+
+  Validates the CI/CD workflow files are correctly defined and the deploy
+  pipeline is gated on a successful CI run.
+
+  Checks:
+  - ``.github/workflows/ci.yml`` exists, is valid YAML, and has both
+    ``backend`` and ``frontend`` jobs with the correct triggers and
+    concurrency settings.
+  - ``.github/workflows/deploy-staging.yml`` exists, is valid YAML, and
+    uses a ``workflow_run`` trigger gated on CI success.
+
+  These checks run without any API calls — they read the repository
+  filesystem directly via the ``validate_ci_yml`` / ``validate_deploy_yml``
+  actions.
+
+steps:
+  # ── Validate CI workflow ──────────────────────────────────────────────────────
+
+  - name: validate_ci_workflow
+    action: validate_ci_yml
+    as: manager
+    input:
+      path:        ".github/workflows/ci.yml"
+      expectJobs:  ["backend", "frontend"]
+    save_as: ci_result
+
+  - name: assert_ci_valid
+    action: assert_field
+    input:
+      target: "${ci_result.valid}"
+      equals: "True"
+
+  - name: assert_has_backend_job
+    action: assert_field
+    input:
+      target: "${ci_result.hasBackendJob}"
+      equals: "True"
+
+  - name: assert_has_frontend_job
+    action: assert_field
+    input:
+      target: "${ci_result.hasFrontendJob}"
+      equals: "True"
+
+  - name: assert_has_push_trigger
+    action: assert_field
+    input:
+      target: "${ci_result.hasPushTrigger}"
+      equals: "True"
+
+  - name: assert_has_pr_trigger
+    action: assert_field
+    input:
+      target: "${ci_result.hasPrTrigger}"
+      equals: "True"
+
+  - name: assert_has_concurrency
+    action: assert_field
+    input:
+      target: "${ci_result.hasConcurrency}"
+      equals: "True"
+
+  - name: assert_no_missing_jobs
+    action: assert_field
+    input:
+      target: "${ci_result.missingJobs}"
+      equals: "[]"
+
+  # ── Validate deploy workflow ───────────────────────────────────────────────────
+
+  - name: validate_deploy_workflow
+    action: validate_deploy_yml
+    as: manager
+    input:
+      path: ".github/workflows/deploy-staging.yml"
+    save_as: deploy_result
+
+  - name: assert_deploy_valid
+    action: assert_field
+    input:
+      target: "${deploy_result.valid}"
+      equals: "True"
+
+  - name: assert_deploy_has_workflow_run_trigger
+    action: assert_field
+    input:
+      target: "${deploy_result.hasWorkflowRunTrigger}"
+      equals: "True"
+
+  - name: assert_deploy_has_manual_trigger
+    action: assert_field
+    input:
+      target: "${deploy_result.hasManualTrigger}"
+      equals: "True"
+
+  - name: assert_deploy_guarded_on_success
+    action: assert_field
+    input:
+      target: "${deploy_result.guardedOnSuccess}"
+      equals: "True"

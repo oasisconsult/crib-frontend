@@ -37,7 +37,7 @@ async def create_screening(
     screening = await screening_service.create_screening(
         org_id=org_id,
         body=body,
-        created_by_id=current_user.profile_id,
+        created_by_id=current_user.id,
         db=db,
     )
     return ScreeningOut.model_validate(screening)
@@ -113,7 +113,7 @@ async def decide_screening(
     screening = await screening_service.decide_screening(
         screening=screening,
         body=body,
-        decided_by_id=current_user.profile_id,
+        decided_by_id=current_user.id,
         db=db,
     )
     return ScreeningOut.model_validate(screening)

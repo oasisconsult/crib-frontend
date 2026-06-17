@@ -1,0 +1,165 @@
+name: sprint_c_utilities
+description: >
+  Sprint C — Utility Billing.
+
+  End-to-end validation of the utility billing feature.
+  Creates a lease, records a metered water reading (auto_bill=false),
+  bills it explicitly via the /bill endpoint, then records a fixed
+  monthly internet charge (auto_bill=true). Finally asserts both
+  readings appear in the utility history.
+
+  Endpoints under test:
+    POST /api/v1/leases/{id}/utilities           → 201 UtilityReadingOut
+    POST /api/v1/leases/{id}/utilities/{id}/bill → 200 UtilityReadingOut (billed)
+    GET  /api/v1/leases/{id}/utilities           → paginated list
+
+steps:
+  # ── Setup: property, unit, tenant, lease ──────────────────────────────────────
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "Sprint-C Utility Property"
+      type: flat
+    save_as: property
+
+  - name: create_unit
+    action: create_unit
+    as: manager
+    input:
+      propertyId: "${property.id}"
+      name:       "Unit C-1"
+      type:       one_bed
+      monthlyRent: 450000
+    save_as: unit
+
+  - name: create_tenant
+    action: create_tenant
+    as: manager
+    input:
+      firstName: "Fatuma"
+      lastName:  "Nakato"
+      email:     "fatuma.utilities@workflow.test"
+    save_as: tenant
+
+  - name: create_lease
+    action: create_lease
+    as: manager
+    input:
+      unitId:      "${unit.id}"
+      tenantId:    "${tenant.id}"
+      monthlyRent: 450000
+    save_as: lease
+
+  - name: activate_lease
+    action: activate_lease
+    as: manager
+    input:
+      leaseId: "${lease.id}"
+    save_as: active_lease
+
+  - name: assert_lease_active
+    action: assert_field
+    input:
+      target: "${active_lease.status}"
+      equals: active
+
+  # ── Metered water reading (manual bill step) ───────────────────────────────────
+
+  - name: record_metered_water
+    action: record_utility
+    as: manager
+    input:
+      leaseId:      "${lease.id}"
+      utilityType:  water
+      billingType:  metered
+      readingValue: 250
+      previousValue: 200
+      unitPrice:    800
+      autoBill:     false
+    save_as: metered_reading
+
+  - name: assert_metered_not_billed
+    action: assert_field
+    input:
+      target: "${metered_reading.isBilled}"
+      equals: "False"
+
+  - name: assert_metered_type
+    action: assert_field
+    input:
+      target: "${metered_reading.utilityType}"
+      equals: water
+
+  - name: assert_metered_units_consumed
+    action: assert_field
+    input:
+      target: "${metered_reading.unitsConsumed}"
+      equals: "50.0"
+
+  - name: bill_metered_water
+    action: bill_utility
+    as: manager
+    input:
+      leaseId:   "${lease.id}"
+      readingId: "${metered_reading.id}"
+    save_as: billed_reading
+
+  - name: assert_billed_after_bill
+    action: assert_field
+    input:
+      target: "${billed_reading.isBilled}"
+      equals: "True"
+
+  - name: assert_payment_created
+    action: assert_field
+    input:
+      target: "${billed_reading.paymentId}"
+      not_null: true
+
+  # ── Fixed internet charge (auto-billed) ────────────────────────────────────────
+
+  - name: record_fixed_internet
+    action: record_utility
+    as: manager
+    input:
+      leaseId:     "${lease.id}"
+      utilityType: internet
+      billingType: fixed
+      amount:      50000
+      autoBill:    true
+    save_as: fixed_reading
+
+  - name: assert_fixed_auto_billed
+    action: assert_field
+    input:
+      target: "${fixed_reading.isBilled}"
+      equals: "True"
+
+  - name: assert_fixed_type
+    action: assert_field
+    input:
+      target: "${fixed_reading.utilityType}"
+      equals: internet
+
+  # ── List utilities ─────────────────────────────────────────────────────────────
+
+  - name: list_utilities
+    action: list_utilities
+    as: manager
+    input:
+      leaseId: "${lease.id}"
+    save_as: utility_history
+
+  - name: assert_history_has_data
+    action: assert_field
+    input:
+      target: "${utility_history.data}"
+      not_null: true
+
+  - name: assert_history_total
+    action: assert_field
+    input:
+      target: "${utility_history.total}"
+      not_null: true

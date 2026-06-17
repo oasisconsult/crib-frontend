@@ -1,0 +1,94 @@
+name: sprint_d_document_access
+description: >
+  Sprint D — Document Access Control.
+
+  End-to-end validation of the file-serve authorization layer.
+  The ``GET /api/v1/upload/serve/{key}`` endpoint enforces ownership:
+  - Managers may access documents belonging to their org's tenants.
+  - Accessing documents for an unknown tenant UUID returns 403 (Forbidden).
+  - Path-traversal keys (containing "..") are rejected with 400 (Bad Request).
+
+  Note: Since this is the test environment (no real S3 / MinIO), authorized
+  requests will 404 on the storage lookup AFTER passing the ownership check.
+  This is the expected behavior and the workflow asserts the auth layer
+  specifically (403 vs 404 distinction).
+
+  Endpoint under test:
+    GET /api/v1/upload/serve/{key:path}
+
+steps:
+  # ── Setup: tenant to generate a valid tenant UUID ─────────────────────────────
+
+  - name: create_tenant
+    action: create_tenant
+    as: manager
+    input:
+      firstName: "Grace"
+      lastName:  "Achieng"
+      email:     "grace.docs@workflow.test"
+    save_as: tenant
+
+  - name: assert_tenant_created
+    action: assert_field
+    input:
+      target: "${tenant.id}"
+      not_null: true
+
+  # ── Authorized access: manager on own-org tenant ──────────────────────────────
+  # After the auth check passes, we get 404 from storage (no real S3 in tests).
+  # A 404 proves auth PASSED; a 403 would mean auth FAILED.
+
+  - name: serve_own_org_document
+    action: serve_file_check
+    as: manager
+    input:
+      key: "documents/tenants/${tenant.id}/employment_letter.pdf"
+    save_as: authorized_result
+
+  - name: assert_authorized_not_403
+    action: assert_field
+    input:
+      target: "${authorized_result.statusCode}"
+      not_equals: "403"
+
+  - name: assert_authorized_flag_true
+    action: assert_field
+    input:
+      target: "${authorized_result.authorized}"
+      equals: "True"
+
+  # ── Unauthorized: non-existent tenant UUID (random UUID not in org) ───────────
+
+  - name: serve_unknown_tenant
+    action: serve_file_check
+    as: manager
+    input:
+      key: "documents/tenants/00000000-0000-0000-0000-000000000001/secret.pdf"
+    save_as: unauthorized_result
+
+  - name: assert_unknown_tenant_is_403
+    action: assert_field
+    input:
+      target: "${unauthorized_result.statusCode}"
+      equals: "403"
+
+  - name: assert_unauthorized_flag_false
+    action: assert_field
+    input:
+      target: "${unauthorized_result.authorized}"
+      equals: "False"
+
+  # ── Path traversal is rejected 400 before auth ────────────────────────────────
+
+  - name: check_path_traversal
+    action: check_path_traversal
+    as: manager
+    input:
+      key: "../etc/passwd"
+    save_as: traversal_result
+
+  - name: assert_traversal_rejected
+    action: assert_field
+    input:
+      target: "${traversal_result.statusCode}"
+      equals: "400"

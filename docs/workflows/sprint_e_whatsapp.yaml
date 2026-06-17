@@ -1,0 +1,85 @@
+name: sprint_e_whatsapp
+description: >
+  Sprint E — WhatsApp Business API Integration.
+
+  Validates the WhatsApp Meta Cloud API wiring:
+  1. The test endpoint accepts a request and returns a structured response.
+  2. When credentials are absent (test environment), the response includes
+     success=false and channel="whatsapp" — proving the graceful fallback
+     path works correctly.
+  3. Superadmin can list and update system settings, including WhatsApp keys.
+
+  The credential set/test flow:
+    GET  /api/v1/admin/settings               → lists all settings by category
+    PUT  /api/v1/admin/settings/{key}          → updates a single setting value
+    POST /api/v1/admin/settings/test/whatsapp  → sends a test message
+                                                 (gracefully fails if unconfigured)
+
+steps:
+  # ── List settings — verify whatsapp category exists ───────────────────────────
+
+  - name: list_all_settings
+    action: list_system_settings
+    as: superadmin
+    input: {}
+    save_as: all_settings
+
+  - name: assert_settings_not_null
+    action: assert_field
+    input:
+      target: "${all_settings}"
+      not_null: true
+
+  # ── Read the whatsapp api_key setting ─────────────────────────────────────────
+
+  - name: read_whatsapp_api_key_setting
+    action: get_system_setting
+    as: superadmin
+    input:
+      key: "whatsapp.meta.api_key"
+    save_as: wa_key_setting
+
+  - name: assert_wa_key_setting_has_key
+    action: assert_field
+    input:
+      target: "${wa_key_setting.key}"
+      equals: "whatsapp.meta.api_key"
+
+  # ── Update the phone_id setting (non-secret, safe to set in tests) ────────────
+
+  - name: update_whatsapp_phone_id
+    action: update_system_setting
+    as: superadmin
+    input:
+      key:   "whatsapp.meta.phone_id"
+      value: "test-phone-id-workflow"
+    save_as: updated_phone_id
+
+  - name: assert_phone_id_updated
+    action: assert_field
+    input:
+      target: "${updated_phone_id.key}"
+      equals: "whatsapp.meta.phone_id"
+
+  # ── Test WhatsApp — expect graceful "not configured" since api_key is blank ────
+  # In test environment api_key is unset (empty), so success=false is correct.
+  # The endpoint itself must return 200 (not 500) to prove graceful degradation.
+
+  - name: test_whatsapp_endpoint
+    action: test_whatsapp_connection
+    as: superadmin
+    input:
+      recipient: "+256700000001"
+    save_as: wa_test_result
+
+  - name: assert_whatsapp_endpoint_responds
+    action: assert_field
+    input:
+      target: "${wa_test_result.channel}"
+      equals: whatsapp
+
+  - name: assert_whatsapp_has_message
+    action: assert_field
+    input:
+      target: "${wa_test_result.message}"
+      not_null: true

@@ -85,7 +85,8 @@ async def assert_field(
 
     if "one_of" in input:
         choices = input["one_of"]
-        if target not in choices:
+        # Normalize both sides to strings so int status codes match YAML string literals
+        if str(target) not in [str(c) for c in choices]:
             raise WorkflowAssertionError(
                 f"Expected one of {choices!r}, got {target!r}",
                 step_name=step_name,

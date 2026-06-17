@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Backend: pytest ──────────────────────────────────────────────────────────
+  backend:
+    name: Backend — pytest
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crib
+          POSTGRES_PASSWORD: crib_local_secret
+          POSTGRES_DB: crib_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone geobox-rbac vendor dependency
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          mkdir -p backend/vendor
+          git clone \
+            "https://x-access-token:${GH_PAT}@github.com/oasisconsult/geobox-rbac.git" \
+            backend/vendor/geobox-rbac
+          # Redirect Poetry's git clone to the local copy — same trick as Dockerfile.dev
+          git config --global \
+            url."file://$PWD/backend/vendor/geobox-rbac".insteadOf \
+            "https://github.com/oasisconsult/geobox-rbac.git"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry 1.8.4
+        run: pip install poetry==1.8.4
+
+      - name: Cache Poetry virtualenv
+        uses: actions/cache@v4
+        with:
+          path: backend/.venv
+          key: poetry-${{ runner.os }}-${{ hashFiles('backend/poetry.lock') }}
+          restore-keys: poetry-${{ runner.os }}-
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          poetry config virtualenvs.in-project true
+          poetry install --no-root
+
+      - name: Enable pgcrypto on test DB
+        run: >
+          psql
+          "postgresql://crib:crib_local_secret@localhost:5432/crib_test"
+          -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+
+      - name: Run pytest
+        working-directory: backend
+        run: poetry run pytest -q --tb=short --cov=app --cov-report=term-missing
+
+  # ── Frontend: type-check + vitest + next build ───────────────────────────────
+  frontend:
+    name: Frontend — type-check + tests + build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: TypeScript type-check
+        working-directory: frontend
+        run: npm run type-check
+
+      - name: Run Vitest unit tests
+        working-directory: frontend
+        run: npm test -- run
+
+      - name: Next.js build
+        working-directory: frontend
+        run: npm run build
+        env:
+          # Stub values — build-time NEXT_PUBLIC vars all have ?? fallbacks,
+          # so these just silence "missing env" warnings from next build.
+          NEXT_PUBLIC_APP_ENV: ci
+          NEXT_PUBLIC_LOGTO_ENDPOINT: http://localhost:3001
+          NEXT_PUBLIC_LOGTO_APP_ID: ci-app-id
+          NEXT_PUBLIC_LOGTO_API_RESOURCE: http://localhost:8001
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_MOCK_API: "false"

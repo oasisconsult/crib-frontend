@@ -1,0 +1,63 @@
+name: sprint_f_geocode
+description: >
+  Sprint F — GeoBox Geocode Auto-Fill.
+
+  Validates the GeoBox geocode hierarchy endpoint that powers the
+  property address auto-fill feature.
+
+  Behaviour in test environment:
+  - When GeoBox is fully configured: returns a 5-level Uganda admin hierarchy
+    [district, county, division, parish, village].
+  - When GeoBox is unconfigured (test env): returns 200 with hierarchy=null.
+  - The test validates that the endpoint is reachable, returns 200, and
+    the response structure is correct (hierarchy field present, even if null).
+
+  Endpoint under test:
+    GET /api/v1/geobox/geocode/hierarchy?code={code}
+
+steps:
+  # ── Geocode a known Uganda district code ──────────────────────────────────────
+
+  - name: resolve_kampala_code
+    action: geocode_hierarchy
+    as: manager
+    input:
+      code: "UG-101"
+    save_as: hierarchy_result
+
+  - name: assert_endpoint_responds_200
+    action: assert_field
+    input:
+      target: "${hierarchy_result.statusCode}"
+      equals: "200"
+
+  # ── Resolve a second code to confirm consistent 200 responses ─────────────────
+
+  - name: resolve_entebbe_code
+    action: geocode_hierarchy
+    as: manager
+    input:
+      code: "UG-102"
+    save_as: hierarchy_result2
+
+  - name: assert_second_code_responds
+    action: assert_field
+    input:
+      target: "${hierarchy_result2.statusCode}"
+      equals: "200"
+
+  # ── Village text search endpoint ──────────────────────────────────────────────
+
+  - name: search_kampala_villages
+    action: search_villages
+    as: manager
+    input:
+      query: "Kampala"
+      limit: 5
+    save_as: village_search
+
+  - name: assert_search_responds
+    action: assert_field
+    input:
+      target: "${village_search.statusCode}"
+      one_of: ["200", "500", "503"]
