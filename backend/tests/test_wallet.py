@@ -230,14 +230,18 @@ class TestWalletViaPaymentService:
 # ── HTTP-level tests ──────────────────────────────────────────────────────────
 
 class TestWalletEndpoints:
-    async def test_get_wallet_404_when_none(
+    async def test_get_wallet_zero_when_none(
         self, client: AsyncClient, tenant
     ):
+        """Endpoint returns a synthetic zero-balance wallet when no wallet exists yet."""
         resp = await client.get(
             f"/api/v1/tenants/{tenant.id}/wallet",
             headers=auth_headers("manager-1"),
         )
-        assert resp.status_code == 404
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["balance"] == 0.0
+        assert data["tenantId"] == str(tenant.id)
 
     async def test_get_wallet_returns_balance(
         self, client: AsyncClient, db_session: AsyncSession, org, active_lease, tenant
