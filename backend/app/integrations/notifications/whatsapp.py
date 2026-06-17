@@ -67,7 +67,22 @@ class WhatsAppProvider(NotificationProvider):
                 return DeliveryResult(success=False, failure_reason=str(exc))
 
 
+class _NotConfiguredProvider(NotificationProvider):
+    """Returned when WhatsApp credentials are not set in system settings."""
+
+    async def send(self, **_kwargs) -> DeliveryResult:
+        return DeliveryResult(
+            success=False,
+            failure_reason="WhatsApp not configured — set whatsapp.meta.api_key and whatsapp.meta.phone_id in platform settings",
+        )
+
+
 def get_whatsapp_provider() -> NotificationProvider:
+    """Returns a provider backed by env-var settings (legacy / test use only)."""
     from app.core.config import get_settings
     s = get_settings()
-    return WhatsAppProvider(api_key=s.whatsapp_api_key, phone_id=s.whatsapp_phone_id)
+    api_key = getattr(s, "whatsapp_api_key", None)
+    phone_id = getattr(s, "whatsapp_phone_id", None)
+    if not api_key or not phone_id:
+        return _NotConfiguredProvider()
+    return WhatsAppProvider(api_key=api_key, phone_id=phone_id)

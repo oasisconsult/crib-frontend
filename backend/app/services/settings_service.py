@@ -389,3 +389,28 @@ async def test_sms(recipient: str, db: AsyncSession) -> dict:
     except Exception as exc:
         log.warning("sms.test_failed", error=str(exc))
         return {"success": False, "channel": "sms", "message": str(exc)}
+
+
+async def test_whatsapp(recipient: str, db: AsyncSession) -> dict:
+    """Send a one-line test WhatsApp message to verify Meta Cloud API credentials."""
+    config = await get_whatsapp_config(db)
+    api_key = config.get("api_key")
+    phone_id = config.get("phone_id")
+    if not api_key or not phone_id:
+        return {"success": False, "channel": "whatsapp", "message": "WhatsApp not configured — set whatsapp.meta.api_key and whatsapp.meta.phone_id"}
+    try:
+        from app.integrations.notifications.whatsapp import WhatsAppProvider
+        provider = WhatsAppProvider(api_key=api_key, phone_id=phone_id)
+        result = await provider.send(
+            recipient_name="Test",
+            recipient_email=None,
+            recipient_phone=recipient,
+            subject=None,
+            body="Crib WhatsApp configuration test — if you see this, it works!",
+        )
+        if result.success:
+            return {"success": True, "channel": "whatsapp", "message": f"Test WhatsApp message sent to {recipient}"}
+        return {"success": False, "channel": "whatsapp", "message": result.failure_reason or "Unknown error"}
+    except Exception as exc:
+        log.warning("whatsapp.test_failed", error=str(exc))
+        return {"success": False, "channel": "whatsapp", "message": str(exc)}

@@ -56,6 +56,9 @@ export const settingsApi = {
   testSms: (recipient: string) =>
     apiPost<ConnectionTestResult>("/admin/settings/test/sms", { recipient }),
 
+  testWhatsApp: (recipient: string) =>
+    apiPost<ConnectionTestResult>("/admin/settings/test/whatsapp", { recipient }),
+
   testGeobox: () =>
     apiPost<GeoBoxTestResult>("/admin/settings/test/geobox"),
 };

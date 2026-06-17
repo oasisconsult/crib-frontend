@@ -12,6 +12,7 @@ Endpoints:
   POST /admin/settings/test/storage       — test storage connection
   POST /admin/settings/test/email         — send test email
   POST /admin/settings/test/sms          — send test SMS
+  POST /admin/settings/test/whatsapp     — send test WhatsApp message
 """
 
 from __future__ import annotations
@@ -148,6 +149,17 @@ async def test_sms(
 ):
     """Send a test SMS to verify SMS provider credentials."""
     result = await settings_service.test_sms(body.recipient, db)
+    return NotificationTestResult(**result)
+
+
+@router.post("/test/whatsapp", response_model=NotificationTestResult)
+async def test_whatsapp(
+    body: NotificationTestRequest,
+    _: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """Send a test WhatsApp message to verify Meta Cloud API credentials."""
+    result = await settings_service.test_whatsapp(body.recipient, db)
     return NotificationTestResult(**result)
 
 

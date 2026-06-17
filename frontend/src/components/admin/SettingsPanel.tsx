@@ -5,6 +5,7 @@ import {
   HardDrive,
   Mail,
   MessageSquare,
+  MessageCircle,
   Settings,
   ToggleLeft,
   Globe,
@@ -236,8 +237,9 @@ const CATEGORY_TABS = [
   { id: "agency",   label: "Agency",   icon: Building2    },
   { id: "storage",  label: "Storage",  icon: HardDrive    },
   { id: "email",    label: "Email",    icon: Mail         },
-  { id: "sms",      label: "SMS",      icon: MessageSquare },
-  { id: "payments", label: "Payments", icon: Banknote     },
+  { id: "sms",       label: "SMS",       icon: MessageSquare  },
+  { id: "whatsapp",  label: "WhatsApp",  icon: MessageCircle  },
+  { id: "payments",  label: "Payments",  icon: Banknote       },
   { id: "platform", label: "Platform", icon: Globe        },
   { id: "features", label: "Features", icon: ToggleLeft   },
 ] as const;
@@ -373,6 +375,26 @@ export function SettingsPanel() {
                   const phone = data.platform.find((s) => s.key === "platform.support_phone")?.value || "";
                   if (!phone) return { success: false, message: "Set platform.support_phone first" };
                   return settingsApi.testSms(phone);
+                }}
+              />
+            }
+          />
+        </TabsContent>
+
+        {/* WhatsApp */}
+        <TabsContent value="whatsapp" className="mt-4">
+          <SettingsSection
+            title="WhatsApp Business (Meta Cloud API)"
+            description="Configure Meta's WhatsApp Business Platform to send notifications and announcements."
+            settings={data.whatsapp ?? []}
+            onSave={handleSave}
+            testButton={
+              <TestButton
+                label="Send Test WhatsApp"
+                onTest={async () => {
+                  const phone = data.platform.find((s) => s.key === "platform.support_phone")?.value || "";
+                  if (!phone) return { success: false, message: "Set platform.support_phone first" };
+                  return settingsApi.testWhatsApp(phone);
                 }}
               />
             }

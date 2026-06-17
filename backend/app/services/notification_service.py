@@ -351,8 +351,16 @@ async def dispatch_notification(notification_id: uuid.UUID, db: AsyncSession) ->
     if notif.state not in (NotificationState.queued, NotificationState.failed):
         return {"skipped": True, "state": notif.state}
 
-    from app.integrations.notifications import get_provider
-    provider = get_provider(notif.channel)
+    if notif.channel == "whatsapp":
+        from app.integrations.notifications.whatsapp import WhatsAppProvider, _NotConfiguredProvider
+        from app.services.settings_service import get_whatsapp_config
+        wa_cfg = await get_whatsapp_config(db)
+        api_key = wa_cfg.get("api_key")
+        phone_id = wa_cfg.get("phone_id")
+        provider = WhatsAppProvider(api_key=api_key, phone_id=phone_id) if (api_key and phone_id) else _NotConfiguredProvider()
+    else:
+        from app.integrations.notifications import get_provider
+        provider = get_provider(notif.channel)
 
     delivery = await provider.send(
         recipient_name=notif.recipient_name,
