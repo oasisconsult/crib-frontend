@@ -74,7 +74,7 @@
   --muted-foreground: 215 16% 56%;     /* #8896AB — muted on dark */
   --skeleton-base: 215 25% 23%;        /* #263347 */
   --skeleton-highlight: 215 25% 29%;   /* #2F4160 */
-  --accent: 215 28% 21%;
+  --accent: 173 45% 15%;               /* #163432 — dark teal hover surface */
   --accent-foreground: 173 52% 60%;    /* lighter teal on dark */
   --destructive: 0 63% 50%;
   --destructive-foreground: 0 0% 100%;
@@ -99,7 +99,7 @@
   --sidebar-border: 215 25% 22%;      /* #243040 */
   --sidebar-active-bg: 173 62% 14%;   /* #0D2E2A — deep teal glow */
   --sidebar-active-fg: 173 52% 62%;   /* #6ECEC4 — bright teal text */
-  --sidebar-hover-bg: 215 28% 17%;    /* #1E293B — card-level hover */
+  --sidebar-hover-bg: 173 40% 13%;    /* #122E2B — subtle dark teal hover */
   --sidebar-section-fg: 215 12% 45%;  /* #637283 — subdued labels */
 }
 
@@ -728,6 +728,22 @@ body {
   );
   background-size: 200% 100%;
   animation: skeleton-wave 1.6s ease-in-out infinite;
+}
+
+/* ─── HOVER COLOUR RULE — BRAND TEAL, NEVER GREY ──────────────────────────
+   design-system.css is imported after @tailwind utilities in globals.css,
+   so these plain-CSS rules win the cascade for same-specificity selectors.
+   Result: every hover:bg-muted / hover:bg-gray-* produces the accent teal
+   instead of the neutral-grey muted surface (which turns charcoal in dark mode).
+   ────────────────────────────────────────────────────────────────────────── */
+.hover\:bg-muted:hover,
+.hover\:bg-muted\/40:hover,
+.hover\:bg-muted\/50:hover,
+.hover\:bg-muted\/60:hover,
+.hover\:bg-muted\/70:hover,
+.hover\:bg-gray-50:hover,
+.hover\:bg-gray-100:hover {
+  background-color: hsl(var(--accent));
 }
 
 /* ─── MOTION ─────────────────────────────────────────────────────────────── */

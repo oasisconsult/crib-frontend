@@ -28,7 +28,7 @@ const badgeVariants = cva(
         // ── Solid fills ──────────────────────────────────────────────────
         default: "bg-primary text-primary-foreground",
 
-        secondary: "bg-secondary text-secondary-foreground border-border",
+        secondary: "bg-transparent text-muted-foreground border-border",
 
         destructive: "bg-destructive text-destructive-foreground",
 
@@ -50,9 +50,9 @@ const badgeVariants = cva(
         purple:
           "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-100/40 dark:text-violet-700 dark:border-violet-200",
 
-        // slate: slate-700 on slate-50 = 7.5:1 ✓
+        // slate: slate-700 on slate-50 = 7.5:1 ✓ | dark: slate-300 on slate-700/30
         slate:
-          "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-100/40 dark:text-slate-700 dark:border-slate-200",
+          "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-700/30 dark:text-slate-300 dark:border-slate-600/50",
 
         // primary: teal-800 on teal-50 = 10.9:1 ✓
         primary:

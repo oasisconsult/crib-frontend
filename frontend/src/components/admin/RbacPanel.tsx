@@ -73,7 +73,7 @@ function PermissionMatrix({
                         "inline-flex h-5 w-5 items-center justify-center rounded transition-colors",
                         granted
                           ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                          : "bg-slate-100 text-slate-700 dark:bg-slate-800/40 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/40",
+                          : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
                       )}
                       aria-label={`${granted ? "Revoke" : "Grant"} ${action} on ${res.name}`}

@@ -25,7 +25,7 @@ const TabsList = React.forwardRef<
       ],
       variant === "pill" && [
         "inline-flex items-center gap-1 p-1",
-        "rounded-[8px] bg-muted border border-border",
+        "rounded-[8px] bg-background border border-border",
       ],
       className,
     )}
