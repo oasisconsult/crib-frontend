@@ -1006,7 +1006,7 @@ function AssignInspectorModal({
             </Button>
           </div>
         ) : (
-          <div className="space-y-4 py-2">
+          <div className="space-y-4 px-1 py-2">
             <div className="space-y-1.5">
               <Label>Inspector</Label>
               <Select value={selectedId} onValueChange={setSelectedId}>
