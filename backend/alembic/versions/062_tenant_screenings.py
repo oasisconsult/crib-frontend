@@ -1,7 +1,7 @@
 """Create tenant_screenings table.
 
 Revision ID: 062
-Revises: 061
+Revises: 059
 Create Date: 2026-06-17
 """
 import sqlalchemy as sa
@@ -9,7 +9,7 @@ from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 revision = "062"
-down_revision = "061"
+down_revision = "059"
 branch_labels = None
 depends_on = None
 
