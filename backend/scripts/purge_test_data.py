@@ -123,12 +123,30 @@ def _where(org_col: str) -> str:
     return f"WHERE {org_col} = '{ORG_ID}'"
 
 
-async def _count(session: AsyncSession, table: str, org_col: str) -> int:
+async def _table_exists(session: AsyncSession, table: str) -> bool:
+    row = await session.execute(
+        text(
+            "SELECT EXISTS ("
+            "  SELECT 1 FROM information_schema.tables"
+            "  WHERE table_schema = 'public' AND table_name = :t"
+            ")"
+        ),
+        {"t": table},
+    )
+    return bool(row.scalar_one())
+
+
+async def _count(session: AsyncSession, table: str, org_col: str) -> int | None:
+    """Returns None when the table doesn't exist in this environment."""
+    if not await _table_exists(session, table):
+        return None
     row = await session.execute(text(f"SELECT COUNT(*) FROM {table} {_where(org_col)}"))
     return row.scalar_one()
 
 
 async def _delete(session: AsyncSession, table: str, org_col: str) -> int:
+    if not await _table_exists(session, table):
+        return 0
     result = await session.execute(text(f"DELETE FROM {table} {_where(org_col)}"))
     return result.rowcount  # type: ignore[union-attr]
 
@@ -153,13 +171,16 @@ async def main() -> None:
         print("Counting rows to be deleted …")
         print()
 
-        counts: dict[str, int] = {}
+        counts: dict[str, int | None] = {}
         for table, org_col in PURGE_TABLES:
             counts[table] = await _count(session, table, org_col)
 
         col_w = max(len(t) for t, _ in PURGE_TABLES) + 2
         total = 0
         for table, n in counts.items():
+            if n is None:
+                print(f"  —  {table:<{col_w}} (table not found — skipped)")
+                continue
             total += n
             marker = "  " if n == 0 else "→ "
             print(f"  {marker}{table:<{col_w}} {n:>7} rows")
@@ -216,6 +237,9 @@ async def main() -> None:
         deleted: dict[str, int] = {}
         async with session.begin():
             for table, org_col in PURGE_TABLES:
+                if counts.get(table) is None:
+                    print(f"     {table:<{col_w}} (skipped — table not found)")
+                    continue
                 n = await _delete(session, table, org_col)
                 deleted[table] = n
                 status = f"{n:>7} rows deleted"
