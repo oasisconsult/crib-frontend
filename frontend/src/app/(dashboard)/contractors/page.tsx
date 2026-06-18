@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, HardHat, Phone, Mail, Pencil, PowerOff } from "lucide-react";
+import { Plus, HardHat, Phone, Mail, Pencil, PowerOff, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -66,7 +67,18 @@ function buildColumns(
       header: "Contractor",
       render: (c) => (
         <div>
-          <p className="font-medium">{c.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium">{c.name}</p>
+            {c.isInspector && (
+              <Badge
+                variant="outline"
+                className="text-xs border-blue-300 text-blue-700 bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:bg-blue-950/30"
+              >
+                <ShieldCheck className="h-3 w-3 mr-1" aria-hidden="true" />
+                Inspector
+              </Badge>
+            )}
+          </div>
           {c.notes && (
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
               {c.notes}
@@ -176,15 +188,17 @@ interface FormState {
   email: string;
   specialty: string;
   notes: string;
+  isInspector: boolean;
 }
 
 function emptyForm(c?: Contractor): FormState {
   return {
-    name:      c?.name      ?? "",
-    phone:     c?.phone     ?? "",
-    email:     c?.email     ?? "",
-    specialty: c?.specialty ?? "all",
-    notes:     c?.notes     ?? "",
+    name:        c?.name        ?? "",
+    phone:       c?.phone       ?? "",
+    email:       c?.email       ?? "",
+    specialty:   c?.specialty   ?? "all",
+    notes:       c?.notes       ?? "",
+    isInspector: c?.isInspector ?? false,
   };
 }
 
@@ -204,14 +218,19 @@ function ContractorForm({
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  function setBool(field: keyof FormState, value: boolean) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const payload = {
-      name:      form.name.trim(),
-      phone:     form.phone.trim() || undefined,
-      email:     form.email.trim() || undefined,
-      specialty: (form.specialty === "all" ? undefined : form.specialty || undefined) as ContractorSpecialty | undefined,
-      notes:     form.notes.trim() || undefined,
+      name:        form.name.trim(),
+      phone:       form.phone.trim() || undefined,
+      email:       form.email.trim() || undefined,
+      specialty:   (form.specialty === "all" ? undefined : form.specialty || undefined) as ContractorSpecialty | undefined,
+      notes:       form.notes.trim() || undefined,
+      isInspector: form.isInspector,
     };
     if (editing) {
       update({ id: editing.id, data: payload }, { onSuccess: onClose });
@@ -281,6 +300,26 @@ function ContractorForm({
           onChange={(e) => set("notes", e.target.value)}
           placeholder="Availability, rates, preferred contact method…"
           rows={3}
+        />
+      </div>
+
+      <div className="flex items-center justify-between rounded-lg border p-3">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+          <div>
+            <Label htmlFor="c-inspector" className="text-sm font-medium cursor-pointer">
+              Certified Inspector
+            </Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Allow assignment to inspection jobs via the inspector portal
+            </p>
+          </div>
+        </div>
+        <Switch
+          id="c-inspector"
+          checked={form.isInspector}
+          onCheckedChange={(v) => setBool("isInspector", v)}
+          disabled={isPending}
         />
       </div>
 
