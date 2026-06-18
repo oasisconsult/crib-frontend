@@ -75,6 +75,9 @@ export const inspectionsApi = {
   assignInspector: (id: string, contractorId: string, expiresInDays?: number) =>
     apiPost<Inspection>(`/inspections/${id}/assign-inspector`, { contractorId, expiresInDays: expiresInDays ?? 7 }),
 
+  resendInspectorInvite: (id: string) =>
+    apiPost<Inspection>(`/inspections/${id}/resend-inspector-invite`, {}),
+
   getInspectorPortal: (token: string) =>
     apiGet<InspectorPortalOut>(`/inspections/portal/${token}`),
 

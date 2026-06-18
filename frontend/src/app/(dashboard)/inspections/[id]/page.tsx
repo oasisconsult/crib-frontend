@@ -63,6 +63,7 @@ import {
   useTransitionInspection,
   useMaintenanceIssues,
   useAssignInspector,
+  useResendInspectorInvite,
   useContractors,
 } from "@/hooks/useInspections";
 import { queryKeys } from "@/lib/queryClient";
@@ -1081,6 +1082,7 @@ export default function InspectionDetailPage({ params }: Props) {
   const [editing, setEditing] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const { mutate: transition, isPending: transitioning } = useTransitionInspection();
+  const { mutate: resendInvite, isPending: resending } = useResendInspectorInvite();
 
   function refreshInspection() {
     qc.invalidateQueries({ queryKey: queryKeys.inspections.detail(id) });
@@ -1418,9 +1420,20 @@ export default function InspectionDetailPage({ params }: Props) {
                     </span>
                   </div>
                 )}
-                {inspection.inspectorContractorId && !inspection.inspectorSubmittedAt && canEdit && (
-                  <div className="flex justify-end">
+                {inspection.inspectorContractorId && !inspection.inspectorSubmittedAt && (
+                  <div className="flex justify-between items-center">
                     <span className="text-[11px] text-amber-600">Awaiting submission</span>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                        disabled={resending}
+                        onClick={() => resendInvite(id)}
+                      >
+                        {resending ? "Sending…" : "Resend invite"}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

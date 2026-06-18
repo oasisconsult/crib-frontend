@@ -1301,8 +1301,128 @@ async def assign_inspector(
 
     if _invite_notif_ids:
         from app.worker.tasks.notifications import deliver_notification
-        for _nid in _invite_notif_ids:
-            deliver_notification.delay(_nid)
+        from sqlalchemy import event as _sa_event
+
+        @_sa_event.listens_for(db.sync_session, "after_commit", once=True)
+        def _dispatch_after_commit(_session):
+            for _nid in _invite_notif_ids:
+                deliver_notification.delay(_nid)
+
+    return _insp_out(i)
+
+
+async def resend_inspector_invite(
+    inspection_id: uuid.UUID,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+) -> InspectionOut:
+    """Regenerate the inspector portal token and re-send the invite email/WhatsApp."""
+    from app.models.contractor import Contractor as _Contractor
+
+    i = await _get_inspection(inspection_id, org_id, db)
+
+    if not i.inspector_contractor_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No inspector assigned to this inspection. Use Assign Inspector first.",
+        )
+
+    contractor = await db.scalar(
+        select(_Contractor).where(_Contractor.id == i.inspector_contractor_id)
+    )
+    if not contractor or not contractor.email:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Inspector contractor has no email address — cannot send invite.",
+        )
+
+    now = datetime.now(timezone.utc)
+    i.inspector_token = secrets.token_urlsafe(48)
+    i.inspector_token_expires_at = now + timedelta(days=7)
+
+    await db.flush()
+    await db.refresh(i)
+
+    _resend_notif_ids: list[str] = []
+    try:
+        from app.models.notification import Notification, NotificationState
+        from app.models.property import Property as _P, Unit as _U
+        from app.models.organisation import Organisation as _Org
+
+        prop = await db.scalar(select(_P).where(_P.id == i.property_id)) if i.property_id else None
+        unit = await db.scalar(select(_U).where(_U.id == i.unit_id)) if i.unit_id else None
+        org  = await db.scalar(select(_Org).where(_Org.id == i.organisation_id)) if i.organisation_id else None
+
+        insp_label = _insp_type_label(i.type)
+        prop_name  = prop.name if prop else "the property"
+        location   = f"{unit.name}, {prop_name}" if unit else prop_name
+        org_name   = org.name if org else "Crib Property Management"
+
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+        portal_url   = f"{frontend_url}/inspect/portal/{i.inspector_token}"
+        expires_str  = i.inspector_token_expires_at.strftime("%d %B %Y")
+
+        email_body = (
+            f"Dear {contractor.name},\n\n"
+            f"This is a reminder that you are assigned to carry out a {insp_label} inspection "
+            f"at {location}.\n\n"
+            f"Scheduled: {i.scheduled_date}"
+            + (f" at {i.scheduled_time_slot}" if i.scheduled_time_slot else "") + "\n\n"
+            f"Please use the link below to access the inspection checklist, upload photos, "
+            f"and submit your findings:\n\n"
+            f"    {portal_url}\n\n"
+            f"This link expires on {expires_str}. Do not share it with others.\n\n"
+            f"Best regards,\n{org_name}"
+        )
+
+        _pending: list[str] = []
+        async with db.begin_nested():
+            notif = Notification(
+                organisation_id=i.organisation_id,
+                channel="email",
+                trigger="inspector_invite",
+                state=NotificationState.queued,
+                recipient_name=contractor.name,
+                recipient_email=contractor.email,
+                subject=f"Inspection Reminder: {insp_label.title()} at {prop_name}",
+                body=email_body,
+                queued_at=now,
+            )
+            db.add(notif)
+            await db.flush()
+            _pending.append(str(notif.id))
+
+            if contractor.phone:
+                wa_notif = Notification(
+                    organisation_id=i.organisation_id,
+                    channel="whatsapp",
+                    trigger="inspector_invite",
+                    state=NotificationState.queued,
+                    recipient_name=contractor.name,
+                    recipient_phone=contractor.phone,
+                    subject=None,
+                    body=(
+                        f"Hi {contractor.name}, reminder: you are assigned a {insp_label} inspection "
+                        f"at {location} on {i.scheduled_date}. Access your checklist here: {portal_url}"
+                    ),
+                    queued_at=now,
+                )
+                db.add(wa_notif)
+                await db.flush()
+                _pending.append(str(wa_notif.id))
+
+        _resend_notif_ids = _pending
+    except Exception:
+        log.warning("inspector.resend.notify.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
+
+    if _resend_notif_ids:
+        from app.worker.tasks.notifications import deliver_notification
+        from sqlalchemy import event as _sa_event
+
+        @_sa_event.listens_for(db.sync_session, "after_commit", once=True)
+        def _dispatch_resend(_session):
+            for _nid in _resend_notif_ids:
+                deliver_notification.delay(_nid)
 
     return _insp_out(i)
 

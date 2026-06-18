@@ -242,6 +242,21 @@ async def assign_inspector(
     )
 
 
+@router.post("/inspections/{inspection_id}/resend-inspector-invite", response_model=InspectionOut)
+async def resend_inspector_invite(
+    inspection_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Regenerate inspector token and re-send the portal invite email/WhatsApp."""
+    if not current_user.is_owner_or_manager():
+        from fastapi import HTTPException, status as _status
+        raise HTTPException(status_code=_status.HTTP_403_FORBIDDEN, detail="Only managers and owners can resend inspector invites")
+    return await inspection_service.resend_inspector_invite(
+        inspection_id, get_org_id(current_user), db
+    )
+
+
 @router.get("/inspections/portal/{token}", response_model=InspectorPortalOut)
 async def inspector_portal_get(
     token: str,

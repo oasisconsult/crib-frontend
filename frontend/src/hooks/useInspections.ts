@@ -141,6 +141,18 @@ export function useAssignInspector() {
   });
 }
 
+export function useResendInspectorInvite() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => inspectionsApi.resendInspectorInvite(id),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: queryKeys.inspections.detail(id) });
+      toast.success("Invite resent — inspector will receive a new link");
+    },
+    onError: () => toast.error("Failed to resend invite"),
+  });
+}
+
 export function useInspectorPortal(token: string) {
   return useQuery({
     queryKey: ["inspector-portal", token],

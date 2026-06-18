@@ -50,6 +50,7 @@ class NotificationTrigger(str, enum.Enum):
     notice_retracted     = "notice_retracted"   # Notice to vacate withdrawn by manager
     lease_terminated     = "lease_terminated"   # Lease forcibly terminated by manager
     bulk_announcement    = "bulk_announcement"  # Manager-composed broadcast to all tenants
+    inspector_invite     = "inspector_invite"   # Inspector assigned to an inspection
     custom               = "custom"
 
 
