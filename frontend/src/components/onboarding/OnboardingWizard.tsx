@@ -61,11 +61,13 @@ const profileSchema = z.object({
   lastName: z.string().min(2, "Last name required"),
   phone: z.string().min(7, "Valid phone number required"),
   dateOfBirth: z.string().optional(),
-  nationality: z.string().optional(),
-  nin: z.string().optional(),
+  nationality: z.string().min(1, "Nationality required"),
+  nin: z.string().min(5, "NIN required"),
   whatsappNumber: z.string().optional(),
-  mobileMoneyProvider: z.enum(["mtn", "airtel", ""]).optional(),
-  mobileMoneyNumber: z.string().optional(),
+  mobileMoneyProvider: z.enum(["mtn", "airtel"], {
+    errorMap: () => ({ message: "Select a mobile money provider" }),
+  }),
+  mobileMoneyNumber: z.string().min(7, "Mobile money number required"),
 });
 
 type ProfileValues = z.infer<typeof profileSchema>;
@@ -190,7 +192,7 @@ export function OnboardingWizard({
       whatsappNumber:
         draft?.whatsappNumber ?? (tenant as any).whatsappNumber ?? "",
       mobileMoneyProvider:
-        draft?.mobileMoneyProvider ?? (tenant as any).mobileMoneyProvider ?? "",
+        (draft?.mobileMoneyProvider ?? (tenant as any).mobileMoneyProvider ?? "") as "mtn" | "airtel",
       mobileMoneyNumber:
         draft?.mobileMoneyNumber ?? (tenant as any).mobileMoneyNumber ?? "",
     },
@@ -200,6 +202,7 @@ export function OnboardingWizard({
   const [uploadedDocs, setUploadedDocs] = useState<UploadResult[]>(() =>
     (tenant.documents ?? []).map(docToUploadResult),
   );
+  const [isUploading, setIsUploading] = useState(false);
   // True once the tenant adds at least one new document in this session.
   // Used to warn resubmitting tenants who click submit without a new upload.
   const [newDocAdded, setNewDocAdded] = useState(false);
@@ -342,19 +345,17 @@ export function OnboardingWizard({
   return (
     <div className="w-full space-y-6">
       {journeyState !== "activated" && (
-        <div className="space-y-2 max-w-3xl mx-auto">
+        <div className="space-y-2">
           <Progress value={progress} className="h-2" />
           <FullOnboardingJourneyStepper journeyState={journeyState} />
         </div>
       )}
 
-      {resubmitBanner && (
-        <div className="max-w-3xl mx-auto">{resubmitBanner}</div>
-      )}
+      {resubmitBanner && <div>{resubmitBanner}</div>}
 
       {/* ── PHASE 1: Profile collection ──────────────────────────────── */}
       {!isApproved && (
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="space-y-6">
           {profileStep === "profile" && (
             <Card>
               <CardHeader>
@@ -428,15 +429,22 @@ export function OnboardingWizard({
                   {/* Row 3: NIN + DOB */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor="nin">National ID Number (NIN)</Label>
+                      <Label htmlFor="nin">National ID Number (NIN) *</Label>
                       <Input
                         id="nin"
                         placeholder="e.g. CM12345678ABCDE"
+                        error={!!form.formState.errors.nin}
                         {...form.register("nin")}
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Appears on the tenancy agreement
-                      </p>
+                      {form.formState.errors.nin ? (
+                        <p className="text-xs text-destructive">
+                          {form.formState.errors.nin.message}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Appears on the tenancy agreement
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="dob">Date of Birth</Label>
@@ -451,22 +459,31 @@ export function OnboardingWizard({
                   {/* Row 4: nationality + mobile money provider */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor="nationality">Nationality</Label>
+                      <Label htmlFor="nationality">Nationality *</Label>
                       <Input
                         id="nationality"
                         placeholder="Ugandan"
+                        error={!!form.formState.errors.nationality}
                         {...form.register("nationality")}
                       />
+                      {form.formState.errors.nationality && (
+                        <p className="text-xs text-destructive">
+                          {form.formState.errors.nationality.message}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1.5">
-                      <Label htmlFor="mobileMoneyProvider">Mobile Money Provider</Label>
+                      <Label htmlFor="mobileMoneyProvider">Mobile Money Provider *</Label>
                       <Select
                         value={form.watch("mobileMoneyProvider") ?? ""}
                         onValueChange={(v) =>
-                          form.setValue("mobileMoneyProvider", v as "mtn" | "airtel" | "")
+                          form.setValue("mobileMoneyProvider", v as "mtn" | "airtel", { shouldValidate: true })
                         }
                       >
-                        <SelectTrigger id="mobileMoneyProvider">
+                        <SelectTrigger
+                          id="mobileMoneyProvider"
+                          className={form.formState.errors.mobileMoneyProvider ? "border-destructive" : ""}
+                        >
                           <SelectValue placeholder="Select provider" />
                         </SelectTrigger>
                         <SelectContent>
@@ -474,19 +491,30 @@ export function OnboardingWizard({
                           <SelectItem value="airtel">Airtel Money</SelectItem>
                         </SelectContent>
                       </Select>
+                      {form.formState.errors.mobileMoneyProvider && (
+                        <p className="text-xs text-destructive">
+                          {form.formState.errors.mobileMoneyProvider.message}
+                        </p>
+                      )}
                     </div>
                   </div>
 
                   {/* Row 5: mobile money number (half width) */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                      <Label htmlFor="mobileMoneyNumber">Mobile Money Number</Label>
+                      <Label htmlFor="mobileMoneyNumber">Mobile Money Number *</Label>
                       <Input
                         id="mobileMoneyNumber"
                         type="tel"
                         placeholder="+256 770 000000"
+                        error={!!form.formState.errors.mobileMoneyNumber}
                         {...form.register("mobileMoneyNumber")}
                       />
+                      {form.formState.errors.mobileMoneyNumber && (
+                        <p className="text-xs text-destructive">
+                          {form.formState.errors.mobileMoneyNumber.message}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -530,6 +558,7 @@ export function OnboardingWizard({
                   tenantId={tenant.id}
                   onboardingToken={token}
                   maxFiles={5}
+                  onUploadingChange={setIsUploading}
                   onUpload={(results) => {
                     setUploadedDocs((prev) => {
                       const existing = new Set(prev.map((d) => d.url));
@@ -557,11 +586,12 @@ export function OnboardingWizard({
                     onClick={handleFinalSubmit}
                     disabled={
                       isPending ||
+                      isUploading ||
                       uploadedDocs.length === 0 ||
                       // Block resubmission after rejection until a new doc is uploaded
                       (isResubmit && tenant.onboardingState === "rejected" && !newDocAdded)
                     }
-                    loading={isPending}
+                    loading={isPending || isUploading}
                   >
                     {isResubmit
                       ? "Update & Resubmit ✓"
@@ -605,7 +635,7 @@ export function OnboardingWizard({
 
       {/* ── Pending approval gate ─────────────────────────────────────── */}
       {isApproved && !invite.leaseId && paymentStep !== "done" && (
-        <div className="max-w-3xl mx-auto">
+        <div>
           <Card className="text-center">
             <CardContent className="pt-8 pb-8 space-y-3">
               <Clock className="h-10 w-10 text-amber-500 mx-auto" />
@@ -636,7 +666,7 @@ export function OnboardingWizard({
 
           {/* All other payment steps — match stepper width */}
           {paymentStep !== "agreement_preview" && (
-            <div className="max-w-3xl mx-auto space-y-6">
+            <div className="space-y-6">
               {paymentStep === "terms_acceptance" && (
                 <TermsAcceptanceStep
                   token={token}

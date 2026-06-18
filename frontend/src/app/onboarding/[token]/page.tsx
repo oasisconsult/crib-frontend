@@ -25,8 +25,8 @@ export default function OnboardingPage({ params }: Props) {
   const { data, isLoading, error } = useOnboardingFlowStatus(token);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-6 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 px-4 py-6 sm:px-6">
+      <div className="max-w-3xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <Link href="/" aria-label="Go to Crib home">

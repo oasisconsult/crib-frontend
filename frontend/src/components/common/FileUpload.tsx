@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
-import { Upload, X, File, CheckCircle } from "lucide-react";
+import { Upload, X, File, CheckCircle, RotateCcw } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -28,6 +28,8 @@ interface FileUploadProps {
   /** When set, presign requests go to the public onboarding endpoint (no JWT). */
   onboardingToken?: string;
   onUpload?: (results: UploadResult[]) => void;
+  /** Called whenever the uploading-in-progress state changes. */
+  onUploadingChange?: (uploading: boolean) => void;
   className?: string;
   disabled?: boolean;
 }
@@ -41,12 +43,13 @@ export function FileUpload({
   inspectionId,
   onboardingToken,
   onUpload,
+  onUploadingChange,
   className,
   disabled,
 }: FileUploadProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
 
-  const upload = useCallback(
+  const uploadFile = useCallback(
     async (file: File): Promise<UploadResult> => {
       return uploadsApi.uploadFile(
         file,
@@ -61,25 +64,20 @@ export function FileUpload({
     [category, tenantId, leaseId, inspectionId, onboardingToken],
   );
 
-  const onDrop = useCallback(
-    async (accepted: File[]) => {
-      const newFiles: UploadedFile[] = accepted.map((f) => ({
-        file: f,
-        result: null,
-        progress: 0,
-        status: "uploading" as const,
-      }));
-      setFiles((prev) => [...prev, ...newFiles]);
-
+  const runUpload = useCallback(
+    async (filesToUpload: File[], existingFiles?: UploadedFile[]) => {
+      onUploadingChange?.(true);
       const results: UploadResult[] = [];
       await Promise.all(
-        accepted.map(async (file) => {
+        filesToUpload.map(async (file) => {
           try {
-            const result = await upload(file);
+            const result = await uploadFile(file);
             results.push(result);
             setFiles((prev) =>
               prev.map((f) =>
-                f.file === file ? { ...f, result, progress: 100, status: "done" } : f,
+                f.file === file
+                  ? { ...f, result, progress: 100, status: "done" }
+                  : f,
               ),
             );
           } catch {
@@ -94,8 +92,37 @@ export function FileUpload({
         }),
       );
       if (results.length > 0) onUpload?.(results);
+      onUploadingChange?.(false);
     },
-    [upload, onUpload],
+    [uploadFile, onUpload, onUploadingChange],
+  );
+
+  const onDrop = useCallback(
+    async (accepted: File[]) => {
+      const newFiles: UploadedFile[] = accepted.map((f) => ({
+        file: f,
+        result: null,
+        progress: 0,
+        status: "uploading" as const,
+      }));
+      setFiles((prev) => [...prev, ...newFiles]);
+      await runUpload(accepted);
+    },
+    [runUpload],
+  );
+
+  const retryFile = useCallback(
+    async (file: File) => {
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.file === file
+            ? { ...f, status: "uploading", progress: 0, error: undefined }
+            : f,
+        ),
+      );
+      await runUpload([file]);
+    },
+    [runUpload],
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -163,14 +190,26 @@ export function FileUpload({
                   <Progress value={progress} className="mt-1 h-1" />
                 )}
               </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => removeFile(file)}
-                aria-label={`Remove ${file.name}`}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
+              {status === "error" ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => retryFile(file)}
+                  aria-label={`Retry uploading ${file.name}`}
+                  title="Retry upload"
+                >
+                  <RotateCcw className="h-3.5 w-3.5 text-destructive" />
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => removeFile(file)}
+                  aria-label={`Remove ${file.name}`}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </li>
           ))}
         </ul>
