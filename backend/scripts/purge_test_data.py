@@ -166,14 +166,23 @@ async def main() -> None:
 
     async with AsyncSessionLocal() as session:
 
-        # ── Count ─────────────────────────────────────────────────────────────
+        # ── Count (own transaction, committed before delete phase) ────────────
         print()
         print("Counting rows to be deleted …")
         print()
 
         counts: dict[str, int | None] = {}
-        for table, org_col in PURGE_TABLES:
-            counts[table] = await _count(session, table, org_col)
+        async with session.begin():
+            for table, org_col in PURGE_TABLES:
+                counts[table] = await _count(session, table, org_col)
+
+            # Count rent_schedules with stale late_fee_applied
+            sched_where = f"WHERE organisation_id = '{ORG_ID}'" if ORG_ID else ""
+            late_fee_sched_count = (await session.execute(
+                text(f"SELECT COUNT(*) FROM rent_schedules {sched_where} AND late_fee_applied > 0"
+                     if ORG_ID else
+                     "SELECT COUNT(*) FROM rent_schedules WHERE late_fee_applied > 0")
+            )).scalar_one()
 
         col_w = max(len(t) for t, _ in PURGE_TABLES) + 2
         total = 0
@@ -184,14 +193,6 @@ async def main() -> None:
             total += n
             marker = "  " if n == 0 else "→ "
             print(f"  {marker}{table:<{col_w}} {n:>7} rows")
-
-        # Count rent_schedules that have a non-zero late_fee_applied
-        sched_where = f"WHERE organisation_id = '{ORG_ID}'" if ORG_ID else ""
-        late_fee_sched_count = (await session.execute(
-            text(f"SELECT COUNT(*) FROM rent_schedules {sched_where} AND late_fee_applied > 0"
-                 if ORG_ID else
-                 "SELECT COUNT(*) FROM rent_schedules WHERE late_fee_applied > 0")
-        )).scalar_one()
 
         print()
         print(f"  {'TOTAL':<{col_w}} {total:>7} rows to delete")
