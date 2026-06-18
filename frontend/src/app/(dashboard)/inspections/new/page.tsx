@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateInspection } from "@/hooks/useInspections";
+import { useCreateInspection, useContractors } from "@/hooks/useInspections";
 import { useProperties, useUnits } from "@/hooks/useProperties";
 
 const INSPECTION_TYPES = [
@@ -38,15 +38,18 @@ export default function NewInspectionPage() {
   const [unitId, setUnitId]         = useState(searchParams.get("unitId") ?? "");
   const [leaseId]                   = useState(searchParams.get("leaseId") ?? "");
   const [type, setType]             = useState(searchParams.get("type") ?? "routine");
-  const [scheduledDate, setScheduledDate]       = useState("");
+  const [scheduledDate, setScheduledDate]         = useState("");
   const [scheduledTimeSlot, setScheduledTimeSlot] = useState("");
   const [inspectorName, setInspectorName]         = useState("");
+  const [inspectorContractorId, setInspectorContractorId] = useState("");
   const [notes, setNotes]                         = useState("");
 
   const { data: propertiesData } = useProperties();
   const properties = propertiesData?.data ?? [];
   const { data: unitsData } = useUnits(propertyId);
   const units = unitsData?.data ?? [];
+  const { data: contractorsData } = useContractors({ isActive: true });
+  const inspectors = (contractorsData?.data ?? []).filter((c) => c.isInspector);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -146,13 +149,26 @@ export default function NewInspectionPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="inspector">Inspector Name</Label>
+                <Label htmlFor="inspector">Inspector</Label>
                 <Input
                   id="inspector"
+                  list="inspectors-list"
                   value={inspectorName}
-                  onChange={(e) => setInspectorName(e.target.value)}
-                  placeholder="e.g. John Mugisha"
+                  onChange={(e) => {
+                    setInspectorName(e.target.value);
+                    const match = inspectors.find((i) => i.name === e.target.value);
+                    setInspectorContractorId(match?.id ?? "");
+                  }}
+                  placeholder={inspectors.length > 0 ? "Search certified inspectors…" : "e.g. John Mugisha"}
+                  autoComplete="off"
                 />
+                {inspectors.length > 0 && (
+                  <datalist id="inspectors-list">
+                    {inspectors.map((c) => (
+                      <option key={c.id} value={c.name} />
+                    ))}
+                  </datalist>
+                )}
               </div>
 
               <div className="space-y-1.5">
