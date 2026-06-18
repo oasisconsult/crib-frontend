@@ -151,6 +151,13 @@ async def _authorize_key(key: str, current_user: CurrentUser, db: AsyncSession) 
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
         return
 
+    # ── inspection_photo/misc/... — maintenance photos uploaded without an
+    #    inspection context (tenant maintenance requests). No entity ID is
+    #    embedded in the key so we allow any authenticated user; the file
+    #    is not sensitive and tenants need to view their own uploads.
+    if parts[0] == "inspection_photo" and len(parts) >= 2 and parts[1] == "misc":
+        return
+
     # ── Unknown prefix — require manager/owner at minimum ────────────────────────
     if not current_user.is_owner_or_manager():
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
