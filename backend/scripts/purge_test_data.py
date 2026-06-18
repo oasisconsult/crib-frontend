@@ -197,7 +197,7 @@ async def main() -> None:
         print()
         print(f"  {'TOTAL':<{col_w}} {total:>7} rows to delete")
         print()
-        print(f"  Also resets late_fee_applied on {late_fee_sched_count} rent_schedule(s)")
+        print(f"  Also resets amount_paid, late_fee_applied and status on {late_fee_sched_count}+ rent_schedule(s)")
         print()
         print("  Retained (not touched):")
         for t in RETAIN_TABLES:
@@ -247,15 +247,21 @@ async def main() -> None:
                 print(f"  {'✓' if n > 0 else ' '} {table:<{col_w}} {status}")
 
             # ── Reset computed fields on retained rent_schedules ──────────────
-            # late_fee_applied accumulates in the task by adding to the existing
-            # value. With late_fees purged but the column still holding old sums,
-            # the next task run would double-count. Reset to 0 so the backfill
-            # starts from a clean slate.
+            # Payments were deleted but rent_schedules still holds accumulated
+            # amount_paid and late_fee_applied values. Reset both to 0 and
+            # recalculate status from due_date so the dashboard reflects reality.
             sched_where = f"WHERE organisation_id = '{ORG_ID}'" if ORG_ID else ""
-            reset_n = (await session.execute(
-                text(f"UPDATE rent_schedules SET late_fee_applied = 0 {sched_where}")
-            )).rowcount  # type: ignore[union-attr]
-            print(f"  ✓ {'rent_schedules (late_fee_applied reset)':<{col_w}} {reset_n:>7} rows")
+            reset_n = (await session.execute(text(f"""
+                UPDATE rent_schedules
+                SET    amount_paid       = 0,
+                       late_fee_applied  = 0,
+                       status            = CASE
+                           WHEN due_date < CURRENT_DATE THEN 'overdue'
+                           ELSE 'pending'
+                       END
+                {sched_where}
+            """))).rowcount  # type: ignore[union-attr]
+            print(f"  ✓ {'rent_schedules (amount_paid + late_fee_applied + status reset)':<{col_w}} {reset_n:>7} rows")
 
         # ── Summary ───────────────────────────────────────────────────────────
         grand_total = sum(deleted.values())
