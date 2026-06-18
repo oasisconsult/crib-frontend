@@ -109,18 +109,20 @@ async def generate_statement_pdf(
         (await db.execute(
             select(Payment).where(
                 Payment.lease_id == lease_id,
-                Payment.category == "rent",
                 Payment.status.in_(list(_PAID_STATUSES)),
             ).order_by(Payment.paid_at.asc())
         )).scalars().all()
     )
 
+    rent_payments    = [p for p in all_payments if p.category and str(p.category) in ("rent", "PaymentCategory.rent")]
+    charge_payments  = [p for p in all_payments if p.category and str(p.category) not in ("rent", "PaymentCategory.rent", "deposit", "PaymentCategory.deposit")]
+
     def _payment_for(s: RentSchedule) -> Payment | None:
         window_end = s.due_date + timedelta(days=45)
-        for p in all_payments:
+        for p in rent_payments:
             if p.rent_schedule_id == s.id:
                 return p
-        for p in all_payments:
+        for p in rent_payments:
             if p.rent_schedule_id is not None:
                 continue
             if p.paid_at is None:
@@ -130,21 +132,23 @@ async def generate_statement_pdf(
                 return p
         return None
 
-    # ── build table rows ──────────────────────────────────────────────────────
+    # ── build schedule rows ───────────────────────────────────────────────────
     rows: list[dict[str, Any]] = []
     running: float = 0.0
-    total_due:  float = 0.0
+    total_rent_due:  float = 0.0
+    total_late_fees: float = 0.0
     total_paid: float = 0.0
 
     for s in schedules:
         p           = _payment_for(s)
-        amount_due  = float(s.amount_due)
+        rent_amount = float(s.amount_due)
         late_fee    = float(s.late_fee_applied) if s.late_fee_applied else 0.0
-        charge      = amount_due + late_fee
+        charge      = rent_amount + late_fee
         amount_paid = float(p.amount) if p else 0.0
         running     = round(running + charge - amount_paid, 2)
-        total_due  += charge
-        total_paid += amount_paid
+        total_rent_due  += rent_amount
+        total_late_fees += late_fee
+        total_paid      += amount_paid
 
         paid_dt: date | None = None
         if p and p.paid_at:
@@ -172,14 +176,48 @@ async def generate_statement_pdf(
         method_str = _fmt_method(raw_method.value if raw_method is not None and hasattr(raw_method, "value") else (str(raw_method) if raw_method else None))
 
         rows.append({
+            "row_type":    "rent",
             "period":      period_label,
             "due_date":    _fmt_date(s.due_date),
+            "rent_amount": rent_amount,
+            "late_fee":    late_fee,
             "amount_due":  charge,
             "amount_paid": amount_paid if p else None,
             "paid_at":     _fmt_date(paid_dt),
             "method":      method_str,
             "balance":     running,
             "status":      row_status,
+        })
+
+    # ── build charge rows (utility, other, late_fee payments) ────────────────
+    # Filter to charges whose paid_at falls within the statement date range.
+    charge_rows: list[dict[str, Any]] = []
+    total_charges: float = 0.0
+
+    for p in charge_payments:
+        if p.paid_at is None:
+            continue
+        paid_dt_c = p.paid_at.date() if hasattr(p.paid_at, "date") else p.paid_at
+        if date_from is not None and paid_dt_c < date_from:
+            continue
+        if date_to is not None and paid_dt_c > date_to:
+            continue
+        raw_cat = p.category
+        cat_str = raw_cat.value if hasattr(raw_cat, "value") else str(raw_cat)
+        cat_label = cat_str.replace("_", " ").title()
+        amount_c = float(p.amount)
+        running = round(running + amount_c, 2)
+        total_charges += amount_c
+        raw_method = p.method
+        method_str = _fmt_method(raw_method.value if raw_method is not None and hasattr(raw_method, "value") else (str(raw_method) if raw_method else None))
+        charge_rows.append({
+            "row_type":    "charge",
+            "description": p.notes or cat_label,
+            "category":    cat_label,
+            "paid_at":     _fmt_date(paid_dt_c),
+            "amount":      amount_c,
+            "method":      method_str,
+            "balance":     running,
         })
 
     # ── org contact ───────────────────────────────────────────────────────────
@@ -214,6 +252,8 @@ async def generate_statement_pdf(
     else:
         display_period = "Full History"
 
+    total_due = total_rent_due + total_late_fees
+
     ctx = {
         "org_name":        org_name,
         "org_contact":     org_contact,
@@ -231,6 +271,10 @@ async def generate_statement_pdf(
         "currency":        lease.currency,
         "period_label":    display_period,
         "rows":            rows,
+        "charge_rows":     charge_rows,
+        "total_rent_due":  total_rent_due,
+        "total_late_fees": total_late_fees,
+        "total_charges":   total_charges,
         "total_due":       total_due,
         "total_paid":      total_paid,
         "closing_balance": round(running, 2),
