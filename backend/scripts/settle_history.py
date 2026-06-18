@@ -19,14 +19,17 @@ Usage inside the container:
   # Dry run — shows per-lease breakdown, changes nothing (default)
   docker exec crib-backend-prod bash -c "PYTHONPATH=/app python /app/scripts/settle_history.py"
 
+  # Dry run up to end of April 2026 (period_start < 2026-05-01)
+  docker exec crib-backend-prod bash -c "PYTHONPATH=/app python /app/scripts/settle_history.py --cutoff 2026-05"
+
   # Dry run scoped to one organisation
   docker exec crib-backend-prod bash -c "PYTHONPATH=/app python /app/scripts/settle_history.py --org-id <uuid>"
 
-  # Live settle across all organisations
-  docker exec -it crib-backend-prod bash -c "PYTHONPATH=/app python /app/scripts/settle_history.py --apply"
+  # Live settle up to end of April across all organisations
+  docker exec -it crib-backend-prod bash -c "PYTHONPATH=/app python /app/scripts/settle_history.py --cutoff 2026-05 --apply"
 
   # Live settle scoped to one organisation
-  docker exec -it crib-backend-prod bash -c "PYTHONPATH=/app python /app/scripts/settle_history.py --org-id <uuid> --apply"
+  docker exec -it crib-backend-prod bash -c "PYTHONPATH=/app python /app/scripts/settle_history.py --org-id <uuid> --cutoff 2026-05 --apply"
 """
 
 from __future__ import annotations
@@ -60,10 +63,21 @@ settings = get_settings()
 engine = create_async_engine(settings.database_url, echo=False)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-# ── Cutoff: first day of the current calendar month ──────────────────────────
+# ── Cutoff ────────────────────────────────────────────────────────────────────
+# --cutoff YYYY-MM  settle schedules with period_start BEFORE that month
+# (default: start of the current calendar month)
 
 today = date.today()
 CUTOFF = date(today.year, today.month, 1)
+
+if "--cutoff" in sys.argv:
+    idx = sys.argv.index("--cutoff")
+    try:
+        year, mon = (int(x) for x in sys.argv[idx + 1].split("-"))
+        CUTOFF = date(year, mon, 1)
+    except (IndexError, ValueError):
+        print("ERROR: --cutoff requires a YYYY-MM argument (e.g. --cutoff 2026-05)")
+        sys.exit(1)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
