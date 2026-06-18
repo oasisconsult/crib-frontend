@@ -465,6 +465,57 @@ async def presign_upload_onboarding(
     return await _do_presign(body, db)
 
 
+@router.post("/file/onboarding/{token}", response_model=PresignResponse)
+async def upload_file_onboarding(
+    token: str,
+    file: UploadFile = File(...),
+    category: str = Form(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Proxy upload for tenant onboarding — no JWT required, uses invite token.
+
+    The browser cannot PUT directly to MinIO (internal Docker network), so this
+    endpoint proxies the file through the backend exactly like /upload/file but
+    authenticates via the onboarding invite token instead of a JWT.
+    """
+    from datetime import datetime, timezone
+    from app.models.tenant import TenantInvite
+
+    invite = await db.scalar(select(TenantInvite).where(TenantInvite.token == token))
+    if not invite:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid token")
+
+    now = datetime.now(timezone.utc)
+    if invite.expires_at.replace(tzinfo=timezone.utc) < now:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invite token has expired")
+
+    if category not in {"document", "signature"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only 'document' and 'signature' uploads are allowed during onboarding",
+        )
+
+    config = await settings_service.get_storage_config(db)
+    try:
+        provider = get_storage_provider(config, local_base_url=get_settings().storage_local_base_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    key = _build_key(category, file.filename or "upload", tenant_id=str(invite.tenant_id))
+    data = await file.read()
+    mime = file.content_type or "application/octet-stream"
+    public = await provider.upload(key, data, mime)
+
+    return PresignResponse(
+        upload_url="",
+        public_url=public,
+        key=key,
+        expires_in=0,
+        provider=config.get("provider", "local"),
+    )
+
+
 # ── Upload endpoints (public — inspector token auth) ─────────────────────────
 
 async def _validate_inspector_token(token: str, db: AsyncSession):

@@ -108,12 +108,20 @@ export const uploadsApi = {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("category", options.category);
-    if (options.tenantId) formData.append("tenant_id", options.tenantId);
-    if (options.leaseId) formData.append("lease_id", options.leaseId);
-    if (options.inspectionId) formData.append("inspection_id", options.inspectionId);
+
+    // Onboarding uploads use a token-gated proxy endpoint (no JWT available).
+    const endpoint = options.onboardingToken
+      ? `/upload/file/onboarding/${options.onboardingToken}`
+      : "/upload/file";
+
+    if (!options.onboardingToken) {
+      if (options.tenantId) formData.append("tenant_id", options.tenantId);
+      if (options.leaseId) formData.append("lease_id", options.leaseId);
+      if (options.inspectionId) formData.append("inspection_id", options.inspectionId);
+    }
 
     const { publicUrl, key } = await apiPostForm<PresignedUrl>(
-      "/upload/file",
+      endpoint,
       formData,
       onProgress,
     );
