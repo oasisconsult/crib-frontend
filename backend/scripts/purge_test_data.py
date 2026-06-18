@@ -256,8 +256,8 @@ async def main() -> None:
                 SET    amount_paid       = 0,
                        late_fee_applied  = 0,
                        status            = CASE
-                           WHEN due_date < CURRENT_DATE THEN 'overdue'
-                           ELSE 'pending'
+                           WHEN due_date < CURRENT_DATE THEN 'overdue'::rent_schedule_status_enum
+                           ELSE 'pending'::rent_schedule_status_enum
                        END
                 {sched_where}
             """))).rowcount  # type: ignore[union-attr]
