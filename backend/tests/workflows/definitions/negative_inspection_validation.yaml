@@ -1,0 +1,238 @@
+name: negative_inspection_validation
+description: >
+  Negative tests for inspection and contractor API validation boundaries.
+
+  Verifies that the backend returns the correct 4xx status codes when:
+    - Required fields are missing
+    - Values are invalid (wrong type, bad UUID, wrong state)
+    - Actions are attempted out of order (wrong state machine transitions)
+    - Portal access is attempted with a bad/expired token
+
+  Each step is intentionally expected to fail — the test PASSES when the
+  API returns the expected error status.
+
+steps:
+  # ── Setup: create real objects that negative tests reference ──────────────
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "Validation-Test Property"
+      type: flat
+    save_as: property
+
+  - name: create_regular_contractor
+    action: create_contractor
+    as: manager
+    input:
+      name:     "Regular Contractor (not inspector)"
+      specialty: "plumbing"
+    save_as: regular_contractor
+
+  - name: assert_regular_contractor_not_inspector
+    action: assert_field
+    input:
+      target: "${regular_contractor.isInspector}"
+      equals: false
+
+  - name: create_inspector_contractor
+    action: create_inspector_contractor
+    as: manager
+    input:
+      name:  "Validation Inspector"
+      email: "validation.inspector@workflow.example.com"
+    save_as: inspector
+
+  - name: create_inspection
+    action: create_inspection
+    as: manager
+    input:
+      propertyId:    "${property.id}"
+      type:          routine
+      scheduledDate: "2026-09-10"
+      checklist:
+        - id: "vt-001"
+          area: "Living Room"
+          description: "General condition"
+          required: true
+    save_as: inspection
+
+  - name: assert_inspection_scheduled
+    action: assert_field
+    input:
+      target: "${inspection.state}"
+      equals: scheduled
+
+  # ── Negative: Create inspection with missing required fields ──────────────
+
+  - name: create_inspection_missing_property_id
+    action: http_request
+    as: manager
+    input:
+      method: POST
+      url: "/api/v1/inspections"
+      body:
+        type:          routine
+        scheduledDate: "2026-09-10"
+      expectStatus: 422
+    save_as: missing_property_response
+
+  - name: assert_validation_error_mentions_field
+    action: assert_field
+    input:
+      target: "${missing_property_response.statusCode}"
+      equals: 422
+
+  - name: create_inspection_missing_type
+    action: http_request
+    as: manager
+    input:
+      method: POST
+      url: "/api/v1/inspections"
+      body:
+        propertyId:    "${property.id}"
+        scheduledDate: "2026-09-10"
+      expectStatus: 422
+
+  - name: create_inspection_missing_scheduled_date
+    action: http_request
+    as: manager
+    input:
+      method: POST
+      url: "/api/v1/inspections"
+      body:
+        propertyId: "${property.id}"
+        type:       routine
+      expectStatus: 422
+
+  # ── Negative: Assign inspector with invalid inputs ─────────────────────────
+
+  - name: assign_non_existent_contractor
+    action: http_request
+    as: manager
+    input:
+      method: POST
+      url: "/api/v1/inspections/${inspection.id}/assign-inspector"
+      body:
+        contractorId:  "00000000-0000-0000-0000-000000000000"
+        expiresInDays: 7
+      expectStatus: 422   # contractor not found / inactive
+    save_as: bad_contractor_response
+
+  - name: assert_bad_contractor_status
+    action: assert_field
+    input:
+      target: "${bad_contractor_response.statusCode}"
+      equals: 422
+
+  - name: assign_non_inspector_contractor
+    action: http_request
+    as: manager
+    input:
+      method: POST
+      url: "/api/v1/inspections/${inspection.id}/assign-inspector"
+      body:
+        contractorId:  "${regular_contractor.id}"
+        expiresInDays: 7
+      expectStatus: 422   # contractor.is_inspector is False
+    save_as: non_inspector_response
+
+  - name: assert_non_inspector_error
+    action: assert_field
+    input:
+      target: "${non_inspector_response.statusCode}"
+      equals: 422
+
+  - name: assert_non_inspector_error_message
+    action: assert_field
+    input:
+      target: "${non_inspector_response.detail}"
+      contains: "inspector"
+
+  # ── Negative: Resend invite when no contractor assigned ───────────────────
+  # The inspection is still in the state before any contractor assignment.
+
+  - name: resend_invite_without_contractor
+    action: http_request
+    as: manager
+    input:
+      method: POST
+      url: "/api/v1/inspections/${inspection.id}/resend-inspector-invite"
+      body: {}
+      expectStatus: 422
+    save_as: resend_no_contractor_response
+
+  - name: assert_resend_without_contractor_error
+    action: assert_field
+    input:
+      target: "${resend_no_contractor_response.statusCode}"
+      equals: 422
+
+  # ── Negative: Portal access with bad token ────────────────────────────────
+
+  - name: portal_get_bad_token
+    action: http_request
+    as: anonymous
+    input:
+      method: GET
+      url: "/api/v1/inspections/portal/thisisnotavalidtoken00000000000000000000000"
+      expectStatus: 404
+    save_as: bad_token_response
+
+  - name: assert_bad_token_returns_404
+    action: assert_field
+    input:
+      target: "${bad_token_response.statusCode}"
+      equals: 404
+
+  - name: portal_post_bad_token
+    action: http_request
+    as: anonymous
+    input:
+      method: POST
+      url: "/api/v1/inspections/portal/thisisnotavalidtoken00000000000000000000000"
+      body:
+        checklist: []
+        overallCondition: "good"
+      expectStatus: 404
+
+  # ── Negative: Wrong state machine transitions ─────────────────────────────
+  # Inspection is still 'scheduled' — can't approve directly.
+
+  - name: approve_scheduled_inspection_directly
+    action: http_request
+    as: manager
+    input:
+      method: POST
+      url: "/api/v1/inspections/${inspection.id}/transition"
+      body:
+        event: INSPECTION_APPROVED
+      expectStatus: 400   # wrong state — must be completed first; backend returns 400
+    save_as: wrong_state_response
+
+  - name: assert_wrong_state_error
+    action: assert_field
+    input:
+      target: "${wrong_state_response.statusCode}"
+      equals: 400
+
+  # ── Negative: Assign inspector to non-existent inspection ─────────────────
+
+  - name: assign_inspector_to_nonexistent_inspection
+    action: http_request
+    as: manager
+    input:
+      method: POST
+      url: "/api/v1/inspections/00000000-0000-0000-0000-000000000000/assign-inspector"
+      body:
+        contractorId:  "${inspector.id}"
+        expiresInDays: 7
+      expectStatus: 404
+    save_as: nonexistent_inspection_response
+
+  - name: assert_nonexistent_inspection_404
+    action: assert_field
+    input:
+      target: "${nonexistent_inspection_response.statusCode}"
+      equals: 404

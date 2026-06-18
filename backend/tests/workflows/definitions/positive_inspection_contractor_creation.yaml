@@ -1,0 +1,149 @@
+name: positive_inspection_contractor_creation
+description: >
+  Regression test for the inspectorContractorId-at-creation flow.
+
+  When a certified inspector is selected from the dropdown during inspection
+  creation, the API must:
+    - Persist inspectorContractorId on the new inspection record
+    - Set inspectorName to the contractor's name (not left as free-text)
+    - Generate an inspector_token (invite sent)
+
+  This workflow caught a real bug (Sprint K post-fix) where the field was
+  accepted by the frontend but silently dropped by the backend schema.
+
+  Also verifies that creating WITHOUT a contractor only sets the free-text
+  inspector name and leaves inspectorContractorId null.
+
+steps:
+  # ── Setup ─────────────────────────────────────────────────────────────────
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "Contractor-Creation Regression Property"
+      type: flat
+    save_as: property
+
+  - name: assert_property_created
+    action: assert_field
+    input:
+      target: "${property.id}"
+      not_null: true
+
+  - name: create_inspector
+    action: create_inspector_contractor
+    as: manager
+    input:
+      name:  "Regression Inspector"
+      email: "regression.inspector@workflow.example.com"
+      phone: "+256701000111"
+    save_as: inspector
+
+  - name: assert_is_inspector
+    action: assert_field
+    input:
+      target: "${inspector.isInspector}"
+      equals: true
+
+  # ── Case 1: Create inspection WITH inspectorContractorId ──────────────────
+  # This is the regression case — before the fix, inspectorContractorId was
+  # silently dropped and the returned object had inspectorContractorId: null.
+
+  - name: create_inspection_with_contractor
+    action: create_inspection
+    as: manager
+    input:
+      propertyId:            "${property.id}"
+      type:                  routine
+      scheduledDate:         "2026-09-15"
+      scheduledTimeSlot:     "09:00-10:00"
+      inspectorContractorId: "${inspector.id}"
+      checklist:
+        - id: "rc-001"
+          area: "Living Room"
+          description: "General condition"
+          required: true
+    save_as: insp_with_contractor
+
+  - name: assert_contractor_id_persisted_after_creation
+    action: assert_field
+    input:
+      target: "${insp_with_contractor.inspectorContractorId}"
+      not_null: true   # BUG CATCHER: was null before the fix
+
+  - name: assert_inspector_name_set_from_contractor
+    action: assert_field
+    input:
+      target: "${insp_with_contractor.inspectorName}"
+      equals: "Regression Inspector"  # must come from contractor.name, not free-text
+
+  - name: assert_state_is_scheduled
+    action: assert_field
+    input:
+      target: "${insp_with_contractor.state}"
+      equals: scheduled
+
+  - name: assert_checklist_present
+    action: assert_field
+    input:
+      target: "${insp_with_contractor.checklist}"
+      not_null: true
+
+  # Verify the inspection is readable and still has contractor linked
+  - name: fetch_inspection_after_create
+    action: http_request
+    as: manager
+    input:
+      method: GET
+      url: "/api/v1/inspections/${insp_with_contractor.id}"
+      expectStatus: 200
+    save_as: fetched
+
+  - name: assert_contractor_id_persists_on_fetch
+    action: assert_field
+    input:
+      target: "${fetched.inspectorContractorId}"
+      not_null: true
+
+  - name: assert_contractor_id_matches
+    action: assert_field
+    input:
+      target: "${fetched.inspectorContractorId}"
+      equals: "${inspector.id}"
+
+  # ── Case 2: Create inspection WITHOUT inspectorContractorId ───────────────
+  # Free-text inspector name only — inspectorContractorId must be null.
+
+  - name: create_inspection_without_contractor
+    action: create_inspection
+    as: manager
+    input:
+      propertyId:        "${property.id}"
+      type:              routine
+      scheduledDate:     "2026-09-20"
+      inspectorName:     "Free Text Inspector"
+      checklist:
+        - id: "rc-002"
+          area: "Kitchen"
+          description: "Appliances"
+          required: true
+    save_as: insp_free_text
+
+  - name: assert_free_text_name_set
+    action: assert_field
+    input:
+      target: "${insp_free_text.inspectorName}"
+      equals: "Free Text Inspector"
+
+  - name: assert_contractor_id_is_null_for_free_text
+    action: assert_field
+    input:
+      target: "${insp_free_text.inspectorContractorId}"
+      is_null: true  # no contractor link — no invite sent
+
+  - name: assert_state_scheduled_for_free_text
+    action: assert_field
+    input:
+      target: "${insp_free_text.state}"
+      equals: scheduled

@@ -14,15 +14,17 @@ from __future__ import annotations
 from httpx import AsyncClient
 
 # Maps workflow role names → dev-user IDs (from app/core/config.py DEV_USERS).
-ROLE_USER_MAP: dict[str, str] = {
-    "superadmin": "superadmin-1",
-    "admin":      "superadmin-1",   # alias
-    "owner":      "owner-1",
-    "manager":    "manager-1",
-    "landlord":   "landlord-1",
-    "tenant":     "tenant-1",
-    "contractor": "contractor-1",
+ROLE_USER_MAP: dict[str, str | None] = {
+    "superadmin":  "superadmin-1",
+    "admin":       "superadmin-1",   # alias
+    "owner":       "owner-1",
+    "manager":     "manager-1",
+    "landlord":    "landlord-1",
+    "tenant":      "tenant-1",
+    "contractor":  "contractor-1",
     "maintenance": "maintenance-1",
+    # anonymous: no auth header — for public/portal endpoints
+    "anonymous":   None,
 }
 
 
@@ -31,17 +33,20 @@ class RoleClient:
     Thin wrapper that prefixes every request with the auth header for the
     given role.  Delegates to the underlying ``AsyncClient`` for all HTTP
     verbs.
+
+    Use ``role="anonymous"`` for unauthenticated requests (portal endpoints,
+    public vacancy board, tenant sign links, etc.).
     """
 
     def __init__(self, client: AsyncClient, role: str) -> None:
-        user_id = ROLE_USER_MAP.get(role)
-        if user_id is None:
+        if role not in ROLE_USER_MAP:
             raise ValueError(
                 f"Unknown workflow role '{role}'. "
                 f"Valid roles: {list(ROLE_USER_MAP)}"
             )
+        user_id = ROLE_USER_MAP[role]
         self._client = client
-        self._headers = {"X-Dev-User-Id": user_id}
+        self._headers = {"X-Dev-User-Id": user_id} if user_id else {}
         self.role = role
 
     async def get(self, url: str, **kwargs) -> "httpx.Response":  # type: ignore[name-defined]

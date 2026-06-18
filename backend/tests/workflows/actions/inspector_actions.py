@@ -24,22 +24,24 @@ async def create_inspection(
 
     Input keys
     ----------
-    propertyId      : required
-    unitId          : optional
-    type            : required (move_in | move_out | routine | maintenance | complaint)
-    scheduledDate   : required (YYYY-MM-DD)
-    scheduledTimeSlot : optional
-    inspectorName   : optional free-text inspector name
-    checklist       : optional list of checklist item dicts
+    propertyId             : required
+    unitId                 : optional
+    type                   : required (move_in | move_out | routine | maintenance | complaint)
+    scheduledDate          : required (YYYY-MM-DD)
+    scheduledTimeSlot      : optional
+    inspectorName          : optional free-text inspector name
+    inspectorContractorId  : optional UUID — links a certified contractor and sends invite
+    checklist              : optional list of checklist item dicts
     """
     payload = {
-        "propertyId": input["propertyId"],
-        "unitId": input.get("unitId"),
-        "type": input["type"],
-        "scheduledDate": input["scheduledDate"],
-        "scheduledTimeSlot": input.get("scheduledTimeSlot"),
-        "inspectorName": input.get("inspectorName"),
-        "checklist": input.get("checklist", []),
+        "propertyId":            input["propertyId"],
+        "unitId":                input.get("unitId"),
+        "type":                  input["type"],
+        "scheduledDate":         input["scheduledDate"],
+        "scheduledTimeSlot":     input.get("scheduledTimeSlot"),
+        "inspectorName":         input.get("inspectorName"),
+        "inspectorContractorId": input.get("inspectorContractorId"),
+        "checklist":             input.get("checklist", []),
     }
     payload = {k: v for k, v in payload.items() if v is not None}
 

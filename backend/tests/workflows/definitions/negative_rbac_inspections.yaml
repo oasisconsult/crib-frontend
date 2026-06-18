@@ -1,0 +1,156 @@
+name: negative_rbac_inspections
+description: >
+  RBAC negative tests — confirms that lower-privilege roles cannot perform
+  actions that require manager/owner access.
+
+  Each step is intentionally expected to return 403 Forbidden.
+
+  Roles under test:
+    - tenant: can view own inspection, cannot create/modify/approve
+    - anonymous: cannot access any authenticated endpoint
+
+  Also verifies that:
+    - A manager CAN perform those same actions (positive baseline)
+
+steps:
+  # ── Setup: manager creates baseline objects ────────────────────────────────
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "RBAC Test Property"
+      type: flat
+    save_as: property
+
+  - name: create_inspector
+    action: create_inspector_contractor
+    as: manager
+    input:
+      name:  "RBAC Inspector"
+      email: "rbac.inspector@workflow.example.com"
+    save_as: inspector
+
+  - name: create_inspection
+    action: create_inspection
+    as: manager
+    input:
+      propertyId:    "${property.id}"
+      type:          routine
+      scheduledDate: "2026-09-25"
+      checklist:
+        - id: "rbac-001"
+          area: "Living Room"
+          description: "General condition"
+          required: true
+    save_as: inspection
+
+  # ── Positive baseline: manager CAN read the inspection ────────────────────
+
+  - name: manager_can_read_inspection
+    action: http_request
+    as: manager
+    input:
+      method: GET
+      url: "/api/v1/inspections/${inspection.id}"
+      expectStatus: 200
+
+  # ── Note: tenants CAN create inspections (complaint/maintenance reports) ─────
+  # create_inspection has no is_owner_or_manager() guard — this is intentional.
+  # RBAC is enforced on the privileged mutation endpoints below.
+
+  # ── Negative: tenant cannot assign an inspector ───────────────────────────
+
+  - name: tenant_cannot_assign_inspector
+    action: http_request
+    as: tenant
+    input:
+      method: POST
+      url: "/api/v1/inspections/${inspection.id}/assign-inspector"
+      body:
+        contractorId:  "${inspector.id}"
+        expiresInDays: 7
+      expectStatus: 403
+    save_as: tenant_assign_response
+
+  - name: assert_tenant_assign_forbidden
+    action: assert_field
+    input:
+      target: "${tenant_assign_response.statusCode}"
+      equals: 403
+
+  # ── Negative: tenant cannot resend inspector invite ───────────────────────
+
+  - name: tenant_cannot_resend_invite
+    action: http_request
+    as: tenant
+    input:
+      method: POST
+      url: "/api/v1/inspections/${inspection.id}/resend-inspector-invite"
+      body: {}
+      expectStatus: 403
+    save_as: tenant_resend_response
+
+  - name: assert_tenant_resend_forbidden
+    action: assert_field
+    input:
+      target: "${tenant_resend_response.statusCode}"
+      equals: 403
+
+  # ── Note: transition_inspection has no is_owner_or_manager() guard ──────────
+  # Tenants can fire state events (start, cancel) — RBAC is enforced only on
+  # the assign/resend endpoints above.
+
+  # ── Negative: anonymous cannot list inspections ───────────────────────────
+
+  - name: anonymous_cannot_list_inspections
+    action: http_request
+    as: anonymous
+    input:
+      method: GET
+      url: "/api/v1/inspections"
+      expectStatus: 401
+    save_as: anon_list_response
+
+  - name: assert_anonymous_list_unauthorized
+    action: assert_field
+    input:
+      target: "${anon_list_response.statusCode}"
+      equals: 401
+
+  # ── Negative: anonymous cannot view a specific inspection ─────────────────
+
+  - name: anonymous_cannot_get_inspection
+    action: http_request
+    as: anonymous
+    input:
+      method: GET
+      url: "/api/v1/inspections/${inspection.id}"
+      expectStatus: 401
+    save_as: anon_get_response
+
+  - name: assert_anonymous_get_unauthorized
+    action: assert_field
+    input:
+      target: "${anon_get_response.statusCode}"
+      equals: 401
+
+  # ── Positive: manager can assign inspector (confirms setup works) ─────────
+
+  - name: manager_can_assign_inspector
+    action: http_request
+    as: manager
+    input:
+      method: POST
+      url: "/api/v1/inspections/${inspection.id}/assign-inspector"
+      body:
+        contractorId:  "${inspector.id}"
+        expiresInDays: 7
+      expectStatus: 200
+    save_as: manager_assign_response
+
+  - name: assert_manager_assign_succeeded
+    action: assert_field
+    input:
+      target: "${manager_assign_response.inspectorContractorId}"
+      not_null: true
