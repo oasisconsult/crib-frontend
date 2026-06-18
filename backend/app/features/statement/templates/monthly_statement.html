@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <title>Rent Statement — {{ lease_ref }}</title>
   <style>
+    @page { size: A4 landscape; margin: 20mm 24mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      font-size: 10.5pt;
-      line-height: 1.5;
+      font-size: 10pt;
+      line-height: 1.4;
       color: #1a1a1a;
       background: #fff;
-      padding: 36pt 48pt;
     }
 
     /* ── Header ── */
@@ -20,146 +20,154 @@
       justify-content: space-between;
       align-items: flex-start;
       border-bottom: 2pt solid #1a1a1a;
-      padding-bottom: 14pt;
-      margin-bottom: 20pt;
+      padding-bottom: 12pt;
+      margin-bottom: 16pt;
     }
-    .org-name  { font-size: 15pt; font-weight: 700; }
-    .org-sub   { font-size: 9pt; color: #555; margin-top: 3pt; }
-    .doc-meta  { text-align: right; }
-    .doc-type  { font-size: 13pt; font-weight: 700; color: #1a1a1a; }
-    .doc-ref   { font-size: 9pt; color: #888; margin-top: 3pt; }
+    .org-name { font-size: 16pt; font-weight: 700; }
+    .org-sub  { font-size: 8.5pt; color: #555; margin-top: 2pt; }
+    .doc-meta { text-align: right; }
+    .doc-type { font-size: 13pt; font-weight: 700; }
+    .doc-ref  { font-size: 8.5pt; color: #888; margin-top: 2pt; white-space: nowrap; }
 
-    /* ── Info grid ── */
+    /* ── Info grid — 4 columns in landscape ── */
     .info-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12pt;
-      margin-bottom: 20pt;
+      grid-template-columns: 1.4fr 1.4fr 1fr 1fr;
+      gap: 10pt;
+      margin-bottom: 14pt;
     }
     .info-box {
       border: 1pt solid #d1d5db;
       border-radius: 4pt;
-      padding: 10pt 12pt;
+      padding: 8pt 10pt;
     }
     .info-box-label {
-      font-size: 7.5pt;
+      font-size: 7pt;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.07em;
       color: #888;
-      font-weight: 600;
-      margin-bottom: 5pt;
+      font-weight: 700;
+      margin-bottom: 4pt;
     }
-    .info-line { font-size: 9.5pt; color: #1a1a1a; margin-bottom: 1.5pt; }
+    .info-line { font-size: 9pt; color: #1a1a1a; margin-bottom: 1pt; }
     .info-line strong { font-weight: 600; }
 
-    /* ── Period banner ── */
+    /* ── Balance banner ── */
     .period-banner {
       background: #f3f4f6;
       border-radius: 4pt;
-      padding: 8pt 12pt;
-      margin-bottom: 18pt;
+      padding: 7pt 12pt;
+      margin-bottom: 14pt;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .period-text { font-size: 10pt; font-weight: 600; color: #374151; }
-    .period-sub  { font-size: 8.5pt; color: #6b7280; margin-top: 1pt; }
+    .period-text { font-size: 10pt; font-weight: 700; color: #374151; }
+    .period-sub  { font-size: 8pt; color: #6b7280; margin-top: 1pt; }
     .balance-chip {
       font-size: 9.5pt;
       font-weight: 700;
-      padding: 3pt 10pt;
+      padding: 3pt 12pt;
       border-radius: 100pt;
+      white-space: nowrap;
     }
-    .balance-chip.paid     { background: #dcfce7; color: #166534; }
-    .balance-chip.owed     { background: #fef2f2; color: #991b1b; }
-    .balance-chip.nil      { background: #f0f9ff; color: #0369a1; }
+    .balance-chip.owed { background: #fef2f2; color: #991b1b; }
+    .balance-chip.paid { background: #dcfce7; color: #166534; }
+    .balance-chip.nil  { background: #f0f9ff; color: #0369a1; }
 
     /* ── Section heading ── */
     .section-heading {
-      font-size: 9pt;
+      font-size: 8.5pt;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: #374151;
-      margin-bottom: 6pt;
-      margin-top: 18pt;
-      padding-bottom: 4pt;
+      margin-bottom: 5pt;
+      margin-top: 14pt;
+      padding-bottom: 3pt;
       border-bottom: 1pt solid #e5e7eb;
     }
 
-    /* ── Table ── */
+    /* ── Tables ── */
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 12pt;
-      font-size: 9pt;
+      margin-bottom: 10pt;
+      font-size: 8.5pt;
     }
     thead th {
       background: #1a1a1a;
       color: #fff;
       font-weight: 600;
       text-align: left;
-      padding: 6pt 8pt;
-      font-size: 8.5pt;
+      padding: 5pt 7pt;
+      font-size: 7.5pt;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
     }
     thead th.right { text-align: right; }
+    thead th.center { text-align: center; }
     tbody tr:nth-child(even) { background: #f9fafb; }
     tbody td {
-      padding: 6pt 8pt;
+      padding: 5pt 7pt;
       border-bottom: 0.5pt solid #e5e7eb;
-      vertical-align: top;
+      vertical-align: middle;
     }
-    tbody td.right  { text-align: right; }
-    tbody td.center { text-align: center; }
+    tbody td.right   { text-align: right;  white-space: nowrap; }
+    tbody td.center  { text-align: center; white-space: nowrap; }
+    tbody td.nowrap  { white-space: nowrap; }
+    tbody td.date    { white-space: nowrap; font-size: 8pt; color: #374151; }
+    tbody td.amount  { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
     td.late-fee-nonzero { color: #9a3412; font-weight: 600; }
 
     .badge {
       display: inline-block;
-      font-size: 7.5pt;
-      font-weight: 600;
+      font-size: 7pt;
+      font-weight: 700;
       padding: 1.5pt 6pt;
       border-radius: 100pt;
       white-space: nowrap;
     }
-    .badge-paid   { background: #dcfce7; color: #166534; }
-    .badge-partial{ background: #fef9c3; color: #854d0e; }
-    .badge-late   { background: #ffedd5; color: #9a3412; }
-    .badge-unpaid { background: #fef2f2; color: #991b1b; }
+    .badge-paid    { background: #dcfce7; color: #166534; }
+    .badge-partial { background: #fef9c3; color: #854d0e; }
+    .badge-late    { background: #ffedd5; color: #9a3412; }
+    .badge-unpaid  { background: #fef2f2; color: #991b1b; }
 
-    /* ── Charges table header ── */
     .charges-table thead th { background: #374151; }
 
-    /* ── Summary ── */
-    .summary-table {
-      width: 44%;
-      margin-left: auto;
-      border-collapse: collapse;
-      margin-bottom: 24pt;
-      margin-top: 6pt;
-      font-size: 9.5pt;
+    /* ── Summary + footer side-by-side ── */
+    .bottom-row {
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-start;
+      gap: 24pt;
+      margin-top: 8pt;
+      margin-bottom: 16pt;
     }
-    .summary-table td { padding: 4pt 8pt; }
+
+    .summary-table {
+      border-collapse: collapse;
+      font-size: 9.5pt;
+      min-width: 200pt;
+    }
+    .summary-table td { padding: 3.5pt 8pt; white-space: nowrap; }
     .summary-table td:last-child { text-align: right; font-weight: 600; }
     .summary-table tr.sub td { color: #6b7280; font-size: 9pt; }
-    .summary-table tr.divider td {
-      border-top: 0.5pt solid #d1d5db;
-      padding-top: 5pt;
-    }
+    .summary-table tr.divider td { border-top: 0.5pt solid #d1d5db; padding-top: 5pt; }
     .summary-table tr.total td {
       border-top: 1.5pt solid #1a1a1a;
       font-weight: 700;
       font-size: 10.5pt;
       padding-top: 6pt;
     }
-    .summary-table tr.total td:first-child { color: #374151; }
 
     /* ── Footer ── */
     .footer {
       border-top: 1pt solid #d1d5db;
-      padding-top: 10pt;
-      font-size: 8pt;
+      padding-top: 8pt;
+      font-size: 7.5pt;
       color: #9ca3af;
       display: flex;
       justify-content: space-between;
@@ -172,9 +180,7 @@
   <div class="header">
     <div>
       <div class="org-name">{{ org_name }}</div>
-      {% if org_contact %}
-      <div class="org-sub">{{ org_contact }}</div>
-      {% endif %}
+      {% if org_contact %}<div class="org-sub">{{ org_contact }}</div>{% endif %}
     </div>
     <div class="doc-meta">
       <div class="doc-type">Rent Statement</div>
@@ -183,7 +189,7 @@
     </div>
   </div>
 
-  <!-- Info grid -->
+  <!-- Info grid — 4 cols in landscape -->
   <div class="info-grid">
     <div class="info-box">
       <div class="info-box-label">Tenant</div>
@@ -193,8 +199,7 @@
     </div>
     <div class="info-box">
       <div class="info-box-label">Property / Unit</div>
-      <div class="info-line"><strong>{{ property_name }}</strong></div>
-      {% if unit_name %}<div class="info-line">{{ unit_name }}</div>{% endif %}
+      <div class="info-line"><strong>{{ property_name }}</strong>{% if unit_name %} — {{ unit_name }}{% endif %}</div>
       {% if property_address %}<div class="info-line">{{ property_address }}</div>{% endif %}
     </div>
     <div class="info-box">
@@ -205,17 +210,17 @@
     <div class="info-box">
       <div class="info-box-label">Statement Period</div>
       <div class="info-line"><strong>{{ period_label }}</strong></div>
-      <div class="info-line">{{ rows|length }} schedule(s) shown</div>
+      <div class="info-line">{{ rows|length }} schedule(s){% if charge_rows %} · {{ charge_rows|length }} charge(s){% endif %}</div>
     </div>
   </div>
 
-  <!-- Period / balance banner -->
+  <!-- Balance banner -->
   <div class="period-banner">
     <div>
       <div class="period-text">{{ period_label }}</div>
       <div class="period-sub">
         {{ rows|length }} payment period{{ 's' if rows|length != 1 else '' }}
-        {% if charge_rows %} &middot; {{ charge_rows|length }} additional charge{{ 's' if charge_rows|length != 1 else '' }}{% endif %}
+        {% if charge_rows %}&middot; {{ charge_rows|length }} additional charge{{ 's' if charge_rows|length != 1 else '' }}{% endif %}
       </div>
     </div>
     <div>
@@ -249,17 +254,17 @@
     <tbody>
       {% for row in rows %}
       <tr>
-        <td>{{ row.period }}</td>
-        <td>{{ row.due_date }}</td>
-        <td class="right">{{ "{:,.0f}".format(row.rent_amount) }}</td>
-        <td class="right{% if row.late_fee %} late-fee-nonzero{% endif %}">
+        <td class="nowrap">{{ row.period }}</td>
+        <td class="date">{{ row.due_date }}</td>
+        <td class="amount">{{ "{:,.0f}".format(row.rent_amount) }}</td>
+        <td class="amount{% if row.late_fee %} late-fee-nonzero{% endif %}">
           {{ "{:,.0f}".format(row.late_fee) if row.late_fee else "—" }}
         </td>
-        <td class="right">{{ "{:,.0f}".format(row.amount_due) }}</td>
-        <td class="right">{{ "{:,.0f}".format(row.amount_paid) if row.amount_paid else "—" }}</td>
-        <td>{{ row.paid_at or "—" }}</td>
-        <td>{{ row.method or "—" }}</td>
-        <td class="right">{{ "{:,.0f}".format(row.balance) }}</td>
+        <td class="amount">{{ "{:,.0f}".format(row.amount_due) }}</td>
+        <td class="amount">{{ "{:,.0f}".format(row.amount_paid) if row.amount_paid else "—" }}</td>
+        <td class="date">{{ row.paid_at or "—" }}</td>
+        <td class="nowrap">{{ row.method or "—" }}</td>
+        <td class="amount">{{ "{:,.0f}".format(row.balance) }}</td>
         <td class="center">
           {% if row.status == "paid" %}
             <span class="badge badge-paid">Paid</span>
@@ -274,13 +279,13 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="10" style="text-align:center;color:#9ca3af;padding:16pt;">No schedule records for this period.</td>
+        <td colspan="10" style="text-align:center;color:#9ca3af;padding:14pt;">No schedule records for this period.</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 
-  <!-- Additional charges (utility, late fee payments, other) -->
+  <!-- Additional charges -->
   {% if charge_rows %}
   <div class="section-heading">Additional Charges</div>
   <table class="charges-table">
@@ -298,11 +303,11 @@
       {% for row in charge_rows %}
       <tr>
         <td>{{ row.description }}</td>
-        <td>{{ row.category }}</td>
-        <td>{{ row.paid_at }}</td>
-        <td>{{ row.method or "—" }}</td>
-        <td class="right">{{ "{:,.0f}".format(row.amount) }}</td>
-        <td class="right">{{ "{:,.0f}".format(row.balance) }}</td>
+        <td class="nowrap">{{ row.category }}</td>
+        <td class="date">{{ row.paid_at }}</td>
+        <td class="nowrap">{{ row.method or "—" }}</td>
+        <td class="amount">{{ "{:,.0f}".format(row.amount) }}</td>
+        <td class="amount">{{ "{:,.0f}".format(row.balance) }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -310,40 +315,42 @@
   {% endif %}
 
   <!-- Summary -->
-  <table class="summary-table">
-    <tr class="sub">
-      <td>Rent Due</td>
-      <td>{{ currency }} {{ "{:,.0f}".format(total_rent_due) }}</td>
-    </tr>
-    {% if total_late_fees %}
-    <tr class="sub">
-      <td>Late Fees</td>
-      <td>{{ currency }} {{ "{:,.0f}".format(total_late_fees) }}</td>
-    </tr>
-    {% endif %}
-    {% if total_charges %}
-    <tr class="sub">
-      <td>Other Charges</td>
-      <td>{{ currency }} {{ "{:,.0f}".format(total_charges) }}</td>
-    </tr>
-    {% endif %}
-    <tr class="divider sub">
-      <td>Total Charged</td>
-      <td>{{ currency }} {{ "{:,.0f}".format(total_due + total_charges) }}</td>
-    </tr>
-    <tr class="sub">
-      <td>Total Paid</td>
-      <td>{{ currency }} {{ "{:,.0f}".format(total_paid) }}</td>
-    </tr>
-    <tr class="total">
-      <td>Closing Balance</td>
-      <td>{{ currency }} {{ "{:,.0f}".format(closing_balance) }}</td>
-    </tr>
-  </table>
+  <div class="bottom-row">
+    <table class="summary-table">
+      <tr class="sub">
+        <td>Rent Due</td>
+        <td>{{ currency }} {{ "{:,.0f}".format(total_rent_due) }}</td>
+      </tr>
+      {% if total_late_fees %}
+      <tr class="sub">
+        <td>Late Fees</td>
+        <td>{{ currency }} {{ "{:,.0f}".format(total_late_fees) }}</td>
+      </tr>
+      {% endif %}
+      {% if total_charges %}
+      <tr class="sub">
+        <td>Other Charges</td>
+        <td>{{ currency }} {{ "{:,.0f}".format(total_charges) }}</td>
+      </tr>
+      {% endif %}
+      <tr class="divider sub">
+        <td>Total Charged</td>
+        <td>{{ currency }} {{ "{:,.0f}".format(total_due + total_charges) }}</td>
+      </tr>
+      <tr class="sub">
+        <td>Total Paid</td>
+        <td>{{ currency }} {{ "{:,.0f}".format(total_paid) }}</td>
+      </tr>
+      <tr class="total">
+        <td>Closing Balance</td>
+        <td>{{ currency }} {{ "{:,.0f}".format(closing_balance) }}</td>
+      </tr>
+    </table>
+  </div>
 
   <!-- Footer -->
   <div class="footer">
-    <span>Generated by Crib Property Management — {{ generated_at }}</span>
+    <span>Generated by Crib Property Management &mdash; {{ generated_at }}</span>
     <span>{{ org_name }}</span>
   </div>
 
