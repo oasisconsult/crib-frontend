@@ -164,8 +164,18 @@ async def main() -> None:
             marker = "  " if n == 0 else "→ "
             print(f"  {marker}{table:<{col_w}} {n:>7} rows")
 
+        # Count rent_schedules that have a non-zero late_fee_applied
+        sched_where = f"WHERE organisation_id = '{ORG_ID}'" if ORG_ID else ""
+        late_fee_sched_count = (await session.execute(
+            text(f"SELECT COUNT(*) FROM rent_schedules {sched_where} AND late_fee_applied > 0"
+                 if ORG_ID else
+                 "SELECT COUNT(*) FROM rent_schedules WHERE late_fee_applied > 0")
+        )).scalar_one()
+
         print()
         print(f"  {'TOTAL':<{col_w}} {total:>7} rows to delete")
+        print()
+        print(f"  Also resets late_fee_applied on {late_fee_sched_count} rent_schedule(s)")
         print()
         print("  Retained (not touched):")
         for t in RETAIN_TABLES:
@@ -210,6 +220,17 @@ async def main() -> None:
                 deleted[table] = n
                 status = f"{n:>7} rows deleted"
                 print(f"  {'✓' if n > 0 else ' '} {table:<{col_w}} {status}")
+
+            # ── Reset computed fields on retained rent_schedules ──────────────
+            # late_fee_applied accumulates in the task by adding to the existing
+            # value. With late_fees purged but the column still holding old sums,
+            # the next task run would double-count. Reset to 0 so the backfill
+            # starts from a clean slate.
+            sched_where = f"WHERE organisation_id = '{ORG_ID}'" if ORG_ID else ""
+            reset_n = (await session.execute(
+                text(f"UPDATE rent_schedules SET late_fee_applied = 0 {sched_where}")
+            )).rowcount  # type: ignore[union-attr]
+            print(f"  ✓ {'rent_schedules (late_fee_applied reset)':<{col_w}} {reset_n:>7} rows")
 
         # ── Summary ───────────────────────────────────────────────────────────
         grand_total = sum(deleted.values())
