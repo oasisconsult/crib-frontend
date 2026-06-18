@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { FileDown, Download } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import type { Lease } from "@/types";
 
 interface StatementDialogProps {
@@ -51,19 +52,19 @@ export function StatementDialog({ lease, open, onClose }: StatementDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader className="pb-1">
           <DialogTitle>Download Statement</DialogTitle>
+          <DialogDescription>
+            Only months whose period starts within this range will appear.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <p className="text-sm text-muted-foreground">
-            Choose the date range to include in the statement. Only months whose
-            period starts within this range will appear.
-          </p>
+        <Separator />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
+        <div className="px-1 py-3 space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="stmt-from">From</Label>
               <Input
                 id="stmt-from"
@@ -73,7 +74,7 @@ export function StatementDialog({ lease, open, onClose }: StatementDialogProps) 
                 onChange={(e) => setDateFrom(e.target.value)}
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="stmt-to">To</Label>
               <Input
                 id="stmt-to"
@@ -85,26 +86,26 @@ export function StatementDialog({ lease, open, onClose }: StatementDialogProps) 
               />
             </div>
           </div>
-        </div>
 
-        <div className="flex gap-2 pt-1">
-          <Button
-            className="flex-1"
-            onClick={() => download("pdf")}
-            disabled={!dateFrom || !dateTo}
-          >
-            <FileDown className="h-4 w-4" />
-            PDF
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => download("csv")}
-            disabled={!dateFrom || !dateTo}
-          >
-            <Download className="h-4 w-4" />
-            CSV
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              className="flex-1"
+              onClick={() => download("pdf")}
+              disabled={!dateFrom || !dateTo}
+            >
+              <FileDown className="h-4 w-4" />
+              Download PDF
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => download("csv")}
+              disabled={!dateFrom || !dateTo}
+            >
+              <Download className="h-4 w-4" />
+              Download CSV
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
