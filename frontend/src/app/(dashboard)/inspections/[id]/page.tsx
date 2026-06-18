@@ -1169,6 +1169,17 @@ export default function InspectionDetailPage({ params }: Props) {
                 Assign Inspector
               </Button>
             )}
+            {canEdit && inspection.inspectorContractorId && !inspection.inspectorSubmittedAt && (
+              <Button
+                variant="outline"
+                size="sm"
+                loading={resending}
+                onClick={() => resendInvite(id)}
+              >
+                <Send className="h-3.5 w-3.5" />
+                Resend Invite
+              </Button>
+            )}
             {canEdit && (
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                 <Edit className="h-3.5 w-3.5" />
@@ -1194,7 +1205,13 @@ export default function InspectionDetailPage({ params }: Props) {
               {
                 label: "Inspector",
                 value: inspectorName ?? "—",
-                sub: "Assigned",
+                sub: inspection.inspectorSubmittedAt
+                  ? "Submitted"
+                  : inspection.inspectorContractorId
+                  ? "Invite sent"
+                  : inspectorName
+                  ? "Assigned"
+                  : "Not assigned",
                 icon: User,
                 color: "text-violet-600",
                 bg: "bg-violet-50 dark:bg-violet-950/30",
