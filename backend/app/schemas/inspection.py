@@ -31,6 +31,7 @@ class InspectionCreate(CamelModel):
     tenant_id: str | None = None
     inspector_id: str | None = None
     inspector_name: str | None = None
+    inspector_contractor_id: str | None = None
     type: str
     scheduled_date: date
     scheduled_time_slot: str | None = None

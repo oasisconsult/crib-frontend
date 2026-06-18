@@ -395,6 +395,20 @@ async def create_inspection(
     db.add(inspection)
     await db.flush()
     await db.refresh(inspection)
+
+    # If a certified inspector contractor was selected during creation, assign
+    # them immediately so the invite email is sent right away.
+    if body.inspector_contractor_id:
+        return await assign_inspector(
+            inspection.id,
+            AssignInspectorBody(
+                contractor_id=body.inspector_contractor_id,
+                expires_in_days=7,
+            ),
+            org_id,
+            db,
+        )
+
     return _insp_out(inspection)
 
 

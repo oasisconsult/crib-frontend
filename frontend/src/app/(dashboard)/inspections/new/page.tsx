@@ -65,6 +65,7 @@ export default function NewInspectionPage() {
         scheduledDate,
         scheduledTimeSlot: scheduledTimeSlot || undefined,
         inspectorName: inspectorName || undefined,
+        inspectorContractorId: inspectorContractorId || undefined,
         checklist: DEFAULT_CHECKLIST,
         photoUrls: [],
         videoUrls: [],
