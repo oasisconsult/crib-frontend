@@ -188,6 +188,12 @@ function isPass(condition: ChecklistItem["condition"]) {
   return condition && condition !== "poor" && condition !== "damaged";
 }
 
+// Normalise per-item photos — old records stored by inspector were persisted
+// with snake_case keys (photo_urls) before the fix; new ones use photoUrls.
+function itemPhotos(item: ChecklistItem): string[] {
+  return item.photoUrls ?? (item as unknown as { photo_urls?: string[] }).photo_urls ?? [];
+}
+
 // ── Edit form ─────────────────────────────────────────────────────────────────
 
 function EditForm({
@@ -361,7 +367,7 @@ function ChecklistEditor({
   async function handleItemPhoto(index: number, files: FileList | null) {
     if (!files?.length) return;
     const item = items[index];
-    const current = item.photoUrls ?? [];
+    const current = itemPhotos(item);
     const slots = MAX_ITEM_PHOTOS - current.length;
     if (slots <= 0) return;
     const toUpload = Array.from(files).slice(0, slots);
@@ -508,12 +514,12 @@ function ChecklistEditor({
                     ) : null}
 
                     {/* Per-item photos */}
-                    {((item.photoUrls ?? []).length > 0 || editable) && (
+                    {(itemPhotos(item).length > 0 || editable) && (
                       <div className="space-y-1.5">
                         {/* Thumbnails */}
-                        {(item.photoUrls ?? []).length > 0 && (
+                        {itemPhotos(item).length > 0 && (
                           <div className="flex gap-1.5 flex-wrap">
-                            {(item.photoUrls ?? []).map((url) => (
+                            {itemPhotos(item).map((url) => (
                               <div key={url} className="group relative h-16 w-16 rounded border overflow-hidden bg-muted shrink-0">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
@@ -536,7 +542,7 @@ function ChecklistEditor({
                         )}
 
                         {/* Upload controls — only when slots remain */}
-                        {editable && (item.photoUrls ?? []).length < MAX_ITEM_PHOTOS && (
+                        {editable && itemPhotos(item).length < MAX_ITEM_PHOTOS && (
                           <div className="flex items-center gap-1.5">
                             {/* Camera capture */}
                             <label className="cursor-pointer">
@@ -570,11 +576,11 @@ function ChecklistEditor({
                               </span>
                             </label>
                             <span className="text-[10px] text-muted-foreground">
-                              {MAX_ITEM_PHOTOS - (item.photoUrls ?? []).length} slot{MAX_ITEM_PHOTOS - (item.photoUrls ?? []).length !== 1 ? "s" : ""} left
+                              {MAX_ITEM_PHOTOS - itemPhotos(item).length} slot{MAX_ITEM_PHOTOS - itemPhotos(item).length !== 1 ? "s" : ""} left
                             </span>
                           </div>
                         )}
-                        {editable && (item.photoUrls ?? []).length >= MAX_ITEM_PHOTOS && (
+                        {editable && itemPhotos(item).length >= MAX_ITEM_PHOTOS && (
                           <p className="text-[10px] text-muted-foreground">Max {MAX_ITEM_PHOTOS} photos per item</p>
                         )}
                       </div>

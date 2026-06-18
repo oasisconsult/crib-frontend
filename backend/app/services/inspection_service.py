@@ -1503,8 +1503,10 @@ async def inspector_submit(
             detail="You have already submitted this inspection. Contact the property manager if changes are needed.",
         )
 
-    # Persist checklist + findings
-    i.checklist = [item.model_dump() for item in body.checklist]
+    # Persist checklist + findings.
+    # by_alias=True keeps camelCase keys (e.g. photoUrls) consistent with how
+    # the dashboard-created checklist is stored and how the frontend reads it.
+    i.checklist = [item.model_dump(by_alias=True) for item in body.checklist]
     if body.overall_condition:
         i.overall_condition = body.overall_condition
     if body.summary:
