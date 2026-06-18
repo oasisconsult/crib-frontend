@@ -16,5 +16,6 @@ from . import documents        # noqa: F401
 from . import settings_actions # noqa: F401
 from . import geobox_actions   # noqa: F401
 from . import listings_actions # noqa: F401
-from . import screenings       # noqa: F401
-from . import cicd_actions     # noqa: F401
+from . import screenings         # noqa: F401
+from . import cicd_actions       # noqa: F401
+from . import inspector_actions  # noqa: F401

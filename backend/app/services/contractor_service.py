@@ -30,6 +30,7 @@ def _contractor_out(c: Contractor) -> ContractorOut:
         specialty=c.specialty,
         notes=c.notes,
         is_active=c.is_active,
+        is_inspector=c.is_inspector,
         created_at=c.created_at.isoformat(),
         updated_at=c.updated_at.isoformat(),
     )
@@ -97,6 +98,7 @@ async def create_contractor(
         specialty=body.specialty,
         notes=body.notes,
         is_active=True,
+        is_inspector=body.is_inspector,
     )
     db.add(c)
     await db.flush()
