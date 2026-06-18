@@ -74,6 +74,10 @@ function PhotoUploadArea({
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  // Maps server URL → local blob URL for photos uploaded this session.
+  // The server URL (stored in photoUrls for submission) may be an internal
+  // MinIO address unreachable from the browser; the blob URL always displays.
+  const blobMap = useRef<Map<string, string>>(new Map());
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {
@@ -81,6 +85,7 @@ function PhotoUploadArea({
       setUploading(true);
       try {
         for (const file of Array.from(files)) {
+          const blobUrl = URL.createObjectURL(file);
           const form = new FormData();
           form.append("file", file);
           const res = await fetch(`/api/v1/upload/file/inspector/${token}`, {
@@ -89,7 +94,9 @@ function PhotoUploadArea({
           });
           if (res.ok) {
             const data = await res.json();
-            onAdd(data.publicUrl);
+            const serverUrl: string = data.publicUrl;
+            blobMap.current.set(serverUrl, blobUrl);
+            onAdd(serverUrl);
           }
         }
       } finally {
@@ -99,14 +106,17 @@ function PhotoUploadArea({
     [token, onAdd],
   );
 
+  // Use local blob preview when available; fall back to server URL
+  const getSrc = (url: string) => blobMap.current.get(url) ?? url;
+
   return (
     <div className="mt-2 space-y-2">
       {urls.length > 0 && (
         <div className="grid grid-cols-3 gap-1.5">
           {urls.map((url, idx) => (
-            <div key={idx} className="relative group">
+            <div key={url} className="relative group">
               <img
-                src={url}
+                src={getSrc(url)}
                 alt={`Photo ${idx + 1}`}
                 className="w-full aspect-square object-cover rounded-md border border-border"
                 loading="lazy"
