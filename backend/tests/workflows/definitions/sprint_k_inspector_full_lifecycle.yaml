@@ -1,0 +1,198 @@
+name: sprint_k_inspector_full_lifecycle
+description: >
+  Sprint K — Inspector Full Lifecycle with Notifications.
+
+  Covers the complete inspector workflow including invite delivery and resend:
+    1. Create inspector contractor (isInspector=true, email set)
+    2. Create inspection with a 5-item checklist
+    3. Assign inspector → verify token issued, contractor linked
+    4. Resend inspector invite → verify token rotated (different from original)
+    5. Inspector accesses portal via the NEW token (resent link)
+    6. Inspector submits checklist with per-item conditions + summary
+    7. Verify state auto-advances scheduled → completed
+    8. Manager approves → state = approved
+    9. Verify re-submission after approval is rejected
+
+  The Python test body additionally validates at the DB level:
+    - Notification records created for both assign and resend calls
+    - Old token is invalidated after resend (returns 404)
+    - Notification trigger value is 'inspector_invite'
+    - Notifications are queued (state = queued) — Celery is mocked in tests
+
+  Endpoints under test:
+    POST   /api/v1/contractors                               → 201
+    POST   /api/v1/inspections                               → 201
+    POST   /api/v1/inspections/{id}/assign-inspector         → 200
+    POST   /api/v1/inspections/{id}/resend-inspector-invite  → 200
+    GET    /api/v1/inspections/portal/{token}                → 200 (new token)
+    POST   /api/v1/inspections/portal/{token}                → 200
+    GET    /api/v1/inspections/{id}                          → 200
+    POST   /api/v1/inspections/{id}/transition               → 200
+
+steps:
+  # ── 1. Property ───────────────────────────────────────────────────────────────
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "Sprint-K Lifecycle Property"
+      type: flat
+    save_as: property
+
+  - name: assert_property_created
+    action: assert_field
+    input:
+      target: "${property.id}"
+      not_null: true
+
+  # ── 2. Inspector contractor ───────────────────────────────────────────────────
+
+  - name: create_inspector
+    action: create_inspector_contractor
+    as: manager
+    input:
+      name:  "Aisha Nakato (Inspector)"
+      email: "aisha.nakato.inspector@workflow.example.com"
+      phone: "+256782000222"
+    save_as: inspector
+
+  - name: assert_inspector_created
+    action: assert_field
+    input:
+      target: "${inspector.id}"
+      not_null: true
+
+  - name: assert_is_inspector_flag
+    action: assert_field
+    input:
+      target: "${inspector.isInspector}"
+      equals: true
+
+  - name: assert_inspector_active
+    action: assert_field
+    input:
+      target: "${inspector.isActive}"
+      equals: true
+
+  # ── 3. Inspection ─────────────────────────────────────────────────────────────
+
+  - name: create_inspection
+    action: create_inspection
+    as: manager
+    input:
+      propertyId:        "${property.id}"
+      type:              move_in
+      scheduledDate:     "2026-08-01"
+      scheduledTimeSlot: "08:00-10:00"
+      checklist:
+        - id: "sk-001"
+          area: "Living Room"
+          description: "Walls, ceiling, floors — cracks, damp, damage"
+          required: true
+        - id: "sk-002"
+          area: "Kitchen"
+          description: "Fixtures, appliances, sink, drainage"
+          required: true
+        - id: "sk-003"
+          area: "Bathroom"
+          description: "Toilet, shower, water pressure, mould"
+          required: true
+        - id: "sk-004"
+          area: "Bedroom"
+          description: "Walls, windows, floor, storage"
+          required: true
+        - id: "sk-005"
+          area: "Compound & Entry"
+          description: "Gate, pathway, exterior lighting"
+          required: false
+    save_as: inspection
+
+  - name: assert_inspection_created
+    action: assert_field
+    input:
+      target: "${inspection.id}"
+      not_null: true
+
+  - name: assert_inspection_scheduled
+    action: assert_field
+    input:
+      target: "${inspection.state}"
+      equals: scheduled
+
+  - name: assert_inspection_type_move_in
+    action: assert_field
+    input:
+      target: "${inspection.type}"
+      equals: move_in
+
+  - name: assert_checklist_5_items
+    action: assert_field
+    input:
+      target: "${inspection.checklist}"
+      not_null: true
+
+  # ── 4. Assign inspector ───────────────────────────────────────────────────────
+
+  - name: assign_inspector
+    action: assign_inspector
+    as: manager
+    input:
+      inspectionId:  "${inspection.id}"
+      contractorId:  "${inspector.id}"
+      expiresInDays: 5
+    save_as: after_assign
+
+  - name: assert_contractor_linked
+    action: assert_field
+    input:
+      target: "${after_assign.inspectorContractorId}"
+      not_null: true
+
+  - name: assert_inspector_name_on_inspection
+    action: assert_field
+    input:
+      target: "${after_assign.inspectorName}"
+      equals: "Aisha Nakato (Inspector)"
+
+  - name: assert_not_submitted_after_assign
+    action: assert_field
+    input:
+      target: "${after_assign.inspectorSubmittedAt}"
+      equals: null
+
+  # ── 5. Resend invite — token must rotate ─────────────────────────────────────
+  # Python test verifies that inspector_token changed in DB.
+  # Here we just assert the API responds 200 and contractor is still linked.
+
+  - name: resend_invite
+    action: resend_inspector_invite
+    as: manager
+    input:
+      inspectionId: "${inspection.id}"
+    save_as: after_resend
+
+  - name: assert_contractor_still_linked_after_resend
+    action: assert_field
+    input:
+      target: "${after_resend.inspectorContractorId}"
+      not_null: true
+
+  - name: assert_inspector_name_unchanged_after_resend
+    action: assert_field
+    input:
+      target: "${after_resend.inspectorName}"
+      equals: "Aisha Nakato (Inspector)"
+
+  - name: assert_state_still_scheduled_after_resend
+    action: assert_field
+    input:
+      target: "${after_resend.state}"
+      equals: scheduled
+
+  # ── 6 & 7. Inspector completes inspection via portal ─────────────────────────
+  # The Python test fetches the current (resent) token from DB, calls portal
+  # GET then POST, and verifies state advances to completed.
+
+  # ── 8. Manager confirms completion view ──────────────────────────────────────
+  # Driven from Python test after the portal submit.

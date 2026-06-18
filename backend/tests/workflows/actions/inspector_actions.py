@@ -214,6 +214,34 @@ async def inspector_portal_submit(
     return resp.json()
 
 
+@registry.register("resend_inspector_invite")
+async def resend_inspector_invite(
+    client: RoleClient,
+    input: dict,
+    ctx: ExecutionContext,
+) -> dict:
+    """
+    Resend the inspector invite (regenerates token) via
+    ``POST /api/v1/inspections/{id}/resend-inspector-invite``.
+
+    Input keys
+    ----------
+    inspectionId : required
+    """
+    iid = input["inspectionId"]
+    resp = await client.post(
+        f"/api/v1/inspections/{iid}/resend-inspector-invite",
+        json={},
+    )
+    if resp.status_code != 200:
+        raise StepError(
+            f"resend_inspector_invite failed: {resp.status_code} {resp.text}",
+            step_name=input.get("_step_name", "resend_inspector_invite"),
+            action="resend_inspector_invite",
+        )
+    return resp.json()
+
+
 @registry.register("transition_inspection")
 async def transition_inspection(
     client: RoleClient,
