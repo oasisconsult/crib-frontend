@@ -107,7 +107,7 @@ async def main() -> None:
             rows = (await session.execute(text(f"""
                 SELECT
                     rs.lease_id,
-                    l.reference,
+                    t.reference                          AS tenant_ref,
                     t.first_name || ' ' || t.last_name  AS tenant_name,
                     COUNT(*)                             AS schedules,
                     SUM(rs.amount_due)                  AS total_due,
@@ -118,7 +118,7 @@ async def main() -> None:
                 WHERE rs.period_start < :cutoff
                   AND rs.status != 'paid'
                   {_org_filter()}
-                GROUP BY rs.lease_id, l.reference, tenant_name, l.currency
+                GROUP BY rs.lease_id, tenant_ref, tenant_name, l.currency
                 ORDER BY tenant_name
             """), {"cutoff": CUTOFF})).fetchall()
 
@@ -135,7 +135,7 @@ async def main() -> None:
         print(f"  {'-'*30} {'-'*14} {'-'*10} {'-'*16} {'-'*6}")
         for r in rows:
             name = (r.tenant_name or "Unknown")[:30]
-            ref  = (r.reference  or "—")[:14]
+            ref  = (r.tenant_ref  or "—")[:14]
             print(f"  {name:<30} {ref:<14} {r.schedules:>10,} {float(r.total_due or 0):>16,.0f}  {r.currency or ''}")
         print(f"  {'-'*30} {'-'*14} {'-'*10} {'-'*16}")
         print(f"  {'TOTAL':<30} {'':14} {total_schedules:>10,} {total_amount:>16,.0f}")
