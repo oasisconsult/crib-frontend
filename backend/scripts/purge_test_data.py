@@ -11,9 +11,9 @@ RETAINS (untouched):
 
 DELETES (transactional / operational data):
   efris_audit_log, notifications, wallet_transactions, mobile_money_transactions,
-  payment_allocations, late_fees, deposits, payments, rent_schedules,
-  ledger_entries, tenant_wallets, utility_readings, messages,
-  maintenance_issues, inspections, tenant_screenings, announcements
+  payment_allocations, late_fees, deposits, payments, ledger_entries,
+  tenant_wallets, utility_readings, messages, maintenance_issues,
+  inspections, tenant_screenings, announcements
 
 Usage inside the container:
 
@@ -71,10 +71,9 @@ AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_co
 #  wallet_transactions   — no FK to other purge tables
 #  mobile_money_transactions — no FK to other purge tables
 #  payment_allocations   — payment_id + rent_schedule_id (must go before both)
-#  late_fees             — rent_schedule_id CASCADE (before rent_schedules)
+#  late_fees             — rent_schedule_id CASCADE (kept; delete child independently)
 #  deposits              — move_out_inspection_id SET NULL, lease_id CASCADE
-#  payments              — rent_schedule_id SET NULL (before rent_schedules safe)
-#  rent_schedules        — lease_id CASCADE (lease kept; just clears schedules)
+#  payments              — rent_schedule_id SET NULL (rent_schedules kept)
 #  ledger_entries        — lease_id (no cascade constraint; safe after payments)
 #  tenant_wallets        — after wallet_transactions
 #  utility_readings      — lease_id SET NULL
@@ -94,7 +93,6 @@ PURGE_TABLES: list[tuple[str, str]] = [
     ("late_fees",                "organisation_id"),
     ("deposits",                 "organisation_id"),
     ("payments",                 "organisation_id"),
-    ("rent_schedules",           "organisation_id"),
     ("ledger_entries",           "organisation_id"),
     ("tenant_wallets",           "organisation_id"),
     ("utility_readings",         "organisation_id"),
@@ -108,7 +106,7 @@ PURGE_TABLES: list[tuple[str, str]] = [
 RETAIN_TABLES = [
     "organisations", "profiles", "properties", "units",
     "tenants", "tenant_invites", "tenant_documents",
-    "leases", "tenancy_agreements",
+    "leases", "tenancy_agreements", "rent_schedules",
     "landlord_invites", "landlord_property_access",
     "agency_invites", "caretaker_invites", "contractors",
     "system_settings", "subscription_plans", "organisation_subscriptions",
@@ -218,8 +216,8 @@ async def main() -> None:
         print()
         print("=" * 64)
         print(f"  Done.  {grand_total} rows deleted across {len(PURGE_TABLES)} tables.")
-        print(f"  Landlords, properties, tenants, leases, and all system")
-        print(f"  configuration have been retained.")
+        print(f"  Landlords, properties, tenants, leases, rent schedules,")
+        print(f"  and all system configuration have been retained.")
         print("=" * 64)
         print()
 
