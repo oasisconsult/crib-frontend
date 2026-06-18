@@ -1,4 +1,4 @@
-"""
+﻿"""
 Sprint B — Bulk Tenant Announcements.
 
 Runs the full sprint_b_announcements.yaml workflow:
@@ -16,9 +16,8 @@ import pytest
 from httpx import AsyncClient
 
 import tests.workflows  # noqa: F401
-from tests.workflows.engine import WorkflowRunner
+from tests.workflows.engine import WorkflowRunner, WORKFLOWS_DIR
 
-DOCS_WORKFLOWS = Path(__file__).parents[4] / "docs" / "workflows"
 
 
 @pytest.mark.asyncio
@@ -28,7 +27,7 @@ async def test_sprint_b_announcements(client: AsyncClient, tmp_path):
     history list endpoint returns them with correct structure.
     """
     runner = WorkflowRunner(client, debug=False, snapshot_dir=tmp_path)
-    ctx = await runner.run(DOCS_WORKFLOWS / "sprint_b_announcements.yaml")
+    ctx = await runner.run(WORKFLOWS_DIR / "sprint_b_announcements.yaml")
 
     # Announcement 1 assertions
     assert ctx.get("announcement.id") is not None
@@ -51,3 +50,4 @@ async def test_sprint_b_announcements(client: AsyncClient, tmp_path):
     assert len(history.get("data", [])) >= 2
 
     print("\n" + runner.summary())
+

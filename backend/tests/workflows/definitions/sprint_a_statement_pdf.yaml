@@ -1,0 +1,175 @@
+﻿name: sprint_a_statement_pdf
+description: >
+  Sprint A â€” WeasyPrint Statement PDF.
+
+  End-to-end validation of the PDF rent statement endpoint.
+  Creates a property, unit, tenant, and active lease; records a manual
+  rent payment; then asserts that both the PDF and CSV statement endpoints
+  return the correct content-type and a non-empty body.
+
+  Endpoint under test:
+    GET /api/v1/leases/{lease_id}/statement/pdf  â†’ application/pdf
+    GET /api/v1/leases/{lease_id}/statement      â†’ text/csv
+
+steps:
+  # â”€â”€ Setup: property and unit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  - name: create_property
+    action: create_property
+    as: manager
+    input:
+      name: "Sprint-A Statement Property"
+      type: flat
+    save_as: property
+
+  - name: assert_property_id
+    action: assert_field
+    input:
+      target: "${property.id}"
+      not_null: true
+
+  - name: create_unit
+    action: create_unit
+    as: manager
+    input:
+      propertyId: "${property.id}"
+      name: "Unit A-1"
+      type: one_bed
+      monthlyRent: 600000
+    save_as: unit
+
+  - name: assert_unit_property
+    action: assert_field
+    input:
+      target: "${unit.propertyId}"
+      equals: "${property.id}"
+
+  # â”€â”€ Setup: tenant â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  - name: create_tenant
+    action: create_tenant
+    as: manager
+    input:
+      firstName: "Amara"
+      lastName:  "Okonkwo"
+      email:     "amara.statement@workflow.example.com"
+    save_as: tenant
+
+  - name: assert_tenant_id
+    action: assert_field
+    input:
+      target: "${tenant.id}"
+      not_null: true
+
+  - name: approve_tenant
+    action: approve_tenant
+    as: manager
+    input:
+      tenantId: "${tenant.id}"
+    save_as: approved_tenant
+
+  # â”€â”€ Setup: lease â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  - name: create_lease
+    action: create_lease
+    as: manager
+    input:
+      unitId:      "${unit.id}"
+      tenantId:    "${tenant.id}"
+      monthlyRent: 600000
+      currency:    UGX
+    save_as: lease
+
+  - name: assert_lease_draft
+    action: assert_field
+    input:
+      target: "${lease.status}"
+      one_of: ["draft", "active"]
+
+  - name: activate_lease
+    action: activate_lease
+    as: manager
+    input:
+      leaseId: "${lease.id}"
+    save_as: active_lease
+
+  - name: assert_lease_active
+    action: assert_field
+    input:
+      target: "${active_lease.status}"
+      equals: active
+
+  # â”€â”€ Record a rent payment â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  - name: record_rent_payment
+    action: record_manual_payment
+    as: manager
+    input:
+      leaseId:  "${lease.id}"
+      amount:   600000
+      currency: UGX
+      category: rent
+      method:   cash
+      notes:    "Sprint-A workflow test payment"
+    save_as: payment
+
+  - name: assert_payment_category
+    action: assert_field
+    input:
+      target: "${payment.category}"
+      equals: rent
+
+  - name: assert_payment_lease
+    action: assert_field
+    input:
+      target: "${payment.leaseId}"
+      equals: "${lease.id}"
+
+  # â”€â”€ Fetch PDF statement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  - name: get_pdf_statement
+    action: get_statement_pdf
+    as: manager
+    input:
+      leaseId: "${lease.id}"
+    save_as: pdf_result
+
+  - name: assert_pdf_status_ok
+    action: assert_field
+    input:
+      target: "${pdf_result.statusCode}"
+      equals: "200"
+
+  - name: assert_pdf_content_type
+    action: assert_field
+    input:
+      target: "${pdf_result.contentType}"
+      contains: "application/pdf"
+
+  - name: assert_pdf_non_empty
+    action: assert_field
+    input:
+      target: "${pdf_result.size}"
+      not_null: true
+
+  # â”€â”€ Fetch CSV statement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  - name: get_csv_statement
+    action: get_statement_csv
+    as: manager
+    input:
+      leaseId: "${lease.id}"
+    save_as: csv_result
+
+  - name: assert_csv_status_ok
+    action: assert_field
+    input:
+      target: "${csv_result.statusCode}"
+      equals: "200"
+
+  - name: assert_csv_content_type
+    action: assert_field
+    input:
+      target: "${csv_result.contentType}"
+      contains: "text/csv"
+

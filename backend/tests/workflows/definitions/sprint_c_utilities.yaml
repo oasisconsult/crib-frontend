@@ -1,6 +1,6 @@
-name: sprint_c_utilities
+﻿name: sprint_c_utilities
 description: >
-  Sprint C — Utility Billing.
+  Sprint C â€” Utility Billing.
 
   End-to-end validation of the utility billing feature.
   Creates a lease, records a metered water reading (auto_bill=false),
@@ -9,12 +9,12 @@ description: >
   readings appear in the utility history.
 
   Endpoints under test:
-    POST /api/v1/leases/{id}/utilities           → 201 UtilityReadingOut
-    POST /api/v1/leases/{id}/utilities/{id}/bill → 200 UtilityReadingOut (billed)
-    GET  /api/v1/leases/{id}/utilities           → paginated list
+    POST /api/v1/leases/{id}/utilities           â†’ 201 UtilityReadingOut
+    POST /api/v1/leases/{id}/utilities/{id}/bill â†’ 200 UtilityReadingOut (billed)
+    GET  /api/v1/leases/{id}/utilities           â†’ paginated list
 
 steps:
-  # ── Setup: property, unit, tenant, lease ──────────────────────────────────────
+  # â”€â”€ Setup: property, unit, tenant, lease â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: create_property
     action: create_property
@@ -40,8 +40,15 @@ steps:
     input:
       firstName: "Fatuma"
       lastName:  "Nakato"
-      email:     "fatuma.utilities@workflow.test"
+      email:     "fatuma.utilities@workflow.example.com"
     save_as: tenant
+
+  - name: approve_tenant
+    action: approve_tenant
+    as: manager
+    input:
+      tenantId: "${tenant.id}"
+    save_as: approved_tenant
 
   - name: create_lease
     action: create_lease
@@ -65,7 +72,7 @@ steps:
       target: "${active_lease.status}"
       equals: active
 
-  # ── Metered water reading (manual bill step) ───────────────────────────────────
+  # â”€â”€ Metered water reading (manual bill step) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: record_metered_water
     action: record_utility
@@ -118,7 +125,7 @@ steps:
       target: "${billed_reading.paymentId}"
       not_null: true
 
-  # ── Fixed internet charge (auto-billed) ────────────────────────────────────────
+  # â”€â”€ Fixed internet charge (auto-billed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: record_fixed_internet
     action: record_utility
@@ -143,7 +150,7 @@ steps:
       target: "${fixed_reading.utilityType}"
       equals: internet
 
-  # ── List utilities ─────────────────────────────────────────────────────────────
+  # â”€â”€ List utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: list_utilities
     action: list_utilities
@@ -163,3 +170,4 @@ steps:
     input:
       target: "${utility_history.total}"
       not_null: true
+

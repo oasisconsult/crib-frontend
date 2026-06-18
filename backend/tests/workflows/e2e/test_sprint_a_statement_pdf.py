@@ -1,4 +1,4 @@
-"""
+﻿"""
 Sprint A — WeasyPrint Statement PDF.
 
 Runs the full sprint_a_statement_pdf.yaml workflow:
@@ -16,9 +16,8 @@ import pytest
 from httpx import AsyncClient
 
 import tests.workflows  # noqa: F401 — self-registers all action modules
-from tests.workflows.engine import WorkflowRunner
+from tests.workflows.engine import WorkflowRunner, WORKFLOWS_DIR
 
-DOCS_WORKFLOWS = Path(__file__).parents[4] / "docs" / "workflows"
 
 
 @pytest.mark.asyncio
@@ -28,7 +27,7 @@ async def test_sprint_a_statement_pdf(client: AsyncClient, tmp_path):
     statement and assert correct content-types and non-empty responses.
     """
     runner = WorkflowRunner(client, debug=False, snapshot_dir=tmp_path)
-    ctx = await runner.run(DOCS_WORKFLOWS / "sprint_a_statement_pdf.yaml")
+    ctx = await runner.run(WORKFLOWS_DIR / "sprint_a_statement_pdf.yaml")
 
     # Post-run assertions on the resolved context
     assert ctx.get("pdf_result.statusCode") == 200, (
@@ -47,3 +46,4 @@ async def test_sprint_a_statement_pdf(client: AsyncClient, tmp_path):
     assert ctx.get("payment.category") == "rent"
 
     print("\n" + runner.summary())
+

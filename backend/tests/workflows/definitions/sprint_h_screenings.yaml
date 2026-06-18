@@ -1,9 +1,9 @@
-name: sprint_h_screenings
+﻿name: sprint_h_screenings
 description: >
-  Sprint H — Tenant Screening Checklist.
+  Sprint H â€” Tenant Screening Checklist.
 
   Full end-to-end lifecycle test for the tenant screening feature:
-  create → update checklist items → approve decision → verify final state.
+  create â†’ update checklist items â†’ approve decision â†’ verify final state.
 
   Validates:
   - Screening is created in "pending" status with a default 6-item checklist.
@@ -13,14 +13,14 @@ description: >
   - The list endpoint returns the expected count and filters correctly.
 
   Endpoints under test:
-    POST   /api/v1/screenings                  → 201 ScreeningOut
-    GET    /api/v1/screenings                  → paginated list
-    GET    /api/v1/screenings/{id}             → single ScreeningOut
-    PATCH  /api/v1/screenings/{id}             → updated ScreeningOut
-    POST   /api/v1/screenings/{id}/decide      → approved/rejected ScreeningOut
+    POST   /api/v1/screenings                  â†’ 201 ScreeningOut
+    GET    /api/v1/screenings                  â†’ paginated list
+    GET    /api/v1/screenings/{id}             â†’ single ScreeningOut
+    PATCH  /api/v1/screenings/{id}             â†’ updated ScreeningOut
+    POST   /api/v1/screenings/{id}/decide      â†’ approved/rejected ScreeningOut
 
 steps:
-  # ── Setup: property and unit ──────────────────────────────────────────────────
+  # â”€â”€ Setup: property and unit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: create_property
     action: create_property
@@ -40,7 +40,7 @@ steps:
       monthlyRent: 950000
     save_as: unit
 
-  # ── Create screening application ──────────────────────────────────────────────
+  # â”€â”€ Create screening application â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: create_screening
     action: create_screening
@@ -48,7 +48,7 @@ steps:
     input:
       applicantName:  "Peter Ssali"
       applicantPhone: "+256701234567"
-      applicantEmail: "peter.ssali@workflow.test"
+      applicantEmail: "peter.ssali@workflow.example.com"
       unitId:         "${unit.id}"
       notes:          "Sprint-H workflow test applicant"
     save_as: screening
@@ -77,7 +77,7 @@ steps:
       target: "${screening.applicantName}"
       equals: "Peter Ssali"
 
-  # ── Update checklist: mark id_verified and employment_verified ────────────────
+  # â”€â”€ Update checklist: mark id_verified and employment_verified â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: check_id_verified
     action: update_screening
@@ -109,7 +109,7 @@ steps:
           checked: true
     save_as: screening_after_employment
 
-  # ── Fetch fresh from API to confirm checklist state ───────────────────────────
+  # â”€â”€ Fetch fresh from API to confirm checklist state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: get_screening_fresh
     action: get_screening
@@ -130,7 +130,7 @@ steps:
       target: "${fresh_screening.unitId}"
       equals: "${unit.id}"
 
-  # ── Approve the screening ─────────────────────────────────────────────────────
+  # â”€â”€ Approve the screening â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: approve_screening
     action: decide_screening
@@ -159,7 +159,7 @@ steps:
       target: "${approved_screening.decisionNotes}"
       contains: "Recommended for tenancy"
 
-  # ── Second screening — rejected path ──────────────────────────────────────────
+  # â”€â”€ Second screening â€” rejected path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: create_rejected_screening
     action: create_screening
@@ -185,7 +185,7 @@ steps:
       target: "${rejected_screening.status}"
       equals: rejected
 
-  # ── List all screenings for this unit ─────────────────────────────────────────
+  # â”€â”€ List all screenings for this unit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: list_unit_screenings
     action: list_screenings
@@ -205,3 +205,4 @@ steps:
     input:
       target: "${screenings_list.total}"
       not_null: true
+

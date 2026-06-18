@@ -1,4 +1,4 @@
-"""
+﻿"""
 Sprint D — Document Access Control.
 
 Runs the full sprint_d_document_access.yaml workflow:
@@ -16,9 +16,8 @@ import pytest
 from httpx import AsyncClient
 
 import tests.workflows  # noqa: F401
-from tests.workflows.engine import WorkflowRunner
+from tests.workflows.engine import WorkflowRunner, WORKFLOWS_DIR
 
-DOCS_WORKFLOWS = Path(__file__).parents[4] / "docs" / "workflows"
 
 
 @pytest.mark.asyncio
@@ -30,7 +29,7 @@ async def test_sprint_d_document_access(client: AsyncClient, tmp_path):
     - Path traversal → 400.
     """
     runner = WorkflowRunner(client, debug=False, snapshot_dir=tmp_path)
-    ctx = await runner.run(DOCS_WORKFLOWS / "sprint_d_document_access.yaml")
+    ctx = await runner.run(WORKFLOWS_DIR / "sprint_d_document_access.yaml")
 
     # Authorized manager access: auth passes → storage returns 404 (no real S3)
     authorized_code = ctx.get("authorized_result.statusCode")
@@ -47,3 +46,4 @@ async def test_sprint_d_document_access(client: AsyncClient, tmp_path):
     assert ctx.get("traversal_result.statusCode") == 400
 
     print("\n" + runner.summary())
+

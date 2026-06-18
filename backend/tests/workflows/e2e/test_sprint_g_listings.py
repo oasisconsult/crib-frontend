@@ -1,4 +1,4 @@
-"""
+﻿"""
 Sprint G — Public Vacancy Listings.
 
 Runs the full sprint_g_listings.yaml workflow:
@@ -20,9 +20,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import tests.workflows  # noqa: F401
-from tests.workflows.engine import WorkflowRunner
+from tests.workflows.engine import WorkflowRunner, WORKFLOWS_DIR
 
-DOCS_WORKFLOWS = Path(__file__).parents[4] / "docs" / "workflows"
 
 
 @pytest.mark.asyncio
@@ -47,7 +46,7 @@ async def test_sprint_g_listings(client: AsyncClient, db_session: AsyncSession, 
     await db_session.flush()
 
     runner = WorkflowRunner(client, debug=False, snapshot_dir=tmp_path)
-    ctx = await runner.run(DOCS_WORKFLOWS / "sprint_g_listings.yaml")
+    ctx = await runner.run(WORKFLOWS_DIR / "sprint_g_listings.yaml")
 
     # Unit was created successfully
     assert ctx.get("unit.id") is not None
@@ -65,3 +64,4 @@ async def test_sprint_g_listings(client: AsyncClient, db_session: AsyncSession, 
     assert ctx.get("capped_listings.total") == 0
 
     print("\n" + runner.summary())
+

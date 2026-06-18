@@ -1,4 +1,4 @@
-"""
+﻿"""
 Sprint H — Tenant Screening Checklist.
 
 Runs the full sprint_h_screenings.yaml workflow:
@@ -16,9 +16,8 @@ import pytest
 from httpx import AsyncClient
 
 import tests.workflows  # noqa: F401
-from tests.workflows.engine import WorkflowRunner
+from tests.workflows.engine import WorkflowRunner, WORKFLOWS_DIR
 
-DOCS_WORKFLOWS = Path(__file__).parents[4] / "docs" / "workflows"
 
 
 @pytest.mark.asyncio
@@ -28,7 +27,7 @@ async def test_sprint_h_screenings(client: AsyncClient, tmp_path):
     Verifies status transitions, decision timestamps, and list pagination.
     """
     runner = WorkflowRunner(client, debug=False, snapshot_dir=tmp_path)
-    ctx = await runner.run(DOCS_WORKFLOWS / "sprint_h_screenings.yaml")
+    ctx = await runner.run(WORKFLOWS_DIR / "sprint_h_screenings.yaml")
 
     # Initial screening
     assert ctx.get("screening.id") is not None
@@ -58,3 +57,4 @@ async def test_sprint_h_screenings(client: AsyncClient, tmp_path):
     assert ctx.get("screening.id") != ctx.get("rejected_screening_base.id")
 
     print("\n" + runner.summary())
+

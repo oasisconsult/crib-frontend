@@ -1,4 +1,4 @@
-"""
+﻿"""
 Sprint E — WhatsApp Business API Integration.
 
 Runs the full sprint_e_whatsapp.yaml workflow:
@@ -16,9 +16,8 @@ import pytest
 from httpx import AsyncClient
 
 import tests.workflows  # noqa: F401
-from tests.workflows.engine import WorkflowRunner
+from tests.workflows.engine import WorkflowRunner, WORKFLOWS_DIR
 
-DOCS_WORKFLOWS = Path(__file__).parents[4] / "docs" / "workflows"
 
 
 @pytest.mark.asyncio
@@ -30,7 +29,7 @@ async def test_sprint_e_whatsapp(client: AsyncClient, tmp_path):
       (graceful degradation, not a 500).
     """
     runner = WorkflowRunner(client, debug=False, snapshot_dir=tmp_path)
-    ctx = await runner.run(DOCS_WORKFLOWS / "sprint_e_whatsapp.yaml")
+    ctx = await runner.run(WORKFLOWS_DIR / "sprint_e_whatsapp.yaml")
 
     # Settings read/write
     assert ctx.get("wa_key_setting.key") == "whatsapp.meta.api_key"
@@ -49,3 +48,4 @@ async def test_sprint_e_whatsapp(client: AsyncClient, tmp_path):
     assert "success" in wa_result, "Response missing 'success' field"
 
     print("\n" + runner.summary())
+

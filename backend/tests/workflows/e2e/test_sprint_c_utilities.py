@@ -1,4 +1,4 @@
-"""
+﻿"""
 Sprint C — Utility Billing.
 
 Runs the full sprint_c_utilities.yaml workflow:
@@ -16,9 +16,8 @@ import pytest
 from httpx import AsyncClient
 
 import tests.workflows  # noqa: F401
-from tests.workflows.engine import WorkflowRunner
+from tests.workflows.engine import WorkflowRunner, WORKFLOWS_DIR
 
-DOCS_WORKFLOWS = Path(__file__).parents[4] / "docs" / "workflows"
 
 
 @pytest.mark.asyncio
@@ -28,7 +27,7 @@ async def test_sprint_c_utilities(client: AsyncClient, tmp_path):
     the list endpoint returns both readings with correct billed status.
     """
     runner = WorkflowRunner(client, debug=False, snapshot_dir=tmp_path)
-    ctx = await runner.run(DOCS_WORKFLOWS / "sprint_c_utilities.yaml")
+    ctx = await runner.run(WORKFLOWS_DIR / "sprint_c_utilities.yaml")
 
     # Metered: created unbilled, then billed via /bill endpoint
     assert ctx.get("metered_reading.isBilled") is False
@@ -49,3 +48,4 @@ async def test_sprint_c_utilities(client: AsyncClient, tmp_path):
     assert isinstance(history.get("data"), list)
 
     print("\n" + runner.summary())
+

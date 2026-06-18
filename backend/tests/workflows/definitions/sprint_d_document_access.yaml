@@ -1,6 +1,6 @@
-name: sprint_d_document_access
+﻿name: sprint_d_document_access
 description: >
-  Sprint D — Document Access Control.
+  Sprint D â€” Document Access Control.
 
   End-to-end validation of the file-serve authorization layer.
   The ``GET /api/v1/upload/serve/{key}`` endpoint enforces ownership:
@@ -17,7 +17,7 @@ description: >
     GET /api/v1/upload/serve/{key:path}
 
 steps:
-  # ── Setup: tenant to generate a valid tenant UUID ─────────────────────────────
+  # â”€â”€ Setup: tenant to generate a valid tenant UUID â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: create_tenant
     action: create_tenant
@@ -25,7 +25,7 @@ steps:
     input:
       firstName: "Grace"
       lastName:  "Achieng"
-      email:     "grace.docs@workflow.test"
+      email:     "grace.docs@workflow.example.com"
     save_as: tenant
 
   - name: assert_tenant_created
@@ -34,7 +34,7 @@ steps:
       target: "${tenant.id}"
       not_null: true
 
-  # ── Authorized access: manager on own-org tenant ──────────────────────────────
+  # â”€â”€ Authorized access: manager on own-org tenant â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   # After the auth check passes, we get 404 from storage (no real S3 in tests).
   # A 404 proves auth PASSED; a 403 would mean auth FAILED.
 
@@ -57,7 +57,7 @@ steps:
       target: "${authorized_result.authorized}"
       equals: "True"
 
-  # ── Unauthorized: non-existent tenant UUID (random UUID not in org) ───────────
+  # â”€â”€ Unauthorized: non-existent tenant UUID (random UUID not in org) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: serve_unknown_tenant
     action: serve_file_check
@@ -78,7 +78,7 @@ steps:
       target: "${unauthorized_result.authorized}"
       equals: "False"
 
-  # ── Path traversal is rejected 400 before auth ────────────────────────────────
+  # â”€â”€ Path traversal is rejected 400 before auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   - name: check_path_traversal
     action: check_path_traversal
@@ -92,3 +92,4 @@ steps:
     input:
       target: "${traversal_result.statusCode}"
       equals: "400"
+
