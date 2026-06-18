@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <title>Rent Statement — {{ lease_ref }}</title>
   <style>
-    @page { size: A4 landscape; margin: 20mm 24mm; }
+    @page { size: A4 landscape; margin: 12mm 16mm; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      font-size: 10pt;
+      font-size: 9.5pt;
       line-height: 1.4;
       color: #1a1a1a;
       background: #fff;
@@ -20,54 +20,54 @@
       justify-content: space-between;
       align-items: flex-start;
       border-bottom: 2pt solid #1a1a1a;
-      padding-bottom: 12pt;
-      margin-bottom: 16pt;
+      padding-bottom: 10pt;
+      margin-bottom: 12pt;
     }
-    .org-name { font-size: 16pt; font-weight: 700; }
-    .org-sub  { font-size: 8.5pt; color: #555; margin-top: 2pt; }
+    .org-name { font-size: 15pt; font-weight: 700; }
+    .org-sub  { font-size: 8pt; color: #555; margin-top: 2pt; }
     .doc-meta { text-align: right; }
-    .doc-type { font-size: 13pt; font-weight: 700; }
-    .doc-ref  { font-size: 8.5pt; color: #888; margin-top: 2pt; white-space: nowrap; }
+    .doc-type { font-size: 12pt; font-weight: 700; }
+    .doc-ref  { font-size: 8pt; color: #888; margin-top: 2pt; white-space: nowrap; }
 
-    /* ── Info grid — 4 columns in landscape ── */
+    /* ── Info grid — 4 columns ── */
     .info-grid {
       display: grid;
-      grid-template-columns: 1.4fr 1.4fr 1fr 1fr;
-      gap: 10pt;
-      margin-bottom: 14pt;
+      grid-template-columns: 1.5fr 1.5fr 1fr 1fr;
+      gap: 8pt;
+      margin-bottom: 12pt;
     }
     .info-box {
       border: 1pt solid #d1d5db;
-      border-radius: 4pt;
-      padding: 8pt 10pt;
+      border-radius: 3pt;
+      padding: 7pt 9pt;
     }
     .info-box-label {
-      font-size: 7pt;
+      font-size: 6.5pt;
       text-transform: uppercase;
       letter-spacing: 0.07em;
       color: #888;
       font-weight: 700;
       margin-bottom: 4pt;
     }
-    .info-line { font-size: 9pt; color: #1a1a1a; margin-bottom: 1pt; }
+    .info-line { font-size: 8.5pt; color: #1a1a1a; margin-bottom: 1pt; }
     .info-line strong { font-weight: 600; }
 
     /* ── Balance banner ── */
     .period-banner {
       background: #f3f4f6;
-      border-radius: 4pt;
-      padding: 7pt 12pt;
-      margin-bottom: 14pt;
+      border-radius: 3pt;
+      padding: 6pt 10pt;
+      margin-bottom: 12pt;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    .period-text { font-size: 10pt; font-weight: 700; color: #374151; }
-    .period-sub  { font-size: 8pt; color: #6b7280; margin-top: 1pt; }
+    .period-text { font-size: 9.5pt; font-weight: 700; color: #374151; }
+    .period-sub  { font-size: 7.5pt; color: #6b7280; margin-top: 1pt; }
     .balance-chip {
-      font-size: 9.5pt;
+      font-size: 9pt;
       font-weight: 700;
-      padding: 3pt 12pt;
+      padding: 3pt 10pt;
       border-radius: 100pt;
       white-space: nowrap;
     }
@@ -77,56 +77,86 @@
 
     /* ── Section heading ── */
     .section-heading {
-      font-size: 8.5pt;
+      font-size: 8pt;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: #374151;
-      margin-bottom: 5pt;
-      margin-top: 14pt;
+      margin-bottom: 4pt;
+      margin-top: 12pt;
       padding-bottom: 3pt;
       border-bottom: 1pt solid #e5e7eb;
     }
 
-    /* ── Tables ── */
-    table {
+    /* ── Rent schedule table — fixed layout, 9 columns ── */
+    .sched-table {
       width: 100%;
       border-collapse: collapse;
+      table-layout: fixed;
       margin-bottom: 10pt;
-      font-size: 8.5pt;
+      font-size: 8pt;
     }
+    /* col widths sum = 100% */
+    .sched-table col.c-period   { width: 8%; }
+    .sched-table col.c-due      { width: 9%; }
+    .sched-table col.c-rent     { width: 11%; }
+    .sched-table col.c-latefee  { width: 9%; }
+    .sched-table col.c-total    { width: 11%; }
+    .sched-table col.c-paid     { width: 11%; }
+    .sched-table col.c-paidon   { width: 10%; }
+    .sched-table col.c-balance  { width: 12%; }
+    .sched-table col.c-status   { width: 9%; }
+
+    /* ── Charges table — fixed layout, 6 columns ── */
+    .charges-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-bottom: 10pt;
+      font-size: 8pt;
+    }
+    .charges-table col.c-desc    { width: 30%; }
+    .charges-table col.c-cat     { width: 14%; }
+    .charges-table col.c-date    { width: 13%; }
+    .charges-table col.c-method  { width: 13%; }
+    .charges-table col.c-amt     { width: 15%; }
+    .charges-table col.c-bal     { width: 15%; }
+
+    /* ── Shared table styles ── */
     thead th {
       background: #1a1a1a;
       color: #fff;
       font-weight: 600;
       text-align: left;
-      padding: 5pt 7pt;
-      font-size: 7.5pt;
+      padding: 5pt 6pt;
+      font-size: 7pt;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      white-space: nowrap;
+      letter-spacing: 0.04em;
+      overflow: hidden;
     }
-    thead th.right { text-align: right; }
+    thead th.right  { text-align: right; }
     thead th.center { text-align: center; }
+    .charges-table thead th { background: #374151; }
+
     tbody tr:nth-child(even) { background: #f9fafb; }
     tbody td {
-      padding: 5pt 7pt;
+      padding: 4pt 6pt;
       border-bottom: 0.5pt solid #e5e7eb;
       vertical-align: middle;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
-    tbody td.right   { text-align: right;  white-space: nowrap; }
-    tbody td.center  { text-align: center; white-space: nowrap; }
-    tbody td.nowrap  { white-space: nowrap; }
-    tbody td.date    { white-space: nowrap; font-size: 8pt; color: #374151; }
-    tbody td.amount  { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    tbody td.right  { text-align: right; }
+    tbody td.center { text-align: center; }
 
     td.late-fee-nonzero { color: #9a3412; font-weight: 600; }
 
     .badge {
       display: inline-block;
-      font-size: 7pt;
+      font-size: 6.5pt;
       font-weight: 700;
-      padding: 1.5pt 6pt;
+      padding: 1.5pt 5pt;
       border-radius: 100pt;
       white-space: nowrap;
     }
@@ -135,38 +165,39 @@
     .badge-late    { background: #ffedd5; color: #9a3412; }
     .badge-unpaid  { background: #fef2f2; color: #991b1b; }
 
-    .charges-table thead th { background: #374151; }
-
-    /* ── Summary + footer side-by-side ── */
-    .bottom-row {
+    /* ── Summary ── */
+    .summary-wrap {
       display: flex;
       justify-content: flex-end;
-      align-items: flex-start;
-      gap: 24pt;
       margin-top: 8pt;
-      margin-bottom: 16pt;
+      margin-bottom: 14pt;
     }
-
     .summary-table {
       border-collapse: collapse;
-      font-size: 9.5pt;
-      min-width: 200pt;
+      font-size: 9pt;
+      min-width: 220pt;
     }
-    .summary-table td { padding: 3.5pt 8pt; white-space: nowrap; }
+    .summary-table td {
+      padding: 3pt 8pt;
+      white-space: nowrap;
+    }
     .summary-table td:last-child { text-align: right; font-weight: 600; }
-    .summary-table tr.sub td { color: #6b7280; font-size: 9pt; }
-    .summary-table tr.divider td { border-top: 0.5pt solid #d1d5db; padding-top: 5pt; }
+    .summary-table tr.sub td    { color: #6b7280; font-size: 8.5pt; }
+    .summary-table tr.divider td {
+      border-top: 0.5pt solid #d1d5db;
+      padding-top: 5pt;
+    }
     .summary-table tr.total td {
       border-top: 1.5pt solid #1a1a1a;
       font-weight: 700;
-      font-size: 10.5pt;
+      font-size: 10pt;
       padding-top: 6pt;
     }
 
     /* ── Footer ── */
     .footer {
       border-top: 1pt solid #d1d5db;
-      padding-top: 8pt;
+      padding-top: 7pt;
       font-size: 7.5pt;
       color: #9ca3af;
       display: flex;
@@ -189,7 +220,7 @@
     </div>
   </div>
 
-  <!-- Info grid — 4 cols in landscape -->
+  <!-- Info grid -->
   <div class="info-grid">
     <div class="info-box">
       <div class="info-box-label">Tenant</div>
@@ -199,7 +230,7 @@
     </div>
     <div class="info-box">
       <div class="info-box-label">Property / Unit</div>
-      <div class="info-line"><strong>{{ property_name }}</strong>{% if unit_name %} — {{ unit_name }}{% endif %}</div>
+      <div class="info-line"><strong>{{ property_name }}</strong>{% if unit_name %} &mdash; {{ unit_name }}{% endif %}</div>
       {% if property_address %}<div class="info-line">{{ property_address }}</div>{% endif %}
     </div>
     <div class="info-box">
@@ -210,7 +241,7 @@
     <div class="info-box">
       <div class="info-box-label">Statement Period</div>
       <div class="info-line"><strong>{{ period_label }}</strong></div>
-      <div class="info-line">{{ rows|length }} schedule(s){% if charge_rows %} · {{ charge_rows|length }} charge(s){% endif %}</div>
+      <div class="info-line">{{ rows|length }} schedule(s){% if charge_rows %} &middot; {{ charge_rows|length }} charge(s){% endif %}</div>
     </div>
   </div>
 
@@ -234,9 +265,20 @@
     </div>
   </div>
 
-  <!-- Rent schedules -->
+  <!-- Rent schedules — 9 columns with fixed layout -->
   <div class="section-heading">Rent Schedule</div>
-  <table>
+  <table class="sched-table">
+    <colgroup>
+      <col class="c-period">
+      <col class="c-due">
+      <col class="c-rent">
+      <col class="c-latefee">
+      <col class="c-total">
+      <col class="c-paid">
+      <col class="c-paidon">
+      <col class="c-balance">
+      <col class="c-status">
+    </colgroup>
     <thead>
       <tr>
         <th>Period</th>
@@ -244,9 +286,8 @@
         <th class="right">Rent</th>
         <th class="right">Late Fee</th>
         <th class="right">Total Due</th>
-        <th class="right">Amount Paid</th>
+        <th class="right">Paid</th>
         <th>Paid On</th>
-        <th>Method</th>
         <th class="right">Balance</th>
         <th class="center">Status</th>
       </tr>
@@ -254,17 +295,16 @@
     <tbody>
       {% for row in rows %}
       <tr>
-        <td class="nowrap">{{ row.period }}</td>
-        <td class="date">{{ row.due_date }}</td>
-        <td class="amount">{{ "{:,.0f}".format(row.rent_amount) }}</td>
-        <td class="amount{% if row.late_fee %} late-fee-nonzero{% endif %}">
+        <td>{{ row.period }}</td>
+        <td>{{ row.due_date }}</td>
+        <td class="right">{{ "{:,.0f}".format(row.rent_amount) }}</td>
+        <td class="right{% if row.late_fee %} late-fee-nonzero{% endif %}">
           {{ "{:,.0f}".format(row.late_fee) if row.late_fee else "—" }}
         </td>
-        <td class="amount">{{ "{:,.0f}".format(row.amount_due) }}</td>
-        <td class="amount">{{ "{:,.0f}".format(row.amount_paid) if row.amount_paid else "—" }}</td>
-        <td class="date">{{ row.paid_at or "—" }}</td>
-        <td class="nowrap">{{ row.method or "—" }}</td>
-        <td class="amount">{{ "{:,.0f}".format(row.balance) }}</td>
+        <td class="right">{{ "{:,.0f}".format(row.amount_due) }}</td>
+        <td class="right">{{ "{:,.0f}".format(row.amount_paid) if row.amount_paid else "—" }}</td>
+        <td>{{ row.paid_at or "—" }}</td>
+        <td class="right">{{ "{:,.0f}".format(row.balance) }}</td>
         <td class="center">
           {% if row.status == "paid" %}
             <span class="badge badge-paid">Paid</span>
@@ -279,7 +319,7 @@
       </tr>
       {% else %}
       <tr>
-        <td colspan="10" style="text-align:center;color:#9ca3af;padding:14pt;">No schedule records for this period.</td>
+        <td colspan="9" style="text-align:center;color:#9ca3af;padding:12pt;">No schedule records for this period.</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -289,6 +329,14 @@
   {% if charge_rows %}
   <div class="section-heading">Additional Charges</div>
   <table class="charges-table">
+    <colgroup>
+      <col class="c-desc">
+      <col class="c-cat">
+      <col class="c-date">
+      <col class="c-method">
+      <col class="c-amt">
+      <col class="c-bal">
+    </colgroup>
     <thead>
       <tr>
         <th>Description</th>
@@ -303,11 +351,11 @@
       {% for row in charge_rows %}
       <tr>
         <td>{{ row.description }}</td>
-        <td class="nowrap">{{ row.category }}</td>
-        <td class="date">{{ row.paid_at }}</td>
-        <td class="nowrap">{{ row.method or "—" }}</td>
-        <td class="amount">{{ "{:,.0f}".format(row.amount) }}</td>
-        <td class="amount">{{ "{:,.0f}".format(row.balance) }}</td>
+        <td>{{ row.category }}</td>
+        <td>{{ row.paid_at }}</td>
+        <td>{{ row.method or "—" }}</td>
+        <td class="right">{{ "{:,.0f}".format(row.amount) }}</td>
+        <td class="right">{{ "{:,.0f}".format(row.balance) }}</td>
       </tr>
       {% endfor %}
     </tbody>
@@ -315,7 +363,7 @@
   {% endif %}
 
   <!-- Summary -->
-  <div class="bottom-row">
+  <div class="summary-wrap">
     <table class="summary-table">
       <tr class="sub">
         <td>Rent Due</td>

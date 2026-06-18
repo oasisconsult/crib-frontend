@@ -32,7 +32,7 @@ def _fmt_date(d: date | datetime | None) -> str:
         return "—"
     if hasattr(d, "date"):
         d = d.date()  # type: ignore[union-attr]
-    return d.strftime("%d %b %Y") if hasattr(d, "strftime") else str(d)
+    return d.strftime("%d %b %y") if hasattr(d, "strftime") else str(d)
 
 
 def _fmt_method(method: str | None) -> str:
