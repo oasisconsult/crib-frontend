@@ -52,7 +52,7 @@ async def create_lease(
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.create_lease(body, current_user.org_id, db)
+    return await svc.create_lease(body, get_org_id(current_user), db)
 
 
 @router.get("", response_model=dict, dependencies=[require_permission("read", "lease")])

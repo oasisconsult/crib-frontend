@@ -143,14 +143,18 @@ def _effective_rules(unit: Unit, prop: Property) -> dict:
 
 # ── CRUD ───────────────────────────────────────────────────────────────────────
 
-async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -> LeaseOut:
-    # Load + validate unit
-    unit_result = await db.execute(
+async def create_lease(body: LeaseCreate, org_id: uuid.UUID | None, db: AsyncSession) -> LeaseOut:
+    # Load + validate unit.
+    # org_id is None when called by a superadmin — skip the org filter so they
+    # can create leases across all organisations.
+    unit_q = (
         select(Unit)
         .join(Property, Unit.property_id == Property.id)
-        .where(Unit.id == uuid.UUID(body.unit_id), Property.organisation_id == org_id)
+        .where(Unit.id == uuid.UUID(body.unit_id))
     )
-    unit = unit_result.scalar_one_or_none()
+    if org_id is not None:
+        unit_q = unit_q.where(Property.organisation_id == org_id)
+    unit = (await db.execute(unit_q)).scalar_one_or_none()
     if not unit:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unit not found")
 
@@ -159,14 +163,15 @@ async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -
     )
     prop = prop_result.scalar_one()
 
+    # Resolve the effective org: superadmin passes None, so fall back to the
+    # property's org so the lease row gets the correct organisation_id.
+    effective_org_id = org_id if org_id is not None else prop.organisation_id
+
     # Load + validate tenant
-    tenant_result = await db.execute(
-        select(Tenant).where(
-            Tenant.id == uuid.UUID(body.tenant_id),
-            Tenant.organisation_id == org_id,
-        )
-    )
-    tenant = tenant_result.scalar_one_or_none()
+    tenant_q = select(Tenant).where(Tenant.id == uuid.UUID(body.tenant_id))
+    if org_id is not None:
+        tenant_q = tenant_q.where(Tenant.organisation_id == org_id)
+    tenant = (await db.execute(tenant_q)).scalar_one_or_none()
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
 
@@ -181,7 +186,7 @@ async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -
 
     # Billing rules: body values take precedence; fall back to property rules
     lease = Lease(
-        organisation_id=org_id,
+        organisation_id=effective_org_id,
         property_id=unit.property_id,
         unit_id=unit.id,
         tenant_id=tenant.id,
@@ -210,7 +215,7 @@ async def create_lease(body: LeaseCreate, org_id: uuid.UUID, db: AsyncSession) -
         try:
             from app.services import tenant_service as tenant_svc
             await tenant_svc.send_onboarding_link(
-                lease_id=lease.id, org_id=org_id, db=db
+                lease_id=lease.id, org_id=effective_org_id, db=db
             )
         except Exception:
             log.warning(
