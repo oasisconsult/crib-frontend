@@ -46,11 +46,16 @@ async def generate_statement_pdf(
     org_id: uuid.UUID | None,
     db: AsyncSession,
     month: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> bytes:
     """
     Render a rent statement to PDF bytes.
 
-    month — optional "YYYY-MM" filter; if omitted all schedules are included.
+    date_from / date_to — inclusive date range filter on period_start.
+    month               — legacy single-month filter (YYYY-MM); ignored when
+                          date_from/date_to are supplied.
+    date_to defaults to today so future unpaid schedules are never shown.
     """
     from weasyprint import HTML as WPHtml  # type: ignore[import]
 
@@ -73,23 +78,29 @@ async def generate_statement_pdf(
     unit   = await db.scalar(select(Unit).where(Unit.id == lease.unit_id)) if lease.unit_id else None
     tenant = await db.scalar(select(Tenant).where(Tenant.id == lease.tenant_id)) if lease.tenant_id else None
 
+    # ── resolve date range ────────────────────────────────────────────────────
+    # Prefer explicit date_from/date_to; fall back to legacy month param.
+    today = date.today()
+    if date_from is None and date_to is None and month:
+        try:
+            year, mon = (int(x) for x in month.split("-"))
+            date_from = date(year, mon, 1)
+            date_to   = date(year + 1, 1, 1) - timedelta(days=1) if mon == 12 else date(year, mon + 1, 1) - timedelta(days=1)
+        except (ValueError, AttributeError):
+            pass
+    # Default the upper bound to today so future schedules are excluded.
+    if date_to is None:
+        date_to = today
+
     # ── fetch schedules ───────────────────────────────────────────────────────
     sched_q = (
         select(RentSchedule)
         .where(RentSchedule.lease_id == lease_id)
         .order_by(RentSchedule.due_date.asc())
     )
-    if month:
-        try:
-            year, mon = (int(x) for x in month.split("-"))
-            ps_start = date(year, mon, 1)
-            ps_end   = date(year + 1, 1, 1) if mon == 12 else date(year, mon + 1, 1)
-            sched_q  = sched_q.where(
-                RentSchedule.period_start >= ps_start,
-                RentSchedule.period_start < ps_end,
-            )
-        except (ValueError, AttributeError):
-            pass  # bad month param → fall back to all schedules
+    if date_from is not None:
+        sched_q = sched_q.where(RentSchedule.period_start >= date_from)
+    sched_q = sched_q.where(RentSchedule.period_start <= date_to)
 
     schedules = list((await db.execute(sched_q)).scalars().all())
 
@@ -197,13 +208,7 @@ async def generate_statement_pdf(
         tenant_name, tenant_email, tenant_phone = "Tenant", "", ""
 
     # ── period label ─────────────────────────────────────────────────────────
-    if month:
-        try:
-            y, m = (int(x) for x in month.split("-"))
-            display_period = date(y, m, 1).strftime("%B %Y")
-        except Exception:
-            display_period = month
-    elif rows:
+    if rows:
         first, last = rows[0]["period"], rows[-1]["period"]
         display_period = first if first == last else f"{first} – {last}"
     else:

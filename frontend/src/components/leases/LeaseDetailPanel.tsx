@@ -17,6 +17,7 @@ import { TerminateModal } from "./TerminateModal";
 import { CorrectStartDateModal } from "./CorrectStartDateModal";
 import { CorrectAdvanceMonthsModal } from "./CorrectAdvanceMonthsModal";
 import { PresignAgreementModal } from "./PresignAgreementModal";
+import { StatementDialog } from "./StatementDialog";
 import { CountersignAgreementModal } from "./CountersignAgreementModal";
 import { LeaseMessagesPanel } from "./LeaseMessagesPanel";
 import { IncreaseHistoryPanel } from "@/features/rent-increase/components/IncreaseHistoryPanel";
@@ -53,6 +54,7 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
   const [pendingEvent, setPendingEvent] = useState<string | null>(null);
   const [documentUrl, setDocumentUrl] = useState<string | undefined>(lease.documentUrl);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [statementOpen, setStatementOpen] = useState(false);
   const [onboardingToken, setOnboardingToken] = useState<string | null>(null);
   const { mutate: transition, isPending } = useTransitionLease();
   const { mutate: sendOnboarding, isPending: sendingOnboarding } = useSendOnboarding();
@@ -289,24 +291,14 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
               </Button>
             )}
             {lease.state === "active" && (
-              <div className="flex items-center gap-1">
-                <a
-                  href={`/api/v1/leases/${lease.id}/statement/pdf`}
-                  download={`statement-${lease.id.slice(0, 8)}.pdf`}
-                  className="inline-flex items-center gap-1.5 rounded-[5px] border border-border bg-background px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <FileDown className="h-3.5 w-3.5" />
-                  Statement PDF
-                </a>
-                <a
-                  href={`/api/v1/leases/${lease.id}/statement`}
-                  download={`statement-${lease.id.slice(0, 8)}.csv`}
-                  className="inline-flex items-center gap-1 rounded-[5px] px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  title="Download CSV"
-                >
-                  CSV
-                </a>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStatementOpen(true)}
+              >
+                <FileDown className="h-3.5 w-3.5" />
+                Statement
+              </Button>
             )}
             {canSend && (
               <Button size="sm" onClick={() => handleTransition("LEASE_SENT")}>
@@ -729,6 +721,11 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         onOpenChange={setRecordPaymentOpen}
         leaseId={lease.id}
         currency={lease.terms.currency}
+      />
+      <StatementDialog
+        lease={lease}
+        open={statementOpen}
+        onClose={() => setStatementOpen(false)}
       />
     </div>
   );

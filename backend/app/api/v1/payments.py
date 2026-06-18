@@ -27,6 +27,7 @@ Endpoints:
 """
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import Response
@@ -516,11 +517,15 @@ async def list_ledger_entries(
 @router.get("/{lease_id}/statement")
 async def get_statement(
     lease_id: uuid.UUID,
+    date_from: date | None = Query(None, alias="dateFrom", description="Start of range YYYY-MM-DD (inclusive)"),
+    date_to:   date | None = Query(None, alias="dateTo",   description="End of range YYYY-MM-DD (inclusive); defaults to today"),
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    """Download a CSV rent statement for this lease (all schedules + payments)."""
-    csv_data = await svc.export_payments_csv(lease_id, get_org_id(current_user), db)
+    """Download a CSV rent statement filtered to the given date range (period_start).
+    Defaults to lease start → today, so future unpaid months are excluded.
+    """
+    csv_data = await svc.export_payments_csv(lease_id, get_org_id(current_user), db, date_from, date_to)
     return Response(
         content=csv_data,
         media_type="text/csv",
@@ -531,14 +536,21 @@ async def get_statement(
 @router.get("/{lease_id}/statement/pdf")
 async def get_statement_pdf(
     lease_id: uuid.UUID,
-    month: str | None = Query(None, description="Filter to one month: YYYY-MM"),
+    date_from: date | None = Query(None, alias="dateFrom", description="Start of range YYYY-MM-DD (inclusive)"),
+    date_to:   date | None = Query(None, alias="dateTo",   description="End of range YYYY-MM-DD (inclusive); defaults to today"),
+    month: str | None = Query(None, description="Legacy single-month filter YYYY-MM"),
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    """Download a formatted PDF rent statement. Optionally filter to one month (YYYY-MM)."""
+    """Download a formatted PDF rent statement filtered to a date range.
+    Defaults to lease start → today, so future unpaid months are excluded.
+    """
     from app.features.statement.service import generate_statement_pdf
 
-    pdf_bytes = await generate_statement_pdf(lease_id, get_org_id(current_user), db, month)
+    pdf_bytes = await generate_statement_pdf(
+        lease_id, get_org_id(current_user), db,
+        month=month, date_from=date_from, date_to=date_to,
+    )
     filename = f"statement_{str(lease_id)[:8]}.pdf"
     return Response(
         content=pdf_bytes,

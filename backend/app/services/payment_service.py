@@ -1344,12 +1344,16 @@ async def export_payments_csv(
     lease_id: uuid.UUID,
     org_id: uuid.UUID | None,
     db: AsyncSession,
+    date_from: "date | None" = None,
+    date_to: "date | None" = None,
 ) -> str:
-    """Return a CSV string of all confirmed payments for a lease.
+    """Return a CSV string of rent schedules for a lease within a date range.
 
+    date_from/date_to filter on period_start (inclusive).
+    date_to defaults to today so future unpaid schedules are excluded.
     Admin can configure included columns via organisation.settings.payments.statementColumns.
-    Defaults to all columns if not configured.
     """
+    from datetime import date as _date
     from app.models.organisation import Organisation
     lease = await _get_lease_checked(lease_id, org_id, db)
 
@@ -1370,12 +1374,20 @@ async def export_payments_csv(
         PaymentStatus.allocated,
     ]
 
-    # Fetch schedules ordered by due date
-    sched_result = await db.execute(
+    # Default upper bound to today so future schedules are excluded.
+    if date_to is None:
+        date_to = _date.today()
+
+    # Fetch schedules ordered by due date, filtered to the requested range.
+    sched_q = (
         select(RentSchedule)
         .where(RentSchedule.lease_id == lease_id)
         .order_by(RentSchedule.due_date.asc())
     )
+    if date_from is not None:
+        sched_q = sched_q.where(RentSchedule.period_start >= date_from)
+    sched_q = sched_q.where(RentSchedule.period_start <= date_to)
+    sched_result = await db.execute(sched_q)
     schedules = sched_result.scalars().all()
 
     # Fetch ALL successful rent payments for the lease in one query.
