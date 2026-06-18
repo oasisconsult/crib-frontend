@@ -40,9 +40,12 @@ from app.models.property import Property, Unit
 from app.utils.references import build_ref, next_seq
 from app.utils.db_filters import org_scope
 from app.schemas.inspection import (
+    AssignInspectorBody,
     InspectionCreate,
     InspectionOut,
     InspectionPublicOut,
+    InspectorPortalOut,
+    InspectorSubmitBody,
     InspectionUpdate,
     MaintenanceCreate,
     MaintenanceOut,
@@ -77,6 +80,8 @@ def _insp_out(i: Inspection, unit_name: str | None = None, property_name: str | 
         tenant_id=str(i.tenant_id) if i.tenant_id else None,
         inspector_id=str(i.inspector_id) if i.inspector_id else None,
         inspector_name=i.inspector_name,
+        inspector_contractor_id=str(i.inspector_contractor_id) if i.inspector_contractor_id else None,
+        inspector_submitted_at=_s(i.inspector_submitted_at),
         type=i.type if isinstance(i.type, str) else i.type.value,
         state=i.state if isinstance(i.state, str) else i.state.value,
         scheduled_date=str(i.scheduled_date),
@@ -1180,6 +1185,288 @@ async def sign_tenant(token: str, full_name: str, db: AsyncSession) -> Inspectio
         sign_token_expires_at=None,  # token consumed
         report_pdf_url=i.report_pdf_url,
     )
+
+
+# ── Inspector portal (external, token-gated, no login) ────────────────────────
+
+async def assign_inspector(
+    inspection_id: uuid.UUID,
+    body: AssignInspectorBody,
+    org_id: uuid.UUID | None,
+    db: AsyncSession,
+) -> InspectionOut:
+    """Assign an approved contractor as the inspector and email them a portal link."""
+    from app.models.contractor import Contractor as _Contractor
+
+    i = await _get_inspection(inspection_id, org_id, db)
+
+    contractor = await db.scalar(
+        select(_Contractor).where(
+            _Contractor.id == uuid.UUID(body.contractor_id),
+            _Contractor.is_active.is_(True),
+        )
+    )
+    if not contractor:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Inspector contractor not found or inactive",
+        )
+    if not contractor.is_inspector:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="This contractor is not marked as an inspector. Enable 'Is Inspector' in the contractor directory.",
+        )
+
+    now = datetime.now(timezone.utc)
+    i.inspector_contractor_id = contractor.id
+    i.inspector_name = contractor.name
+    i.inspector_token = secrets.token_urlsafe(48)
+    i.inspector_token_expires_at = now + timedelta(days=body.expires_in_days)
+
+    await db.flush()
+    await db.refresh(i)
+
+    # Send email invite to the contractor (non-fatal)
+    _invite_notif_ids: list[str] = []
+    if contractor.email:
+        try:
+            from app.models.notification import Notification, NotificationState
+            from app.models.property import Property as _P, Unit as _U
+            from app.models.organisation import Organisation as _Org
+
+            prop = await db.scalar(select(_P).where(_P.id == i.property_id)) if i.property_id else None
+            unit = await db.scalar(select(_U).where(_U.id == i.unit_id)) if i.unit_id else None
+            org  = await db.scalar(select(_Org).where(_Org.id == i.organisation_id)) if i.organisation_id else None
+
+            insp_label = _insp_type_label(i.type)
+            prop_name  = prop.name if prop else "the property"
+            location   = f"{unit.name}, {prop_name}" if unit else prop_name
+            org_name   = org.name if org else "Crib Property Management"
+
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+            portal_url   = f"{frontend_url}/inspect/portal/{i.inspector_token}"
+            expires_str  = i.inspector_token_expires_at.strftime("%d %B %Y")
+
+            email_body = (
+                f"Dear {contractor.name},\n\n"
+                f"You have been assigned to carry out a {insp_label} inspection at {location}.\n\n"
+                f"Scheduled: {i.scheduled_date}"
+                + (f" at {i.scheduled_time_slot}" if i.scheduled_time_slot else "") + "\n\n"
+                f"Please use the link below to access the inspection checklist, upload photos, and submit your findings:\n\n"
+                f"    {portal_url}\n\n"
+                f"This link is unique to you and expires on {expires_str}. "
+                f"Do not share it with others.\n\n"
+                f"Best regards,\n{org_name}"
+            )
+
+            _pending_i: list[str] = []
+            async with db.begin_nested():
+                notif = Notification(
+                    organisation_id=i.organisation_id,
+                    channel="email",
+                    trigger="inspector_invite",
+                    state=NotificationState.queued,
+                    recipient_name=contractor.name,
+                    recipient_email=contractor.email,
+                    subject=f"Inspection Assignment: {insp_label.title()} at {prop_name}",
+                    body=email_body,
+                    queued_at=now,
+                )
+                db.add(notif)
+                await db.flush()
+                _pending_i.append(str(notif.id))
+
+                if contractor.phone:
+                    wa_notif = Notification(
+                        organisation_id=i.organisation_id,
+                        channel="whatsapp",
+                        trigger="inspector_invite",
+                        state=NotificationState.queued,
+                        recipient_name=contractor.name,
+                        recipient_phone=contractor.phone,
+                        subject=None,
+                        body=(
+                            f"Hi {contractor.name}, you have been assigned a {insp_label} inspection "
+                            f"at {location} on {i.scheduled_date}. Access your checklist here: {portal_url}"
+                        ),
+                        queued_at=now,
+                    )
+                    db.add(wa_notif)
+                    await db.flush()
+                    _pending_i.append(str(wa_notif.id))
+
+            _invite_notif_ids = _pending_i
+        except Exception:
+            log.warning("inspector.assign.notify.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
+
+    if _invite_notif_ids:
+        from app.worker.tasks.notifications import deliver_notification
+        for _nid in _invite_notif_ids:
+            deliver_notification.delay(_nid)
+
+    return _insp_out(i)
+
+
+async def get_by_inspector_token(token: str, db: AsyncSession) -> InspectorPortalOut:
+    """Public — return inspection data for the inspector portal (no auth)."""
+    i = await db.scalar(select(Inspection).where(Inspection.inspector_token == token))
+    if not i:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inspector link not found")
+
+    now = datetime.now(timezone.utc)
+    if i.inspector_token_expires_at and i.inspector_token_expires_at < now:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="This inspector link has expired")
+
+    from app.models.property import Property as _P, Unit as _U
+    prop = await db.scalar(select(_P).where(_P.id == i.property_id)) if i.property_id else None
+    unit = await db.scalar(select(_U).where(_U.id == i.unit_id)) if i.unit_id else None
+
+    prop_address = ""
+    if prop and prop.address:
+        addr = prop.address if isinstance(prop.address, dict) else {}
+        parts = [addr.get("line1"), addr.get("city"), addr.get("state"), addr.get("country")]
+        prop_address = ", ".join(p for p in parts if p)
+
+    def _s(v) -> str | None:
+        return None if v is None else (v.isoformat() if hasattr(v, "isoformat") else str(v))
+
+    return InspectorPortalOut(
+        id=str(i.id),
+        reference=i.reference,
+        type=i.type if isinstance(i.type, str) else i.type.value,
+        state=i.state if isinstance(i.state, str) else i.state.value,
+        scheduled_date=str(i.scheduled_date),
+        scheduled_time_slot=i.scheduled_time_slot,
+        property_name=prop.name if prop else None,
+        unit_name=unit.name if unit else None,
+        property_address=prop_address or None,
+        checklist=i.checklist or [],
+        overall_condition=i.overall_condition,
+        summary=i.summary,
+        recommendations=i.recommendations,
+        photo_urls=i.photo_urls or [],
+        inspector_submitted_at=_s(i.inspector_submitted_at),
+        inspector_token_expires_at=_s(i.inspector_token_expires_at),
+        inspector_name=i.inspector_name,
+    )
+
+
+async def inspector_submit(
+    token: str, body: InspectorSubmitBody, db: AsyncSession
+) -> InspectorPortalOut:
+    """Public — inspector submits their checklist findings via a token link."""
+    i = await db.scalar(select(Inspection).where(Inspection.inspector_token == token))
+    if not i:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inspector link not found")
+
+    now = datetime.now(timezone.utc)
+    if i.inspector_token_expires_at and i.inspector_token_expires_at < now:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="This inspector link has expired")
+
+    if i.inspector_submitted_at:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already submitted this inspection. Contact the property manager if changes are needed.",
+        )
+
+    # Persist checklist + findings
+    i.checklist = [item.model_dump() for item in body.checklist]
+    if body.overall_condition:
+        i.overall_condition = body.overall_condition
+    if body.summary:
+        i.summary = body.summary
+    if body.recommendations:
+        i.recommendations = body.recommendations
+    if body.photo_urls:
+        existing = list(i.photo_urls or [])
+        existing.extend(body.photo_urls)
+        i.photo_urls = existing
+
+    i.inspector_submitted_at = now
+
+    # Auto-advance to in_progress if still scheduled, then to completed
+    current = i.state if isinstance(i.state, str) else i.state.value
+    allowed = INSPECTION_TRANSITIONS.get(current, [])
+    if InspectionState.in_progress in allowed:
+        i.state = InspectionState.in_progress
+        i.started_at = now
+    if InspectionState.completed in INSPECTION_TRANSITIONS.get(i.state if isinstance(i.state, str) else i.state.value, []):
+        i.state = InspectionState.completed
+        i.completed_at = now
+
+    await db.flush()
+
+    # Notify managers that the inspector has submitted findings
+    try:
+        from app.models.notification import Notification, NotificationState
+        from app.models.organisation import Organisation as _Org
+        from app.models.profile import Profile as _Mgr
+        from app.models.property import Property as _P
+        from app.worker.tasks.notifications import deliver_notification
+
+        org  = await db.scalar(select(_Org).where(_Org.id == i.organisation_id)) if i.organisation_id else None
+        prop = await db.scalar(select(_P).where(_P.id == i.property_id)) if i.property_id else None
+        insp_label = _insp_type_label(i.type)
+        prop_name  = prop.name if prop else "the property"
+        portal_url = os.getenv("FRONTEND_URL", "http://localhost:3000") + f"/inspections/{i.id}"
+
+        _pending_s: list[str] = []
+        async with db.begin_nested():
+            managers = list(await db.scalars(
+                select(_Mgr).where(
+                    _Mgr.organisation_id == i.organisation_id,
+                    _Mgr.role.in_(["owner", "manager"]),
+                )
+            )) if i.organisation_id else []
+            emails_sent: set[str] = set()
+            for mgr in managers:
+                if mgr.email and mgr.email not in emails_sent:
+                    n = Notification(
+                        organisation_id=i.organisation_id,
+                        channel="email",
+                        trigger="inspector_submitted",
+                        state=NotificationState.queued,
+                        recipient_name=mgr.display_name or mgr.email,
+                        recipient_email=mgr.email,
+                        subject=f"Inspector Submitted: {insp_label.title()} at {prop_name}",
+                        body=(
+                            f"The inspector ({i.inspector_name or 'inspector'}) has submitted their findings "
+                            f"for the {insp_label} inspection at {prop_name}.\n\n"
+                            f"Reference: {i.reference or str(i.id)[:8].upper()}\n\n"
+                            f"Please review and approve the inspection:\n    {portal_url}"
+                        ),
+                        queued_at=now,
+                    )
+                    db.add(n)
+                    await db.flush()
+                    _pending_s.append(str(n.id))
+                    emails_sent.add(mgr.email)
+            if not emails_sent and org and org.billing_email:
+                n = Notification(
+                    organisation_id=i.organisation_id,
+                    channel="email",
+                    trigger="inspector_submitted",
+                    state=NotificationState.queued,
+                    recipient_name=org.name,
+                    recipient_email=org.billing_email,
+                    subject=f"Inspector Submitted: {insp_label.title()} at {prop_name}",
+                    body=(
+                        f"Inspector findings submitted for {prop_name}. "
+                        f"Reference: {i.reference}. Review at: {portal_url}"
+                    ),
+                    queued_at=now,
+                )
+                db.add(n)
+                await db.flush()
+                _pending_s.append(str(n.id))
+
+        for _nid in _pending_s:
+            deliver_notification.delay(_nid)
+    except Exception:
+        log.warning("inspector.submit.notify.failed", extra={"inspection_id": str(i.id)}, exc_info=True)
+
+    await db.refresh(i)
+    return await get_by_inspector_token(token, db)
 
 
 # ── Maintenance CRUD ───────────────────────────────────────────────────────────

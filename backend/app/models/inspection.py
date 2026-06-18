@@ -124,6 +124,15 @@ class Inspection(TimestampedBase):
     )
     inspector_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # External contractor-inspector portal (no login required)
+    inspector_contractor_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("contractors.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    inspector_token: Mapped[str | None] = mapped_column(String(128), nullable=True, unique=True, index=True)
+    inspector_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    inspector_submitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     reference: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True, index=True)
 
     type: Mapped[str] = mapped_column(String(20), nullable=False)

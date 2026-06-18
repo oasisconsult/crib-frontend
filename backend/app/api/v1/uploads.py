@@ -465,6 +465,78 @@ async def presign_upload_onboarding(
     return await _do_presign(body, db)
 
 
+# ── Upload endpoints (public — inspector token auth) ─────────────────────────
+
+async def _validate_inspector_token(token: str, db: AsyncSession):
+    """Return the Inspection for a valid, unexpired inspector token (raises 404/410 otherwise)."""
+    from datetime import datetime, timezone
+    from app.models.inspection import Inspection
+    insp = await db.scalar(select(Inspection).where(Inspection.inspector_token == token))
+    if not insp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inspector link not found")
+    now = datetime.now(timezone.utc)
+    if insp.inspector_token_expires_at and insp.inspector_token_expires_at < now:
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Inspector link has expired")
+    return insp
+
+
+@router.post("/presign/inspector/{token}", response_model=PresignResponse)
+async def presign_inspector_upload(
+    token: str,
+    body: PresignRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Presigned PUT URL for the inspector portal.
+
+    Token in the URL path substitutes for JWT auth. Only allows
+    category='inspection_photo'; inspection_id is injected from the
+    token so the caller cannot write to arbitrary inspection buckets.
+    """
+    insp = await _validate_inspector_token(token, db)
+    body.category = "inspection_photo"
+    body.inspection_id = str(insp.id)
+    return await _do_presign(body, db)
+
+
+@router.post("/file/inspector/{token}", response_model=PresignResponse)
+async def upload_inspector_photo_proxy(
+    token: str,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Proxy upload for the inspector portal (no JWT — token-gated).
+
+    Stores the photo under inspections/{inspection_id}/... using the
+    same key structure as authenticated inspection photo uploads.
+    """
+    insp = await _validate_inspector_token(token, db)
+
+    config = await settings_service.get_storage_config(db)
+    try:
+        provider = get_storage_provider(config, local_base_url=get_settings().storage_local_base_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    key = _build_key(
+        "inspection_photo",
+        file.filename or "upload",
+        inspection_id=str(insp.id),
+    )
+    data = await file.read()
+    mime = file.content_type or "application/octet-stream"
+    public = await provider.upload(key, data, mime)
+
+    return PresignResponse(
+        upload_url="",
+        public_url=public,
+        key=key,
+        expires_in=0,
+        provider=config.get("provider", "local"),
+    )
+
+
 # ── Authenticated file proxy (MinIO / S3 private buckets) ────────────────────
 
 @router.get("/serve/{key:path}")

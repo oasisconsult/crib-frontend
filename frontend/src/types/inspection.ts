@@ -14,6 +14,7 @@ export interface ChecklistItem {
 
 export interface Inspection {
   id: string;
+  reference?: string;
   state: InspectionState;
   type: InspectionType;
   // Location
@@ -24,6 +25,10 @@ export interface Inspection {
   tenantId?: string;
   inspectorId?: string;
   inspectorName?: string;
+  // External inspector (contractor directory, no login)
+  inspectorContractorId?: string;
+  inspectorContractorName?: string;
+  inspectorSubmittedAt?: string;
   // Schedule
   scheduledDate: string;
   scheduledTimeSlot?: string;
@@ -56,6 +61,34 @@ export interface Inspection {
   propertyName?: string;
 }
 
+export interface InspectorPortalOut {
+  id: string;
+  reference?: string;
+  type: string;
+  state: string;
+  scheduledDate: string;
+  scheduledTimeSlot?: string;
+  propertyName?: string;
+  unitName?: string;
+  propertyAddress?: string;
+  checklist: ChecklistItem[];
+  overallCondition?: string;
+  summary?: string;
+  recommendations?: string;
+  photoUrls: string[];
+  inspectorSubmittedAt?: string;
+  inspectorTokenExpiresAt?: string;
+  inspectorName?: string;
+}
+
+export interface InspectorSubmitBody {
+  checklist: ChecklistItem[];
+  overallCondition?: string;
+  summary?: string;
+  recommendations?: string;
+  photoUrls?: string[];
+}
+
 export type ContractorSpecialty =
   | "plumbing" | "electrical" | "structural" | "appliance"
   | "pest" | "security" | "other";
@@ -69,6 +102,7 @@ export interface Contractor {
   specialty?: ContractorSpecialty;
   notes?: string;
   isActive: boolean;
+  isInspector: boolean;
   createdAt: string;
   updatedAt: string;
 }

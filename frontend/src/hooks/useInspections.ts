@@ -3,6 +3,7 @@ import { queryKeys } from "@/lib/queryClient";
 import { inspectionsApi } from "@/services/api/inspections";
 import { toast } from "@/store/useUIStore";
 import type { Contractor, QueryParams, MaintenanceIssue, Inspection } from "@/types";
+import type { InspectorSubmitBody } from "@/types/inspection";
 import type { MaintenanceEvent, InspectionEvent } from "@/types/states";
 
 export function useInspections(params?: QueryParams & { unitId?: string; leaseId?: string }) {
@@ -122,6 +123,42 @@ export function useTransitionMaintenanceIssue() {
       toast.success("Status updated");
     },
     onError: () => toast.error("Failed to update status"),
+  });
+}
+
+// ── Inspector portal hooks ────────────────────────────────────────────────────
+
+export function useAssignInspector() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, contractorId, expiresInDays }: { id: string; contractorId: string; expiresInDays?: number }) =>
+      inspectionsApi.assignInspector(id, contractorId, expiresInDays),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.inspections.detail(id) });
+      toast.success("Inspector assigned — invite email sent");
+    },
+    onError: () => toast.error("Failed to assign inspector"),
+  });
+}
+
+export function useInspectorPortal(token: string) {
+  return useQuery({
+    queryKey: ["inspector-portal", token],
+    queryFn: () => inspectionsApi.getInspectorPortal(token),
+    enabled: !!token,
+    retry: false,
+  });
+}
+
+export function useInspectorSubmit(token: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: InspectorSubmitBody) => inspectionsApi.inspectorSubmit(token, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["inspector-portal", token] });
+      toast.success("Inspection submitted — the property manager has been notified");
+    },
+    onError: () => toast.error("Failed to submit inspection"),
   });
 }
 

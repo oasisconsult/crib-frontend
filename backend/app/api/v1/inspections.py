@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_current_user, get_org_id
 from app.core.database import get_db
 from app.schemas.inspection import (
+    AssignInspectorBody,
     InspectionCreate,
     InspectionOut,
     InspectionPhotos,
@@ -28,6 +29,8 @@ from app.schemas.inspection import (
     InspectionSignLandlord,
     InspectionTransition,
     InspectionUpdate,
+    InspectorPortalOut,
+    InspectorSubmitBody,
     MaintenanceCreate,
     MaintenanceOut,
     MaintenanceTransition,
@@ -219,6 +222,43 @@ async def tenant_sign_inspection(
     db: AsyncSession = Depends(get_db),
 ):
     return await inspection_service.sign_tenant(token, body.full_name, db)
+
+
+# ── Inspector portal endpoints (external inspector, no login) ──────────────────
+
+@router.post("/inspections/{inspection_id}/assign-inspector", response_model=InspectionOut)
+async def assign_inspector(
+    inspection_id: uuid.UUID,
+    body: AssignInspectorBody,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Assign a contractor-inspector and dispatch their portal invite email."""
+    if not current_user.is_owner_or_manager():
+        from fastapi import HTTPException, status as _status
+        raise HTTPException(status_code=_status.HTTP_403_FORBIDDEN, detail="Only managers and owners can assign inspectors")
+    return await inspection_service.assign_inspector(
+        inspection_id, body, get_org_id(current_user), db
+    )
+
+
+@router.get("/inspections/portal/{token}", response_model=InspectorPortalOut)
+async def inspector_portal_get(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public — inspector retrieves their assigned inspection via token link."""
+    return await inspection_service.get_by_inspector_token(token, db)
+
+
+@router.post("/inspections/portal/{token}", response_model=InspectorPortalOut)
+async def inspector_portal_submit(
+    token: str,
+    body: InspectorSubmitBody,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public — inspector submits checklist findings via token link."""
+    return await inspection_service.inspector_submit(token, body, db)
 
 
 # ── Maintenance ────────────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import {
   Home,
   Calendar,
   User,
+  UserPlus,
   ClipboardList,
   Play,
   CheckCircle,
@@ -18,6 +19,7 @@ import {
   ThumbsUp,
   RotateCcw,
   Edit,
+  ExternalLink,
   X,
   Save,
   Wrench,
@@ -38,6 +40,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -52,6 +62,8 @@ import {
   useUpdateInspection,
   useTransitionInspection,
   useMaintenanceIssues,
+  useAssignInspector,
+  useContractors,
 } from "@/hooks/useInspections";
 import { queryKeys } from "@/lib/queryClient";
 import { inspectionsApi } from "@/services/api/inspections";
@@ -933,6 +945,125 @@ function ReportSignatureSection({
   );
 }
 
+// ── Assign Inspector Modal ────────────────────────────────────────────────────
+
+function AssignInspectorModal({
+  inspectionId,
+  onClose,
+  onAssigned,
+}: {
+  inspectionId: string;
+  onClose: () => void;
+  onAssigned: () => void;
+}) {
+  const { data: contractorsData, isLoading } = useContractors({ isActive: true });
+  const inspectors = (contractorsData?.data ?? []).filter((c) => c.isInspector);
+  const [selectedId, setSelectedId] = useState("");
+  const [expiresInDays, setExpiresInDays] = useState(7);
+  const { mutate: assign, isPending } = useAssignInspector();
+
+  const handleAssign = () => {
+    if (!selectedId) return;
+    assign(
+      { id: inspectionId, contractorId: selectedId, expiresInDays },
+      {
+        onSuccess: () => {
+          onAssigned();
+          onClose();
+        },
+      },
+    );
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Assign Inspector</DialogTitle>
+          <DialogDescription>
+            Select an inspector from your contractor directory. They will receive an email with a
+            private link to complete the inspection checklist — no account required.
+          </DialogDescription>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : inspectors.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-6 text-center space-y-2">
+            <UserPlus className="h-8 w-8 text-muted-foreground mx-auto" />
+            <p className="text-sm font-medium">No inspectors in your directory</p>
+            <p className="text-xs text-muted-foreground">
+              Go to <strong>Contractors</strong> and enable the &ldquo;Is Inspector&rdquo; flag on the contractors who perform inspections.
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/contractors">
+                <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                Manage Contractors
+              </a>
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Inspector</Label>
+              <Select value={selectedId} onValueChange={setSelectedId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an inspector…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {inspectors.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <div className="flex flex-col text-left">
+                        <span>{c.name}</span>
+                        {c.email && (
+                          <span className="text-xs text-muted-foreground">{c.email}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Link expires in (days)</Label>
+              <Select
+                value={String(expiresInDays)}
+                onValueChange={(v) => setExpiresInDays(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[3, 7, 14, 30].map((d) => (
+                    <SelectItem key={d} value={String(d)}>{d} days</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                The inspector portal link expires after this many days.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {inspectors.length > 0 && (
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose} disabled={isPending}>Cancel</Button>
+            <Button onClick={handleAssign} disabled={!selectedId || isPending} loading={isPending}>
+              <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+              Assign &amp; Send Invite
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function InspectionDetailPage({ params }: Props) {
@@ -948,6 +1079,7 @@ export default function InspectionDetailPage({ params }: Props) {
   const canEdit = can("properties:write");
 
   const [editing, setEditing] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
   const { mutate: transition, isPending: transitioning } = useTransitionInspection();
 
   function refreshInspection() {
@@ -1029,6 +1161,12 @@ export default function InspectionDetailPage({ params }: Props) {
                 {action.label}
               </Button>
             ))}
+            {canEdit && (currentState === "scheduled" || currentState === "in_progress") && (
+              <Button variant="outline" size="sm" onClick={() => setAssignOpen(true)}>
+                <UserPlus className="h-3.5 w-3.5" />
+                Assign Inspector
+              </Button>
+            )}
             {canEdit && (
               <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                 <Edit className="h-3.5 w-3.5" />
@@ -1266,9 +1404,25 @@ export default function InspectionDetailPage({ params }: Props) {
                 </Button>
               </div>
               <Separator />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Inspector</span>
-                <span>{inspectorName ?? "—"}</span>
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between items-start">
+                  <span className="text-muted-foreground">Inspector</span>
+                  <span className="text-right max-w-[60%] break-words">
+                    {inspection.inspectorContractorName ?? inspectorName ?? "—"}
+                  </span>
+                </div>
+                {inspection.inspectorSubmittedAt && (
+                  <div className="flex justify-end">
+                    <span className="text-[11px] text-emerald-600 font-medium">
+                      ✓ Submitted {new Date(inspection.inspectorSubmittedAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+                {inspection.inspectorContractorId && !inspection.inspectorSubmittedAt && canEdit && (
+                  <div className="flex justify-end">
+                    <span className="text-[11px] text-amber-600">Awaiting submission</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -1357,6 +1511,14 @@ export default function InspectionDetailPage({ params }: Props) {
           )}
         </div>
       </div>
+
+      {assignOpen && (
+        <AssignInspectorModal
+          inspectionId={inspection.id}
+          onClose={() => setAssignOpen(false)}
+          onAssigned={refreshInspection}
+        />
+      )}
     </div>
   );
 }

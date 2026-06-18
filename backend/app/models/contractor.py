@@ -25,6 +25,7 @@ class Contractor(TimestampedBase):
     specialty: Mapped[str | None] = mapped_column(String(20), nullable=True)
     notes: Mapped[str | None] = mapped_column(Text(), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=True)
+    is_inspector: Mapped[bool] = mapped_column(Boolean(), nullable=False, default=False)
 
     def __repr__(self) -> str:
         return f"<Contractor name={self.name!r} org={self.organisation_id}>"

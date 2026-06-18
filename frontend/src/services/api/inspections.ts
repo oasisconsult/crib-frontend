@@ -1,5 +1,6 @@
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "./client";
 import type { Contractor, Inspection, MaintenanceIssue, PaginatedResponse, QueryParams } from "@/types";
+import type { InspectorPortalOut, InspectorSubmitBody } from "@/types/inspection";
 import type { InspectionEvent, MaintenanceEvent } from "@/types/states";
 import { toInspectionParams, toMaintenanceParams } from "@/utils/backendParams";
 
@@ -70,6 +71,16 @@ export const inspectionsApi = {
   tenantSign: (token: string, fullName: string) =>
     apiPost<InspectionPublicOut>(`/inspections/sign/${token}`, { fullName }),
 
+  // Inspector portal (external contractor, no login)
+  assignInspector: (id: string, contractorId: string, expiresInDays?: number) =>
+    apiPost<Inspection>(`/inspections/${id}/assign-inspector`, { contractorId, expiresInDays: expiresInDays ?? 7 }),
+
+  getInspectorPortal: (token: string) =>
+    apiGet<InspectorPortalOut>(`/inspections/portal/${token}`),
+
+  inspectorSubmit: (token: string, body: InspectorSubmitBody) =>
+    apiPost<InspectorPortalOut>(`/inspections/portal/${token}`, body),
+
   // Maintenance
   listMaintenance: (params?: QueryParams) =>
     apiGet<PaginatedResponse<MaintenanceIssue>>("/maintenance", toMaintenanceParams(params)),
@@ -93,7 +104,7 @@ export const inspectionsApi = {
   getContractor: (id: string) =>
     apiGet<Contractor>(`/contractors/${id}`),
 
-  createContractor: (data: Omit<Contractor, "id" | "organisationId" | "isActive" | "createdAt" | "updatedAt">) =>
+  createContractor: (data: Omit<Contractor, "id" | "organisationId" | "isActive" | "isInspector" | "createdAt" | "updatedAt"> & { isInspector?: boolean }) =>
     apiPost<Contractor>("/contractors", data),
 
   updateContractor: (id: string, data: Partial<Omit<Contractor, "id" | "organisationId" | "createdAt" | "updatedAt">>) =>
