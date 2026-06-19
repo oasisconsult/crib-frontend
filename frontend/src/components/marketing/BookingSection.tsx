@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import {
   ChevronLeft, ChevronRight, Clock, Calendar,
-  CheckCircle, Globe, ArrowLeft, Building2, Mail,
+  CheckCircle, Globe, ArrowLeft, Mail,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { apiGet, apiPost } from "@/services/api/client";
@@ -254,14 +254,6 @@ function InfoPanel({
       )}
 
       <div>
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#239487]">
-            <Building2 className="h-4 w-4 text-white" aria-hidden />
-          </div>
-          <span className="text-xs font-bold uppercase tracking-widest text-[hsl(var(--muted-foreground))]">
-            Crib
-          </span>
-        </div>
         <h3 className="text-lg font-bold text-[hsl(var(--foreground))]">
           Book a Product Demo
         </h3>
