@@ -49,6 +49,12 @@ const PUBLIC_PATH_PREFIXES = [
   // Support contact details (email/phone/WhatsApp) shown in the marketing
   // site footer — no Logto session exists for an anonymous visitor
   "public/contact-info",
+  // Inspector portal — token in the URL path is the credential; the inspector
+  // has no Logto account and never has a session cookie
+  "inspections/portal/",
+  // Inspector photo upload proxy — same token-gating, no session cookie
+  "upload/file/inspector/",
+  "upload/presign/inspector/",
 ];
 
 function isPublicPath(path: string[]): boolean {
