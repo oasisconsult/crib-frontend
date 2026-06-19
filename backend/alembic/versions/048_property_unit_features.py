@@ -29,22 +29,15 @@ def upgrade() -> None:
 
     op.execute(sa.text("BEGIN"))
 
-    # ── Phase 2: Create new enum types ────────────────────────────────────────
-    op.execute(sa.text(
-        "CREATE TYPE furnished_status_enum AS ENUM ('unfurnished', 'semi_furnished', 'furnished')"
-    ))
-    op.execute(sa.text(
-        "CREATE TYPE water_source_enum AS ENUM ('municipal', 'borehole', 'tank', 'multiple')"
-    ))
-    op.execute(sa.text(
-        "CREATE TYPE backup_power_enum AS ENUM ('none', 'solar', 'generator', 'both')"
-    ))
-    op.execute(sa.text(
-        "CREATE TYPE internet_type_enum AS ENUM ('none', 'wifi', 'fibre')"
-    ))
-    op.execute(sa.text(
-        "CREATE TYPE compound_type_enum AS ENUM ('private', 'shared')"
-    ))
+    # ── Phase 2: Create new enum types (idempotent) ───────────────────────────
+    for ddl in (
+        "DO $$ BEGIN CREATE TYPE furnished_status_enum AS ENUM ('unfurnished', 'semi_furnished', 'furnished'); EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+        "DO $$ BEGIN CREATE TYPE water_source_enum AS ENUM ('municipal', 'borehole', 'tank', 'multiple'); EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+        "DO $$ BEGIN CREATE TYPE backup_power_enum AS ENUM ('none', 'solar', 'generator', 'both'); EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+        "DO $$ BEGIN CREATE TYPE internet_type_enum AS ENUM ('none', 'wifi', 'fibre'); EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+        "DO $$ BEGIN CREATE TYPE compound_type_enum AS ENUM ('private', 'shared'); EXCEPTION WHEN duplicate_object THEN NULL; END $$",
+    ):
+        op.execute(sa.text(ddl))
 
     # ── Phase 3: Migrate existing unit type data to new labels ─────────────────
     op.execute(sa.text("UPDATE units SET type = 'bedsitter' WHERE type = 'single'"))
@@ -52,36 +45,36 @@ def upgrade() -> None:
     op.execute(sa.text("UPDATE units SET type = 'one_bed'   WHERE type = 'ensuite'"))
     op.execute(sa.text("UPDATE units SET type = 'bedsitter' WHERE type = 'shared'"))
 
-    # ── Phase 4: Add new property columns ─────────────────────────────────────
-    op.execute(sa.text("ALTER TABLE properties ADD COLUMN total_floors       INTEGER  NOT NULL DEFAULT 1"))
-    op.execute(sa.text("ALTER TABLE properties ADD COLUMN year_built         INTEGER  NULL"))
-    op.execute(sa.text("ALTER TABLE properties ADD COLUMN land_size_acres    FLOAT    NULL"))
-    op.execute(sa.text("ALTER TABLE properties ADD COLUMN has_perimeter_wall BOOLEAN  NOT NULL DEFAULT FALSE"))
-    op.execute(sa.text("ALTER TABLE properties ADD COLUMN has_gate           BOOLEAN  NOT NULL DEFAULT FALSE"))
-    op.execute(sa.text("ALTER TABLE properties ADD COLUMN has_guard          BOOLEAN  NOT NULL DEFAULT FALSE"))
-    op.execute(sa.text("ALTER TABLE properties ADD COLUMN has_cctv           BOOLEAN  NOT NULL DEFAULT FALSE"))
-    op.execute(sa.text("ALTER TABLE properties ADD COLUMN total_parking_spaces INTEGER NOT NULL DEFAULT 0"))
-    op.execute(sa.text(
-        "ALTER TABLE properties "
-        "ADD COLUMN water_source    water_source_enum  NOT NULL DEFAULT 'municipal', "
-        "ADD COLUMN backup_power    backup_power_enum  NOT NULL DEFAULT 'none', "
-        "ADD COLUMN internet_type   internet_type_enum NOT NULL DEFAULT 'none', "
-        "ADD COLUMN compound_type   compound_type_enum NOT NULL DEFAULT 'private'"
-    ))
+    # ── Phase 4: Add new property columns (IF NOT EXISTS = idempotent) ────────
+    for ddl in (
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS total_floors        INTEGER  NOT NULL DEFAULT 1",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS year_built          INTEGER  NULL",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS land_size_acres     FLOAT    NULL",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_perimeter_wall  BOOLEAN  NOT NULL DEFAULT FALSE",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_gate            BOOLEAN  NOT NULL DEFAULT FALSE",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_guard           BOOLEAN  NOT NULL DEFAULT FALSE",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS has_cctv            BOOLEAN  NOT NULL DEFAULT FALSE",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS total_parking_spaces INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS water_source    water_source_enum  NOT NULL DEFAULT 'municipal'",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS backup_power    backup_power_enum  NOT NULL DEFAULT 'none'",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS internet_type   internet_type_enum NOT NULL DEFAULT 'none'",
+        "ALTER TABLE properties ADD COLUMN IF NOT EXISTS compound_type   compound_type_enum NOT NULL DEFAULT 'private'",
+    ):
+        op.execute(sa.text(ddl))
 
-    # ── Phase 5: Add new unit columns ─────────────────────────────────────────
-    op.execute(sa.text("ALTER TABLE units ADD COLUMN sitting_rooms          INTEGER NOT NULL DEFAULT 1"))
-    op.execute(sa.text("ALTER TABLE units ADD COLUMN toilets                INTEGER NOT NULL DEFAULT 1"))
-    op.execute(sa.text("ALTER TABLE units ADD COLUMN is_self_contained      BOOLEAN NOT NULL DEFAULT TRUE"))
-    op.execute(sa.text("ALTER TABLE units ADD COLUMN has_kitchen            BOOLEAN NOT NULL DEFAULT TRUE"))
-    op.execute(sa.text("ALTER TABLE units ADD COLUMN has_store              BOOLEAN NOT NULL DEFAULT FALSE"))
-    op.execute(sa.text("ALTER TABLE units ADD COLUMN has_domestic_quarters  BOOLEAN NOT NULL DEFAULT FALSE"))
-    op.execute(sa.text("ALTER TABLE units ADD COLUMN parking_spaces         INTEGER NOT NULL DEFAULT 0"))
-    op.execute(sa.text(
-        "ALTER TABLE units "
-        "ADD COLUMN furnished_status furnished_status_enum NOT NULL DEFAULT 'unfurnished', "
-        "ADD COLUMN water_source     water_source_enum     NULL"
-    ))
+    # ── Phase 5: Add new unit columns (IF NOT EXISTS = idempotent) ─────────
+    for ddl in (
+        "ALTER TABLE units ADD COLUMN IF NOT EXISTS sitting_rooms          INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE units ADD COLUMN IF NOT EXISTS toilets                INTEGER NOT NULL DEFAULT 1",
+        "ALTER TABLE units ADD COLUMN IF NOT EXISTS is_self_contained      BOOLEAN NOT NULL DEFAULT TRUE",
+        "ALTER TABLE units ADD COLUMN IF NOT EXISTS has_kitchen            BOOLEAN NOT NULL DEFAULT TRUE",
+        "ALTER TABLE units ADD COLUMN IF NOT EXISTS has_store              BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE units ADD COLUMN IF NOT EXISTS has_domestic_quarters  BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE units ADD COLUMN IF NOT EXISTS parking_spaces         INTEGER NOT NULL DEFAULT 0",
+        "ALTER TABLE units ADD COLUMN IF NOT EXISTS furnished_status furnished_status_enum NOT NULL DEFAULT 'unfurnished'",
+        "ALTER TABLE units ADD COLUMN IF NOT EXISTS water_source     water_source_enum     NULL",
+    ):
+        op.execute(sa.text(ddl))
 
 
 def downgrade() -> None:

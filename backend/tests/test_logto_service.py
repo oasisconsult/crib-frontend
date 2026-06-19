@@ -134,7 +134,7 @@ async def test_create_tenant_user_not_configured_returns_none():
     with patch("app.services.logto_service._is_configured", return_value=False):
         result = await create_tenant_user(
             email="t@example.com", first_name="Alice",
-            last_name="Smith", logto_org_id="org_abc",
+            last_name="Smith", logto_org_id="org_abc", db=None,
         )
 
     assert result is None
@@ -191,7 +191,7 @@ async def test_create_tenant_user_happy_path_new_user():
 
         result = await logto_service.create_tenant_user(
             email="alice@example.com", first_name="Alice",
-            last_name="Nakato", logto_org_id="org_test",
+            last_name="Nakato", logto_org_id="org_test", db=None,
         )
 
     assert result == new_id
@@ -249,7 +249,7 @@ async def test_create_tenant_user_existing_user():
 
         result = await logto_service.create_tenant_user(
             email="bob@example.com", first_name="Bob",
-            last_name="Ssemwanga", logto_org_id="org_test",
+            last_name="Ssemwanga", logto_org_id="org_test", db=None,
         )
 
     assert result == existing_id
@@ -303,7 +303,7 @@ async def test_create_tenant_user_continues_on_role_not_found():
 
         result = await logto_service.create_tenant_user(
             email="alice@example.com", first_name="Alice",
-            last_name="Nakato", logto_org_id="org_test",
+            last_name="Nakato", logto_org_id="org_test", db=None,
         )
 
     # User is still created and returned even though role not found
@@ -326,7 +326,7 @@ async def test_create_tenant_user_exception_returns_none():
                new=AsyncMock(side_effect=RuntimeError("Logto is down"))):
         result = await create_tenant_user(
             email="err@example.com", first_name="Err",
-            last_name="User", logto_org_id="org_xyz",
+            last_name="User", logto_org_id="org_xyz", db=None,
         )
 
     assert result is None
@@ -576,7 +576,8 @@ async def test_send_welcome_email_content():
     provider.send = AsyncMock(return_value=MagicMock(success=True, failure_reason=None))
 
     with patch(
-        "app.integrations.notifications.email.get_email_provider",
+        "app.services.settings_service.get_email_provider_from_db",
+        new_callable=AsyncMock,
         return_value=provider,
     ):
         await _send_welcome_email(
@@ -584,6 +585,7 @@ async def test_send_welcome_email_content():
             first_name="Alice",
             temp_password="Temp1234!@#$abcd",
             portal_url="http://localhost:3000",
+            db=None,
         )
 
     provider.send.assert_called_once()
@@ -606,7 +608,8 @@ async def test_send_welcome_email_failure_does_not_raise():
     )
 
     with patch(
-        "app.integrations.notifications.email.get_email_provider",
+        "app.services.settings_service.get_email_provider_from_db",
+        new_callable=AsyncMock,
         return_value=provider,
     ):
         await _send_welcome_email(
@@ -614,6 +617,7 @@ async def test_send_welcome_email_failure_does_not_raise():
             first_name="Fail",
             temp_password="TempFail1!",
             portal_url="http://localhost:3000",
+            db=None,
         )
     # If we get here without an exception, the test passes
 
@@ -628,7 +632,7 @@ async def test_resend_login_credentials_not_configured():
 
     with patch("app.services.logto_service._is_configured", return_value=False):
         result = await resend_login_credentials(
-            logto_user_id="usr_123", email="t@example.com", first_name="Test",
+            logto_user_id="usr_123", email="t@example.com", first_name="Test", db=None,
         )
 
     assert result is False
@@ -648,7 +652,7 @@ async def test_resend_login_credentials_happy_path():
                new=AsyncMock()) as mock_email:
 
         result = await resend_login_credentials(
-            logto_user_id="usr_abc", email="alice@example.com", first_name="Alice",
+            logto_user_id="usr_abc", email="alice@example.com", first_name="Alice", db=None,
         )
 
     assert result is True
@@ -672,7 +676,7 @@ async def test_resend_login_credentials_set_password_fails_returns_false():
                new=AsyncMock()) as mock_email:
 
         result = await resend_login_credentials(
-            logto_user_id="usr_abc", email="alice@example.com", first_name="Alice",
+            logto_user_id="usr_abc", email="alice@example.com", first_name="Alice", db=None,
         )
 
     assert result is False
@@ -687,7 +691,7 @@ async def test_resend_login_credentials_exception_returns_false():
          patch("app.services.logto_service._get_m2m_token",
                new=AsyncMock(side_effect=ConnectionError("timeout"))):
         result = await resend_login_credentials(
-            logto_user_id="usr_abc", email="x@example.com", first_name="X",
+            logto_user_id="usr_abc", email="x@example.com", first_name="X", db=None,
         )
 
     assert result is False
@@ -802,11 +806,10 @@ async def test_resend_login_resets_existing_account(
     body = resp.json()
     assert body["ok"] is True
     assert body["logto_user_id"] == "usr_logto_existing_789"
-    mock_resend.assert_called_once_with(
-        logto_user_id="usr_logto_existing_789",
-        email="david@example.com",
-        first_name="David",
-    )
+    call_kwargs = mock_resend.call_args.kwargs
+    assert call_kwargs["logto_user_id"] == "usr_logto_existing_789"
+    assert call_kwargs["email"] == "david@example.com"
+    assert call_kwargs["first_name"] == "David"
 
 
 @pytest.mark.asyncio

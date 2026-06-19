@@ -62,7 +62,19 @@ async def test_list_inspections_returns_own_org(client: AsyncClient, ctx, db_ses
 # ── Inspection create ──────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_create_inspection(client: AsyncClient, ctx):
+async def test_create_inspection(client: AsyncClient, ctx, db_session: AsyncSession):
+    import sqlalchemy as _sa
+    await db_session.execute(_sa.text("""
+        INSERT INTO organisation_subscriptions
+            (organisation_id, plan_id, status, billing_cycle, currency, current_period_start, auto_renew)
+        SELECT o.id, sp.id, 'active', 'none', 'UGX', now(), true
+        FROM organisations o, subscription_plans sp
+        WHERE o.logto_org_id = 'org_dev' AND sp.slug = 'professional'
+        ON CONFLICT (organisation_id) DO UPDATE
+            SET plan_id = EXCLUDED.plan_id, status = 'active'
+    """))
+    await db_session.flush()
+
     payload = {
         "property_id": str(ctx["prop"].id),
         "unit_id": str(ctx["unit"].id),
@@ -237,7 +249,19 @@ async def test_list_maintenance_with_filters(client: AsyncClient, ctx, db_sessio
 # ── Maintenance create ─────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
-async def test_create_maintenance_issue(client: AsyncClient, ctx):
+async def test_create_maintenance_issue(client: AsyncClient, ctx, db_session: AsyncSession):
+    import sqlalchemy as _sa
+    await db_session.execute(_sa.text("""
+        INSERT INTO organisation_subscriptions
+            (organisation_id, plan_id, status, billing_cycle, currency, current_period_start, auto_renew)
+        SELECT o.id, sp.id, 'active', 'none', 'UGX', now(), true
+        FROM organisations o, subscription_plans sp
+        WHERE o.logto_org_id = 'org_dev' AND sp.slug = 'professional'
+        ON CONFLICT (organisation_id) DO UPDATE
+            SET plan_id = EXCLUDED.plan_id, status = 'active'
+    """))
+    await db_session.flush()
+
     payload = {
         "property_id": str(ctx["prop"].id),
         "unit_id": str(ctx["unit"].id),
@@ -404,6 +428,16 @@ async def test_list_inspections_filter_by_lease_id(client, ctx, db_session):
 
 @pytest.mark.asyncio
 async def test_create_move_in_inspection_for_lease(client, ctx, db_session):
+    import sqlalchemy as _sa
+    await db_session.execute(_sa.text("""
+        INSERT INTO organisation_subscriptions
+            (organisation_id, plan_id, status, billing_cycle, currency, current_period_start, auto_renew)
+        SELECT o.id, sp.id, 'active', 'none', 'UGX', now(), true
+        FROM organisations o, subscription_plans sp
+        WHERE o.logto_org_id = 'org_dev' AND sp.slug = 'professional'
+        ON CONFLICT (organisation_id) DO UPDATE
+            SET plan_id = EXCLUDED.plan_id, status = 'active'
+    """))
     from tests.factories import make_tenant, make_lease
 
     tenant = await make_tenant(db_session, ctx["org"])

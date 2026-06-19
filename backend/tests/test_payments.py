@@ -291,8 +291,10 @@ class TestPayments:
     async def test_export_csv(self, client: AsyncClient, active_lease, schedule, db_session, org):
         from app.models.payment import PaymentStatus
         await make_payment(db_session, org, active_lease, schedule, status=PaymentStatus.confirmed)
+        await db_session.flush()
         resp = await client.get(
             f"/api/v1/leases/{active_lease.id}/payments/export",
+            params={"date_to": "2030-12-31"},
             headers=auth_headers("manager-1"),
         )
         assert resp.status_code == 200

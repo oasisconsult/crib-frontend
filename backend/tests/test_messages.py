@@ -32,11 +32,23 @@ from tests.factories import (
 @pytest_asyncio.fixture
 async def ctx(db_session: AsyncSession):
     """Shared org + property + unit + tenant + lease used across most tests."""
+    import sqlalchemy as _sa
     org = await make_organisation(db_session)
     prop = await make_property(db_session, org)
     unit = await make_unit(db_session, prop)
     tenant = await make_tenant(db_session, org)
     lease = await make_lease(db_session, org, unit, tenant)
+    await db_session.flush()
+    # Upgrade org_dev (manager-1's org) to professional so tenant_messaging is available
+    await db_session.execute(_sa.text("""
+        INSERT INTO organisation_subscriptions
+            (organisation_id, plan_id, status, billing_cycle, currency, current_period_start, auto_renew)
+        SELECT o.id, sp.id, 'active', 'none', 'UGX', now(), true
+        FROM organisations o, subscription_plans sp
+        WHERE o.logto_org_id = 'org_dev' AND sp.slug = 'professional'
+        ON CONFLICT (organisation_id) DO UPDATE
+            SET plan_id = EXCLUDED.plan_id, status = 'active'
+    """))
     await db_session.flush()
     return {"org": org, "prop": prop, "unit": unit, "tenant": tenant, "lease": lease}
 

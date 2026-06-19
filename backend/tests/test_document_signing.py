@@ -279,7 +279,7 @@ async def test_request_signing_otp_success(
 
     mock_email = AsyncMock()
     mock_email.send = AsyncMock(return_value=MagicMock(success=True))
-    with patch("app.integrations.notifications.email.get_email_provider", return_value=mock_email):
+    with patch("app.services.settings_service.get_email_provider_from_db", new_callable=AsyncMock, return_value=mock_email):
         r = await client.post(f"{_base(token)}/request-signing-otp")
 
     assert r.status_code == 200
@@ -307,7 +307,7 @@ async def test_request_signing_otp_invalidates_previous(
 
     mock_email = AsyncMock()
     mock_email.send = AsyncMock(return_value=MagicMock(success=True))
-    with patch("app.integrations.notifications.email.get_email_provider", return_value=mock_email):
+    with patch("app.services.settings_service.get_email_provider_from_db", new_callable=AsyncMock, return_value=mock_email):
         await client.post(f"{_base(token)}/request-signing-otp")
         await client.post(f"{_base(token)}/request-signing-otp")
 

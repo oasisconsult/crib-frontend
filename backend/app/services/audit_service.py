@@ -107,7 +107,7 @@ async def list_logs(
     base_q = (
         select(
             AuditLog,
-            func.concat(actor_profile.first_name, " ", actor_profile.last_name).label("actor_name"),
+            actor_profile.display_name.label("actor_name"),
         )
         .outerjoin(actor_profile, actor_profile.id == AuditLog.actor_id)
     )

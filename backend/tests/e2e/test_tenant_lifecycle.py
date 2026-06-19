@@ -63,6 +63,8 @@ async def test_tenant_lifecycle_e2e(client: AsyncClient, db_session: AsyncSessio
     from app.models.tenant import OnboardingState, TenantStatus
     from app.models.lease import LeaseStatus
 
+    import sqlalchemy as _sa
+
     ctx: dict = {}
     report: list[str] = []
 
@@ -71,6 +73,19 @@ async def test_tenant_lifecycle_e2e(client: AsyncClient, db_session: AsyncSessio
         if note:
             line += f"  — {note}"
         report.append(line)
+
+    # ── Upgrade dev_org to Professional so all E2E features are available ─────
+    await db_session.execute(_sa.text("""
+        INSERT INTO organisation_subscriptions
+            (organisation_id, plan_id, status, billing_cycle, currency, current_period_start, auto_renew)
+        SELECT o.id, sp.id, 'active', 'none', 'UGX', now(), true
+        FROM organisations o, subscription_plans sp
+        WHERE o.logto_org_id = 'org_dev' AND sp.slug = 'professional'
+        ON CONFLICT (organisation_id) DO UPDATE
+            SET plan_id = EXCLUDED.plan_id,
+                status = 'active'
+    """))
+    await db_session.flush()
 
     # ── SEED: property → unit → tenant (approved) → lease ────────────────────
     prop = await make_property(db_session, dev_org)
@@ -206,7 +221,7 @@ async def test_tenant_lifecycle_e2e(client: AsyncClient, db_session: AsyncSessio
         headers=MGR,
         json={"photoUrls": ["https://cdn.example.com/photo1.jpg"]},
     )
-    status, v = soft(r, 200)
+    _, v = soft(r, 200)
     note = "field not accepted via PUT" if r.status_code not in (200, 201) else ""
     log("3.4", "Add photo URLs (PUT /maintenance/{id})", v, note)
 

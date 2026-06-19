@@ -407,6 +407,16 @@ class TestLandlordCountersign:
         The backend countersign endpoint requires lease.status == active and an
         existing TenancyAgreement with status=tenant_signed.
         """
+        import sqlalchemy as _sa
+        await db_session.execute(_sa.text("""
+            INSERT INTO organisation_subscriptions
+                (organisation_id, plan_id, status, billing_cycle, currency, current_period_start, auto_renew)
+            SELECT o.id, sp.id, 'active', 'none', 'UGX', now(), true
+            FROM organisations o, subscription_plans sp
+            WHERE o.logto_org_id = 'org_dev' AND sp.slug = 'professional'
+            ON CONFLICT (organisation_id) DO UPDATE
+                SET plan_id = EXCLUDED.plan_id, status = 'active'
+        """))
         from app.models.lease import LeaseStatus
         from app.models.tenancy_agreement import TenancyAgreement, TenancyAgreementStatus
         lease = await make_lease(

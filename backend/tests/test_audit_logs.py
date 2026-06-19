@@ -87,8 +87,8 @@ async def test_list_requires_audit_logs_feature(client: AsyncClient, dev_org, db
 
     r = await client.get(f"{PREFIX}/audit-logs", headers=auth_headers("owner-1"))
     assert r.status_code == 402
-    body = r.json()
-    assert body.get("feature") == "audit_logs" or body.get("code") == "feature_not_available"
+    detail = r.json().get("detail", {})
+    assert detail.get("feature") == "audit_logs" or detail.get("code") == "feature_not_available"
 
 
 # ── Tier gating: agency plan → 200 ───────────────────────────────────────────
@@ -197,9 +197,15 @@ async def test_property_create_appends_audit_log(
         headers=auth_headers("owner-1"),
         json={
             "name": "Audit Test Property",
-            "type": "residential",
+            "type": "flat",
             "currency": "UGX",
-            "address": {"street": "1 Test St", "city": "Kampala", "country": "Uganda"},
+            "address": {
+                "line1": "1 Test St",
+                "city": "Kampala",
+                "state": "Central",
+                "postcode": "00000",
+                "country": "Uganda",
+            },
             "is_single_unit": False,
         },
     )
@@ -243,11 +249,18 @@ async def test_tenant_approve_appends_audit_log(
     assert r.status_code == 201, r.text
     tenant_id = r.json()["id"]
 
+    # Advance the tenant to 'submitted' state so approve() is a valid transition
+    import sqlalchemy as _sa
+    await db_session.execute(_sa.text(
+        "UPDATE tenants SET onboarding_state = 'submitted' WHERE id = :id"
+    ), {"id": tenant_id})
+    await db_session.flush()
+
     r2 = await client.patch(
         f"{PREFIX}/tenants/{tenant_id}/approve",
         headers=auth_headers("owner-1"),
     )
-    assert r2.status_code == 200
+    assert r2.status_code == 200, r2.text
 
     entries = (await db_session.execute(
         select(AuditLog).where(
@@ -289,9 +302,15 @@ async def test_append_swallows_db_errors(
             headers=auth_headers("owner-1"),
             json={
                 "name": "Swallow Error Test",
-                "type": "residential",
+                "type": "flat",
                 "currency": "UGX",
-                "address": {"street": "2 Test St", "city": "Kampala", "country": "Uganda"},
+                "address": {
+                    "line1": "2 Test St",
+                    "city": "Kampala",
+                    "state": "Central",
+                    "postcode": "00000",
+                    "country": "Uganda",
+                },
                 "is_single_unit": False,
             },
         )

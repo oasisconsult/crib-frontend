@@ -108,14 +108,20 @@ async def test_local_upload_and_serve(client: AsyncClient, tmp_path, monkeypatch
     )
     assert put_r.status_code == 204
 
-    get_r = await client.get(f"/api/v1/upload/local/{key}")
+    get_r = await client.get(
+        f"/api/v1/upload/local/{key}",
+        headers=auth_headers("manager-1"),
+    )
     assert get_r.status_code == 200
     assert get_r.content == content
 
 
 @pytest.mark.asyncio
 async def test_local_serve_not_found(client: AsyncClient):
-    r = await client.get("/api/v1/upload/local/nonexistent/file.txt")
+    r = await client.get(
+        "/api/v1/upload/local/nonexistent/file.txt",
+        headers=auth_headers("manager-1"),
+    )
     assert r.status_code == 404
 
 

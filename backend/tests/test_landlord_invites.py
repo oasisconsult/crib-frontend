@@ -28,12 +28,12 @@ from tests.factories import make_property
 
 @pytest.fixture(autouse=True)
 async def professional_subscription(db_session: AsyncSession):
-    """Upgrade org_dev to professional plan for the duration of each invite test.
+    """Upgrade org_dev to agency plan for the duration of each invite test.
 
-    Landlord invites check the org's user limit. The default free plan allows
-    only 1 user, but org_dev already has an owner, so every invite would 402.
-    This fixture seeds a professional subscription within the test's db_session
-    transaction — it is rolled back automatically when the test ends.
+    Landlord invites require the 'team_members' feature (Agency+). The default
+    free plan would 402. This fixture seeds an agency subscription within the
+    test's db_session transaction — it is rolled back automatically when the
+    test ends.
     """
     await db_session.execute(sa.text("""
         INSERT INTO organisation_subscriptions
@@ -53,8 +53,9 @@ async def professional_subscription(db_session: AsyncSession):
             NOW()
         FROM organisations o, subscription_plans p
         WHERE o.logto_org_id = 'org_dev'
-          AND p.slug = 'professional'
-        ON CONFLICT DO NOTHING
+          AND p.slug = 'agency'
+        ON CONFLICT (organisation_id) DO UPDATE
+            SET plan_id = EXCLUDED.plan_id, status = 'active'
     """))
     await db_session.flush()
 

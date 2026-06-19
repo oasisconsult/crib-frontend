@@ -20,6 +20,7 @@ Coverage:
 import uuid
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +31,22 @@ from tests.factories import make_organisation, make_property, make_tenant
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
+
+@pytest_asyncio.fixture(autouse=True)
+async def professional_plan(db_session):
+    """Upgrade dev org to professional so document_storage and other features are available."""
+    import sqlalchemy as _sa
+    await db_session.execute(_sa.text("""
+        INSERT INTO organisation_subscriptions
+            (organisation_id, plan_id, status, billing_cycle, currency, current_period_start, auto_renew)
+        SELECT o.id, sp.id, 'active', 'none', 'UGX', now(), true
+        FROM organisations o, subscription_plans sp
+        WHERE o.logto_org_id = 'org_dev' AND sp.slug = 'professional'
+        ON CONFLICT (organisation_id) DO UPDATE
+            SET plan_id = EXCLUDED.plan_id, status = 'active'
+    """))
+    await db_session.flush()
+
 
 @pytest.fixture
 async def org(dev_org):

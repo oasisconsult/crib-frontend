@@ -61,7 +61,7 @@ def mock_email_provider():
     """Stub the email provider so no real send attempts happen during tests."""
     provider = AsyncMock()
     provider.send = AsyncMock(return_value=DeliveryResult(success=True, external_message_id="test-msg"))
-    with patch("app.integrations.notifications.email.get_email_provider", return_value=provider):
+    with patch("app.services.settings_service.get_email_provider_from_db", new_callable=AsyncMock, return_value=provider):
         yield provider
 
 

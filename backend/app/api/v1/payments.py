@@ -143,10 +143,12 @@ async def waive_schedule(
 @router.get("/{lease_id}/payments/export")
 async def export_payments(
     lease_id: uuid.UUID,
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    csv_data = await svc.export_payments_csv(lease_id, get_org_id(current_user), db)
+    csv_data = await svc.export_payments_csv(lease_id, get_org_id(current_user), db, date_from, date_to)
     return Response(
         content=csv_data,
         media_type="text/csv",
