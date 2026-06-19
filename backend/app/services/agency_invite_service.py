@@ -313,6 +313,7 @@ async def complete_agency_onboarding(
         agency_name=agency_name,
         temp_password=temp_password,
         frontend_url=s.frontend_url,
+        db=db,
     )
 
     log.info(
@@ -358,6 +359,7 @@ async def resend_agency_invite(*, db: AsyncSession, invite_id: uuid.UUID) -> Age
         first_name=invite.manager_first_name,
         agency_name=invite.agency_name,
         onboarding_url=onboarding_url,
+        db=db,
     )
     log.info("agency_invite.resent", invite_id=str(invite.id), email=invite.manager_email)
     return _to_out(invite)
@@ -375,9 +377,9 @@ async def revoke_agency_invite(*, db: AsyncSession, invite_id: uuid.UUID) -> Non
 
 
 async def _send_agency_invite_email(
-    *, email: str, first_name: str, agency_name: str, onboarding_url: str
+    *, email: str, first_name: str, agency_name: str, onboarding_url: str, db
 ) -> None:
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     subject = f"You're invited to set up {agency_name} on Crib"
     body = (
@@ -388,7 +390,7 @@ async def _send_agency_invite_email(
         "This link expires in 14 days.\n\n"
         "— The Crib Team"
     )
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=first_name,
         recipient_email=email,

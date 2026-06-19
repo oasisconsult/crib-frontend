@@ -465,7 +465,7 @@ async def _notify_landlord_payment_submitted(
 ) -> None:
     """Email the landlord/agency when the tenant submits onboarding payments."""
     from app.core.config import get_settings
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
     from app.models.organisation import Organisation
     from app.models.profile import Profile
 
@@ -508,7 +508,7 @@ async def _notify_landlord_payment_submitted(
             "— The Crib Team"
         )
 
-        result = await get_email_provider().send(
+        result = await (await get_email_provider_from_db(db)).send(
             recipient_name=recipient_name,
             recipient_email=recipient_email,
             recipient_phone=None,
@@ -531,7 +531,7 @@ async def _send_payment_receipt(
 ) -> None:
     """Email the tenant a payment receipt after the landlord confirms payment."""
     from app.core.config import get_settings
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
     from app.models.property import Property, Unit
 
     try:
@@ -572,7 +572,7 @@ async def _send_payment_receipt(
             "— The Crib Team"
         )
 
-        result = await get_email_provider().send(
+        result = await (await get_email_provider_from_db(db)).send(
             recipient_name=tenant_name,
             recipient_email=tenant.email,
             recipient_phone=None,
@@ -1092,6 +1092,7 @@ async def _activate_via_onboarding(
                 first_name=tenant.first_name,
                 last_name=tenant.last_name,
                 logto_org_id=org.logto_org_id,
+                db=db,
             )
             if logto_user_id:
                 tenant.logto_user_id = logto_user_id

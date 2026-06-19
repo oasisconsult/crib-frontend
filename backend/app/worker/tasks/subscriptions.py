@@ -104,12 +104,12 @@ def send_renewal_reminders() -> None:
         from app.core.database import async_session_factory
         from app.models.subscription import OrganisationSubscription, SubscriptionStatus
         from app.models.organisation import Organisation
-        from app.integrations.notifications.email import get_email_provider
-
         now = datetime.now(timezone.utc)
         thresholds = [1, 3, 7]  # days before expiry
 
         async with async_session_factory() as db:
+            from app.services.settings_service import get_email_provider_from_db
+            provider = await get_email_provider_from_db(db)
             for days in thresholds:
                 target_start = now + timedelta(days=days)
                 target_end = now + timedelta(days=days, hours=1)
@@ -125,7 +125,6 @@ def send_renewal_reminders() -> None:
                     )
                 )
                 rows = result.all()
-                provider = get_email_provider()
                 for sub, org in rows:
                     if not org.billing_email:
                         continue

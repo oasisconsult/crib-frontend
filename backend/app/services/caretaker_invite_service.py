@@ -228,6 +228,7 @@ async def create_caretaker_invite(
         owner_name=owner_name,
         property_names=prop_names,
         onboarding_url=onboarding_url,
+        db=db,
     )
 
     log.info(
@@ -304,6 +305,7 @@ async def resend_caretaker_invite(
         owner_name=owner_name,
         property_names=prop_names,
         onboarding_url=onboarding_url,
+        db=db,
     )
     log.info("caretaker_invite.resent", invite_id=str(invite.id))
     return _invite_to_out(invite)
@@ -497,6 +499,7 @@ async def complete_caretaker_onboarding(
         owner_name=owner_name,
         temp_password=temp_password,
         frontend_url=s.frontend_url,
+        db=db,
     )
 
     log.info(
@@ -640,8 +643,9 @@ async def _send_caretaker_invite_email(
     owner_name: str,
     property_names: list[str],
     onboarding_url: str,
+    db,
 ) -> None:
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     props_text = ", ".join(property_names) if property_names else "properties"
     subject = f"You've been invited to manage {props_text} on Crib"
@@ -654,7 +658,7 @@ async def _send_caretaker_invite_email(
         f"This link expires in {INVITE_EXPIRY_DAYS} days.\n\n"
         "— The Crib Team"
     )
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=first_name,
         recipient_email=email,
@@ -676,8 +680,9 @@ async def _send_caretaker_welcome_email(
     owner_name: str,
     temp_password: str,
     frontend_url: str,
+    db,
 ) -> None:
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     subject = f"Welcome to Crib — you're now managing properties for {owner_name}"
     body = (
@@ -690,7 +695,7 @@ async def _send_caretaker_welcome_email(
         "Please change your password after your first sign-in.\n\n"
         "— The Crib Team"
     )
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=first_name,
         recipient_email=email,

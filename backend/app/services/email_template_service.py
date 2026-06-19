@@ -183,10 +183,10 @@ async def preview(slug: str, db: AsyncSession) -> RenderedEmail:
 
 async def test_send(slug: str, recipient: str, db: AsyncSession) -> DeliveryResult:
     """Render with sample data and dispatch a real email, so a superadmin can see an edit land in an actual inbox."""
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     rendered = await preview(slug, db)
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=recipient,
         recipient_email=recipient,

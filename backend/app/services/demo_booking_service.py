@@ -202,7 +202,7 @@ async def update_status(booking_id: uuid.UUID, new_status: str, db: AsyncSession
 
 async def _send_team_alert(booking: DemoBooking, db: AsyncSession) -> None:
     """Alert the platform team that a new demo has been booked."""
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     try:
         recipient = await settings_service.get(
@@ -230,7 +230,7 @@ async def _send_team_alert(booking: DemoBooking, db: AsyncSession) -> None:
             db,
         )
 
-        result = await get_email_provider().send(
+        result = await (await get_email_provider_from_db(db)).send(
             recipient_name="Crib Team",
             recipient_email=recipient,
             recipient_phone=None,
@@ -250,7 +250,7 @@ async def _send_booker_confirmation(booking: DemoBooking, db: AsyncSession) -> N
     """Send the person who booked a confirmation email with a calendar invite."""
     from app.core.config import get_settings
     from app.integrations.notifications.base import EmailAttachment
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     try:
         s = get_settings()
@@ -298,7 +298,7 @@ async def _send_booker_confirmation(booking: DemoBooking, db: AsyncSession) -> N
             db,
         )
 
-        result = await get_email_provider().send(
+        result = await (await get_email_provider_from_db(db)).send(
             recipient_name=name,
             recipient_email=booking.email,
             recipient_phone=None,
@@ -331,7 +331,7 @@ async def _notify_status_transition(booking: DemoBooking, db: AsyncSession, new_
 
 async def _send_booker_status_email(booking: DemoBooking, db: AsyncSession, new_status: str) -> None:
     """Let the booker know their demo slot was confirmed or cancelled."""
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     try:
         contact_email = await _contact_email(db)
@@ -346,7 +346,7 @@ async def _send_booker_status_email(booking: DemoBooking, db: AsyncSession, new_
             db,
         )
 
-        result = await get_email_provider().send(
+        result = await (await get_email_provider_from_db(db)).send(
             recipient_name=name,
             recipient_email=booking.email,
             recipient_phone=None,
@@ -364,7 +364,7 @@ async def _send_booker_status_email(booking: DemoBooking, db: AsyncSession, new_
 
 async def _send_team_status_alert(booking: DemoBooking, db: AsyncSession, new_status: str) -> None:
     """Let the platform team know a booking was confirmed or cancelled."""
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     try:
         recipient = await settings_service.get(
@@ -384,7 +384,7 @@ async def _send_team_status_alert(booking: DemoBooking, db: AsyncSession, new_st
             db,
         )
 
-        result = await get_email_provider().send(
+        result = await (await get_email_provider_from_db(db)).send(
             recipient_name="Crib Team",
             recipient_email=recipient,
             recipient_phone=None,

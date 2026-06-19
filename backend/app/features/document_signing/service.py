@@ -73,7 +73,7 @@ async def request_otp(
     Invalidates any previous unused OTP for the same lease+purpose.
     Returns the masked email address.
     """
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     code = f"{secrets.randbelow(1_000_000):06d}"
     code_hash = _hash_code(code)
@@ -103,7 +103,8 @@ async def request_otp(
 
     # Send email (best-effort — failure raises so client can retry)
     try:
-        result = await get_email_provider().send(
+        provider = await get_email_provider_from_db(db)
+        result = await provider.send(
             recipient_name="",
             recipient_email=email,
             recipient_phone=None,

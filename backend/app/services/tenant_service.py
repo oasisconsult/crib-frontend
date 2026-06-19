@@ -747,6 +747,7 @@ async def resend_login_credentials(
                 first_name=tenant.first_name,
                 last_name=tenant.last_name,
                 logto_org_id=resolved_org.logto_org_id,
+                db=db,
             )
             if logto_user_id:
                 tenant.logto_user_id = logto_user_id
@@ -765,6 +766,7 @@ async def resend_login_credentials(
         logto_user_id=logto_user_id,
         email=tenant.email,
         first_name=tenant.first_name,
+        db=db,
     )
     if not ok:
         raise HTTPException(
@@ -912,7 +914,7 @@ async def _send_tenant_invite_email(
     Non-fatal — logs a warning on failure without raising.
     """
     from app.core.config import get_settings
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
     from app.models.organisation import Organisation
 
     try:
@@ -934,7 +936,7 @@ async def _send_tenant_invite_email(
             "— The Crib Team"
         )
 
-        provider = get_email_provider()
+        provider = await get_email_provider_from_db(db)
         result = await provider.send(
             recipient_name=first_name,
             recipient_email=email,
@@ -963,7 +965,7 @@ async def _send_rejection_email(
     before this is called.
     """
     from app.core.config import get_settings
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     try:
         s = get_settings()
@@ -984,7 +986,7 @@ async def _send_rejection_email(
             "— The Crib Team"
         )
 
-        provider = get_email_provider()
+        provider = await get_email_provider_from_db(db)
         result = await provider.send(
             recipient_name=first_name,
             recipient_email=email,
@@ -1014,7 +1016,7 @@ async def _notify_resubmission(
     Non-fatal — logs a warning on failure without raising.
     """
     from app.core.config import get_settings
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
     from app.models.organisation import Organisation
     from app.models.profile import Profile
 
@@ -1063,7 +1065,7 @@ async def _notify_resubmission(
             "— The Crib Team"
         )
 
-        provider = get_email_provider()
+        provider = await get_email_provider_from_db(db)
         result = await provider.send(
             recipient_name=recipient_name,
             recipient_email=recipient_email,

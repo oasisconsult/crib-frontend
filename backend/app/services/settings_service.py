@@ -210,18 +210,27 @@ async def get_email_config(db: AsyncSession) -> dict[str, Any]:
     """
     Return email provider config dict.
 
-    Env vars take precedence over DB settings so that docker-compose.local.yml
-    can route all dev mail through MailHog without touching the DB.
-    DB values are used only when the corresponding env var is not set.
+    DB values (set via the integration settings UI) take precedence.
+    Env vars act as fallbacks so that docker-compose.local.yml can route
+    dev mail through MailHog without touching the DB.
+
+    Note: `email_provider` and `smtp_host` both have non-empty defaults in
+    Settings, so we treat the default value ("sendgrid" / "localhost") as
+    "not explicitly set" and fall through to the DB.
     """
     from app.core.config import get_settings
     s = get_settings()
 
-    # Env-var overrides (set in docker-compose.local.yml for MailHog)
-    provider = s.email_provider if s.email_provider else await get("email.provider", db, "sendgrid")
-    smtp_host = s.smtp_host if s.smtp_host and s.smtp_host != "localhost" else await get("email.smtp.host", db, "localhost")
-    smtp_port = s.smtp_port if s.smtp_port != 587 else await get_int("email.smtp.port", db, 587)
-    email_from = s.email_from if s.email_from else await get("email.from_address", db, "noreply@crib.app")
+    # Fall through to DB when env var still holds the hardcoded default value
+    env_provider = None if s.email_provider == "sendgrid" else s.email_provider
+    env_smtp_host = None if s.smtp_host == "localhost" else s.smtp_host
+    env_smtp_port = None if s.smtp_port == 587 else s.smtp_port
+    env_from = None if s.email_from == "noreply@crib.app" else s.email_from
+
+    provider   = env_provider  or await get("email.provider", db, "smtp")
+    smtp_host  = env_smtp_host or await get("email.smtp.host", db, "localhost")
+    smtp_port  = env_smtp_port or await get_int("email.smtp.port", db, 587)
+    email_from = env_from      or await get("email.from_address", db, "noreply@crib.app")
 
     return {
         "provider": provider,
@@ -234,6 +243,28 @@ async def get_email_config(db: AsyncSession) -> dict[str, Any]:
         "smtp_password": s.smtp_password or await get("email.smtp.password", db),
         "smtp_use_tls": smtp_port == 587,
     }
+
+
+def build_email_provider(config: dict[str, Any]):
+    """Construct a NotificationProvider from a get_email_config() dict."""
+    from app.integrations.notifications.email import SendGridProvider, SmtpProvider
+    if config["provider"] == "sendgrid":
+        return SendGridProvider(
+            api_key=config["sendgrid_api_key"],
+            from_email=config["from_address"],
+        )
+    return SmtpProvider(
+        host=config["smtp_host"],
+        port=config["smtp_port"],
+        username=config["smtp_username"],
+        password=config["smtp_password"],
+        from_email=config["from_address"],
+    )
+
+
+async def get_email_provider_from_db(db: AsyncSession):
+    """Return a NotificationProvider built from DB-stored integration settings."""
+    return build_email_provider(await get_email_config(db))
 
 
 async def get_sms_config(db: AsyncSession) -> dict[str, Any]:
@@ -278,23 +309,8 @@ async def test_storage(db: AsyncSession) -> dict:
 async def test_email(recipient: str, db: AsyncSession) -> dict:
     """Send a one-line test email to verify SMTP/SendGrid credentials."""
     config = await get_email_config(db)
-    provider_name = config["provider"]
     try:
-        if provider_name == "sendgrid":
-            from app.integrations.notifications.email import SendGridProvider
-            provider = SendGridProvider(
-                api_key=config["sendgrid_api_key"],
-                from_email=config["from_address"],
-            )
-        else:
-            from app.integrations.notifications.email import SmtpProvider
-            provider = SmtpProvider(
-                host=config["smtp_host"],
-                port=config["smtp_port"],
-                username=config["smtp_username"],
-                password=config["smtp_password"],
-                from_email=config["from_address"],
-            )
+        provider = build_email_provider(config)
         result = await provider.send(
             recipient_name="Test Recipient",
             recipient_email=recipient,

@@ -137,6 +137,7 @@ async def create_invite(
         email=invite.email,
         first_name=invite.first_name,
         onboarding_url=onboarding_url,
+        db=db,
     )
     log.info("landlord_invite.created", invite_id=str(invite.id), email=body.email)
     return _to_out(invite)
@@ -318,12 +319,14 @@ async def complete_onboarding(
                 first_name=body.first_name,
                 temp_password=temp_password,
                 frontend_url=s.frontend_url,
+                db=db,
             )
         else:
             await logto_service.send_existing_user_invite_email(
                 email=invite.email,
                 first_name=body.first_name,
                 frontend_url=s.frontend_url,
+                db=db,
             )
 
         log.info(
@@ -408,12 +411,14 @@ async def complete_onboarding(
             first_name=body.first_name,
             temp_password=temp_password,
             frontend_url=s.frontend_url,
+            db=db,
         )
     else:
         await logto_service.send_existing_user_invite_email(
             email=invite.email,
             first_name=body.first_name,
             frontend_url=s.frontend_url,
+            db=db,
         )
 
     log.info("landlord.onboarding_complete", email=invite.email, profile_id=str(profile.id))
@@ -479,13 +484,14 @@ async def resend_invite_email(
         email=invite.email,
         first_name=invite.first_name,
         onboarding_url=onboarding_url,
+        db=db,
     )
     log.info("landlord_invite.resent", invite_id=str(invite.id), email=invite.email)
     return _to_out(invite)
 
 
-async def _send_invite_email(*, email: str, first_name: str, onboarding_url: str) -> None:
-    from app.integrations.notifications.email import get_email_provider
+async def _send_invite_email(*, email: str, first_name: str, onboarding_url: str, db) -> None:
+    from app.services.settings_service import get_email_provider_from_db
 
     subject = "You've been invited to view your properties on Crib"
     body = (
@@ -496,7 +502,7 @@ async def _send_invite_email(*, email: str, first_name: str, onboarding_url: str
         "This link expires in 7 days.\n\n"
         "— The Crib Team"
     )
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=first_name,
         recipient_email=email,

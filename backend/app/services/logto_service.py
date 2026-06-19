@@ -133,9 +133,10 @@ async def _send_welcome_email(
     first_name: str,
     temp_password: str,
     portal_url: str,
+    db,
 ) -> None:
     """Send the tenant a welcome email with their temporary password."""
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     subject = "Welcome to Crib — your tenant portal is ready"
     body = (
@@ -149,7 +150,7 @@ async def _send_welcome_email(
         "— The Crib Team"
     )
 
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=first_name,
         recipient_email=email,
@@ -171,6 +172,7 @@ async def create_tenant_user(
     first_name: str,
     last_name: str,
     logto_org_id: str,
+    db,
 ) -> str | None:
     """
     Create a Logto user for the tenant, add them to the organisation,
@@ -286,6 +288,7 @@ async def create_tenant_user(
                 first_name=first_name,
                 temp_password=temp_password,
                 portal_url=s.frontend_url,
+                db=db,
             )
 
         return logto_user_id
@@ -897,9 +900,10 @@ async def send_landlord_welcome_email(
     first_name: str,
     temp_password: str,
     frontend_url: str,
+    db,
 ) -> None:
     """Send invited landlord their login credentials."""
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     subject = "Welcome to Crib — your landlord dashboard is ready"
     body = (
@@ -912,7 +916,7 @@ async def send_landlord_welcome_email(
         "Please change your password after your first sign-in.\n\n"
         "— The Crib Team"
     )
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=first_name,
         recipient_email=email,
@@ -933,9 +937,10 @@ async def send_agency_manager_welcome_email(
     agency_name: str,
     temp_password: str,
     frontend_url: str,
+    db,
 ) -> None:
     """Send newly-created agency manager their login credentials."""
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     subject = f"Welcome to Crib — {agency_name} is now live"
     body = (
@@ -948,7 +953,7 @@ async def send_agency_manager_welcome_email(
         "Please change your password after your first sign-in.\n\n"
         "— The Crib Team"
     )
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=first_name,
         recipient_email=email,
@@ -969,6 +974,7 @@ async def resend_login_credentials(
     logto_user_id: str,
     email: str,
     first_name: str,
+    db,
 ) -> bool:
     """
     Generate a new temporary password for an existing Logto user and re-send
@@ -1009,6 +1015,7 @@ async def resend_login_credentials(
             first_name=first_name,
             temp_password=temp_password,
             portal_url=s.frontend_url,
+            db=db,
         )
         log.info("logto.credentials_resent", logto_user_id=logto_user_id, email=email)
         return True
@@ -1226,12 +1233,13 @@ async def send_existing_user_invite_email(
     email: str,
     first_name: str,
     frontend_url: str,
+    db,
 ) -> None:
     """
     Sent when an invited user already has a Logto account (e.g. from GeoBox).
     Does NOT include a password — they should use their existing credentials.
     """
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     subject = "You've been invited to Crib"
     body = (
@@ -1245,7 +1253,7 @@ async def send_existing_user_invite_email(
         "on the sign-in page.\n\n"
         "— The Crib Team"
     )
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=first_name,
         recipient_email=email,
@@ -1267,13 +1275,14 @@ async def send_independent_landlord_welcome_email(
     first_name: str,
     temp_password: str,
     frontend_url: str,
+    db,
 ) -> None:
     """
     Welcome email for independent landlords (self-managing).
     Differs from the agency-managed landlord email: emphasises that they
     can log in and create their own properties.
     """
-    from app.integrations.notifications.email import get_email_provider
+    from app.services.settings_service import get_email_provider_from_db
 
     subject = "Welcome to Crib — your landlord account is ready"
     body = (
@@ -1286,7 +1295,7 @@ async def send_independent_landlord_welcome_email(
         "Please change your password after your first sign-in.\n\n"
         "— The Crib Team"
     )
-    provider = get_email_provider()
+    provider = await get_email_provider_from_db(db)
     result = await provider.send(
         recipient_name=first_name,
         recipient_email=email,

@@ -841,6 +841,7 @@ async def commit_import(
                     first_name=r.first_name,
                     last_name=r.last_name,
                     logto_org_id=logto_org_id,
+                    db=db,
                 )
                 if logto_user_id:
                     tenant.logto_user_id = logto_user_id
