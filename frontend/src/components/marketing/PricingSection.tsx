@@ -6,14 +6,19 @@ import { Check, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
 
+// Prices match the seeded subscription_plans table exactly.
+// UGX annual = total for the year (÷12 for per-month display).
+// USD annual = total for the year in cents (÷12 for per-month display).
 const PLANS = [
   {
-    slug:  "free",
-    name:  "Free",
-    desc:  "For landlords just getting started.",
+    slug: "free",
+    name: "Free",
+    desc: "For landlords just getting started.",
     monthlyUGX: 0,
-    annualUGX:  0,
-    cta:    "Start free",
+    annualUGX: 0,
+    monthlyUSDCents: 0,
+    annualUSDCents: 0,
+    cta: "Start free",
     ctaVariant: "outline" as const,
     ctaType: "link" as const,
     ctaHref: "/login?action=register",
@@ -28,12 +33,14 @@ const PLANS = [
     popular: false,
   },
   {
-    slug:  "professional",
-    name:  "Professional",
-    desc:  "For growing landlords who need more control.",
+    slug: "professional",
+    name: "Professional",
+    desc: "For growing landlords who need more control.",
     monthlyUGX: 200_000,
-    annualUGX:  160_000,
-    cta:    "Book a Demo",
+    annualUGX: 1_920_000,
+    monthlyUSDCents: 4_900,
+    annualUSDCents: 47_000,
+    cta: "Book a Demo",
     ctaVariant: "default" as const,
     ctaType: "anchor" as const,
     ctaHref: "#booking",
@@ -50,12 +57,14 @@ const PLANS = [
     popular: true,
   },
   {
-    slug:  "agency",
-    name:  "Agency",
-    desc:  "For property management agencies with multiple clients.",
+    slug: "agency",
+    name: "Agency",
+    desc: "For property management agencies with multiple clients.",
     monthlyUGX: 500_000,
-    annualUGX:  400_000,
-    cta:    "Book a Demo",
+    annualUGX: 4_800_000,
+    monthlyUSDCents: 12_900,
+    annualUSDCents: 123_800,
+    cta: "Book a Demo",
     ctaVariant: "outline" as const,
     ctaType: "anchor" as const,
     ctaHref: "#booking",
@@ -71,10 +80,46 @@ const PLANS = [
     ],
     popular: false,
   },
+  {
+    slug: "enterprise",
+    name: "Enterprise",
+    desc: "Unlimited scale with dedicated infrastructure and support.",
+    monthlyUGX: null,   // custom quote — no fixed price
+    annualUGX: null,
+    monthlyUSDCents: null,
+    annualUSDCents: null,
+    cta: "Contact Sales",
+    ctaVariant: "outline" as const,
+    ctaType: "anchor" as const,
+    ctaHref: "#booking",
+    features: [
+      "Unlimited properties",
+      "Unlimited units",
+      "Unlimited users",
+      "Unlimited storage",
+      "Everything in Agency",
+      "Dedicated support",
+      "API access",
+      "SSO & audit logs",
+    ],
+    popular: false,
+  },
 ];
+
+function compactUGX(ugx: number): string {
+  if (ugx >= 1_000_000) return `${(ugx / 1_000_000).toFixed(ugx % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (ugx >= 1_000)     return `${(ugx / 1_000).toFixed(ugx % 1_000 === 0 ? 0 : 1)}k`;
+  return String(ugx);
+}
+
+function formatUSD(cents: number): string {
+  const dollars = cents / 100;
+  return dollars % 1 === 0 ? `$${dollars}` : `$${dollars.toFixed(0)}`;
+}
 
 export function PricingSection() {
   const [annual, setAnnual] = useState(false);
+  const [currency, setCurrency] = useState<"UGX" | "USD">("UGX");
 
   return (
     <section
@@ -82,7 +127,7 @@ export function PricingSection() {
       aria-labelledby="pricing-heading"
       className="bg-[#fafafa] py-20 lg:py-28"
     >
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
 
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-12">
@@ -97,47 +142,85 @@ export function PricingSection() {
             Start free. Upgrade when you&apos;re ready. No hidden fees, no surprises.
           </p>
 
-          {/* Billing toggle */}
-          <div
-            className="inline-flex items-center rounded-lg border border-[hsl(var(--border))] bg-white p-1 gap-0.5"
-            role="group"
-            aria-label="Billing period"
-          >
-            <button
-              onClick={() => setAnnual(false)}
-              aria-pressed={!annual}
-              className={cn(
-                "px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer",
-                !annual
-                  ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-sm font-semibold"
-                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]",
-              )}
+          {/* Billing + currency toggles */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {/* Billing period */}
+            <div
+              className="inline-flex items-center rounded-lg border border-[hsl(var(--border))] bg-white p-1 gap-0.5"
+              role="group"
+              aria-label="Billing period"
             >
-              Monthly
-            </button>
-            <button
-              onClick={() => setAnnual(true)}
-              aria-pressed={annual}
-              className={cn(
-                "px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer flex items-center gap-1.5",
-                annual
-                  ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-sm font-semibold"
-                  : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]",
-              )}
+              <button
+                onClick={() => setAnnual(false)}
+                aria-pressed={!annual}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer",
+                  !annual
+                    ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-sm font-semibold"
+                    : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]",
+                )}
+              >
+                Monthly
+              </button>
+              <button
+                onClick={() => setAnnual(true)}
+                aria-pressed={annual}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer flex items-center gap-1.5",
+                  annual
+                    ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-sm font-semibold"
+                    : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]",
+                )}
+              >
+                Annual
+                <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                  Save 20%
+                </span>
+              </button>
+            </div>
+
+            {/* Currency */}
+            <div
+              className="inline-flex items-center rounded-lg border border-[hsl(var(--border))] bg-white p-1 gap-0.5"
+              role="group"
+              aria-label="Display currency"
             >
-              Annual
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
-                Save 20%
-              </span>
-            </button>
+              {(["UGX", "USD"] as const).map(cur => (
+                <button
+                  key={cur}
+                  onClick={() => setCurrency(cur)}
+                  aria-pressed={currency === cur}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium rounded-md transition-all cursor-pointer",
+                    currency === cur
+                      ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] shadow-sm font-semibold"
+                      : "text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]",
+                  )}
+                >
+                  {cur}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Pricing cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
           {PLANS.map(plan => {
-            const price = annual ? plan.annualUGX : plan.monthlyUGX;
             const isFree = plan.slug === "free";
+
+            // Per-month display price
+            const isCustom = plan.monthlyUGX === null;
+            const ugxPerMonth  = !isCustom && plan.annualUGX   != null ? (annual ? Math.round(plan.annualUGX / 12)     : plan.monthlyUGX!)     : 0;
+            const usdPerMonth  = !isCustom && plan.annualUSDCents != null ? (annual ? Math.round(plan.annualUSDCents / 12) : plan.monthlyUSDCents!) : 0;
+
+            const priceLabel = isFree
+              ? "Free"
+              : isCustom
+                ? "Custom"
+                : currency === "UGX"
+                  ? compactUGX(ugxPerMonth)
+                  : formatUSD(usdPerMonth);
 
             return (
               <div
@@ -145,7 +228,7 @@ export function PricingSection() {
                 className={cn(
                   "relative flex flex-col rounded-xl border bg-white transition-all duration-200",
                   plan.popular
-                    ? "border-[#239487] shadow-lg ring-1 ring-[#239487]/20 md:scale-[1.02] md:z-10"
+                    ? "border-[#239487] shadow-lg ring-1 ring-[#239487]/20 lg:scale-[1.02] lg:z-10"
                     : "border-[hsl(var(--border))] shadow-sm",
                 )}
               >
@@ -165,28 +248,34 @@ export function PricingSection() {
                     {plan.name}
                   </p>
 
-                  {/* Price */}
-                  {!isFree && (
+                  {/* Currency label */}
+                  {!isFree && !isCustom && (
                     <p className="text-[11px] font-semibold tracking-widest uppercase text-[hsl(var(--muted-foreground))] mb-0.5">
-                      UGX
+                      {currency}
                     </p>
                   )}
+                  {isCustom && <div className="h-4 mb-0.5" />}
+
+                  {/* Price */}
                   <div className="flex items-baseline gap-1.5 mb-1">
-                    <span className={cn("font-bold tracking-tight leading-none", isFree ? "text-2xl" : "text-3xl")}>
-                      {isFree ? "Free" : `${price / 1_000}k`}
+                    <span className={cn("font-bold tracking-tight leading-none", isFree || isCustom ? "text-2xl" : "text-3xl")}>
+                      {priceLabel}
                     </span>
-                    {!isFree && <span className="text-sm text-[hsl(var(--muted-foreground))]">/mo</span>}
+                    {!isFree && !isCustom && <span className="text-sm text-[hsl(var(--muted-foreground))]">/mo</span>}
                   </div>
 
                   <div className="h-5 mb-3">
-                    {!isFree && annual && (
+                    {!isFree && !isCustom && annual && (
                       <p className="text-xs font-medium text-emerald-700">Save 20% with annual billing</p>
                     )}
-                    {!isFree && !annual && (
+                    {!isFree && !isCustom && !annual && (
                       <p className="text-xs text-[hsl(var(--muted-foreground))]">Billed monthly</p>
                     )}
                     {isFree && (
                       <p className="text-xs text-[hsl(var(--muted-foreground))]">No credit card required</p>
+                    )}
+                    {isCustom && (
+                      <p className="text-xs text-[hsl(var(--muted-foreground))]">Tailored to your portfolio</p>
                     )}
                   </div>
 
@@ -233,36 +322,8 @@ export function PricingSection() {
           })}
         </div>
 
-        {/* Enterprise / large portfolio callout */}
-        <div className="mt-10 rounded-xl border border-[hsl(var(--border))] bg-white p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <p className="font-semibold text-[hsl(var(--foreground))]">Larger portfolio? Let's talk.</p>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-0.5">
-              Unlimited properties, dedicated support, API access, and custom pricing available.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <a
-              href="#booking"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#239487] hover:text-[#16665d] transition-colors"
-            >
-              Book a call
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-            </a>
-            <span className="text-[hsl(var(--muted-foreground))]" aria-hidden="true">·</span>
-            <a
-              href="https://wa.me/256700000000"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#239487] hover:text-[#16665d] transition-colors"
-            >
-              WhatsApp us
-            </a>
-          </div>
-        </div>
-
         {/* VAT note */}
-        <p className="text-xs text-center text-[hsl(var(--muted-foreground))] mt-6">
+        <p className="text-xs text-center text-[hsl(var(--muted-foreground))] mt-8">
           All prices subject to 18% VAT. Annual plans billed once per year. Payments verified within 24 hours.
         </p>
 
