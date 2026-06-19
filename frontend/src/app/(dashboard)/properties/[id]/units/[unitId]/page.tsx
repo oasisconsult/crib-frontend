@@ -47,6 +47,7 @@ import { useUnit, useProperty, useUpdateUnit } from "@/hooks/useProperties";
 import { useTenant } from "@/hooks/useTenants";
 import { useLease } from "@/hooks/useLeases";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
 import { cn } from "@/utils/cn";
 import type { Unit, UnitStatus, UnitType, FurnishedStatus, WaterSource } from "@/types";
 
@@ -471,6 +472,8 @@ export default function UnitDetailPage({ params }: Props) {
   const { data: currentLease } = useLease(unit?.currentLeaseId ?? "");
   const { can } = usePermissions();
   const canEdit = can("properties:write");
+  const { data: sub } = useCurrentSubscription();
+  const hasScreenings = sub?.plan?.features?.screenings === true;
   const [editing, setEditing] = useState(false);
 
   if (isLoading) return <PageSkeleton />;
@@ -795,7 +798,7 @@ export default function UnitDetailPage({ params }: Props) {
           )}
 
           {/* ── Tenant Screenings ──────────────────────── */}
-          <ScreeningPanel unitId={unitId} canManage={canEdit} />
+          {hasScreenings && <ScreeningPanel unitId={unitId} canManage={canEdit} />}
 
           {/* ── Quick actions ──────────────────────────── */}
           <div className="flex flex-wrap gap-2">

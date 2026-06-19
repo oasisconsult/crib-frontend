@@ -21,6 +21,7 @@ from app.api.deps import CurrentUser, get_org_id, require_org_access
 from app.core.database import get_db
 from app.schemas.screening import ScreeningCreate, ScreeningDecide, ScreeningOut, ScreeningUpdate
 from app.services import screening_service
+from app.services.subscription_limits import check_feature_access
 
 router = APIRouter(prefix="/screenings", tags=["screenings"])
 
@@ -34,6 +35,8 @@ async def create_screening(
     db: AsyncSession = Depends(get_db),
 ) -> ScreeningOut:
     org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "screenings", db)
     screening = await screening_service.create_screening(
         org_id=org_id,
         body=body,
@@ -53,6 +56,8 @@ async def list_screenings(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "screenings", db)
     result = await screening_service.list_screenings(
         org_id=org_id,
         db=db,
@@ -74,6 +79,8 @@ async def get_screening(
     db: AsyncSession = Depends(get_db),
 ) -> ScreeningOut:
     org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "screenings", db)
     screening = await screening_service.get_screening(screening_id, org_id, db)
     if not screening:
         raise HTTPException(status_code=404, detail="Screening not found")
@@ -88,6 +95,8 @@ async def update_screening(
     db: AsyncSession = Depends(get_db),
 ) -> ScreeningOut:
     org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "screenings", db)
     screening = await screening_service.get_screening(screening_id, org_id, db)
     if not screening:
         raise HTTPException(status_code=404, detail="Screening not found")
@@ -105,6 +114,8 @@ async def decide_screening(
     db: AsyncSession = Depends(get_db),
 ) -> ScreeningOut:
     org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "screenings", db)
     screening = await screening_service.get_screening(screening_id, org_id, db)
     if not screening:
         raise HTTPException(status_code=404, detail="Screening not found")
