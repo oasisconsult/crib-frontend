@@ -259,6 +259,13 @@ def create_app() -> FastAPI:
             f"{settings.api_prefix}/inspections/portal/",
             f"{settings.api_prefix}/upload/file/inspector/",
             f"{settings.api_prefix}/upload/presign/inspector/",
+            # Token-gated invite/onboarding flows — no Logto session required
+            f"{settings.api_prefix}/landlords/onboarding/",
+            f"{settings.api_prefix}/caretaker-invites/onboarding/",
+            f"{settings.api_prefix}/agency-invites/onboarding/",
+            f"{settings.api_prefix}/tenants/onboarding/",
+            f"{settings.api_prefix}/upload/presign/onboarding/",
+            f"{settings.api_prefix}/upload/file/onboarding/",
         )
 
         class _CribAppContextMiddleware(AppContextMiddleware):
