@@ -9,6 +9,8 @@ const PUBLIC_PREFIXES = [
   "/api/logto",
   "/_next",
   "/favicon.ico",
+  // Inspector portal — token in URL is the credential; inspector has no account
+  "/inspect/",
 ];
 
 // Exact-match public routes (startsWith "/" would match everything)
