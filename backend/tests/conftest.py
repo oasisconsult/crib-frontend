@@ -249,31 +249,79 @@ async def test_engine():
             "ON CONFLICT (logto_org_id) DO NOTHING"
         ))
 
-        # Seed subscription plans (required for get_or_create_subscription).
+        # Seed subscription plans (matches migration 065 — pricing v2).
+        # Uses DO UPDATE so re-running tests against an existing crib_test DB
+        # always reflects the current plan definitions.
         import json as _json
+        _FREE_FEATS = _json.dumps({
+            "analytics_basic": True, "analytics_advanced": False,
+            "maintenance_workflows": False, "document_storage": False,
+            "tenant_messaging": False, "inspection_reports": False,
+            "esignature_enabled": False, "onboarding_enabled": False,
+            "screenings": False, "efris": False, "team_members": False,
+            "custom_branding": False, "priority_support": False,
+            "dedicated_support": False, "api_access": False,
+            "sso": False, "audit_logs": False, "manualPayments": True,
+        })
+        _PRO_FEATS = _json.dumps({
+            "analytics_basic": True, "analytics_advanced": True,
+            "maintenance_workflows": True, "document_storage": True,
+            "tenant_messaging": True, "inspection_reports": True,
+            "esignature_enabled": True, "onboarding_enabled": True,
+            "screenings": False, "efris": False, "team_members": False,
+            "custom_branding": False, "priority_support": False,
+            "dedicated_support": False, "api_access": False,
+            "sso": False, "audit_logs": False, "manualPayments": True,
+        })
+        _AGENCY_FEATS = _json.dumps({
+            "analytics_basic": True, "analytics_advanced": True,
+            "maintenance_workflows": True, "document_storage": True,
+            "tenant_messaging": True, "inspection_reports": True,
+            "esignature_enabled": True, "onboarding_enabled": True,
+            "screenings": True, "efris": True, "team_members": True,
+            "custom_branding": True, "priority_support": True,
+            "dedicated_support": False, "api_access": False,
+            "sso": False, "audit_logs": True, "manualPayments": True,
+        })
+        _ENT_FEATS = _json.dumps({
+            "analytics_basic": True, "analytics_advanced": True,
+            "maintenance_workflows": True, "document_storage": True,
+            "tenant_messaging": True, "inspection_reports": True,
+            "esignature_enabled": True, "onboarding_enabled": True,
+            "screenings": True, "efris": True, "team_members": True,
+            "custom_branding": True, "priority_support": True,
+            "dedicated_support": True, "api_access": True,
+            "sso": True, "audit_logs": True, "manualPayments": True,
+        })
+        # slug, name, desc, mugx, augx, musd_cents, ausd_cents, max_props, max_units, max_users, max_mb, feats, trial_days, requires_custom_quote, display_order
         _PLANS = [
-            ("free",         "Free",         "Get started with basic property management.", 0, 0, 0, 0, 1, 5, 1, 100,
-             _json.dumps({"analytics_basic": True, "analytics_advanced": False}), 0, 1),
-            ("professional", "Professional", "For growing landlords.", 200000, 1920000, 4900, 47000, 10, 50, 3, 2048,
-             _json.dumps({"analytics_basic": True, "analytics_advanced": True}), 14, 2),
-            ("agency",       "Agency",       "For property management agencies.", 500000, 4800000, 12900, 123800, 50, 300, 15, 20480,
-             _json.dumps({"analytics_basic": True, "analytics_advanced": True, "team_members": True}), 14, 3),
-            ("enterprise",   "Enterprise",   "Unlimited scale.", 1000000, 9600000, 25900, 248600, -1, -1, -1, -1,
-             _json.dumps({"analytics_basic": True, "analytics_advanced": True, "api_access": True}), 14, 4),
+            ("free",         "Free",         "Get started with basic property management.", 0, 0, 0, 0, 2, 15, 1, 100, _FREE_FEATS, 0, False, 1),
+            ("professional", "Professional", "For growing landlords.", 159_000, 1_526_400, 4_500, 43_200, 20, 100, 5, 10_240, _PRO_FEATS, 14, False, 2),
+            ("agency",       "Agency",       "For property management agencies.", 399_000, 3_830_400, 10_900, 104_640, -1, 500, 20, 51_200, _AGENCY_FEATS, 14, False, 3),
+            ("enterprise",   "Enterprise",   "Unlimited scale.", 0, 0, 0, 0, -1, -1, -1, -1, _ENT_FEATS, 14, True, 4),
         ]
-        for slug, name, desc, mugx, augx, musd, ausd, mp, mu, muser, ms, feats, trial, order in _PLANS:
+        for slug, name, desc, mugx, augx, musd, ausd, mp, mu, muser, ms, feats, trial, rcq, order in _PLANS:
             await conn.execute(sa.text(
                 "INSERT INTO subscription_plans "
                 "(name, slug, description, monthly_price_ugx, annual_price_ugx, "
                 "monthly_price_usd_cents, annual_price_usd_cents, "
                 "max_properties, max_units, max_users, max_storage_mb, "
-                "features, trial_days, is_active, is_publicly_visible, display_order) "
-                "VALUES (:name,:slug,:desc,:mugx,:augx,:musd,:ausd,:mp,:mu,:muser,:ms,:feats,:trial,true,true,:order) "
-                "ON CONFLICT (slug) DO NOTHING"
+                "features, trial_days, requires_custom_quote, is_active, is_publicly_visible, display_order) "
+                "VALUES (:name,:slug,:desc,:mugx,:augx,:musd,:ausd,:mp,:mu,:muser,:ms,:feats,:trial,:rcq,true,true,:order) "
+                "ON CONFLICT (slug) DO UPDATE SET "
+                "  monthly_price_ugx=EXCLUDED.monthly_price_ugx, "
+                "  annual_price_ugx=EXCLUDED.annual_price_ugx, "
+                "  monthly_price_usd_cents=EXCLUDED.monthly_price_usd_cents, "
+                "  annual_price_usd_cents=EXCLUDED.annual_price_usd_cents, "
+                "  max_properties=EXCLUDED.max_properties, "
+                "  max_units=EXCLUDED.max_units, max_users=EXCLUDED.max_users, "
+                "  max_storage_mb=EXCLUDED.max_storage_mb, "
+                "  requires_custom_quote=EXCLUDED.requires_custom_quote, "
+                "  features=EXCLUDED.features::jsonb"
             ), {"name": name, "slug": slug, "desc": desc,
                 "mugx": mugx, "augx": augx, "musd": musd, "ausd": ausd,
                 "mp": mp, "mu": mu, "muser": muser, "ms": ms,
-                "feats": feats, "trial": trial, "order": order})
+                "feats": feats, "trial": trial, "rcq": rcq, "order": order})
 
         # Seed billing system settings for tests
         _BILLING = [
@@ -292,6 +340,9 @@ async def test_engine():
             ("billing.airtel.number", "+256750000000", "billing", "Airtel Number", "string", False, False),
             ("billing.airtel.name", "Test Airtel", "billing", "Airtel Name", "string", False, False),
             ("billing.cash.instructions", "Pay at office.", "billing", "Cash Instructions", "text", False, False),
+            # Exchange rate keys (seeded by migration 065; must exist for anonymous-flags tests)
+            ("platform.ugx_usd_rate",         "3700", "platform", "UGX/USD Rate",        "integer", False, False),
+            ("platform.ugx_usd_rate_updated", "",     "platform", "Rate Last Updated",    "string",  False, False),
         ]
         for key, value, category, label, value_type, is_secret, is_required in _BILLING:
             await conn.execute(sa.text(

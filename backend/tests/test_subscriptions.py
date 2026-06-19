@@ -93,11 +93,11 @@ async def test_free_plan_has_zero_price(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_professional_plan_price(client: AsyncClient):
-    """Professional plan should have 200,000 UGX monthly."""
+    """Professional plan should have 159,000 UGX monthly (pricing v2 / migration 065)."""
     resp = await client.get(f"{PREFIX}/subscriptions/plans", headers=auth_headers("manager-1"))
     pro = next(p for p in resp.json() if p["slug"] == "professional")
-    assert pro["monthlyPriceUgx"] == 200_000
-    assert pro["annualPriceUgx"] == 1_920_000
+    assert pro["monthlyPriceUgx"] == 159_000
+    assert pro["annualPriceUgx"] == 1_526_400
 
 
 # ── Current subscription ───────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ async def test_select_paid_plan_moves_to_pending_payment(
     assert body["status"] == "pending_payment"
     assert body["plan"]["slug"] == "professional"
     assert body["billingCycle"] == "monthly"
-    assert body["pricePaid"] == 200_000
+    assert body["pricePaid"] == 159_000
 
 
 @pytest.mark.asyncio
@@ -208,13 +208,13 @@ async def test_usage_returns_correct_shape(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_usage_free_plan_limits(client: AsyncClient):
-    """Free plan limits: 1 property, 5 units, 1 user."""
+    """Free plan limits (pricing v2): 2 properties, 15 units, 1 user."""
     # Ensure a free subscription exists
     await client.get(f"{PREFIX}/subscriptions/current", headers=auth_headers("owner-1"))
     resp = await client.get(f"{PREFIX}/subscriptions/usage", headers=auth_headers("owner-1"))
     body = resp.json()
-    assert body["propertiesLimit"] == 1
-    assert body["unitsLimit"] == 5
+    assert body["propertiesLimit"] == 2
+    assert body["unitsLimit"] == 15
     assert body["usersLimit"] == 1
 
 
@@ -646,7 +646,7 @@ async def test_select_plan_annual_usd(client: AsyncClient, db_session: AsyncSess
     body = resp.json()
     assert body["billingCycle"] == "annual"
     assert body["currency"] == "USD"
-    assert body["pricePaid"] == 123800  # annual USD cents for agency plan
+    assert body["pricePaid"] == 104_640  # annual USD cents for agency plan (pricing v2)
 
 
 @pytest.mark.asyncio
@@ -659,4 +659,241 @@ async def test_select_plan_monthly_ugx(client: AsyncClient, db_session: AsyncSes
         json={"planId": agency_id, "billingCycle": "monthly", "currency": "UGX"},
     )
     assert resp.status_code == 200
-    assert resp.json()["pricePaid"] == 500_000
+    assert resp.json()["pricePaid"] == 399_000  # pricing v2 agency monthly
+
+
+# ── Pricing v2 — plan catalogue (migration 065) ────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_pricing_v2_free_plan_limits(client: AsyncClient):
+    """Free plan must have max 2 properties and 15 units (pricing v2)."""
+    resp = await client.get(f"{PREFIX}/subscriptions/plans", headers=auth_headers("manager-1"))
+    free = next(p for p in resp.json() if p["slug"] == "free")
+    assert free["maxProperties"] == 2
+    assert free["maxUnits"] == 15
+    assert free["maxUsers"] == 1
+    assert free["maxStorageMb"] == 100
+
+
+@pytest.mark.asyncio
+async def test_pricing_v2_agency_plan_price(client: AsyncClient):
+    """Agency plan must have 399,000 UGX monthly (pricing v2)."""
+    resp = await client.get(f"{PREFIX}/subscriptions/plans", headers=auth_headers("manager-1"))
+    agency = next(p for p in resp.json() if p["slug"] == "agency")
+    assert agency["monthlyPriceUgx"] == 399_000
+    assert agency["annualPriceUgx"] == 3_830_400
+    assert agency["maxProperties"] == -1   # unlimited
+    assert agency["maxUnits"] == 500
+    assert agency["maxUsers"] == 20
+
+
+@pytest.mark.asyncio
+async def test_pricing_v2_professional_usd_price(client: AsyncClient):
+    """Professional plan USD pricing (pricing v2)."""
+    resp = await client.get(f"{PREFIX}/subscriptions/plans", headers=auth_headers("manager-1"))
+    pro = next(p for p in resp.json() if p["slug"] == "professional")
+    assert pro["monthlyPriceUsdCents"] == 4_500
+    assert pro["annualPriceUsdCents"] == 43_200
+
+
+# ── Pricing v2 — plan feature flags (migration 065) ───────────────────────────
+
+@pytest.mark.asyncio
+async def test_free_plan_new_features_are_disabled(db_session: AsyncSession):
+    """Free plan must have all v2 feature flags set to False."""
+    free_plan = (await db_session.execute(
+        select(SubscriptionPlan).where(SubscriptionPlan.slug == "free")
+    )).scalar_one()
+    features = free_plan.features
+    for flag in ("inspection_reports", "esignature_enabled", "onboarding_enabled",
+                 "efris", "screenings", "maintenance_workflows", "document_storage",
+                 "tenant_messaging", "team_members"):
+        assert features.get(flag) is False, (
+            f"Free plan should have {flag}=False, got {features.get(flag)!r}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_professional_plan_core_features_enabled(db_session: AsyncSession):
+    """Professional plan must have v2 core features enabled."""
+    pro_plan = (await db_session.execute(
+        select(SubscriptionPlan).where(SubscriptionPlan.slug == "professional")
+    )).scalar_one()
+    features = pro_plan.features
+    for flag in ("analytics_advanced", "maintenance_workflows", "document_storage",
+                 "tenant_messaging", "inspection_reports", "esignature_enabled",
+                 "onboarding_enabled"):
+        assert features.get(flag) is True, (
+            f"Professional plan should have {flag}=True, got {features.get(flag)!r}"
+        )
+    # These should be False on professional
+    for flag in ("efris", "team_members", "screenings"):
+        assert features.get(flag) is False, (
+            f"Professional plan should have {flag}=False, got {features.get(flag)!r}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_agency_plan_all_features_enabled(db_session: AsyncSession):
+    """Agency plan must have EFRIS, screenings, team_members, and audit_logs enabled."""
+    agency_plan = (await db_session.execute(
+        select(SubscriptionPlan).where(SubscriptionPlan.slug == "agency")
+    )).scalar_one()
+    features = agency_plan.features
+    for flag in ("efris", "screenings", "team_members", "audit_logs",
+                 "inspection_reports", "esignature_enabled", "custom_branding"):
+        assert features.get(flag) is True, (
+            f"Agency plan should have {flag}=True, got {features.get(flag)!r}"
+        )
+
+
+@pytest.mark.asyncio
+async def test_enterprise_plan_all_features_enabled(db_session: AsyncSession):
+    """Enterprise plan must have every feature flag set to True."""
+    ent_plan = (await db_session.execute(
+        select(SubscriptionPlan).where(SubscriptionPlan.slug == "enterprise")
+    )).scalar_one()
+    features = ent_plan.features
+    for flag in ("analytics_advanced", "inspection_reports", "esignature_enabled",
+                 "onboarding_enabled", "efris", "screenings", "team_members",
+                 "custom_branding", "priority_support", "dedicated_support",
+                 "api_access", "sso", "audit_logs"):
+        assert features.get(flag) is True, (
+            f"Enterprise plan should have {flag}=True, got {features.get(flag)!r}"
+        )
+
+
+# ── Feature gating service layer ───────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_check_feature_access_raises_402_for_free_plan(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """check_feature_access raises 402 when the org's plan lacks the feature."""
+    from app.services.subscription_limits import check_feature_access
+    from fastapi import HTTPException
+
+    # Bootstrap a free subscription for the dev org
+    await client.get(f"{PREFIX}/subscriptions/current", headers=auth_headers("owner-1"))
+
+    # Get the dev org id
+    from sqlalchemy import select as sa_select
+    from app.models.organisation import Organisation
+    org = (await db_session.execute(
+        sa_select(Organisation).where(Organisation.logto_org_id == "org_dev")
+    )).scalar_one()
+
+    # inspection_reports is False on free plan → must raise 402
+    with pytest.raises(HTTPException) as exc_info:
+        await check_feature_access(org.id, "inspection_reports", db_session)
+    assert exc_info.value.status_code == 402
+    detail: dict = exc_info.value.detail  # type: ignore[assignment]
+    assert detail["feature"] == "inspection_reports"
+    assert detail["code"] == "feature_not_available"
+
+
+@pytest.mark.asyncio
+async def test_check_feature_access_passes_for_enabled_feature(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """check_feature_access does not raise for a feature enabled on the plan."""
+    from app.services.subscription_limits import check_feature_access
+    from app.models.organisation import Organisation
+
+    # Upgrade dev org subscription to agency (has efris=True, team_members=True)
+    agency_id = await _get_plan_id("agency", db_session)
+    await client.post(
+        f"{PREFIX}/subscriptions/select-plan",
+        headers=auth_headers("owner-1"),
+        json={"planId": agency_id, "billingCycle": "monthly", "currency": "UGX"},
+    )
+
+    # Manually mark it active (normally requires payment verification)
+    from app.models.subscription import OrganisationSubscription, SubscriptionStatus
+    org = (await db_session.execute(
+        select(Organisation).where(Organisation.logto_org_id == "org_dev")
+    )).scalar_one()
+    sub = (await db_session.execute(
+        select(OrganisationSubscription).where(
+            OrganisationSubscription.organisation_id == org.id
+        )
+    )).scalar_one()
+    sub.status = SubscriptionStatus.active
+    await db_session.flush()
+
+    # efris is True on agency plan — must not raise
+    await check_feature_access(org.id, "efris", db_session)   # no exception = pass
+
+
+@pytest.mark.asyncio
+async def test_check_feature_access_superadmin_bypass(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Superadmin has org_id=None; gating code must guard with 'if org_id is not None'."""
+    # This verifies that superadmins aren't accidentally blocked by feature checks.
+    # The guard is at the call site: if org_id is not None: await check_feature_access(...)
+    # We test the service directly: passing None should not be called by callers,
+    # but check_feature_access_bool handles it gracefully.
+    from app.services.subscription_limits import check_feature_access_bool
+    # org_id=None simulates a code path that forgot the guard — returns False safely
+    result = await check_feature_access_bool(None, "inspection_reports", db_session)  # type: ignore[arg-type]
+    assert result is False  # safe fallback, not a crash
+
+
+# ── Admin plan feature flag management ────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_admin_update_plan_features_dict(client: AsyncClient, db_session: AsyncSession):
+    """PATCH /admin/billing/plans/{id} can update the features JSONB dict."""
+    pro_id = await _get_plan_id("professional", db_session)
+    resp = await client.patch(
+        f"{PREFIX}/admin/billing/plans/{pro_id}",
+        headers=auth_headers("user-superadmin-1"),
+        json={"features": {"analytics_basic": True, "screenings": True, "efris": False}},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["features"]["screenings"] is True
+    assert body["features"]["efris"] is False
+    assert body["features"]["analytics_basic"] is True
+
+
+@pytest.mark.asyncio
+async def test_admin_update_plan_features_reflects_in_plan_response(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """After admin toggles a feature, the updated value must appear in the plan API response."""
+    pro_id = await _get_plan_id("professional", db_session)
+
+    # screenings is False on professional by default
+    before = await client.get(f"{PREFIX}/subscriptions/plans", headers=auth_headers("manager-1"))
+    pro_before = next(p for p in before.json() if p["slug"] == "professional")
+    assert pro_before["features"]["screenings"] is False
+
+    # Admin enables screenings
+    patch_resp = await client.patch(
+        f"{PREFIX}/admin/billing/plans/{pro_id}",
+        headers=auth_headers("user-superadmin-1"),
+        json={"features": {"screenings": True}},
+    )
+    assert patch_resp.status_code == 200
+    assert patch_resp.json()["features"]["screenings"] is True
+
+    # Confirm the public plans endpoint now reflects the change
+    after = await client.get(f"{PREFIX}/subscriptions/plans", headers=auth_headers("manager-1"))
+    pro_after = next(p for p in after.json() if p["slug"] == "professional")
+    assert pro_after["features"]["screenings"] is True
+
+
+@pytest.mark.asyncio
+async def test_non_superadmin_cannot_update_plan_features(
+    client: AsyncClient, db_session: AsyncSession
+):
+    """Only superadmin may update plan feature flags."""
+    pro_id = await _get_plan_id("professional", db_session)
+    resp = await client.patch(
+        f"{PREFIX}/admin/billing/plans/{pro_id}",
+        headers=auth_headers("owner-1"),
+        json={"features": {"efris": True}},
+    )
+    assert resp.status_code in (403, 401)
