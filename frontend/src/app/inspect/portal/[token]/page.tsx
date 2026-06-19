@@ -61,6 +61,39 @@ function ConditionPicker({
   );
 }
 
+// Resize and JPEG-compress a photo before upload so full-resolution camera
+// shots (12–48MP) don't exhaust mobile memory. Caps the longest edge at
+// 1600px and encodes at 82% quality — enough for inspection records.
+function compressImage(file: File): Promise<File> {
+  const MAX_DIM = 1600;
+  const QUALITY = 0.82;
+  return new Promise((resolve) => {
+    const img = new Image();
+    const blobUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) => resolve(
+          blob
+            ? new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })
+            : file,
+        ),
+        "image/jpeg",
+        QUALITY,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(file); };
+    img.src = blobUrl;
+  });
+}
+
 function PhotoUploadArea({
   token,
   urls,
@@ -86,9 +119,10 @@ function PhotoUploadArea({
       setUploading(true);
       try {
         for (const file of Array.from(files)) {
-          const blobUrl = URL.createObjectURL(file);
+          const compressed = await compressImage(file);
+          const blobUrl = URL.createObjectURL(compressed);
           const form = new FormData();
-          form.append("file", file);
+          form.append("file", compressed);
           const res = await fetch(`/api/v1/upload/file/inspector/${token}`, {
             method: "POST",
             body: form,
@@ -98,6 +132,8 @@ function PhotoUploadArea({
             const serverUrl: string = data.publicUrl;
             blobMap.current.set(serverUrl, blobUrl);
             onAdd(serverUrl);
+          } else {
+            URL.revokeObjectURL(blobUrl);
           }
         }
       } finally {
