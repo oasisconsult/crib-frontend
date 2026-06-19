@@ -28,7 +28,7 @@ Endpoints:
 import uuid
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import delete as _delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,7 +50,7 @@ from app.schemas.property import (
     UnitRulesUpdate,
     UnitUpdate,
 )
-from app.services import property_service as svc
+from app.services import audit_service, property_service as svc
 from app.services.subscription_limits import check_property_limit, check_unit_limit
 
 log = structlog.get_logger(__name__)
@@ -142,6 +142,7 @@ async def list_properties(
 @router.post("", response_model=PropertyOut, status_code=status.HTTP_201_CREATED)
 async def create_property(
     body: PropertyCreate,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
@@ -158,7 +159,19 @@ async def create_property(
         )
     if not current_user.has_role("superadmin"):
         await check_property_limit(org_id, db)
-    return await svc.create_property(body, org_id, db)
+    prop = await svc.create_property(body, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="property",
+        resource_id=uuid.UUID(str(prop.id)),
+        resource_label=prop.name,
+        action="property.created",
+        request=request,
+    )
+    return prop
 
 
 @router.get("/{property_id}", response_model=PropertyOut)
@@ -180,10 +193,24 @@ async def get_property(
 async def update_property(
     property_id: uuid.UUID,
     body: PropertyUpdate,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.update_property(property_id, body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    prop = await svc.update_property(property_id, body, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="property",
+        resource_id=property_id,
+        resource_label=prop.name,
+        action="property.updated",
+        request=request,
+    )
+    return prop
 
 
 @router.patch("/{property_id}/rules", response_model=PropertyOut)
@@ -201,11 +228,26 @@ async def update_property_rules(
 @router.delete("/{property_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_property(
     property_id: uuid.UUID,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
     """Soft-archive a property. Blocked if any unit is occupied or has an active lease."""
-    await svc.delete_property(property_id, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    existing = await svc.get_property(property_id, org_id, db)
+    label = existing.name if existing else None
+    await svc.delete_property(property_id, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="property",
+        resource_id=property_id,
+        resource_label=label,
+        action="property.deleted",
+        request=request,
+    )
 
 
 @router.post("/{property_id}/restore", response_model=PropertyOut)
@@ -266,6 +308,7 @@ async def bulk_update_units(
 async def create_unit(
     property_id: uuid.UUID,
     body: UnitCreate,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
@@ -274,7 +317,20 @@ async def create_unit(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No organisation assigned.")
     if not current_user.has_role("superadmin"):
         await check_unit_limit(org_id, db)
-    return await svc.create_unit(property_id, body, org_id, db)
+    unit = await svc.create_unit(property_id, body, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="unit",
+        resource_id=uuid.UUID(str(unit.id)),
+        resource_label=unit.name,
+        action="unit.created",
+        event_data={"property_id": str(property_id)},
+        request=request,
+    )
+    return unit
 
 
 @router.get("/{property_id}/units/{unit_id}", response_model=UnitOut)
@@ -292,10 +348,25 @@ async def update_unit(
     property_id: uuid.UUID,
     unit_id: uuid.UUID,
     body: UnitUpdate,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.update_unit(property_id, unit_id, body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    unit = await svc.update_unit(property_id, unit_id, body, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="unit",
+        resource_id=unit_id,
+        resource_label=unit.name,
+        action="unit.updated",
+        event_data={"property_id": str(property_id)},
+        request=request,
+    )
+    return unit
 
 
 @router.patch("/{property_id}/units/{unit_id}/rules", response_model=UnitOut)
@@ -313,12 +384,28 @@ async def update_unit_rules(
 async def delete_unit(
     property_id: uuid.UUID,
     unit_id: uuid.UUID,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
     """Soft-archive a unit. Blocked if the unit is currently occupied."""
-    assert get_org_id(current_user) is not None
-    await svc.delete_unit(property_id, unit_id, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    assert org_id is not None
+    existing = await svc.get_unit(property_id, unit_id, org_id, db)
+    label = existing.name if existing else None
+    await svc.delete_unit(property_id, unit_id, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="unit",
+        resource_id=unit_id,
+        resource_label=label,
+        action="unit.deleted",
+        event_data={"property_id": str(property_id)},
+        request=request,
+    )
 
 
 @router.post("/{property_id}/units/{unit_id}/restore", response_model=UnitOut)

@@ -31,6 +31,7 @@ import {
   CalendarClock,
   Mail,
   FileBarChart2,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -143,6 +144,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/compliance",
     label: "EFRIS Compliance",
     icon: BadgeCheck,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/audit-log",
+    label: "Audit Log",
+    icon: ScrollText,
     roles: ["owner", "manager", "superadmin"],
   },
   {

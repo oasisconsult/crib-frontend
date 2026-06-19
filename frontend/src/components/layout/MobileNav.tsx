@@ -16,6 +16,7 @@ import {
   Wrench,
   Shield,
   FileBarChart2,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useUIStore } from "@/store/useUIStore";
@@ -86,6 +87,12 @@ const NAV_ITEMS: NavItem[] = [
     href: "/reports",
     label: "Reports",
     icon: FileBarChart2,
+    roles: ["owner", "manager", "superadmin"],
+  },
+  {
+    href: "/audit-log",
+    label: "Audit Log",
+    icon: ScrollText,
     roles: ["owner", "manager", "superadmin"],
   },
   {

@@ -292,7 +292,7 @@ def create_app() -> FastAPI:
 
     # ── Routers ───────────────────────────────────────────────────────────────
     from app.api.v1 import (
-        admin, announcements,
+        admin, announcements, audit_logs as audit_logs_module,
         agency_invites, analytics, contact_info, demo_bookings, email_templates, geobox, health, inspections, landlords, leases, me,
         messages, mobile_money, notifications, onboarding, organisations, payments, properties,
         property_import, rbac, screenings, system_settings, tenant_import, tenants, uploads, utilities, wallet, webhooks,
@@ -332,6 +332,8 @@ def create_app() -> FastAPI:
     application.include_router(announcements.router, prefix=settings.api_prefix)
     application.include_router(utilities.router, prefix=settings.api_prefix)
     application.include_router(screenings.router, prefix=settings.api_prefix)
+    application.include_router(audit_logs_module.router, prefix=settings.api_prefix)
+    application.include_router(audit_logs_module.admin_router, prefix=settings.api_prefix)
     application.include_router(notifications.router, prefix=settings.api_prefix)
     application.include_router(system_settings.router, prefix=settings.api_prefix)
     application.include_router(system_settings.public_router, prefix=settings.api_prefix)

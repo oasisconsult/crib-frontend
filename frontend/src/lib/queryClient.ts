@@ -102,6 +102,13 @@ export const queryKeys = {
     template: (id: string) => ["notifications", "templates", id] as const,
     stats: () => ["notifications", "stats"] as const,
   },
+  // Audit Logs
+  auditLogs: {
+    all: () => ["audit-logs"] as const,
+    list: (params?: object) => ["audit-logs", "list", params] as const,
+    detail: (id: string) => ["audit-logs", id] as const,
+    adminList: (params?: object) => ["audit-logs", "admin", params] as const,
+  },
   // Reports
   reports: {
     portfolio:            ()             => ["reports", "portfolio"] as const,

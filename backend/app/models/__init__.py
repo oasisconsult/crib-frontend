@@ -1,6 +1,7 @@
 # Import all models so that Base.metadata is fully populated for create_all / alembic autogenerate.
 from app.models import (  # noqa: F401
     announcement,
+    audit_log,
     contractor,
     demo_booking,
     efris,

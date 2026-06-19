@@ -29,12 +29,13 @@ Endpoints:
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, get_org_id, require_org_access
 from app.core.database import get_db
+from app.services import audit_service
 from app.schemas.payment import (
     ChannelCostEstimateOut,
     DepositOut,
@@ -232,20 +233,50 @@ async def get_payment(
 async def confirm_payment(
     lease_id: uuid.UUID,
     payment_id: uuid.UUID,
-    current_user=_write,
+    request: Request,
+    current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.confirm_payment(payment_id, lease_id, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    payment = await svc.confirm_payment(payment_id, lease_id, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="payment",
+        resource_id=payment_id,
+        resource_label=f"Payment {payment_id}",
+        action="payment.confirmed",
+        event_data={"lease_id": str(lease_id)},
+        request=request,
+    )
+    return payment
 
 
 @router.patch("/{lease_id}/payments/{payment_id}/refund", response_model=PaymentOut)
 async def refund_payment(
     lease_id: uuid.UUID,
     payment_id: uuid.UUID,
-    current_user=_write,
+    request: Request,
+    current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.refund_payment(payment_id, lease_id, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    payment = await svc.refund_payment(payment_id, lease_id, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="payment",
+        resource_id=payment_id,
+        resource_label=f"Payment {payment_id}",
+        action="payment.refunded",
+        event_data={"lease_id": str(lease_id)},
+        request=request,
+    )
+    return payment
 
 
 @router.patch("/{lease_id}/payments/{payment_id}/reject", response_model=PaymentOut)
@@ -253,6 +284,7 @@ async def reject_payment(
     lease_id: uuid.UUID,
     payment_id: uuid.UUID,
     body: PaymentRejectBody,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
@@ -266,14 +298,28 @@ async def reject_payment(
     A rejected payment is terminal — a new payment must be created to re-attempt.
     Completed / confirmed payments cannot be rejected; use the refund endpoint instead.
     """
-    return await svc.reject_payment(
+    org_id = get_org_id(current_user)
+    payment = await svc.reject_payment(
         payment_id,
         lease_id,
-        get_org_id(current_user),
+        org_id,
         db,
         reason=body.reason,
         rejected_by_profile_id=current_user.profile.id,
     )
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="payment",
+        resource_id=payment_id,
+        resource_label=f"Payment {payment_id}",
+        action="payment.rejected",
+        event_data={"lease_id": str(lease_id), "reason": body.reason},
+        request=request,
+    )
+    return payment
 
 
 @router.patch("/{lease_id}/payments/{payment_id}/cancel", response_model=PaymentOut)

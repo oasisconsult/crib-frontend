@@ -35,6 +35,12 @@ import { PermissionGate } from "@/components/common/PermissionGate";
 import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { RbacPanel } from "@/components/admin/RbacPanel";
 import { LeaseBillingTab } from "@/components/admin/LeaseBillingTab";
+import { AuditLogDrawer } from "@/components/audit/AuditLogDrawer";
+import { DataTable, type Column } from "@/components/common/DataTable";
+import { useAdminAuditLogs } from "@/hooks/useAuditLogs";
+import { FilterBar } from "@/components/common/FilterBar";
+import { formatDate } from "@/utils/formatters";
+import type { AuditLogEntry } from "@/services/api/auditLogs";
 import { useQuery } from "@tanstack/react-query";
 import { useAgencyInvites, useCreateAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
 import { useMigrateToPersonalOrg, useAssignToAgency, useRepairLandlordOrg, useRemoveFromLogtoOrg } from "@/hooks/useAdminLandlords";
@@ -56,6 +62,128 @@ const SERVICE_CONFIG: Record<string, { icon: React.ElementType; color: string }>
   degraded: { icon: Clock,        color: "text-amber-500"   },
   down:     { icon: XCircle,      color: "text-red-600"     },
 };
+
+/* ── Admin Audit Logs Panel ──────────────────────────────────────────────── */
+
+const AUDIT_ACTION_COLORS: Record<string, string> = {
+  created:   "bg-green-100 text-green-800 border-green-200",
+  deleted:   "bg-red-100 text-red-800 border-red-200",
+  updated:   "bg-blue-100 text-blue-800 border-blue-200",
+  approved:  "bg-teal-100 text-teal-800 border-teal-200",
+  rejected:  "bg-orange-100 text-orange-800 border-orange-200",
+  confirmed: "bg-purple-100 text-purple-800 border-purple-200",
+  refunded:  "bg-yellow-100 text-yellow-800 border-yellow-200",
+  activated: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  terminated:"bg-rose-100 text-rose-800 border-rose-200",
+};
+
+function auditBadgeClass(action: string) {
+  const verb = action.split(".").pop() ?? action;
+  return AUDIT_ACTION_COLORS[verb] ?? "bg-muted text-muted-foreground";
+}
+
+const ADMIN_AUDIT_COLUMNS: Column<AuditLogEntry>[] = [
+  {
+    key: "createdAt",
+    header: "Time",
+    sortable: true,
+    render: (e) => (
+      <span className="text-sm text-muted-foreground whitespace-nowrap">
+        {formatDate(e.createdAt)}
+      </span>
+    ),
+  },
+  {
+    key: "organisationId",
+    header: "Organisation",
+    render: (e) => (
+      <span className="font-mono text-xs">
+        {e.organisationId ? e.organisationId.slice(0, 8) + "…" : "—"}
+      </span>
+    ),
+  },
+  {
+    key: "actorName",
+    header: "Actor",
+    render: (e) => (
+      <div className="min-w-0">
+        <p className="text-sm font-medium truncate">{e.actorName ?? "Unknown"}</p>
+        {e.actorRole && (
+          <p className="text-xs text-muted-foreground capitalize">{e.actorRole}</p>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: "action",
+    header: "Action",
+    render: (e) => (
+      <Badge variant="outline" className={auditBadgeClass(e.action)}>
+        {e.action.split(".").pop()}
+      </Badge>
+    ),
+  },
+  {
+    key: "resourceType",
+    header: "Resource",
+    render: (e) => (
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground capitalize mb-0.5">{e.resourceType}</p>
+        <p className="text-sm truncate">{e.resourceLabel ?? "—"}</p>
+      </div>
+    ),
+  },
+];
+
+const ADMIN_AUDIT_PAGE_SIZE = 50;
+
+function AdminAuditLogsPanel() {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<AuditLogEntry | null>(null);
+
+  const { data, isLoading } = useAdminAuditLogs({
+    page,
+    pageSize: ADMIN_AUDIT_PAGE_SIZE,
+    search: search || undefined,
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <ScrollText className="h-4 w-4" />
+          Platform Audit Logs
+        </CardTitle>
+        <CardDescription>Cross-organisation action history — all tenants</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <FilterBar
+          value={search}
+          onChange={(v) => { setSearch(v); setPage(1); }}
+          placeholder="Search by resource name…"
+          className="max-w-sm"
+        />
+        <DataTable
+          data={data?.data ?? []}
+          columns={ADMIN_AUDIT_COLUMNS}
+          loading={isLoading}
+          totalItems={data?.total ?? 0}
+          currentPage={page}
+          pageSize={ADMIN_AUDIT_PAGE_SIZE}
+          onPageChange={setPage}
+          onRowClick={(row) => setSelected(row)}
+          rowKey={(row) => row.id}
+        />
+        <AuditLogDrawer
+          entry={selected}
+          open={!!selected}
+          onClose={() => setSelected(null)}
+        />
+      </CardContent>
+    </Card>
+  );
+}
 
 function Avatar({ name }: { name: string }) {
   return (
@@ -422,6 +550,10 @@ export default function AdminPage() {
               <TabsTrigger value="gdpr" className="shrink-0">
                 <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
                 Compliance
+              </TabsTrigger>
+              <TabsTrigger value="audit-logs" className="shrink-0">
+                <ScrollText className="h-3.5 w-3.5 mr-1.5" />
+                Audit Logs
               </TabsTrigger>
             </TabsList>
             {/* Settings now has its own sub-pages via sidebar nav — no tab needed */}
@@ -1236,6 +1368,11 @@ export default function AdminPage() {
           {/* ─── Lease Billing tab ──────────────────────────────── */}
           <TabsContent value="lease-billing" className="mt-4">
             <LeaseBillingTab />
+          </TabsContent>
+
+          {/* ─── Audit Logs tab ─────────────────────────────────── */}
+          <TabsContent value="audit-logs" className="mt-4">
+            <AdminAuditLogsPanel />
           </TabsContent>
         </Tabs>
       </div>

@@ -15,7 +15,7 @@ Leases REST API — 9 endpoints.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_org_id, get_tenant_record, require_org_access
@@ -35,7 +35,7 @@ from app.schemas.lease import (
 )
 from app.schemas.onboarding import CountersignBody, OnboardingPaymentOut, PresignBody, TenancyAgreementOut
 from app.schemas.tenant import TenantInviteOut
-from app.services import lease_service as svc
+from app.services import audit_service, lease_service as svc
 from app.services import onboarding_service as onb_svc
 from app.services import tenant_service as tenant_svc
 
@@ -50,10 +50,25 @@ _write = Depends(require_org_access(allow_tenant_own=False))
 @router.post("", response_model=LeaseOut, status_code=status.HTTP_201_CREATED)
 async def create_lease(
     body: LeaseCreate,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.create_lease(body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    lease = await svc.create_lease(body, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="lease",
+        resource_id=uuid.UUID(lease.id),
+        resource_label=f"Lease {lease.unit_id or lease.id}",
+        action="lease.created",
+        event_data={"unit_id": lease.unit_id, "tenant_id": lease.tenant_id},
+        request=request,
+    )
+    return lease
 
 
 @router.get("", response_model=dict, dependencies=[require_permission("read", "lease")])
@@ -145,30 +160,73 @@ async def delete_lease(
 @router.patch("/{lease_id}/activate", response_model=LeaseOut)
 async def activate_lease(
     lease_id: uuid.UUID,
+    request: Request,
     body: LeaseActivate = LeaseActivate(),  # noqa: B008
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.activate_lease(lease_id, body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    lease = await svc.activate_lease(lease_id, body, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="lease",
+        resource_id=lease_id,
+        resource_label=f"Lease {lease.unit_id or str(lease_id)}",
+        action="lease.activated",
+        request=request,
+    )
+    return lease
 
 
 @router.patch("/{lease_id}/terminate", response_model=LeaseOut)
 async def terminate_lease(
     lease_id: uuid.UUID,
     body: LeaseTerminate,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.terminate_lease(lease_id, body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    lease = await svc.terminate_lease(lease_id, body, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="lease",
+        resource_id=lease_id,
+        resource_label=f"Lease {lease.unit_id or str(lease_id)}",
+        action="lease.terminated",
+        event_data={"reason": body.reason},
+        request=request,
+    )
+    return lease
 
 
 @router.patch("/{lease_id}/expire", response_model=LeaseOut)
 async def expire_lease(
     lease_id: uuid.UUID,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.expire_lease(lease_id, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    lease = await svc.expire_lease(lease_id, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="lease",
+        resource_id=lease_id,
+        resource_label=f"Lease {lease.unit_id or str(lease_id)}",
+        action="lease.expired",
+        request=request,
+    )
+    return lease
 
 
 @router.post("/{lease_id}/renew", response_model=LeaseOut, status_code=status.HTTP_201_CREATED)

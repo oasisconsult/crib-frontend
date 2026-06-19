@@ -25,12 +25,13 @@ Endpoints:
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, get_org_id, require_org_access
 from app.core.database import get_db
+from app.services import audit_service
 from app.services.policy_service import require_permission
 from app.services.subscription_limits import check_feature_access
 from app.schemas.tenant import (
@@ -89,12 +90,25 @@ async def _own_tenant_or_manager(
 @router.post("", response_model=TenantOut, status_code=status.HTTP_201_CREATED)
 async def create_tenant(
     body: TenantCreate,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a tenant profile directly. No invite email is sent."""
     assert current_user.org_id is not None  # guaranteed by _write / require_org_access
-    return await svc.create_tenant(body, current_user.org_id, db)
+    tenant = await svc.create_tenant(body, current_user.org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=current_user.org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="tenant",
+        resource_id=uuid.UUID(tenant.id),
+        resource_label=tenant.first_name,
+        action="tenant.created",
+        request=request,
+    )
+    return tenant
 
 
 # ── Invite ────────────────────────────────────────────────────────────────────
@@ -169,19 +183,48 @@ async def get_tenant(
 async def update_tenant(
     tenant_id: uuid.UUID,
     body: TenantUpdate,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.update_tenant(tenant_id, body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    tenant = await svc.update_tenant(tenant_id, body, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="tenant",
+        resource_id=tenant_id,
+        resource_label=tenant.first_name,
+        action="tenant.updated",
+        request=request,
+    )
+    return tenant
 
 
 @router.delete("/{tenant_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_tenant(
     tenant_id: uuid.UUID,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    await svc.delete_tenant(tenant_id, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    existing = await svc.get_tenant(tenant_id, org_id, db)
+    label = existing.first_name if existing else None
+    await svc.delete_tenant(tenant_id, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="tenant",
+        resource_id=tenant_id,
+        resource_label=label,
+        action="tenant.deleted",
+        request=request,
+    )
 
 
 # ── Approve / Reject ──────────────────────────────────────────────────────────
@@ -189,10 +232,24 @@ async def delete_tenant(
 @router.patch("/{tenant_id}/approve", response_model=TenantOut)
 async def approve_tenant(
     tenant_id: uuid.UUID,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.approve_tenant(tenant_id, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    tenant = await svc.approve_tenant(tenant_id, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="tenant",
+        resource_id=tenant_id,
+        resource_label=tenant.first_name,
+        action="tenant.approved",
+        request=request,
+    )
+    return tenant
 
 
 class RejectBody(BaseModel):
@@ -203,10 +260,25 @@ class RejectBody(BaseModel):
 async def reject_tenant(
     tenant_id: uuid.UUID,
     body: RejectBody,
+    request: Request,
     current_user: CurrentUser = _write,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.reject_tenant(tenant_id, body.reason, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    tenant = await svc.reject_tenant(tenant_id, body.reason, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="tenant",
+        resource_id=tenant_id,
+        resource_label=tenant.first_name,
+        action="tenant.rejected",
+        event_data={"reason": body.reason},
+        request=request,
+    )
+    return tenant
 
 
 # ── Resend invite ─────────────────────────────────────────────────────────────
