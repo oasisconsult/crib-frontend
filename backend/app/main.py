@@ -251,9 +251,25 @@ def create_app() -> FastAPI:
         context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/demo-bookings/contact")
         context_middleware._BYPASS_PATHS.add(f"{settings.api_prefix}/public/listings")
 
+        # Subclass to add prefix-based bypass for token-gated public endpoints.
+        # _BYPASS_PATHS only supports exact matches; the inspector portal token
+        # is in the URL so prefix matching is required. Kept here (not in the
+        # vendored copy) because vendor/geobox-rbac is gitignored.
+        _INSPECTOR_PUBLIC_PREFIXES = (
+            f"{settings.api_prefix}/inspections/portal/",
+            f"{settings.api_prefix}/upload/file/inspector/",
+            f"{settings.api_prefix}/upload/presign/inspector/",
+        )
+
+        class _CribAppContextMiddleware(AppContextMiddleware):
+            async def dispatch(self, request, call_next):
+                if request.url.path.startswith(_INSPECTOR_PUBLIC_PREFIXES):
+                    return await call_next(request)
+                return await super().dispatch(request, call_next)
+
         configure_db_dependency(get_db)
         application.add_middleware(
-            AppContextMiddleware,
+            _CribAppContextMiddleware,
             app_slug="crib",
             rbac_database_url=settings.rbac_database_url,
             redis_factory=_get_redis,
