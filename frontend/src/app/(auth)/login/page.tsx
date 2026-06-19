@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
-  Building2,
+  Lock,
   Loader2,
   ShieldCheck,
   Zap,
@@ -313,7 +313,7 @@ function LoginContent() {
                 width={160}
                 height={40}
                 priority
-                className="h-11 sm:h-12 md:h-14 w-auto"
+                className="h-[46px] sm:h-[50px] md:h-[59px] w-auto"
               />
             </Link>
           </div>
@@ -344,7 +344,7 @@ function LoginContent() {
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Building2 className="h-4 w-4" />
+                  <Lock className="h-4 w-4" />
                 )}
                 {loading ? "Redirecting…" : "Sign in to Crib"}
               </Button>
@@ -392,19 +392,19 @@ function LoginContent() {
               {/* Legal */}
               <p className="mt-6 text-center text-[11px] text-[hsl(var(--muted-foreground))]/70 leading-relaxed">
                 By continuing, you agree to our{" "}
-                <a
-                  href="/terms"
+                <Link
+                  href="/terms-of-service"
                   className="underline hover:text-[hsl(var(--foreground))]"
                 >
                   Terms of Service
-                </a>{" "}
+                </Link>{" "}
                 and{" "}
-                <a
-                  href="/privacy"
+                <Link
+                  href="/privacy-policy"
                   className="underline hover:text-[hsl(var(--foreground))]"
                 >
                   Privacy Policy
-                </a>
+                </Link>
               </p>
             </>
           )}
