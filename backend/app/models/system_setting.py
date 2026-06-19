@@ -213,6 +213,14 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "Show the public rental listings page (/listings) and its navigation link. "
      "When disabled, the page shows a 'not available' notice and the nav link is hidden.",
      "boolean", False, True),
+    ("features.inspection_reports", "true",    "features","Inspection Reports",
+     "Enable the property inspection report flow including PDF generation, dual-party signing, "
+     "and the inspector invite portal. When disabled, inspection creation is blocked platform-wide.",
+     "boolean", False, True),
+    ("features.screenings",         "false",   "features","Tenant Screening",
+     "Enable the tenant screening / background-check workflow. "
+     "Disabled by default until the screening integration is fully configured.",
+     "boolean", False, True),
 
     # ── Payments ──────────────────────────────────────────────────────────────
     ("payments.auto_confirm_enabled", "false", "payments", "Auto-Confirm Payments",
