@@ -3,7 +3,8 @@
 import { use, useCallback, useRef, useState } from "react";
 import {
   AlertCircle, Camera, CheckCircle2, ChevronDown, ChevronUp,
-  ClipboardCheck, Clock, Loader2, MapPin, SendHorizontal, Upload, X,
+  ClipboardCheck, Clock, Copy, Loader2, MapPin, MessageCircle, Navigation,
+  SendHorizontal, Upload, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,6 +58,84 @@ function ConditionPicker({
           {opt.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function GeoBoxNavCard({ geocode, navUrl, landmark, whatsapp }: {
+  geocode: string;
+  navUrl?: string;
+  landmark?: string;
+  whatsapp?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const botNumber = whatsapp?.replace(/\D/g, "") ?? "";
+  const waUrl = botNumber
+    ? `https://wa.me/${botNumber}?text=${encodeURIComponent(`Find ${geocode}`)}`
+    : null;
+
+  function handleCopy() {
+    navigator.clipboard.writeText(geocode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="mt-3 rounded-[8px] border border-emerald-200 bg-emerald-50/60 p-3.5 space-y-3">
+      <div className="flex items-center gap-2">
+        <MessageCircle className="h-4 w-4 text-emerald-600 shrink-0" />
+        <p className="text-sm font-semibold text-emerald-800">Navigate to this property</p>
+      </div>
+
+      <p className="text-xs text-emerald-700 leading-relaxed">
+        This property has a GeoBox address code — a short unique code that gives you
+        turn-by-turn directions straight to the door. Tap <strong>Open Navigation</strong> to
+        launch directions, or send the code to the GeoBox WhatsApp bot.
+      </p>
+
+      <div className="flex items-center gap-2">
+        <code className="rounded-[5px] bg-white border border-emerald-200 px-3 py-1 text-sm font-mono font-bold text-emerald-700 tracking-widest shadow-sm">
+          {geocode}
+        </code>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1 text-xs text-emerald-600 hover:text-emerald-800 transition-colors"
+          title="Copy GeoBox code"
+        >
+          {copied
+            ? <><CheckCircle2 className="h-3.5 w-3.5" /> Copied</>
+            : <><Copy className="h-3.5 w-3.5" /> Copy</>}
+        </button>
+      </div>
+
+      {landmark && (
+        <p className="text-xs text-emerald-800 leading-relaxed">📍 {landmark}</p>
+      )}
+
+      {navUrl && (
+        <a
+          href={navUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 active:scale-[0.98] transition-all"
+        >
+          <Navigation className="h-4 w-4" />
+          Open Navigation
+        </a>
+      )}
+
+      {waUrl && (
+        <a
+          href={waUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#1ebe5d] active:scale-[0.98] transition-all"
+        >
+          <MessageCircle className="h-4 w-4" />
+          Send to GeoBox on WhatsApp
+        </a>
+      )}
     </div>
   );
 }
@@ -429,6 +508,14 @@ export default function InspectorPortalPage({ params }: Props) {
               <p className="mt-2 text-sm text-muted-foreground">
                 Inspector: <span className="font-medium text-foreground">{inspection.inspectorName}</span>
               </p>
+            )}
+            {inspection.geocode && (
+              <GeoBoxNavCard
+                geocode={inspection.geocode}
+                navUrl={inspection.geocodeNavUrl}
+                landmark={inspection.geocodeLandmark}
+                whatsapp={inspection.geoboxWhatsapp}
+              />
             )}
           </CardContent>
         </Card>

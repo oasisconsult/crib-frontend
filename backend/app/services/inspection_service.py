@@ -1464,6 +1464,20 @@ async def get_by_inspector_token(token: str, db: AsyncSession) -> InspectorPorta
     def _s(v) -> str | None:
         return None if v is None else (v.isoformat() if hasattr(v, "isoformat") else str(v))
 
+    # Resolve GeoBox geocode — prefer unit-level, fall back to property-level
+    geocode = (unit.geocode if unit else None) or (prop.geocode if prop else None)
+    geocode_nav_url: str | None = None
+    geocode_landmark: str | None = None
+    if geocode:
+        from app.integrations.geobox import geocode_service as _gcs
+        resolved = await _gcs.resolve(geocode, db)
+        if resolved:
+            geocode_nav_url = resolved.get("nav_url")
+            geocode_landmark = resolved.get("landmark_description")
+
+    from app.services import settings_service as _ss
+    geobox_whatsapp = await _ss.get("geobox.whatsapp_number", db) or None
+
     return InspectorPortalOut(
         id=str(i.id),
         reference=i.reference,
@@ -1482,6 +1496,10 @@ async def get_by_inspector_token(token: str, db: AsyncSession) -> InspectorPorta
         inspector_submitted_at=_s(i.inspector_submitted_at),
         inspector_token_expires_at=_s(i.inspector_token_expires_at),
         inspector_name=i.inspector_name,
+        geocode=geocode,
+        geocode_nav_url=geocode_nav_url,
+        geocode_landmark=geocode_landmark,
+        geobox_whatsapp=geobox_whatsapp,
     )
 
 

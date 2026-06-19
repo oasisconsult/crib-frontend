@@ -79,6 +79,10 @@ export interface InspectorPortalOut {
   inspectorSubmittedAt?: string;
   inspectorTokenExpiresAt?: string;
   inspectorName?: string;
+  geocode?: string;
+  geocodeNavUrl?: string;
+  geocodeLandmark?: string;
+  geoboxWhatsapp?: string;
 }
 
 export interface InspectorSubmitBody {

@@ -145,6 +145,11 @@ class InspectorPortalOut(CamelModel):
     inspector_submitted_at: str | None = None
     inspector_token_expires_at: str | None = None
     inspector_name: str | None = None
+    # GeoBox navigation — resolved server-side so the public portal can use them
+    geocode: str | None = None
+    geocode_nav_url: str | None = None
+    geocode_landmark: str | None = None
+    geobox_whatsapp: str | None = None
 
 
 class InspectionSignLandlord(CamelModel):
