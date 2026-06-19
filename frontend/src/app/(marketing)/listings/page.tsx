@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { listingsApi, type Listing, type ListingsFilter } from "@/services/api/listings";
+import { settingsApi } from "@/services/api/settings";
 
 const UNIT_TYPE_LABELS: Record<string, string> = {
   studio: "Studio", bedsitter: "Bedsitter",
@@ -121,11 +122,18 @@ const UNIT_TYPE_OPTIONS = [
 ];
 
 export default function ListingsPage() {
+  const [enabled, setEnabled] = useState<boolean | null>(null); // null = loading
   const [listings, setListings] = useState<Listing[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
+
+  useEffect(() => {
+    settingsApi.getAnonymousFlags()
+      .then(flags => setEnabled(flags["features.listings_page"] !== "false"))
+      .catch(() => setEnabled(true)); // fail open
+  }, []);
 
   const [unitType, setUnitType] = useState("");
   const [district, setDistrict] = useState("");
@@ -166,6 +174,31 @@ export default function ListingsPage() {
 
   const hasFilters = unitType || district || minRent || maxRent;
   const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  // Disabled by admin — show a polite notice instead of the board
+  if (enabled === false) {
+    return (
+      <MarketingPageShell
+        eyebrow="Find your next home"
+        title="Listings Unavailable"
+        description=""
+      >
+        <div className="mx-auto max-w-md px-4 py-24 text-center">
+          <Home className="mx-auto h-12 w-12 text-muted-foreground/30 mb-6" />
+          <h2 className="text-lg font-semibold text-foreground mb-2">
+            This page is currently unavailable
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+            The public listings board has been temporarily disabled.
+            Please check back soon or contact us to enquire about available units.
+          </p>
+          <Button asChild variant="outline">
+            <a href="/#booking">Contact Us</a>
+          </Button>
+        </div>
+      </MarketingPageShell>
+    );
+  }
 
   return (
     <MarketingPageShell

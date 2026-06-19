@@ -55,6 +55,12 @@ PUBLIC_SETTING_KEYS: frozenset[str] = frozenset({
 
 public_router = APIRouter(prefix="/settings", tags=["settings"])
 
+# Keys returned to anonymous visitors (marketing site, listings page).
+# Only feature-flag booleans that affect public UI visibility belong here.
+ANONYMOUS_FLAG_KEYS: frozenset[str] = frozenset({
+    "features.listings_page",
+})
+
 
 @public_router.get("/public", response_model=dict[str, str])
 async def get_public_settings(
@@ -71,6 +77,27 @@ async def get_public_settings(
     rows = result.scalars().all()
     found = {row.key: row.value for row in rows}
     defaults = {k: "" for k in PUBLIC_SETTING_KEYS}
+    return {**defaults, **found}
+
+
+@public_router.get("/platform-flags", response_model=dict[str, str])
+async def get_anonymous_platform_flags(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return public-safe feature flags for anonymous visitors.
+    No authentication required — used by the marketing site and public pages.
+    Only non-sensitive boolean flags are exposed here.
+    """
+    from sqlalchemy import select as _select
+    from app.models.system_setting import SystemSetting as _SM
+
+    result = await db.execute(
+        _select(_SM).where(_SM.key.in_(ANONYMOUS_FLAG_KEYS))
+    )
+    rows = result.scalars().all()
+    found = {row.key: row.value for row in rows}
+    defaults = {k: "true" for k in ANONYMOUS_FLAG_KEYS}
     return {**defaults, **found}
 
 

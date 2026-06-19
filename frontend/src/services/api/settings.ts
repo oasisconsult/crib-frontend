@@ -44,6 +44,9 @@ export const settingsApi = {
 
   getPublic: () => apiGet<Record<string, string>>("/settings/public"),
 
+  // Anonymous — no auth required. Safe to call from marketing pages and public routes.
+  getAnonymousFlags: () => apiGet<Record<string, string>>("/settings/platform-flags"),
+
   update: (key: string, value: string) =>
     apiPut<SystemSetting>(`/admin/settings/${key}`, { value }),
 

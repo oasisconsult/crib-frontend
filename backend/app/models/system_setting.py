@@ -209,6 +209,10 @@ SYSTEM_SETTING_DEFAULTS: list[tuple] = [
      "Allow tenants to submit maintenance requests from the tenant portal.", "boolean", False, True),
     ("features.onboarding_enabled", "true",     "features","Tenant Onboarding",
      "Enable the self-service onboarding wizard for new tenants.", "boolean", False, True),
+    ("features.listings_page",     "true",     "features","Public Listings Page",
+     "Show the public rental listings page (/listings) and its navigation link. "
+     "When disabled, the page shows a 'not available' notice and the nav link is hidden.",
+     "boolean", False, True),
 
     # ── Payments ──────────────────────────────────────────────────────────────
     ("payments.auto_confirm_enabled", "false", "payments", "Auto-Confirm Payments",

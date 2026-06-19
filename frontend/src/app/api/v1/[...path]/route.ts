@@ -55,6 +55,9 @@ const PUBLIC_PATH_PREFIXES = [
   // Inspector photo upload proxy — same token-gating, no session cookie
   "upload/file/inspector/",
   "upload/presign/inspector/",
+  // Anonymous feature flags used by the marketing nav + public pages to
+  // conditionally show/hide features (e.g. listings page visibility)
+  "settings/platform-flags",
 ];
 
 function isPublicPath(path: string[]): boolean {
