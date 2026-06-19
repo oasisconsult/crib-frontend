@@ -12,7 +12,7 @@ import {
   Zap,
   Shield,
   Phone,
-  Building2,
+  Landmark,
   Banknote,
   CreditCard,
 } from "lucide-react";
@@ -38,7 +38,7 @@ const CHANNEL_CONFIG: Record<
   },
   bank_transfer: {
     label: "Bank Transfer",
-    icon: Building2,
+    icon: Landmark,
     description: "Direct bank transfer",
   },
   cash: {

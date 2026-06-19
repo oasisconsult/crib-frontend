@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import {
   Home, CreditCard, FileText, Wrench, CheckCircle2, Clock,
   AlertCircle, ChevronRight, Plus, X, Loader2, Download, FileDown,
-  Smartphone, Building2, Banknote, Calendar, MessageCircle,
+  Smartphone, Landmark, Banknote, Calendar, MessageCircle,
   Send, RefreshCw, Ban, XCircle, MapPin, Copy, Navigation, Paperclip, Camera, Upload, PenLine, ClipboardList, ImageIcon, Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,7 +91,7 @@ const PAY_METHODS: PayMethod[] = [
   {
     id: "bank_transfer",
     label: "Bank Transfer",
-    icon: Building2,
+    icon: Landmark,
     color: "text-teal-600",
     requiresPhone: false,
     instructions: "Transfer to the account below and enter the transaction/reference number.",

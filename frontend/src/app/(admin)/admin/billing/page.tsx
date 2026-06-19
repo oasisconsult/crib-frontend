@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
-  Check, X, Zap, Building2, Users, HardDrive,
+  Check, X, Zap, Landmark, Users, HardDrive,
   Loader2, ArrowLeft, ChevronDown, ChevronUp,
   BarChart3, Wrench, FileText, MessageSquare,
   UserCheck, Phone,
@@ -669,7 +669,7 @@ function PaymentMethodsForm() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Building2 className="h-4 w-4 text-primary" /> Bank Transfer</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Landmark className="h-4 w-4 text-primary" /> Bank Transfer</CardTitle></CardHeader>
         <CardContent className="grid grid-cols-2 gap-4">
           {([
             ["bankName","Bank Name","Stanbic Bank Uganda"],

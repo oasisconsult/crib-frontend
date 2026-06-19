@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Smartphone, Building2, Banknote, Upload, CheckCircle2,
+  Smartphone, Landmark, Banknote, Upload, CheckCircle2,
   ArrowLeft, ArrowRight, Loader2, AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,7 +65,7 @@ function Steps({ current }: { current: number }) {
 const METHODS: { id: PaymentMethod; label: string; icon: React.ElementType; desc: string }[] = [
   { id: "mtn_momo",      label: "MTN Mobile Money",  icon: Smartphone,  desc: "Pay with your MTN MoMo account" },
   { id: "airtel_money",  label: "Airtel Money",       icon: Smartphone,  desc: "Pay with your Airtel Money account" },
-  { id: "bank_transfer", label: "Bank Transfer",      icon: Building2,   desc: "Direct bank transfer" },
+  { id: "bank_transfer", label: "Bank Transfer",      icon: Landmark,    desc: "Direct bank transfer" },
   { id: "cash",          label: "Cash Payment",       icon: Banknote,    desc: "Pay in person at our office" },
 ];
 

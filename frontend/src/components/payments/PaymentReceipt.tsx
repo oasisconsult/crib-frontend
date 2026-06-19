@@ -7,7 +7,9 @@ import {
   RefreshCw,
   CreditCard,
   Phone,
-  Building2,
+  Landmark,
+  ArrowLeftRight,
+  FileText,
   Banknote,
   Printer,
   Calendar,
@@ -53,11 +55,11 @@ const STATUS_CONFIG: Record<string, { icon: React.ElementType; color: string; ba
 const METHOD_LABELS: Record<string, { icon: React.ElementType; label: string }> = {
   mobile_money_mtn:    { icon: Phone,     label: "MTN Mobile Money"  },
   mobile_money_airtel: { icon: Phone,     label: "Airtel Money"      },
-  bank_transfer:       { icon: Building2, label: "Bank Transfer"     },
-  cash:                { icon: Banknote,  label: "Cash"              },
-  card:                { icon: CreditCard,label: "Card"              },
-  direct_debit:        { icon: Building2, label: "Direct Debit"      },
-  cheque:              { icon: CreditCard,label: "Cheque"            },
+  bank_transfer:       { icon: Landmark,        label: "Bank Transfer"     },
+  cash:                { icon: Banknote,        label: "Cash"              },
+  card:                { icon: CreditCard,      label: "Card"              },
+  direct_debit:        { icon: ArrowLeftRight,  label: "Direct Debit"      },
+  cheque:              { icon: FileText,         label: "Cheque"            },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
