@@ -93,7 +93,7 @@ export function MarketingFooter() {
                 alt="Crib"
                 width={160}
                 height={40}
-                className="h-8 sm:h-9 w-auto"
+                className="h-[34px] sm:h-[38px] w-auto"
               />
             </Link>
             <p className="text-sm text-white/50 leading-relaxed max-w-xs">

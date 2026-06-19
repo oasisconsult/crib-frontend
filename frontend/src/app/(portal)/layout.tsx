@@ -32,7 +32,7 @@ function PortalNav() {
               width={160}
               height={40}
               priority
-              className="h-8 sm:h-9 w-auto"
+              className="h-[34px] sm:h-[38px] w-auto"
             />
           </Link>
           <span className="text-muted-foreground/50 text-sm">·</span>

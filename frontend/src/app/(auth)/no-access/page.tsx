@@ -18,7 +18,7 @@ export default function NoAccessPage() {
                 width={160}
                 height={40}
                 priority
-                className="h-11 sm:h-12 md:h-14 w-auto"
+                className="h-[46px] sm:h-[50px] md:h-[59px] w-auto"
               />
             </Link>
           </div>

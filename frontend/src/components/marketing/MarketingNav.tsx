@@ -53,7 +53,7 @@ export function MarketingNav() {
               alt="Crib"
               width={160}
               height={40}
-              className="h-8 sm:h-9 md:h-10 w-auto"
+              className="h-[34px] sm:h-[38px] md:h-[42px] w-auto"
               priority
             />
           </Link>

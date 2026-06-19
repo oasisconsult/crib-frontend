@@ -285,7 +285,7 @@ export function Sidebar() {
                 width={160}
                 height={40}
                 priority
-                className="h-5 w-auto max-w-[40px]"
+                className="h-[21px] w-auto max-w-[42px]"
               />
             </Link>
           ) : (
@@ -296,7 +296,7 @@ export function Sidebar() {
                 width={160}
                 height={40}
                 priority
-                className="h-8 w-auto"
+                className="h-[34px] w-auto"
               />
             </Link>
           )}

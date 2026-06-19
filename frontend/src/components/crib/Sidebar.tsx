@@ -103,7 +103,7 @@ export function Sidebar({
                   width={160}
                   height={40}
                   priority
-                  className="h-8 w-auto"
+                  className="h-[34px] w-auto"
                 />
               ) : (
                 <Image
@@ -112,7 +112,7 @@ export function Sidebar({
                   width={160}
                   height={40}
                   priority
-                  className="h-8 w-auto"
+                  className="h-[34px] w-auto"
                 />
               )}
             </div>

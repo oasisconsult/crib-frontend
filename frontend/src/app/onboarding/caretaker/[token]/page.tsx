@@ -87,7 +87,7 @@ export default function CaretakerOnboardingPage({ params }: Props) {
               width={160}
               height={40}
               priority
-              className="h-9 sm:h-10 md:h-11 w-auto"
+              className="h-[38px] sm:h-[42px] md:h-[46px] w-auto"
             />
           </Link>
         </div>

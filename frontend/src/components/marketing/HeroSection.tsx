@@ -53,7 +53,7 @@ function DashboardMockup() {
             <div className="p-3 border-b border-gray-100">
               {/* Real Crib logo — decorative */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/crib-icon-green.png" alt="" className="h-5 w-auto" />
+              <img src="/crib-icon-green.png" alt="" className="h-[21px] w-auto" />
             </div>
             <nav className="flex-1 p-2 space-y-0.5">
               {sidebarItems.map(item => (
