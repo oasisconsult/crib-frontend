@@ -48,7 +48,7 @@ function ConditionPicker({
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`rounded-full border px-3 py-0.5 text-xs font-medium transition-all
+          className={`rounded-full border px-3 py-1 text-sm font-medium transition-all
             ${value === opt.value
               ? `${opt.color} ring-2 ring-offset-1 ring-current`
               : "bg-white border-border text-muted-foreground hover:border-foreground/30"
@@ -73,6 +73,7 @@ function PhotoUploadArea({
   onRemove: (url: string) => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   // Maps server URL → local blob URL for photos uploaded this session.
   // The server URL (stored in photoUrls for submission) may be an internal
@@ -133,19 +134,40 @@ function PhotoUploadArea({
           ))}
         </div>
       )}
-      <button
-        type="button"
-        onClick={() => ref.current?.click()}
-        disabled={uploading}
-        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md px-3 py-2 w-full justify-center transition-colors hover:border-foreground/30 disabled:opacity-50"
-      >
-        {uploading ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <Camera className="h-3.5 w-3.5" />
-        )}
-        {uploading ? "Uploading…" : "Add photos"}
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => cameraRef.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md px-3 py-3 flex-1 justify-center transition-colors hover:border-foreground/30 disabled:opacity-50"
+        >
+          {uploading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Camera className="h-4 w-4" />
+          )}
+          {uploading ? "Uploading…" : "Take photo"}
+        </button>
+        <button
+          type="button"
+          onClick={() => ref.current?.click()}
+          disabled={uploading}
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md px-3 py-3 flex-1 justify-center transition-colors hover:border-foreground/30 disabled:opacity-50"
+        >
+          <Upload className="h-4 w-4" />
+          Upload
+        </button>
+      </div>
+      {/* camera input — opens device camera directly on mobile */}
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+      {/* file picker — gallery / file system */}
       <input
         ref={ref}
         type="file"
@@ -179,7 +201,7 @@ function ChecklistItemEditor({
     <div className={`rounded-lg border transition-colors ${hasIssue ? "border-red-200 bg-red-50/30" : "border-border bg-card"}`}>
       <button
         type="button"
-        className="w-full flex items-start gap-3 p-3 text-left"
+        className="w-full flex items-start gap-3 p-4 text-left"
         onClick={() => setExpanded((e) => !e)}
       >
         <div className={`mt-0.5 h-4 w-4 rounded-full border-2 flex-shrink-0 transition-colors ${
@@ -190,10 +212,10 @@ function ChecklistItemEditor({
             : "border-muted-foreground/40"
         }`} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground leading-tight">{item.description}</p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">{item.area}</p>
+          <p className="text-base font-medium text-foreground leading-tight">{item.description}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{item.area}</p>
           {item.condition && (
-            <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full font-medium capitalize
+            <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium capitalize
               ${CONDITION_OPTIONS.find((o) => o.value === item.condition)?.color ?? "bg-gray-100 text-gray-600"}`}>
               {item.condition}
             </span>
@@ -205,14 +227,14 @@ function ChecklistItemEditor({
       {expanded && (
         <div className="px-3 pb-3 space-y-3 border-t border-border/50 pt-3">
           <div>
-            <Label className="text-xs font-medium">Condition</Label>
+            <Label className="text-sm font-medium">Condition</Label>
             <ConditionPicker
               value={item.condition ?? null}
               onChange={(v) => onChange({ ...item, condition: v as ChecklistItem["condition"] })}
             />
           </div>
           <div>
-            <Label className="text-xs font-medium">Notes</Label>
+            <Label className="text-sm font-medium">Notes</Label>
             <Textarea
               placeholder="Describe findings, defects, or observations…"
               value={item.notes ?? ""}
@@ -222,7 +244,7 @@ function ChecklistItemEditor({
             />
           </div>
           <div>
-            <Label className="text-xs font-medium">Photos</Label>
+            <Label className="text-sm font-medium">Photos</Label>
             <PhotoUploadArea
               token={token}
               urls={item.photoUrls ?? []}
@@ -328,14 +350,14 @@ export default function InspectorPortalPage({ params }: Props) {
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
       <div className="bg-white border-b border-border sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
             <ClipboardCheck className="h-5 w-5 text-primary flex-shrink-0" />
-            <span className="font-semibold text-sm truncate">
+            <span className="font-semibold text-base truncate">
               {TYPE_LABELS[inspection.type] ?? inspection.type.replace(/_/g, " ")}
             </span>
           </div>
-          <Badge variant="outline" className="text-[11px] flex-shrink-0">
+          <Badge variant="outline" className="text-xs flex-shrink-0">
             {inspection.reference ?? inspection.id.slice(0, 8).toUpperCase()}
           </Badge>
         </div>
@@ -347,19 +369,19 @@ export default function InspectorPortalPage({ params }: Props) {
           <CardContent className="pt-4 pb-4">
             <div className="flex items-start gap-3">
               <MapPin className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <div className="text-sm space-y-0.5">
-                <p className="font-medium">
+              <div className="space-y-0.5">
+                <p className="text-base font-medium">
                   {inspection.unitName
                     ? `${inspection.unitName} — ${inspection.propertyName}`
                     : inspection.propertyName}
                 </p>
                 {inspection.propertyAddress && (
-                  <p className="text-muted-foreground text-xs">{inspection.propertyAddress}</p>
+                  <p className="text-sm text-muted-foreground">{inspection.propertyAddress}</p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
-              <Clock className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
               <span>
                 {new Date(inspection.scheduledDate).toLocaleDateString("en-GB", {
                   weekday: "long", day: "numeric", month: "long", year: "numeric",
@@ -368,7 +390,7 @@ export default function InspectorPortalPage({ params }: Props) {
               </span>
             </div>
             {inspection.inspectorName && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Inspector: <span className="font-medium text-foreground">{inspection.inspectorName}</span>
               </p>
             )}
@@ -378,7 +400,7 @@ export default function InspectorPortalPage({ params }: Props) {
         {/* Progress bar */}
         {effectiveChecklist.length > 0 && (
           <div className="space-y-1.5">
-            <div className="flex justify-between text-xs text-muted-foreground">
+            <div className="flex justify-between text-sm text-muted-foreground">
               <span>Checklist progress</span>
               <span>{completedCount} / {effectiveChecklist.length} items</span>
             </div>
@@ -395,7 +417,7 @@ export default function InspectorPortalPage({ params }: Props) {
         {effectiveChecklist.length > 0 && (
           <Card>
             <CardHeader className="pb-2 pt-4">
-              <CardTitle className="text-sm font-semibold">Checklist Items</CardTitle>
+              <CardTitle className="text-base font-semibold">Checklist Items</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 pb-4">
               {effectiveChecklist.map((item, idx) => (
@@ -413,30 +435,30 @@ export default function InspectorPortalPage({ params }: Props) {
         {/* Overall assessment */}
         <Card>
           <CardHeader className="pb-2 pt-4">
-            <CardTitle className="text-sm font-semibold">Overall Assessment</CardTitle>
+            <CardTitle className="text-base font-semibold">Overall Assessment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 pb-4">
             <div>
-              <Label className="text-xs font-medium">Overall Condition</Label>
+              <Label className="text-sm font-medium">Overall Condition</Label>
               <ConditionPicker value={overallCondition || null} onChange={setOverallCondition} />
             </div>
             <div>
-              <Label className="text-xs font-medium">Summary</Label>
+              <Label className="text-sm font-medium">Summary</Label>
               <Textarea
                 placeholder="Overall summary of the inspection findings…"
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
-                className="mt-1 text-sm resize-none"
+                className="mt-1 text-base resize-none"
                 rows={3}
               />
             </div>
             <div>
-              <Label className="text-xs font-medium">Recommendations</Label>
+              <Label className="text-sm font-medium">Recommendations</Label>
               <Textarea
                 placeholder="Recommended repairs, maintenance actions, or follow-ups…"
                 value={recommendations}
                 onChange={(e) => setRecommendations(e.target.value)}
-                className="mt-1 text-sm resize-none"
+                className="mt-1 text-base resize-none"
                 rows={3}
               />
             </div>
@@ -446,7 +468,7 @@ export default function InspectorPortalPage({ params }: Props) {
         {/* General photos */}
         <Card>
           <CardHeader className="pb-2 pt-4">
-            <CardTitle className="text-sm font-semibold">General Photos</CardTitle>
+            <CardTitle className="text-base font-semibold">General Photos</CardTitle>
           </CardHeader>
           <CardContent className="pb-4">
             <PhotoUploadArea
@@ -462,7 +484,7 @@ export default function InspectorPortalPage({ params }: Props) {
 
         {/* Submit */}
         <div className="pb-8 space-y-3">
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-sm text-muted-foreground text-center">
             By submitting, you confirm these findings are accurate to the best of your knowledge.
             The property manager will be notified immediately.
           </p>
@@ -480,7 +502,7 @@ export default function InspectorPortalPage({ params }: Props) {
             {submitMutation.isPending ? "Submitting…" : "Submit Inspection Report"}
           </Button>
           {completedCount === 0 && effectiveChecklist.length > 0 && (
-            <p className="text-xs text-center text-muted-foreground">
+            <p className="text-sm text-center text-muted-foreground">
               Please assess at least one checklist item before submitting.
             </p>
           )}
