@@ -599,3 +599,201 @@ async def test_get_inspection_by_sign_token_rewrites_minio_direct_urls(client: A
     assert "/upload/serve-public/" in url
     assert f"sign_token={token}" in url
     assert "minio.geoboxafrica.com" not in url
+
+
+# ── Inspector portal — GeoBox navigation fields ───────────────────────────────
+
+@pytest.mark.asyncio
+async def test_inspector_portal_not_found(client: AsyncClient):
+    """Unknown token returns 404."""
+    r = await client.get("/api/v1/inspections/portal/no-such-token")
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_inspector_portal_expired_token(client: AsyncClient, ctx, db_session):
+    """Expired token returns 410."""
+    import secrets
+    from datetime import datetime, timedelta, timezone
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    token = secrets.token_urlsafe(16)
+    insp = Inspection(
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        type=InspectionType.routine,
+        state=InspectionState.scheduled,
+        scheduled_date=__import__("datetime").date(2026, 6, 1),
+        checklist=[], photo_urls=[], video_urls=[], maintenance_issue_ids=[],
+        inspector_token=token,
+        inspector_token_expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    r = await client.get(f"/api/v1/inspections/portal/{token}")
+    assert r.status_code == 410
+
+
+@pytest.mark.asyncio
+async def test_inspector_portal_no_geocode(client: AsyncClient, ctx, db_session):
+    """When the property has no geocode, geocode fields are all null."""
+    import secrets
+    from unittest.mock import AsyncMock, patch
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    token = secrets.token_urlsafe(16)
+    insp = Inspection(
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        type=InspectionType.routine,
+        state=InspectionState.scheduled,
+        scheduled_date=__import__("datetime").date(2026, 6, 20),
+        checklist=[], photo_urls=[], video_urls=[], maintenance_issue_ids=[],
+        inspector_token=token,
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    with patch("app.services.settings_service.get", new=AsyncMock(return_value="")):
+        r = await client.get(f"/api/v1/inspections/portal/{token}")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["geocode"] is None
+    assert body["geocodeNavUrl"] is None
+    assert body["geocodeLandmark"] is None
+    assert body["geoboxWhatsapp"] is None
+
+
+@pytest.mark.asyncio
+async def test_inspector_portal_with_geocode(client: AsyncClient, ctx, db_session):
+    """When the property has a geocode, portal returns navUrl, landmark, and whatsapp."""
+    import secrets
+    from unittest.mock import AsyncMock, patch
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    ctx["prop"].geocode = "KLA-TEST-01"
+    db_session.add(ctx["prop"])
+    await db_session.flush()
+
+    token = secrets.token_urlsafe(16)
+    insp = Inspection(
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        type=InspectionType.routine,
+        state=InspectionState.scheduled,
+        scheduled_date=__import__("datetime").date(2026, 6, 20),
+        checklist=[], photo_urls=[], video_urls=[], maintenance_issue_ids=[],
+        inspector_token=token,
+        inspector_name="Grace Namutebi",
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    mock_resolved = {
+        "geocode": "KLA-TEST-01",
+        "nav_url": "https://geobox.example.com/nav/KLA-TEST-01",
+        "landmark_description": "Next to the big mango tree",
+        "access_instructions": None,
+        "delivery_notes": None,
+    }
+
+    with (
+        patch("app.integrations.geobox.geocode_service.resolve", new=AsyncMock(return_value=mock_resolved)),
+        patch("app.services.settings_service.get", new=AsyncMock(return_value="+256767171092")),
+    ):
+        r = await client.get(f"/api/v1/inspections/portal/{token}")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["geocode"] == "KLA-TEST-01"
+    assert body["geocodeNavUrl"] == "https://geobox.example.com/nav/KLA-TEST-01"
+    assert body["geocodeLandmark"] == "Next to the big mango tree"
+    assert body["geoboxWhatsapp"] == "+256767171092"
+    assert body["inspectorName"] == "Grace Namutebi"
+    assert body["type"] == "routine"
+
+
+@pytest.mark.asyncio
+async def test_inspector_portal_geocode_geobox_unavailable(client: AsyncClient, ctx, db_session):
+    """When GeoBox lookup returns None (service down / unknown code), geocode is still
+    returned but navUrl and landmark are null — portal degrades gracefully."""
+    import secrets
+    from unittest.mock import AsyncMock, patch
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    ctx["prop"].geocode = "KLA-UNKNOWN-99"
+    db_session.add(ctx["prop"])
+    await db_session.flush()
+
+    token = secrets.token_urlsafe(16)
+    insp = Inspection(
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        type=InspectionType.routine,
+        state=InspectionState.scheduled,
+        scheduled_date=__import__("datetime").date(2026, 6, 20),
+        checklist=[], photo_urls=[], video_urls=[], maintenance_issue_ids=[],
+        inspector_token=token,
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    with (
+        patch("app.integrations.geobox.geocode_service.resolve", new=AsyncMock(return_value=None)),
+        patch("app.services.settings_service.get", new=AsyncMock(return_value="+256767171092")),
+    ):
+        r = await client.get(f"/api/v1/inspections/portal/{token}")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["geocode"] == "KLA-UNKNOWN-99"
+    assert body["geocodeNavUrl"] is None
+    assert body["geocodeLandmark"] is None
+    assert body["geoboxWhatsapp"] == "+256767171092"
+
+
+@pytest.mark.asyncio
+async def test_inspector_portal_unit_geocode_takes_priority(client: AsyncClient, ctx, db_session):
+    """Unit geocode takes priority over property geocode."""
+    import secrets
+    from unittest.mock import AsyncMock, patch
+    from app.models.inspection import Inspection, InspectionState, InspectionType
+
+    ctx["prop"].geocode = "PROP-CODE-01"
+    ctx["unit"].geocode = "UNIT-CODE-01"
+    db_session.add(ctx["prop"])
+    db_session.add(ctx["unit"])
+    await db_session.flush()
+
+    token = secrets.token_urlsafe(16)
+    insp = Inspection(
+        organisation_id=ctx["org"].id,
+        property_id=ctx["prop"].id,
+        unit_id=ctx["unit"].id,
+        type=InspectionType.routine,
+        state=InspectionState.scheduled,
+        scheduled_date=__import__("datetime").date(2026, 6, 20),
+        checklist=[], photo_urls=[], video_urls=[], maintenance_issue_ids=[],
+        inspector_token=token,
+    )
+    db_session.add(insp)
+    await db_session.flush()
+
+    resolved_calls: list[str] = []
+
+    async def mock_resolve(geocode, _db):
+        resolved_calls.append(geocode)
+        return {"geocode": geocode, "nav_url": None, "landmark_description": None}
+
+    with (
+        patch("app.integrations.geobox.geocode_service.resolve", side_effect=mock_resolve),
+        patch("app.services.settings_service.get", new=AsyncMock(return_value="")),
+    ):
+        r = await client.get(f"/api/v1/inspections/portal/{token}")
+
+    assert r.status_code == 200
+    body = r.json()
+    assert body["geocode"] == "UNIT-CODE-01"
+    assert resolved_calls == ["UNIT-CODE-01"]
