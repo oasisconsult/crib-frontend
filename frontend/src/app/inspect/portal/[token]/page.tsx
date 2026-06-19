@@ -347,17 +347,17 @@ export default function InspectorPortalPage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-accent">
       {/* Header */}
-      <div className="bg-white border-b border-border sticky top-0 z-10">
+      <div className="bg-primary sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <ClipboardCheck className="h-5 w-5 text-primary flex-shrink-0" />
-            <span className="font-semibold text-base truncate">
+            <ClipboardCheck className="h-5 w-5 text-primary-foreground flex-shrink-0" />
+            <span className="font-semibold text-base text-primary-foreground truncate">
               {TYPE_LABELS[inspection.type] ?? inspection.type.replace(/_/g, " ")}
             </span>
           </div>
-          <Badge variant="outline" className="text-xs flex-shrink-0">
+          <Badge className="text-xs flex-shrink-0 bg-white/20 text-primary-foreground border-white/30 hover:bg-white/20">
             {inspection.reference ?? inspection.id.slice(0, 8).toUpperCase()}
           </Badge>
         </div>
