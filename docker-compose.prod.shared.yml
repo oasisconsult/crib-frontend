@@ -75,6 +75,15 @@ services:
       MINIO_BUCKET: "${MINIO_BUCKET:-crib-prod}"
       MINIO_SECURE: "${MINIO_SECURE:-true}"
 
+      # ── Email ────────────────────────────────────────────────────────────
+      EMAIL_PROVIDER: "${EMAIL_PROVIDER:-sendgrid}"
+      SENDGRID_API_KEY: "${SENDGRID_API_KEY:-}"
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USERNAME: "${SMTP_USERNAME:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      EMAIL_FROM: "${EMAIL_FROM:-noreply@crib.geoboxafrica.com}"
+
       # ── App ──────────────────────────────────────────────────────────────
       SECRET_KEY: "${SECRET_KEY}"
       SETTINGS_ENCRYPTION_KEY: "${SETTINGS_ENCRYPTION_KEY}"
@@ -125,6 +134,13 @@ services:
       MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
       MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
       MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
+      EMAIL_PROVIDER: "${EMAIL_PROVIDER:-sendgrid}"
+      SENDGRID_API_KEY: "${SENDGRID_API_KEY:-}"
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USERNAME: "${SMTP_USERNAME:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      EMAIL_FROM: "${EMAIL_FROM:-noreply@crib.geoboxafrica.com}"
       SECRET_KEY: "${SECRET_KEY}"
       SETTINGS_ENCRYPTION_KEY: "${SETTINGS_ENCRYPTION_KEY}"
       ENVIRONMENT: production
