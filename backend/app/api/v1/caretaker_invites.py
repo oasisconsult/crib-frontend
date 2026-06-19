@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, require_genuine_owner
 from app.core.database import get_db
+from app.services.subscription_limits import check_feature_access
 from app.schemas.common import MessageResponse
 from app.services.caretaker_invite_service import (
     ActiveCaretakerOut,
@@ -60,6 +61,8 @@ async def create_invite(
     db: AsyncSession = Depends(get_db),
 ) -> CaretakerInviteOut:
     """Owner: invite someone to manage a subset of their properties."""
+    if current_user.org_id is not None:
+        await check_feature_access(current_user.org_id, "team_members", db)
     return await create_caretaker_invite(
         db=db,
         owner_profile_id=current_user.profile.id,

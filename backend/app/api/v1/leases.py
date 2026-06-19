@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_org_id, get_tenant_record, require_org_access
 from app.core.database import get_db
 from app.services.policy_service import require_permission
+from app.services.subscription_limits import check_feature_access
 from app.schemas.lease import (
     LeaseActivate,
     LeaseAdvanceMonthsCorrection,
@@ -187,7 +188,10 @@ async def generate_document(
     db: AsyncSession = Depends(get_db),
 ):
     """Generate an HTML lease agreement document and return a URL to access it."""
-    url = await svc.generate_lease_document(lease_id, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "document_storage", db)
+    url = await svc.generate_lease_document(lease_id, org_id, db)
     return {"url": url}
 
 
@@ -231,9 +235,12 @@ async def send_onboarding_link(
     or it expired).  On lease creation the link is issued automatically — this
     endpoint is the manual resend / refresh path.
     """
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "onboarding_enabled", db)
     return await tenant_svc.send_onboarding_link(
         lease_id=lease_id,
-        org_id=get_org_id(current_user),
+        org_id=org_id,
         db=db,
     )
 
@@ -268,6 +275,9 @@ async def presign_agreement(
     signature stored.  When the tenant signs during onboarding the agreement
     immediately becomes 'fully_executed'.
     """
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "esignature_enabled", db)
     return await onb_svc.presign_agreement(
         lease_id=str(lease_id),
         signature_data_url=body.signature_data_url,
@@ -289,6 +299,9 @@ async def countersign_agreement(
     The tenant must have already signed (lease must be active).
     Once countersigned the agreement becomes fully_executed.
     """
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "esignature_enabled", db)
     return await onb_svc.countersign_agreement(
         lease_id=str(lease_id),
         signature_data_url=body.signature_data_url,

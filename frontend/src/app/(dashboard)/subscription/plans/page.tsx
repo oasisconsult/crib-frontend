@@ -6,8 +6,9 @@ import {
   Check, X, Zap, Building2, Users, HardDrive,
   Loader2, ArrowLeft, ChevronDown, ChevronUp,
   BarChart3, Wrench, FileText, MessageSquare,
-  UserCheck, Palette, Headphones, Phone,
+  Palette, Headphones, Phone,
   Key, Shield, ClipboardList, Settings,
+  PenLine, ClipboardCheck, Receipt, Search,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,11 @@ const FEATURES = [
   { key: "maintenance_workflows", label: "Maintenance Workflows",  icon: Wrench },
   { key: "document_storage",      label: "Document Storage",       icon: FileText },
   { key: "tenant_messaging",      label: "Tenant Messaging",       icon: MessageSquare },
+  { key: "inspection_reports",    label: "Inspection Reports",     icon: ClipboardCheck },
+  { key: "esignature_enabled",    label: "E-Signatures",           icon: PenLine },
+  { key: "onboarding_enabled",    label: "Tenant Onboarding",      icon: Users },
+  { key: "screenings",            label: "Tenant Screening",       icon: Search },
+  { key: "efris",                 label: "EFRIS Tax Receipts",     icon: Receipt },
   { key: "team_members",          label: "Team Members",           icon: Users },
   { key: "custom_branding",       label: "Custom Branding",        icon: Palette },
   { key: "priority_support",      label: "Priority Support",       icon: Headphones },
@@ -72,8 +78,8 @@ const FEATURES = [
 // Key highlights to show per plan slug (condensed view)
 const PLAN_HIGHLIGHTS: Record<string, string[]> = {
   free:         ["analytics_basic"],
-  professional: ["analytics_advanced", "maintenance_workflows", "document_storage", "tenant_messaging"],
-  agency:       ["analytics_advanced", "team_members", "custom_branding", "priority_support"],
+  professional: ["analytics_advanced", "maintenance_workflows", "inspection_reports", "esignature_enabled", "tenant_messaging"],
+  agency:       ["efris", "team_members", "custom_branding", "priority_support", "audit_logs"],
   enterprise:   ["dedicated_support", "api_access", "sso", "audit_logs"],
 };
 
@@ -311,6 +317,11 @@ const COMPARISON_CATEGORIES: { label: string; rows: AnyRow[] }[] = [
       { label: "Maintenance Workflows", feature: "maintenance_workflows" },
       { label: "Document Storage",      feature: "document_storage" },
       { label: "Tenant Messaging",      feature: "tenant_messaging" },
+      { label: "Inspection Reports",    feature: "inspection_reports" },
+      { label: "E-Signatures",          feature: "esignature_enabled" },
+      { label: "Tenant Onboarding",     feature: "onboarding_enabled" },
+      { label: "Tenant Screening",      feature: "screenings" },
+      { label: "EFRIS Tax Receipts",    feature: "efris" },
     ] as FeatureRow[],
   },
   {

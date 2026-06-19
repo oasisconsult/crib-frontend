@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user, get_org_id
 from app.core.database import get_db
+from app.services.subscription_limits import check_feature_access
 from app.schemas.inspection import (
     AssignInspectorBody,
     InspectionCreate,
@@ -87,6 +88,8 @@ async def create_inspection(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.org_id is not None:
+        await check_feature_access(current_user.org_id, "inspection_reports", db)
     return await inspection_service.create_inspection(body, current_user.org_id, db)
 
 
@@ -171,8 +174,11 @@ async def sign_landlord(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "inspection_reports", db)
     return await inspection_service.sign_landlord(
-        inspection_id, body.signed_by, get_org_id(current_user), db
+        inspection_id, body.signed_by, org_id, db
     )
 
 
@@ -182,8 +188,11 @@ async def send_for_tenant_signing(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "inspection_reports", db)
     return await inspection_service.send_for_tenant_signing(
-        inspection_id, get_org_id(current_user), db
+        inspection_id, org_id, db
     )
 
 
@@ -315,6 +324,8 @@ async def create_maintenance(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    if current_user.org_id is not None:
+        await check_feature_access(current_user.org_id, "maintenance_workflows", db)
     return await inspection_service.create_maintenance_issue(body, current_user.org_id, db)
 
 

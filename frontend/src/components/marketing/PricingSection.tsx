@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Check, Zap, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/utils/cn";
+import { settingsApi } from "@/services/api/settings";
 
-// Prices match the seeded subscription_plans table exactly.
-// UGX annual = total for the year (÷12 for per-month display).
-// USD annual = total for the year in cents (÷12 for per-month display).
+// Prices match migration 065 exactly.
+// UGX annual = monthly × 12 × 0.8 (20% discount).
+// USD annual cents = monthly_cents × 12 × 0.8.
 const PLANS = [
   {
     slug: "free",
@@ -23,8 +24,8 @@ const PLANS = [
     ctaType: "link" as const,
     ctaHref: "/login?action=register",
     features: [
-      "1 property",
-      "Up to 5 units",
+      "2 properties",
+      "Up to 15 units",
       "1 user",
       "100 MB storage",
       "Basic analytics",
@@ -35,48 +36,50 @@ const PLANS = [
   {
     slug: "professional",
     name: "Professional",
-    desc: "For growing landlords who need more control.",
-    monthlyUGX: 200_000,
-    annualUGX: 1_920_000,
-    monthlyUSDCents: 4_900,
-    annualUSDCents: 47_000,
+    desc: "For growing landlords who need advanced tools.",
+    monthlyUGX: 159_000,
+    annualUGX: 1_526_400,
+    monthlyUSDCents: 4_500,
+    annualUSDCents: 43_200,
     cta: "Book a Demo",
     ctaVariant: "default" as const,
     ctaType: "anchor" as const,
     ctaHref: "#booking",
     features: [
-      "10 properties",
-      "Up to 50 units",
-      "3 users",
-      "2 GB storage",
+      "20 properties",
+      "Up to 100 units",
+      "5 users",
+      "10 GB storage",
       "Advanced analytics",
       "Maintenance workflows",
-      "Document storage",
+      "Document storage & e-signatures",
       "Tenant messaging",
+      "Inspection reports",
     ],
     popular: true,
   },
   {
     slug: "agency",
     name: "Agency",
-    desc: "For property management agencies with multiple clients.",
-    monthlyUGX: 500_000,
-    annualUGX: 4_800_000,
-    monthlyUSDCents: 12_900,
-    annualUSDCents: 123_800,
+    desc: "For property management agencies with multiple landlords.",
+    monthlyUGX: 399_000,
+    annualUGX: 3_830_400,
+    monthlyUSDCents: 10_900,
+    annualUSDCents: 104_640,
     cta: "Book a Demo",
     ctaVariant: "outline" as const,
     ctaType: "anchor" as const,
     ctaHref: "#booking",
     features: [
-      "50 properties",
-      "Up to 300 units",
-      "15 users",
-      "20 GB storage",
+      "Unlimited properties",
+      "Up to 500 units",
+      "20 users",
+      "50 GB storage",
       "Everything in Professional",
       "Team management",
+      "EFRIS tax receipts",
       "Custom branding",
-      "Priority support",
+      "Priority support & audit logs",
     ],
     popular: false,
   },
@@ -93,14 +96,12 @@ const PLANS = [
     ctaType: "anchor" as const,
     ctaHref: "#booking",
     features: [
-      "Unlimited properties",
-      "Unlimited units",
-      "Unlimited users",
-      "Unlimited storage",
+      "Unlimited everything",
       "Everything in Agency",
-      "Dedicated support",
       "API access",
-      "SSO & audit logs",
+      "SSO & advanced audit logs",
+      "Dedicated support manager",
+      "Custom SLA",
     ],
     popular: false,
   },
@@ -120,6 +121,16 @@ function formatUSD(cents: number): string {
 export function PricingSection() {
   const [annual, setAnnual] = useState(false);
   const [currency, setCurrency] = useState<"UGX" | "USD">("UGX");
+  const [ugxRate, setUgxRate] = useState<number>(3700);
+
+  useEffect(() => {
+    settingsApi.getAnonymousFlags()
+      .then(flags => {
+        const rate = parseInt(flags["platform.ugx_usd_rate"] ?? "3700", 10);
+        if (rate > 0) setUgxRate(rate);
+      })
+      .catch(() => {}); // fall back to seed value
+  }, []);
 
   return (
     <section
@@ -322,9 +333,12 @@ export function PricingSection() {
           })}
         </div>
 
-        {/* VAT note */}
+        {/* Notes */}
         <p className="text-xs text-center text-[hsl(var(--muted-foreground))] mt-8">
           All prices subject to 18% VAT. Annual plans billed once per year. Payments verified within 24 hours.
+        </p>
+        <p className="text-xs text-center text-[hsl(var(--muted-foreground))] mt-1">
+          USD prices are indicative at 1 USD ≈ {ugxRate.toLocaleString()} UGX. All transactions settled in UGX.
         </p>
 
       </div>

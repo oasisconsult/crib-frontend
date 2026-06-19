@@ -56,9 +56,11 @@ PUBLIC_SETTING_KEYS: frozenset[str] = frozenset({
 public_router = APIRouter(prefix="/settings", tags=["settings"])
 
 # Keys returned to anonymous visitors (marketing site, listings page).
-# Only feature-flag booleans that affect public UI visibility belong here.
+# Includes feature flags and the exchange rate for display-only currency conversion.
 ANONYMOUS_FLAG_KEYS: frozenset[str] = frozenset({
     "features.listings_page",
+    "platform.ugx_usd_rate",
+    "platform.ugx_usd_rate_updated",
 })
 
 
@@ -198,5 +200,16 @@ async def test_geobox(
     """Attempt a GeoBox OAuth token exchange to verify client_id and client_secret."""
     result = await settings_service.test_geobox(db)
     return GeoBoxTestResult(**result)
+
+
+@router.post("/refresh-exchange-rate", response_model=dict)
+async def refresh_exchange_rate(
+    _: CurrentUser = _super,
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually fetch the latest USD→UGX rate from Frankfurter and persist it."""
+    from app.services.exchange_rate_service import refresh_ugx_rate
+    result = await refresh_ugx_rate(db)
+    return result
 
 

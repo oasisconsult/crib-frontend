@@ -26,6 +26,7 @@ celery_app = Celery(
         "app.worker.tasks.subscriptions",
         "app.worker.tasks.mobile_money",
         "app.worker.tasks.efris",
+        "app.worker.tasks.exchange_rate",
     ],
 )
 
@@ -98,6 +99,13 @@ celery_app.conf.update(
         "reconcile-unmatched-mobile-money-daily": {
             "task": "app.worker.tasks.mobile_money.reconcile_unmatched_transactions",
             "schedule": crontab(hour="1", minute="0"),   # 04:00 EAT
+        },
+        # ── Exchange rate ─────────────────────────────────────────────────────
+        # Fetch USD→UGX from Frankfurter (ECB data). Runs at 02:05 EAT so
+        # the rate is fresh before business hours.
+        "refresh-exchange-rate-daily": {
+            "task": "app.worker.tasks.exchange_rate.refresh_ugx_rate",
+            "schedule": crontab(hour="23", minute="5"),  # 02:05 EAT (23:05 UTC prev day)
         },
     },
 )

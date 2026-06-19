@@ -17,6 +17,7 @@ from app.core.database import get_db
 from app.services import analytics_service
 from app.services.analytics_service import get_property_ids_for_profile
 from app.services.policy_service import require_permission
+from app.services.subscription_limits import check_feature_access
 
 router = APIRouter(tags=["analytics"])
 
@@ -73,9 +74,12 @@ async def occupancy_series(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "analytics_advanced", db)
     prop_ids = await _prop_ids_for_user(current_user, db)
     return await analytics_service.get_occupancy_series(
-        get_org_id(current_user), db, months, prop_ids=prop_ids
+        org_id, db, months, prop_ids=prop_ids
     )
 
 
@@ -85,9 +89,12 @@ async def revenue_series(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "analytics_advanced", db)
     prop_ids = await _prop_ids_for_user(current_user, db)
     return await analytics_service.get_revenue_series(
-        get_org_id(current_user), db, months, prop_ids=prop_ids
+        org_id, db, months, prop_ids=prop_ids
     )
 
 
@@ -97,7 +104,10 @@ async def cashflow_series(
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "analytics_advanced", db)
     prop_ids = await _prop_ids_for_user(current_user, db)
     return await analytics_service.get_cashflow_series(
-        get_org_id(current_user), db, months, prop_ids=prop_ids
+        org_id, db, months, prop_ids=prop_ids
     )

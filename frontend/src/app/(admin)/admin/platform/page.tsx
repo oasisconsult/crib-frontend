@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Save, Loader2, Building2, Globe, Banknote } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Building2, Globe, Banknote, RefreshCw, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,6 +124,73 @@ function SettingsGroup({
   );
 }
 
+// ── Exchange rate card ────────────────────────────────────────────────────────
+
+function ExchangeRateCard({ settings, onSave }: {
+  settings: SystemSetting[];
+  onSave: (key: string, value: string) => Promise<void>;
+}) {
+  const [refreshing, setRefreshing] = useState(false);
+  const rateSetting = settings.find(s => s.key === "platform.ugx_usd_rate");
+  const updatedSetting = settings.find(s => s.key === "platform.ugx_usd_rate_updated");
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const result = await settingsApi.refreshExchangeRate();
+      await onSave("platform.ugx_usd_rate", String(result.rate));
+      await onSave("platform.ugx_usd_rate_updated", result.updated_at);
+      toast.success(`Rate updated: 1 USD = ${result.rate.toLocaleString()} UGX`);
+    } catch {
+      toast.error("Failed to refresh exchange rate");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const rateValue = rateSetting?.value ? parseInt(rateSetting.value, 10) : null;
+  const lastUpdated = updatedSetting?.value
+    ? new Date(updatedSetting.value).toLocaleString()
+    : "Never";
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-primary" /> Exchange Rate
+        </CardTitle>
+        <CardDescription className="text-xs">
+          UGX/USD rate used for display-only currency conversion on the pricing page.
+          Fetched daily from Frankfurter (ECB data). Prices are stored in both currencies.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pt-0">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 py-3">
+          <div className="flex-1">
+            <p className="text-2xl font-bold">
+              {rateValue ? `1 USD = ${rateValue.toLocaleString()} UGX` : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Last updated: {lastUpdated}</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="gap-2 shrink-0"
+          >
+            {refreshing
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <RefreshCw className="h-3.5 w-3.5" />}
+            Refresh Now
+          </Button>
+        </div>
+        {rateSetting && <SettingRow setting={rateSetting} onSave={onSave} />}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 export default function AdminPlatformPage() {
@@ -181,9 +248,10 @@ export default function AdminPlatformPage() {
               title="Platform Defaults"
               description="Currency, timezone, support contacts, and other platform-wide defaults."
               icon={Globe}
-              settings={data.platform}
+              settings={data.platform.filter(s => !s.key.startsWith("platform.ugx_usd_rate"))}
               onSave={handleSave}
             />
+            <ExchangeRateCard settings={data.platform} onSave={handleSave} />
             <SettingsGroup
               title="Lease Payment Defaults"
               description="Default advance rent, grace periods, and late fee rules applied to new leases."

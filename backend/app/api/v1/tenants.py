@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import CurrentUser, get_current_user, get_org_id, require_org_access
 from app.core.database import get_db
 from app.services.policy_service import require_permission
+from app.services.subscription_limits import check_feature_access
 from app.schemas.tenant import (
     OnboardingDraftSave,
     OnboardingResponse,
@@ -282,7 +283,10 @@ async def upload_document(
     current_user: CurrentUser = Depends(_own_tenant_or_manager),
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.upload_document(tenant_id, body, get_org_id(current_user), db)
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "document_storage", db)
+    return await svc.upload_document(tenant_id, body, org_id, db)
 
 
 @router.patch("/{tenant_id}/documents/{document_id}/verify", response_model=TenantDocumentOut)

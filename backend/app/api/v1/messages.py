@@ -22,6 +22,7 @@ from app.api.deps import CurrentUser, get_org_id, require_org_access
 from app.core.database import get_db
 from app.schemas.message import MessageCreate, MessageOut, UnreadCountOut
 from app.services import message_service as svc
+from app.services.subscription_limits import check_feature_access
 
 router = APIRouter(prefix="/leases", tags=["messages"])
 flat_router = APIRouter(prefix="/messages", tags=["messages"])
@@ -47,6 +48,9 @@ async def send_message(
     current_user: CurrentUser = _access,
     db: AsyncSession = Depends(get_db),
 ):
+    org_id = get_org_id(current_user)
+    if org_id is not None:
+        await check_feature_access(org_id, "tenant_messaging", db)
     return await svc.create_message(lease_id, body, current_user, db)
 
 

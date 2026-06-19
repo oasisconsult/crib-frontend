@@ -64,4 +64,7 @@ export const settingsApi = {
 
   testGeobox: () =>
     apiPost<GeoBoxTestResult>("/admin/settings/test/geobox"),
+
+  refreshExchangeRate: () =>
+    apiPost<{ rate: number; updated_at: string; source: string }>("/admin/settings/refresh-exchange-rate"),
 };

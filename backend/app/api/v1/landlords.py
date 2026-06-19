@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUser, get_current_user
 from app.services.policy_service import require_permission
+from app.services.subscription_limits import check_feature_access
 from app.core.database import get_db
 from app.schemas.common import MessageResponse
 from app.services.landlord_service import (
@@ -49,6 +50,8 @@ async def create_landlord_invite(
     from fastapi import HTTPException
     if not current_user.profile.organisation_id:
         raise HTTPException(status_code=400, detail="You must belong to an organisation")
+    if current_user.org_id is not None:
+        await check_feature_access(current_user.org_id, "team_members", db)
     return await create_invite(
         db=db,
         organisation_id=current_user.profile.organisation_id,
