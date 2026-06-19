@@ -26,6 +26,7 @@ export interface SubscriptionPlan {
   features: Record<string, boolean>;
   trialDays: number;
   isActive: boolean;
+  requiresCustomQuote: boolean;
   displayOrder: number;
 }
 

@@ -102,7 +102,8 @@ function PlanCard({
   const annualUSD  = plan.annualPriceUsdCents;
 
   // Split currency label from number so "UGX" never sits on the same line as the amount
-  const isFreePrice = plan.slug === "free";
+  const isFreePrice    = plan.slug === "free";
+  const isCustomQuote  = plan.requiresCustomQuote;
   const rawAmount =
     currency === "UGX"
       ? (cycle === "annual" ? Math.round(annualUGX / 12) : monthlyUGX)
@@ -112,7 +113,9 @@ function PlanCard({
   const priceSymbol        = currency === "USD" ? "$" : "";
   const priceAmount        = isFreePrice
     ? "Free"
-    : `${priceSymbol}${currency === "USD" ? compactNum(rawAmount / 100) : compactNum(rawAmount)}`;
+    : isCustomQuote
+      ? "Custom"
+      : `${priceSymbol}${currency === "USD" ? compactNum(rawAmount / 100) : compactNum(rawAmount)}`;
 
   const savings =
     currency === "UGX"
@@ -167,34 +170,38 @@ function PlanCard({
         </div>
 
         {/* Currency label sits above the number so "UGX 160k" never wraps mid-string */}
-        {!isFree && (
+        {!isFree && !isCustomQuote && (
           <p className="text-[11px] font-semibold tracking-widest uppercase text-muted-foreground mb-0.5">
             {priceCurrencyLabel}
           </p>
         )}
+        {isCustomQuote && <div className="h-4 mb-0.5" />}
         <div className="flex items-baseline gap-1.5 mb-1">
           <span className={cn(
             "font-bold tracking-tight leading-none",
-            isFree ? "text-2xl" : "text-3xl",
+            isFree || isCustomQuote ? "text-2xl" : "text-3xl",
           )}>
             {priceAmount}
           </span>
-          {!isFree && (
+          {!isFree && !isCustomQuote && (
             <span className="text-sm text-muted-foreground">/mo</span>
           )}
         </div>
 
         <div className="h-5 mt-1">
-          {!isFree && cycle === "annual" && savings > 0 && (
+          {!isFree && !isCustomQuote && cycle === "annual" && savings > 0 && (
             <p className="text-xs font-medium text-emerald-600">
               Save {savings}% with annual billing
             </p>
           )}
-          {!isFree && cycle === "monthly" && (
+          {!isFree && !isCustomQuote && cycle === "monthly" && (
             <p className="text-xs text-muted-foreground">Billed monthly</p>
           )}
           {isFree && (
             <p className="text-xs text-muted-foreground">No credit card required</p>
+          )}
+          {isCustomQuote && (
+            <p className="text-xs text-muted-foreground">Tailored to your portfolio</p>
           )}
         </div>
 
@@ -205,15 +212,23 @@ function PlanCard({
 
       {/* CTA */}
       <div className="px-6 pb-5">
-        <Button
-          onClick={onSelect}
-          disabled={isCurrent || selecting}
-          className="w-full"
-          variant={isRecommended ? "default" : isCurrent ? "outline" : "outline"}
-        >
-          {selecting && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isCurrent ? "Current Plan" : isFree ? "Switch to Free" : "Get Started"}
-        </Button>
+        {isCustomQuote ? (
+          <Button asChild className="w-full" variant="outline">
+            <a href="/#booking">
+              Contact Sales
+            </a>
+          </Button>
+        ) : (
+          <Button
+            onClick={onSelect}
+            disabled={isCurrent || selecting}
+            className="w-full"
+            variant={isRecommended ? "default" : isCurrent ? "outline" : "outline"}
+          >
+            {selecting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isCurrent ? "Current Plan" : isFree ? "Switch to Free" : "Get Started"}
+          </Button>
+        )}
       </div>
 
       {/* Divider */}

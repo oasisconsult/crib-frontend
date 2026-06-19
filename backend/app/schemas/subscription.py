@@ -36,6 +36,7 @@ class SubscriptionPlanOut(CamelModel):
     trial_days: int
     is_active: bool
     is_publicly_visible: bool
+    requires_custom_quote: bool
     display_order: int
     created_at: datetime
     updated_at: datetime

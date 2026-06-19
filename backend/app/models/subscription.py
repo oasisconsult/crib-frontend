@@ -114,6 +114,7 @@ class SubscriptionPlan(TimestampedBase):
     trial_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_publicly_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    requires_custom_quote: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     def monthly_price(self, currency: str) -> int:
