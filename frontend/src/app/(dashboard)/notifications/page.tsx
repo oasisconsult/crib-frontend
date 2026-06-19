@@ -201,7 +201,7 @@ function NotificationDetailDrawer({
               {n.subject && <DetailRow label="Subject" value={n.subject} />}
               <div className="flex flex-col gap-0.5">
                 <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Body</span>
-                <p className="text-sm whitespace-pre-wrap leading-relaxed bg-muted/30 rounded-md px-3 py-2">{n.body}</p>
+                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed bg-muted/30 rounded-md px-3 py-2">{n.body}</p>
               </div>
               {n.templateId && (
                 <DetailRow label="Template ID" value={<span className="font-mono text-xs text-muted-foreground">{n.templateId}</span>} />
