@@ -105,6 +105,14 @@ async def generate_statement_pdf(
     if date_from is not None and date_to < date_from:
         date_to = date(date_from.year + 1, date_from.month, date_from.day)
 
+    # ── extend schedule horizon for rolling leases (idempotent, self-healing) ──
+    # generate_rent_schedules skips months that already exist, so calling it
+    # here is free when schedules are current and fixes any gap otherwise.
+    if lease.end_date is None and lease.status.value in ("active", "agreement_signed"):
+        from app.services.payment_service import generate_rent_schedules
+        await generate_rent_schedules(lease, db)
+        await db.flush()
+
     # ── fetch schedules ───────────────────────────────────────────────────────
     sched_q = (
         select(RentSchedule)
