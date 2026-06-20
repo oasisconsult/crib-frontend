@@ -205,24 +205,27 @@ export function useDashboardStats() {
   });
 }
 
-export function useOccupancyData(months = 6) {
+export function useOccupancyData(months = 6, enabled = true) {
   return useQuery({
     queryKey: queryKeys_dashboard.occupancy(months),
     queryFn: () => analyticsApi.getOccupancy(months),
+    enabled,
   });
 }
 
-export function useRevenueData(months = 6) {
+export function useRevenueData(months = 6, enabled = true) {
   return useQuery({
     queryKey: queryKeys_dashboard.revenue(months),
     queryFn: () => analyticsApi.getRevenue(months),
+    enabled,
   });
 }
 
-export function useCashFlowData(months = 6) {
+export function useCashFlowData(months = 6, enabled = true) {
   return useQuery({
     queryKey: queryKeys_dashboard.cashFlow(months),
     queryFn: () => analyticsApi.getCashFlow(months),
+    enabled,
   });
 }
 

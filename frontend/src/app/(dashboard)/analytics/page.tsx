@@ -6,6 +6,9 @@ import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useDashboardStats, useCashFlowData } from "@/hooks/usePayments";
 import { useProperties } from "@/hooks/useProperties";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
+import { FeatureUpgradeCTA } from "@/components/common/FeatureUpgradeCTA";
+import { PageHeader } from "@/components/common/PageHeader";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency, formatCurrencyCompact } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
@@ -20,11 +23,28 @@ export default function AnalyticsPage() {
   const [propertyId, setPropertyId] = useState<string>("all");
   const [months, setMonths] = useState<3 | 6 | 12>(12);
 
+  const { data: sub } = useCurrentSubscription();
+  const features = sub?.plan?.features as Record<string, unknown> | undefined;
+  const hasAnalytics = !sub || features?.analytics_advanced === true;
+
   const { data: stats } = useDashboardStats();
-  const { data: cashFlowRaw } = useCashFlowData(months);
+  const { data: cashFlowRaw } = useCashFlowData(months, hasAnalytics);
   const { data: propertiesData } = useProperties();
 
   const properties = propertiesData?.data ?? [];
+
+  if (sub && !hasAnalytics) {
+    return (
+      <div className="p-6">
+        <PageHeader title="Analytics" description="Portfolio performance and financial insights" />
+        <FeatureUpgradeCTA
+          feature="Analytics"
+          requiredPlan="Professional plan or above"
+          description="Upgrade to access occupancy trends, revenue charts, and cash flow analysis."
+        />
+      </div>
+    );
+  }
 
   // Slice cash flow to selected month window
   const cashFlow = cashFlowRaw?.slice(-months) ?? [];

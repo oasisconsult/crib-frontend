@@ -139,6 +139,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: BarChart3,
     roles: ["owner", "manager", "superadmin", "landlord", "caretaker"],
     permission: { action: "read", resource: "analytics" },
+    featureKey: "analytics_advanced",
   },
   {
     href: "/reports",
