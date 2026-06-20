@@ -407,3 +407,39 @@ async def tenant_confirm_terms(
         tenant_logto_sub=current_user.sub,
         db=db,
     )
+
+
+# ── Maintenance / backfill ─────────────────────────────────────────────────────
+
+
+@router.post("/{lease_id}/backfill-schedules", response_model=dict)
+async def backfill_rent_schedules(
+    lease_id: uuid.UUID,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    (Re-)generate missing rent schedules for an active lease.
+
+    Idempotent — already-existing schedule months are skipped.
+    Useful when a lease was activated before schedule generation was wired up,
+    or when a rolling lease needs its horizon extended.
+
+    Owner/manager/superadmin only; superadmin may call cross-org.
+    """
+    from app.services.payment_service import generate_rent_schedules
+    from sqlalchemy import select as _select
+    from app.models.lease import Lease as _Lease
+
+    org_id = get_org_id(current_user)
+    filters = [_Lease.id == lease_id, _Lease.deleted_at.is_(None)]
+    if org_id is not None:
+        filters.append(_Lease.organisation_id == org_id)
+
+    lease = (await db.execute(_select(_Lease).where(*filters))).scalar_one_or_none()
+    if not lease:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Lease not found")
+
+    added = await generate_rent_schedules(lease, db)
+    await db.commit()
+    return {"added": added, "lease_id": str(lease_id)}
