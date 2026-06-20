@@ -75,14 +75,14 @@ services:
       MINIO_BUCKET: "${MINIO_BUCKET:-crib-staging}"
       MINIO_SECURE: "${MINIO_SECURE:-false}"
 
-      # ── Email ────────────────────────────────────────────────────────────
-      EMAIL_PROVIDER: "${EMAIL_PROVIDER:-smtp}"
-      SENDGRID_API_KEY: "${SENDGRID_API_KEY:-}"
-      SMTP_HOST: "${SMTP_HOST:-}"
+      # ── Email (all read from system_settings DB; env vars are optional overrides) ──
+      EMAIL_PROVIDER: "${EMAIL_PROVIDER}"
+      SENDGRID_API_KEY: "${SENDGRID_API_KEY}"
+      SMTP_HOST: "${SMTP_HOST}"
       SMTP_PORT: "${SMTP_PORT:-587}"
-      SMTP_USERNAME: "${SMTP_USERNAME:-}"
-      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
-      EMAIL_FROM: "${EMAIL_FROM:-noreply-staging@crib.geoboxafrica.com}"
+      SMTP_USERNAME: "${SMTP_USERNAME}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      EMAIL_FROM: "${EMAIL_FROM}"
 
       # ── App ──────────────────────────────────────────────────────────────
       SECRET_KEY: "${SECRET_KEY}"
@@ -130,13 +130,13 @@ services:
       MINIO_ENDPOINT: "${MINIO_ENDPOINT}"
       MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY}"
       MINIO_SECRET_KEY: "${MINIO_SECRET_KEY}"
-      EMAIL_PROVIDER: "${EMAIL_PROVIDER:-smtp}"
-      SENDGRID_API_KEY: "${SENDGRID_API_KEY:-}"
-      SMTP_HOST: "${SMTP_HOST:-}"
+      EMAIL_PROVIDER: "${EMAIL_PROVIDER}"
+      SENDGRID_API_KEY: "${SENDGRID_API_KEY}"
+      SMTP_HOST: "${SMTP_HOST}"
       SMTP_PORT: "${SMTP_PORT:-587}"
-      SMTP_USERNAME: "${SMTP_USERNAME:-}"
-      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
-      EMAIL_FROM: "${EMAIL_FROM:-noreply-staging@crib.geoboxafrica.com}"
+      SMTP_USERNAME: "${SMTP_USERNAME}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      EMAIL_FROM: "${EMAIL_FROM}"
       SECRET_KEY: "${SECRET_KEY}"
       ENVIRONMENT: staging
     restart: unless-stopped
