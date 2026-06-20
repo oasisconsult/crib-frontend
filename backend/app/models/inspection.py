@@ -143,6 +143,7 @@ class Inspection(TimestampedBase):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     checklist: Mapped[list] = mapped_column(JSONB(), nullable=False, default=list)
     overall_condition: Mapped[str | None] = mapped_column(String(20), nullable=True)

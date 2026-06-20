@@ -1087,6 +1087,7 @@ export default function InspectionDetailPage({ params }: Props) {
 
   const [editing, setEditing] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const { mutate: transition, isPending: transitioning } = useTransitionInspection();
   const { mutate: resendInvite, isPending: resending } = useResendInspectorInvite();
 
@@ -1163,7 +1164,13 @@ export default function InspectionDetailPage({ params }: Props) {
                 variant={action.variant}
                 size="sm"
                 loading={transitioning}
-                onClick={() => transition({ id: inspection.id, event: action.event })}
+                onClick={() => {
+                  if (action.event === "INSPECTION_CANCELLED" && inspection.inspectorContractorId) {
+                    setCancelConfirmOpen(true);
+                  } else {
+                    transition({ id: inspection.id, event: action.event });
+                  }
+                }}
               >
                 <action.icon className="h-3.5 w-3.5" />
                 {action.label}
@@ -1555,6 +1562,35 @@ export default function InspectionDetailPage({ params }: Props) {
           onAssigned={refreshInspection}
         />
       )}
+
+      {/* Cancel confirmation — shown when an inspector link has already been sent */}
+      <Dialog open={cancelConfirmOpen} onOpenChange={(open) => !open && setCancelConfirmOpen(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel this inspection?</DialogTitle>
+            <DialogDescription>
+              <strong>{inspectorName}</strong> has already been sent an inspector portal link.
+              Cancelling will immediately invalidate that link — they will see
+              &ldquo;Inspection Cancelled&rdquo; if they try to open it.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelConfirmOpen(false)} disabled={transitioning}>
+              Keep inspection
+            </Button>
+            <Button
+              variant="destructive"
+              loading={transitioning}
+              onClick={() => {
+                setCancelConfirmOpen(false);
+                transition({ id: inspection.id, event: "INSPECTION_CANCELLED" });
+              }}
+            >
+              Cancel inspection
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

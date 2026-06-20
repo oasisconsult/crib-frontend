@@ -418,17 +418,22 @@ export default function InspectorPortalPage({ params }: Props) {
   }
 
   if (error || !inspection) {
-    const is410 = (error as { status?: number })?.status === 410;
+    const errStatus = (error as { status?: number })?.status;
+    const errCode = (error as { data?: { code?: string } })?.data?.code;
+    const isCancelled = errStatus === 410 && errCode === "inspection_cancelled";
+    const isExpired = errStatus === 410 && !isCancelled;
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full text-center">
           <CardContent className="pt-8 pb-8 space-y-3">
-            <AlertCircle className="h-10 w-10 text-destructive mx-auto" />
+            <AlertCircle className={`h-10 w-10 mx-auto ${isCancelled ? "text-amber-500" : "text-destructive"}`} />
             <h2 className="text-lg font-semibold">
-              {is410 ? "Link Expired" : "Inspection Not Found"}
+              {isCancelled ? "Inspection Cancelled" : isExpired ? "Link Expired" : "Inspection Not Found"}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {is410
+              {isCancelled
+                ? "This inspection was cancelled by the property manager. Please contact them if you believe this is a mistake."
+                : isExpired
                 ? "This inspector link has expired. Please contact the property manager to send a new one."
                 : "This link is invalid or the inspection no longer exists."}
             </p>

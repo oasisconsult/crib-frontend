@@ -77,6 +77,7 @@ class InspectionOut(CamelModel):
     started_at: str | None
     completed_at: str | None
     approved_at: str | None
+    cancelled_at: str | None = None
     checklist: list[dict[str, Any]]
     overall_condition: str | None
     summary: str | None

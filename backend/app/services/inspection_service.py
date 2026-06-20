@@ -89,6 +89,7 @@ def _insp_out(i: Inspection, unit_name: str | None = None, property_name: str | 
         started_at=_s(i.started_at),
         completed_at=_s(i.completed_at),
         approved_at=_s(i.approved_at),
+        cancelled_at=_s(i.cancelled_at),
         checklist=i.checklist or [],
         overall_condition=i.overall_condition,
         summary=i.summary,
@@ -458,6 +459,8 @@ async def transition_inspection(
         i.completed_at = now
     elif new_state == InspectionState.approved:
         i.approved_at = now
+    elif new_state == InspectionState.cancelled:
+        i.cancelled_at = now
 
     await db.flush()
     await db.refresh(i)
@@ -1446,6 +1449,12 @@ async def get_by_inspector_token(token: str, db: AsyncSession) -> InspectorPorta
     i = await db.scalar(select(Inspection).where(Inspection.inspector_token == token))
     if not i:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inspector link not found")
+
+    if i.state == InspectionState.cancelled or i.state == "cancelled":
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail={"code": "inspection_cancelled", "message": "This inspection was cancelled by the property manager."},
+        )
 
     now = datetime.now(timezone.utc)
     if i.inspector_token_expires_at and i.inspector_token_expires_at < now:
