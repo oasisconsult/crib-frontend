@@ -19,6 +19,12 @@ function toIso(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+function addMonths(dateStr: string, months: number): string {
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth() + months);
+  return toIso(d);
+}
+
 export function StatementDialog({ lease, open, onClose }: StatementDialogProps) {
   const leaseStart = lease.startDate
     ? lease.startDate.slice(0, 10)
@@ -26,8 +32,15 @@ export function StatementDialog({ lease, open, onClose }: StatementDialogProps) 
 
   const today = toIso(new Date());
 
+  // If the lease hasn't started yet, default "To" to 12 months after lease
+  // start so that pre-collected advance payments actually appear in the range.
+  // Otherwise default to today.
+  const defaultDateTo = leaseStart > today
+    ? (lease.endDate ? lease.endDate.slice(0, 10) : addMonths(leaseStart, 12))
+    : today;
+
   const [dateFrom, setDateFrom] = useState(leaseStart);
-  const [dateTo, setDateTo]     = useState(today);
+  const [dateTo, setDateTo]     = useState(defaultDateTo);
 
   function buildUrl(format: "pdf" | "csv") {
     const base =
@@ -70,7 +83,7 @@ export function StatementDialog({ lease, open, onClose }: StatementDialogProps) 
                 id="stmt-from"
                 type="date"
                 value={dateFrom}
-                max={dateTo || today}
+                max={dateTo}
                 onChange={(e) => setDateFrom(e.target.value)}
               />
             </div>
@@ -81,7 +94,6 @@ export function StatementDialog({ lease, open, onClose }: StatementDialogProps) 
                 type="date"
                 value={dateTo}
                 min={dateFrom}
-                max={today}
                 onChange={(e) => setDateTo(e.target.value)}
               />
             </div>

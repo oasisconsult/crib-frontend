@@ -89,8 +89,21 @@ async def generate_statement_pdf(
         except (ValueError, AttributeError):
             pass
     # Default the upper bound to today so future schedules are excluded.
+    # Exception: if the lease hasn't started yet (start_date > today), extend
+    # to capture advance-payment schedules whose period_start is in the future.
     if date_to is None:
-        date_to = today
+        if lease.start_date and lease.start_date > today:
+            date_to = lease.end_date or (
+                date(lease.start_date.year + 1, lease.start_date.month, lease.start_date.day)
+            )
+        else:
+            date_to = today
+
+    # If the resolved range is inverted (date_to before date_from), widen
+    # date_to to cover at least 12 months from date_from so the query
+    # returns schedules instead of silently producing an empty statement.
+    if date_from is not None and date_to < date_from:
+        date_to = date(date_from.year + 1, date_from.month, date_from.day)
 
     # ── fetch schedules ───────────────────────────────────────────────────────
     sched_q = (
