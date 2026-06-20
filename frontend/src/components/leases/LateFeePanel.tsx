@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Loader2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -124,6 +124,7 @@ function FeeRow({
 
 export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
   const { data: fees, isLoading } = useLeaseLateFees(leaseId);
+  const [expanded, setExpanded] = useState(true);
 
   if (isLoading) {
     return (
@@ -146,23 +147,34 @@ export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
           <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           Late Fees
           {activeCount > 0 && (
-            <Badge variant="outline" className="ml-auto text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-xs font-normal">
+            <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-xs font-normal">
               {activeCount} active
             </Badge>
           )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="ml-auto h-7 w-7 p-0"
+            onClick={() => setExpanded((v) => !v)}
+            aria-label={expanded ? "Collapse late fees" : "Expand late fees"}
+          >
+            {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
         </CardTitle>
       </CardHeader>
-      <CardContent className="pt-0">
-        {fees.map((fee) => (
-          <FeeRow
-            key={fee.id}
-            fee={fee}
-            currency={currency}
-            canManage={canManage}
-            leaseId={leaseId}
-          />
-        ))}
-      </CardContent>
+      {expanded && (
+        <CardContent className="pt-0">
+          {fees.map((fee) => (
+            <FeeRow
+              key={fee.id}
+              fee={fee}
+              currency={currency}
+              canManage={canManage}
+              leaseId={leaseId}
+            />
+          ))}
+        </CardContent>
+      )}
     </Card>
   );
 }
