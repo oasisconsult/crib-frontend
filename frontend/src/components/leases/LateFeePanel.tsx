@@ -124,7 +124,7 @@ function FeeRow({
 
 export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
   const { data: fees, isLoading } = useLeaseLateFees(leaseId);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   if (isLoading) {
     return (
