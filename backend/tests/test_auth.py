@@ -87,3 +87,43 @@ async def test_profile_not_duplicated_on_second_request(client: AsyncClient, db_
     )
     profiles = result.scalars().all()
     assert len(profiles) == 1
+
+
+@pytest.mark.asyncio
+async def test_foreign_role_does_not_overwrite_onboarding_role(db_session: AsyncSession):
+    from app.api.deps import _upsert_profile
+    from app.core.security import TokenClaims
+
+    profile = Profile(
+        logto_sub='test_foreign_role_landlord',
+        logto_org_id='org_foreign_test',
+        organisation_id=None,
+        role='landlord',
+        email='landlord@foreigntest.local',
+    )
+    db_session.add(profile)
+    await db_session.flush()
+
+    claims = TokenClaims(sub='test_foreign_role_landlord', org_id='org_foreign_test', email='landlord@foreigntest.local')
+    updated = await _upsert_profile(claims, db_session, rbac_roles=['resident'])
+    assert updated.role == 'landlord'
+
+
+@pytest.mark.asyncio
+async def test_known_crib_role_update_is_applied(db_session: AsyncSession):
+    from app.api.deps import _upsert_profile
+    from app.core.security import TokenClaims
+
+    profile = Profile(
+        logto_sub='test_crib_role_upgrade',
+        logto_org_id='org_upgrade_test',
+        organisation_id=None,
+        role='tenant',
+        email='user@upgradetest.local',
+    )
+    db_session.add(profile)
+    await db_session.flush()
+
+    claims = TokenClaims(sub='test_crib_role_upgrade', org_id='org_upgrade_test', email='user@upgradetest.local')
+    updated = await _upsert_profile(claims, db_session, rbac_roles=['manager'])
+    assert updated.role == 'manager'

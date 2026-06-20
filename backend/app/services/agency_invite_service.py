@@ -293,6 +293,14 @@ async def complete_agency_onboarding(
         profile.organisation_id = org.id
         profile.role = "manager"
 
+    # Write to RBAC DB so the next JWT resolves the correct Crib role
+    from app.services.rbac_user_service import provision_crib_role
+    await provision_crib_role(
+        logto_sub=logto_user_id,
+        email=invite.manager_email,
+        role_name="manager",
+    )
+
     # 4. Update invite with onboarding details + link org
     invite.status = AgencyInviteStatus.ACCEPTED
     invite.accepted_at = datetime.now(timezone.utc)

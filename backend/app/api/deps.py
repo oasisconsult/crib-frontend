@@ -203,15 +203,22 @@ async def _upsert_profile(
 
     now = datetime.now(timezone.utc)
     # Phase 4: prefer RBAC DB roles over JWT-derived roles for profile.role display
-    effective_roles = rbac_roles if rbac_roles else _roles_from_claims(claims)
+    # Guard: rbac_roles=[] (empty list, falsy) differs from rbac_roles=None (not set).
+    effective_roles = rbac_roles if rbac_roles is not None else _roles_from_claims(claims)
     primary = await _primary_role(effective_roles, db)
+
+    # Only sync profile.role when the resolved primary is a recognised Crib role.
+    # Unknown or foreign roles — e.g. GeoBox"s "resident" auto-assigned by the shared
+    # Logto instance — are ignored so they cannot corrupt onboarding-set roles.
+    priority_map = await _get_priority_map(db)
+    primary_is_crib_role = primary in priority_map
 
     if profile is None:
         profile = Profile(
             logto_sub=claims.sub,
             logto_org_id=claims.org_id,
             organisation_id=org.id if org else None,
-            role=primary,
+            role=primary if primary_is_crib_role else "tenant",
             display_name=claims.name,
             email=claims.email,
             last_seen_at=now,
@@ -221,7 +228,8 @@ async def _upsert_profile(
     else:
         profile.email = claims.email or profile.email
         profile.last_seen_at = now
-        profile.role = primary
+        if primary_is_crib_role:
+            profile.role = primary
         if claims.org_id and profile.logto_org_id != claims.org_id:
             profile.logto_org_id = claims.org_id
             if org:

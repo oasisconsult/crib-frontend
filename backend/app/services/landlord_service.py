@@ -306,6 +306,14 @@ async def complete_onboarding(
 
         await db.flush()
 
+        # Write to RBAC DB so the next JWT resolves the correct Crib role
+        from app.services.rbac_user_service import provision_crib_role
+        await provision_crib_role(
+            logto_sub=logto_user_id or f"pending_{invite.id}",
+            email=invite.email,
+            role_name="owner",
+        )
+
         # 5. Mark invite accepted
         invite.status = InviteStatus.ACCEPTED
         invite.accepted_at = datetime.now(timezone.utc)
@@ -400,6 +408,14 @@ async def complete_onboarding(
                 is_read_only=True,
                 granted_by_profile_id=invite.invited_by_profile_id,
             ))
+
+    # Write to RBAC DB so the next JWT resolves the correct Crib role
+    from app.services.rbac_user_service import provision_crib_role
+    await provision_crib_role(
+        logto_sub=logto_user_id or f"pending_{invite.id}",
+        email=invite.email,
+        role_name="landlord",
+    )
 
     invite.status = InviteStatus.ACCEPTED
     invite.accepted_at = datetime.now(timezone.utc)

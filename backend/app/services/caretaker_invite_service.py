@@ -485,6 +485,14 @@ async def complete_caretaker_onboarding(
             log.warning("caretaker.invalid_property_id", pid=pid_str, error=str(exc))
     await db.flush()
 
+    # Write to RBAC DB so the next JWT resolves the correct Crib role
+    from app.services.rbac_user_service import provision_crib_role
+    await provision_crib_role(
+        logto_sub=logto_user_id or f"pending_{invite.id}",
+        email=invite.email,
+        role_name="caretaker",
+    )
+
     # Mark invite accepted
     invite.status = CaretakerInviteStatus.ACCEPTED
     invite.accepted_at = datetime.now(timezone.utc)

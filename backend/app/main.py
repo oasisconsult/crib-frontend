@@ -357,6 +357,8 @@ def create_app() -> FastAPI:
     from app.api.v1 import caretaker_invites
     application.include_router(caretaker_invites.router, prefix=settings.api_prefix)
     application.include_router(admin.router, prefix=settings.api_prefix)
+    from app.api.v1 import admin_user_roles
+    application.include_router(admin_user_roles.router, prefix=settings.api_prefix)
     application.include_router(webhooks.router, prefix=settings.api_prefix)
     # Book a Demo — public submission endpoint + superadmin management endpoints
     application.include_router(demo_bookings.public_router, prefix=settings.api_prefix)
