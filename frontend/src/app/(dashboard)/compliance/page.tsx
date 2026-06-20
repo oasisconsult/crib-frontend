@@ -19,6 +19,8 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { formatCurrency, formatDate, formatDateTime } from "@/utils/formatters";
 import { useOrganisation } from "@/hooks/useOrganisation";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
+import { FeatureUpgradeCTA } from "@/components/common/FeatureUpgradeCTA";
 import { efrisApi, type EfrisCompliancePayment } from "@/services/api/efris";
 import { toast } from "@/store/useUIStore";
 import type { PaginatedResponse } from "@/types";
@@ -232,6 +234,7 @@ function SummaryCards({
 
 export default function CompliancePage() {
   const { data: org } = useOrganisation();
+  const { data: sub } = useCurrentSubscription();
 
   const [tab, setTab] = useState<EfrisTab>("all");
   const [page, setPage] = useState(1);
@@ -307,6 +310,25 @@ export default function CompliancePage() {
     return (
       <div className="flex h-64 items-center justify-center text-muted-foreground text-sm">
         Loading…
+      </div>
+    );
+  }
+
+  // Gate: show upgrade CTA for plans that don't include EFRIS
+  const features = sub?.plan?.features as Record<string, unknown> | undefined;
+  if (sub && features?.efris !== true) {
+    return (
+      <div className="p-6">
+        <PageHeader
+          title="EFRIS Compliance"
+          description="URA Electronic Fiscal Receipting Integration System"
+          icon={<ShieldCheck className="h-5 w-5" />}
+        />
+        <FeatureUpgradeCTA
+          feature="EFRIS Compliance"
+          requiredPlan="Agency or Enterprise plan"
+          description="Automated URA fiscal receipt generation is available on Agency and Enterprise plans."
+        />
       </div>
     );
   }

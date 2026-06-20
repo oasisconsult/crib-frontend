@@ -45,6 +45,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
 import type { UserRole } from "@/types";
 
 /* ── Nav item definition ────────────────────────────────────────────────── */
@@ -64,6 +65,11 @@ interface NavItem {
   roles?: UserRole[];
   /** DB-driven permission gate — checked against Access Control config */
   permission?: { action: string; resource: string };
+  /**
+   * Subscription feature key — item is hidden when the org's plan does not
+   * have this feature enabled. Superadmin always bypasses this gate.
+   */
+  featureKey?: string;
   badge?: number;
   section?: string;
   /**
@@ -140,18 +146,21 @@ const NAV_ITEMS: NavItem[] = [
     icon: FileBarChart2,
     roles: ["owner", "manager", "superadmin", "landlord", "caretaker"],
     permission: { action: "read", resource: "analytics" },
+    featureKey: "analytics_advanced",
   },
   {
     href: "/compliance",
     label: "EFRIS Compliance",
     icon: BadgeCheck,
     roles: ["owner", "manager", "superadmin"],
+    featureKey: "efris",
   },
   {
     href: "/audit-log",
     label: "Audit Log",
     icon: ScrollText,
     roles: ["owner", "manager", "superadmin"],
+    featureKey: "audit_logs",
   },
   {
     href: "/inspections",
@@ -159,6 +168,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: ClipboardList,
     roles: ["owner", "manager", "superadmin", "maintenance", "landlord", "caretaker"],
     permission: { action: "read", resource: "inspection" },
+    featureKey: "inspection_reports",
     section: "OPERATIONS",
   },
   {
@@ -167,6 +177,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: Wrench,
     roles: ["owner", "manager", "superadmin", "maintenance", "landlord", "caretaker"],
     permission: { action: "read", resource: "maintenance_request" },
+    featureKey: "maintenance_workflows",
   },
   {
     href: "/contractors",
@@ -174,6 +185,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: HardHat,
     roles: ["owner", "manager", "superadmin"],
     permission: { action: "write", resource: "maintenance_request" },
+    featureKey: "maintenance_workflows",
   },
   {
     href: "/notifications",
@@ -207,6 +219,7 @@ export function Sidebar() {
   const { roles, canDo, isSuperAdmin } = usePermissions();
   const user = useAppStore((s) => s.user);
   const { logout } = useAuth();
+  const { data: sub } = useCurrentSubscription();
 
   // ── Accordion state ───────────────────────────────────────────────────────
   // Track which parent items are expanded. Auto-expand when a child is active.
@@ -251,6 +264,15 @@ export function Sidebar() {
     // 2. DB-driven permission gate — Access Control page controls this
     if (item.permission && !canDo(item.permission.action, item.permission.resource)) {
       return false;
+    }
+    // 3. Subscription feature gate — hide when the org's plan doesn't include
+    //    this feature. Superadmin always bypasses. If sub hasn't loaded yet,
+    //    keep the item visible (avoid layout flicker on load).
+    if (item.featureKey && !isSuperAdmin && sub) {
+      const features = sub?.plan?.features as Record<string, unknown> | undefined;
+      if (!features || features[item.featureKey] !== true) {
+        return false;
+      }
     }
     return true;
   }).map((item) => {

@@ -12,6 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate } from "@/utils/formatters";
 import { useInspections } from "@/hooks/useInspections";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
+import { FeatureUpgradeCTA } from "@/components/common/FeatureUpgradeCTA";
+import { ClipboardList } from "lucide-react";
 import type { Inspection, FilterConfig } from "@/types";
 
 const PAGE_SIZE = 20;
@@ -103,6 +106,7 @@ function panelFiltersToConfig(active: ActiveFilters): FilterConfig[] {
 export default function InspectionsPage() {
   const router = useRouter();
   const { canWrite } = usePermissions();
+  const { data: sub } = useCurrentSubscription();
   const [tab, setTab] = useState<typeof TABS[number]>("all");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -129,6 +133,19 @@ export default function InspectionsPage() {
     setActiveFilters(filters);
     setPage(1);
   };
+
+  const features = sub?.plan?.features as Record<string, unknown> | undefined;
+  if (sub && features?.inspection_reports !== true) {
+    return (
+      <div className="p-6">
+        <FeatureUpgradeCTA
+          feature="Inspections"
+          requiredPlan="Professional or above"
+          description="Property inspection scheduling, reports, and photo uploads are available on Professional, Agency, and Enterprise plans."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

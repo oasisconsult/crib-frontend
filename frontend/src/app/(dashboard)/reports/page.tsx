@@ -21,6 +21,9 @@ import {
   useIncomeExpenseReport,
 } from "@/hooks/useReports";
 import { reportsApi } from "@/services/api/reports";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
+import { FeatureUpgradeCTA } from "@/components/common/FeatureUpgradeCTA";
+import { FileBarChart2 } from "lucide-react";
 
 const CURRENCY = "UGX";
 
@@ -646,6 +649,27 @@ function IncomeExpenseTab() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
+  const { data: sub } = useCurrentSubscription();
+  const features = sub?.plan?.features as Record<string, unknown> | undefined;
+
+  if (sub && features?.analytics_advanced !== true) {
+    return (
+      <div className="p-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Portfolio analytics, rent collection, arrears, maintenance, and P&L
+          </p>
+        </div>
+        <FeatureUpgradeCTA
+          feature="Advanced Reports"
+          requiredPlan="Professional or above"
+          description="Detailed reporting and analytics are available on Professional, Agency, and Enterprise plans."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
