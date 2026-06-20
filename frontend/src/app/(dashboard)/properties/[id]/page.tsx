@@ -43,6 +43,7 @@ import { GeocodeField } from "@/components/ui/geocode-field";
 import { settingsApi } from "@/services/api/settings";
 import { uploadsApi } from "@/services/api/uploads";
 import { usePermissions } from "@/hooks/usePermissions";
+import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 import type { Property, PropertyType, PropertyStatus, WaterSource, BackupPower, InternetType, CompoundType } from "@/types";
 
@@ -947,7 +948,7 @@ export default function PropertyDetailPage({ params }: Props) {
               <strong>{property.name}</strong> will be archived and hidden from the dashboard.
               All units will be archived too. No data is deleted — a superadmin can restore it later.
               <br /><br />
-              This is blocked if any unit is currently occupied or has an active lease.
+              This is blocked if any unit is occupied, has an active lease, or has an active inspection.
             </p>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={() => setConfirmArchive(false)}>
@@ -963,7 +964,12 @@ export default function PropertyDetailPage({ params }: Props) {
                       setConfirmArchive(false);
                       router.push("/properties");
                     },
-                    onSettled: () => setConfirmArchive(false),
+                    onError: (err: unknown) => {
+                      const msg = (err as { data?: { detail?: string } })?.data?.detail
+                        ?? "Failed to archive property.";
+                      setConfirmArchive(false);
+                      toast.error(msg);
+                    },
                   })
                 }
               >

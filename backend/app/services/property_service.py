@@ -379,6 +379,22 @@ async def delete_property(prop_id: uuid.UUID, org_id: uuid.UUID | None, db: Asyn
                    "Terminate all active leases first.",
         )
 
+    # Block if any non-cancelled inspections are active — archiving would break
+    # any portal links already sent to inspectors.
+    from app.models.inspection import Inspection
+    active_inspections = await db.scalar(
+        select(func.count(Inspection.id)).where(
+            Inspection.property_id == prop_id,
+            Inspection.state.notin_(["cancelled", "completed", "approved", "failed"]),
+        )
+    ) or 0
+    if active_inspections:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot archive property: {active_inspections} active inspection(s) exist. "
+                   "Cancel or complete all inspections first.",
+        )
+
     prop.deleted_at = datetime.now(timezone.utc)
     # Also soft-delete all units belonging to this property
     await db.execute(
