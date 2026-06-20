@@ -1669,7 +1669,7 @@ async def confirm_payment_by_org(
     )
     if not p:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found")
-    return await confirm_payment(payment_id, p.lease_id, org_id, db)
+    return await confirm_payment(payment_id, p.lease_id, org_id or p.organisation_id, db)
 
 
 async def refund_payment_by_org(

@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/utils/formatters";
 import { useRevenueData } from "@/hooks/usePayments";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
 import { cn } from "@/utils/cn";
 import type { RevenueDataPoint } from "@/types";
 
@@ -43,12 +44,17 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueChartProps) {
-  const { data: fetchedData, isLoading: fetchLoading } = useRevenueData();
+  const { data: sub } = useCurrentSubscription();
+  const features = sub?.plan?.features as Record<string, unknown> | undefined;
+  const hasAnalytics = !sub || features?.analytics_advanced === true;
+  const { data: fetchedData, isLoading: fetchLoading } = useRevenueData(6, hasAnalytics);
   const [period, setPeriod] = useState<"6M" | "3M" | "1M">("6M");
 
   const allData = dataProp ?? fetchedData ?? [];
   const sliced = period === "1M" ? allData.slice(-1) : period === "3M" ? allData.slice(-3) : allData;
   const loading = loadingProp ?? fetchLoading;
+
+  if (sub && !hasAnalytics) return null;
 
   return (
     <Card className="overflow-hidden">

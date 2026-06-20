@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOccupancyData } from "@/hooks/usePayments";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
 import type { OccupancyDataPoint } from "@/types";
 
 interface OccupancyChartProps {
@@ -21,9 +22,13 @@ interface OccupancyChartProps {
 }
 
 export function OccupancyChart({ data: dataProp, loading: loadingProp }: OccupancyChartProps) {
-  const { data: fetchedData, isLoading: fetchLoading } = useOccupancyData();
+  const { data: sub } = useCurrentSubscription();
+  const features = sub?.plan?.features as Record<string, unknown> | undefined;
+  const hasAnalytics = !sub || features?.analytics_advanced === true;
+  const { data: fetchedData, isLoading: fetchLoading } = useOccupancyData(6, hasAnalytics);
   const data = dataProp ?? fetchedData;
   const loading = loadingProp ?? fetchLoading;
+  if (sub && !hasAnalytics) return null;
   return (
     <Card>
       <CardHeader className="pb-2">
