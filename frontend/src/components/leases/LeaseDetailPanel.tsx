@@ -98,11 +98,30 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
     try {
       const { url } = await leasesApi.generateDocument(lease.id);
       setDocumentUrl(url);
-      toast.success("Document generated");
+      toast.success("Document generated — click Download PDF to save");
     } catch {
       toast.error("Failed to generate document");
     } finally {
       setGeneratingPdf(false);
+    }
+  }
+
+  async function handleDownloadDoc() {
+    if (!documentUrl) return;
+    try {
+      const res = await fetch(documentUrl);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objUrl;
+      a.download = "lease-agreement.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+    } catch {
+      toast.error("Failed to download document");
     }
   }
 
@@ -357,11 +376,9 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
               </Button>
             )}
             {documentUrl ? (
-              <Button size="sm" variant="outline" asChild>
-                <a href={documentUrl} target="_blank" rel="noreferrer" download>
-                  <Download className="h-3.5 w-3.5" />
-                  Download PDF
-                </a>
+              <Button size="sm" variant="outline" onClick={handleDownloadDoc}>
+                <Download className="h-3.5 w-3.5" />
+                Download PDF
               </Button>
             ) : (
               <Button size="sm" variant="outline" disabled={generatingPdf} onClick={handleGeneratePdf}>
