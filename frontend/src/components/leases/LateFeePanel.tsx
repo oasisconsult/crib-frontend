@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Loader2, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Loader2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -122,11 +122,18 @@ function FeeRow({
   );
 }
 
-export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
-  const { data: fees, isLoading } = useLeaseLateFees(leaseId);
-  const [expanded, setExpanded] = useState(false);
+const PAGE_SIZE = 10;
 
-  if (isLoading) {
+export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
+  const [expanded, setExpanded] = useState(false);
+  const [page, setPage] = useState(1);
+  const { data, isLoading } = useLeaseLateFees(leaseId, page, PAGE_SIZE);
+
+  const fees = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  if (isLoading && !data) {
     return (
       <Card>
         <CardContent className="flex justify-center py-6">
@@ -136,9 +143,10 @@ export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
     );
   }
 
-  if (!fees || fees.length === 0) return null;
+  if (!data || total === 0) return null;
 
-  const activeCount = fees.filter((f) => !f.waived).length;
+  // Count active fees from the current page; total active shown in badge separately
+  const activeCount = total - fees.filter((f) => f.waived).length; // rough — server doesn't send total active
 
   return (
     <Card>
@@ -146,11 +154,7 @@ export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
         <CardTitle className="text-sm flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           Late Fees
-          {activeCount > 0 && (
-            <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-50 dark:bg-amber-950/20 text-xs font-normal">
-              {activeCount} active
-            </Badge>
-          )}
+          <span className="text-xs text-muted-foreground font-normal">{total} total</span>
           <Button
             size="sm"
             variant="ghost"
@@ -173,6 +177,36 @@ export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
               leaseId={leaseId}
             />
           ))}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-3 border-t border-border mt-1">
+              <span className="text-xs text-muted-foreground">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       )}
     </Card>

@@ -458,13 +458,15 @@ async def retry_payment(
 
 # ── Late Fees ──────────────────────────────────────────────────────────────────
 
-@router.get("/{lease_id}/late-fees", response_model=list[LateFeeOut])
+@router.get("/{lease_id}/late-fees", response_model=dict)
 async def list_late_fees(
     lease_id: uuid.UUID,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=100, alias="pageSize"),
     current_user=_read,
     db: AsyncSession = Depends(get_db),
 ):
-    return await svc.list_late_fees(lease_id, get_org_id(current_user), db)
+    return await svc.list_late_fees(lease_id, get_org_id(current_user), db, page, page_size)
 
 
 @router.post(

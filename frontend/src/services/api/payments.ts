@@ -148,8 +148,11 @@ export const paymentsApi = {
     apiGet<PaginatedResponse<LateFee>>("/late-fees", toScheduleParams(params)),
 
   // Per-lease late fees — used in LeaseDetailPanel
-  listLeaseLateFees: (leaseId: string) =>
-    apiGet<LeaseLateFee[]>(`/leases/${leaseId}/late-fees`),
+  listLeaseLateFees: (leaseId: string, page = 1, pageSize = 10) =>
+    apiGet<{ data: LeaseLateFee[]; total: number; page: number; pageSize: number }>(
+      `/leases/${leaseId}/late-fees`,
+      { page, pageSize },
+    ),
 
   // Deposits
   getDeposit: (leaseId: string) =>

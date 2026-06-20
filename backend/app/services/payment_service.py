@@ -1116,12 +1116,23 @@ async def list_late_fees(
     lease_id: uuid.UUID,
     org_id: uuid.UUID | None,
     db: AsyncSession,
-) -> list[LateFeeOut]:
+    page: int = 1,
+    page_size: int = 10,
+) -> dict:
     await _get_lease_checked(lease_id, org_id, db)
+    base_q = select(LateFee).where(LateFee.lease_id == lease_id)
+    total = (await db.scalar(select(func.count()).select_from(base_q.subquery()))) or 0
     result = await db.execute(
-        select(LateFee).where(LateFee.lease_id == lease_id).order_by(LateFee.applied_at.asc())
+        base_q.order_by(LateFee.applied_at.asc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
     )
-    return [_late_fee_out(f) for f in result.scalars().all()]
+    return {
+        "data": [_late_fee_out(f) for f in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+    }
 
 
 async def apply_late_fee(

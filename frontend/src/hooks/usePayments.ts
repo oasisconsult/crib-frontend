@@ -75,11 +75,12 @@ export function useLateFees(params?: QueryParams) {
   });
 }
 
-export function useLeaseLateFees(leaseId: string) {
-  return useQuery<LeaseLateFee[]>({
-    queryKey: queryKeys.payments.leaseLateFees(leaseId),
-    queryFn: () => paymentsApi.listLeaseLateFees(leaseId),
+export function useLeaseLateFees(leaseId: string, page = 1, pageSize = 10) {
+  return useQuery({
+    queryKey: [...queryKeys.payments.leaseLateFees(leaseId), page, pageSize],
+    queryFn: () => paymentsApi.listLeaseLateFees(leaseId, page, pageSize),
     enabled: !!leaseId,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -136,7 +137,8 @@ export function useWaiveLateFee(leaseId?: string) {
       paymentsApi.waiveLateFee(lid, id, reason),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.payments.lateFees() });
-      qc.invalidateQueries({ queryKey: queryKeys.payments.leaseLateFees(vars.leaseId) });
+      // Invalidate all pages for this lease's late fees
+      qc.invalidateQueries({ queryKey: queryKeys.payments.leaseLateFees(vars.leaseId), exact: false });
       toast.success("Late fee waived");
     },
     onError: () => toast.error("Failed to waive late fee"),
