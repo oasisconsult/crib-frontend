@@ -162,24 +162,6 @@ class Settings(BaseSettings):
             )
         return v
 
-    @field_validator("email_from", mode="after")
-    @classmethod
-    def validate_email_config(cls, v: str, info) -> str:
-        # Runs after email_from (the last email field) so all email fields are in info.data
-        env = info.data.get("environment", "development")
-        if env == Environment.development:
-            return v
-        provider = info.data.get("email_provider", "sendgrid")
-        if provider == "sendgrid" and not info.data.get("sendgrid_api_key"):
-            raise ValueError(
-                "SENDGRID_API_KEY must be set when EMAIL_PROVIDER=sendgrid "
-                "(or set EMAIL_PROVIDER=smtp with SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD)"
-            )
-        if provider == "smtp" and not info.data.get("smtp_host"):
-            raise ValueError(
-                "SMTP_HOST must be set when EMAIL_PROVIDER=smtp"
-            )
-        return v
 
     @property
     def is_dev(self) -> bool:
