@@ -636,7 +636,7 @@ async def resend_invite(
 
     new_invite = TenantInvite(
         tenant_id=tenant.id,
-        organisation_id=org_id,
+        organisation_id=org_id or tenant.organisation_id,
         property_id=tenant.current_property_id,
         unit_id=tenant.current_unit_id,
         lease_id=previous_lease_id,
@@ -859,7 +859,7 @@ async def send_onboarding_link(
         token = secrets.token_urlsafe(48)
         new_invite = TenantInvite(
             tenant_id=tenant.id,
-            organisation_id=org_id,
+            organisation_id=org_id or tenant.organisation_id,
             property_id=lease.property_id,
             unit_id=lease.unit_id,
             lease_id=lease.id,
