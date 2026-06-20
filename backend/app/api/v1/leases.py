@@ -245,7 +245,7 @@ async def generate_document(
     current_user: CurrentUser = _read,   # tenants can generate their own lease doc
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate an HTML lease agreement document and return a URL to access it."""
+    """Generate a PDF lease agreement document and return a URL to access it."""
     org_id = get_org_id(current_user)
     if org_id is not None:
         await check_feature_access(org_id, "document_storage", db)

@@ -1350,7 +1350,7 @@ async def generate_lease_document(
     db: AsyncSession,
 ) -> str:
     """
-    Generate the full HTML lease agreement document, persist it to local storage,
+    Generate the lease agreement as a PDF, persist it to local storage,
     and return the URL to access it.
 
     Uses the same Jinja2 template as the onboarding flow preview so the
@@ -1406,13 +1406,17 @@ async def generate_lease_document(
         landlord_signer_name=ta.landlord_signer_name if ta else None,
     )
 
+    # Convert HTML → PDF using weasyprint
+    from weasyprint import HTML as WPHtml
+    pdf_bytes = WPHtml(string=html).write_pdf()
+
     # Persist to local uploads directory
     upload_dir = os.path.join(os.getcwd(), "uploads")
     doc_dir = os.path.join(upload_dir, "documents", "leases", str(lease.id))
     os.makedirs(doc_dir, exist_ok=True)
-    file_path = os.path.join(doc_dir, "agreement.html")
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write(html)
+    file_path = os.path.join(doc_dir, "agreement.pdf")
+    with open(file_path, "wb") as f:
+        f.write(pdf_bytes)
 
     # Return URL via the local serve endpoint
-    return f"/api/v1/upload/local/documents/leases/{lease.id}/agreement.html"
+    return f"/api/v1/upload/local/documents/leases/{lease.id}/agreement.pdf"
