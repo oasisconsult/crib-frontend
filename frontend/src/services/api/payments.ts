@@ -21,6 +21,22 @@ import type {
 } from "@/types";
 import { toPaymentParams, toScheduleParams } from "@/utils/backendParams";
 
+// Shape returned by GET /leases/{id}/late-fees (matches LateFeeOut schema)
+export interface LeaseLateFee {
+  id: string;
+  organisationId: string;
+  leaseId: string;
+  rentScheduleId: string;
+  feeType: "flat" | "percentage";
+  calculatedAmount: number;
+  appliedAt: string;
+  waived: boolean;
+  waivedAt: string | null;
+  waivedReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Backend PaymentOut uses `status`; frontend Payment type uses `state`.
 function mapPayment(raw: Record<string, unknown>): Payment {
   return {
@@ -131,8 +147,9 @@ export const paymentsApi = {
   listLateFees: (params?: QueryParams) =>
     apiGet<PaginatedResponse<LateFee>>("/late-fees", toScheduleParams(params)),
 
-  // NOTE: flat late-fees router currently only supports GET; waive/apply are lease-nested.
-  // Keep these lease-nested helpers for now where used.
+  // Per-lease late fees — used in LeaseDetailPanel
+  listLeaseLateFees: (leaseId: string) =>
+    apiGet<LeaseLateFee[]>(`/leases/${leaseId}/late-fees`),
 
   // Deposits
   getDeposit: (leaseId: string) =>

@@ -5,6 +5,7 @@ import { queryKeys } from "@/lib/queryClient";
 import { paymentsApi, analyticsApi } from "@/services/api/payments";
 import { toast } from "@/store/useUIStore";
 import type { Payment, PaymentDecision, PaymentEstimateRequest, QueryParams } from "@/types";
+import type { LeaseLateFee } from "@/services/api/payments";
 
 export function usePayments(params?: QueryParams) {
   return useQuery({
@@ -74,6 +75,14 @@ export function useLateFees(params?: QueryParams) {
   });
 }
 
+export function useLeaseLateFees(leaseId: string) {
+  return useQuery<LeaseLateFee[]>({
+    queryKey: queryKeys.payments.leaseLateFees(leaseId),
+    queryFn: () => paymentsApi.listLeaseLateFees(leaseId),
+    enabled: !!leaseId,
+  });
+}
+
 export function useDeposit(leaseId: string) {
   return useQuery({
     queryKey: queryKeys.payments.deposits(leaseId),
@@ -120,13 +129,14 @@ export function useRecordManualPayment(leaseId: string) {
   });
 }
 
-export function useWaiveLateFee() {
+export function useWaiveLateFee(leaseId?: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ leaseId, id, reason }: { leaseId: string; id: string; reason: string }) =>
-      paymentsApi.waiveLateFee(leaseId, id, reason),
-    onSuccess: () => {
+    mutationFn: ({ leaseId: lid, id, reason }: { leaseId: string; id: string; reason: string }) =>
+      paymentsApi.waiveLateFee(lid, id, reason),
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.payments.lateFees() });
+      qc.invalidateQueries({ queryKey: queryKeys.payments.leaseLateFees(vars.leaseId) });
       toast.success("Late fee waived");
     },
     onError: () => toast.error("Failed to waive late fee"),

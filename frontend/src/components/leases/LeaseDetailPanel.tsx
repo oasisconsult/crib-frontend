@@ -27,6 +27,7 @@ import { MoveInInspectionPanel } from "@/features/inspections/components/MoveInI
 import { MoveOutInspectionPanel } from "@/features/inspections/components/MoveOutInspectionPanel";
 import { DepositPanel } from "@/components/payments/DepositPanel";
 import { RecordManualPaymentModal } from "./RecordManualPaymentModal";
+import { LateFeePanel } from "./LateFeePanel";
 import { formatCurrency, formatDate, formatDateRange, formatDays } from "@/utils/formatters";
 import { useTransitionLease, useSendOnboarding, useConfirmOnboardingPayments, useAcknowledgeLease, useSubmitNotice, useRetractNotice, useDeleteLease, useCountersignAgreement } from "@/hooks/useLeases";
 import { useOrganisation } from "@/hooks/useOrganisation";
@@ -648,6 +649,15 @@ export function LeaseDetailPanel({ lease }: LeaseDetailPanelProps) {
         leaseStatus={lease.state}
         canManage={canManageOrg}
       />
+
+      {/* Late Fees */}
+      {canManageOrg && (
+        <LateFeePanel
+          leaseId={lease.id}
+          currency={lease.terms.currency}
+          canManage={canManageOrg}
+        />
+      )}
 
       {/* Messages */}
       <LeaseMessagesPanel leaseId={lease.id} />
