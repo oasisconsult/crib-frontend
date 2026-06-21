@@ -236,6 +236,11 @@ export default function CompliancePage() {
   const { data: org } = useOrganisation();
   const { data: sub } = useCurrentSubscription();
 
+  // Compute before hooks so guards inside useCallback/useEffect work correctly.
+  // While sub is loading this is false, so no EFRIS requests fire prematurely.
+  const efrisEnabled =
+    (sub?.plan?.features as Record<string, unknown> | undefined)?.efris === true;
+
   const [tab, setTab] = useState<EfrisTab>("all");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<PaginatedResponse<EfrisCompliancePayment> | null>(null);
@@ -247,7 +252,7 @@ export default function CompliancePage() {
 
   const fetchPage = useCallback(
     async (currentTab: EfrisTab, currentPage: number) => {
-      if (!org?.id) return;
+      if (!org?.id || !efrisEnabled) return;
       setLoading(true);
       try {
         const statusFilter = currentTab === "all" ? undefined : currentTab;
@@ -266,12 +271,12 @@ export default function CompliancePage() {
         setLoading(false);
       }
     },
-    [org?.id],
+    [org?.id, efrisEnabled],
   );
 
-  // Load summary counts once on mount
+  // Load summary counts once on mount — guarded by plan check
   useEffect(() => {
-    if (!org?.id) return;
+    if (!org?.id || !efrisEnabled) return;
     const tabs: EfrisTab[] = ["all", "issued", "failed", "pending"];
     tabs.forEach((t) => {
       const statusFilter = t === "all" ? undefined : t;
@@ -279,7 +284,7 @@ export default function CompliancePage() {
         setCounts((prev) => ({ ...prev, [t]: r.total }));
       }).catch(() => {});
     });
-  }, [org?.id]);
+  }, [org?.id, efrisEnabled]);
 
   useEffect(() => {
     fetchPage(tab, page);
@@ -315,8 +320,7 @@ export default function CompliancePage() {
   }
 
   // Gate: show upgrade CTA for plans that don't include EFRIS
-  const features = sub?.plan?.features as Record<string, unknown> | undefined;
-  if (sub && features?.efris !== true) {
+  if (sub && !efrisEnabled) {
     return (
       <div className="p-6">
         <PageHeader
