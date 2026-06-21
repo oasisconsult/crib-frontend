@@ -192,6 +192,8 @@ class LateFeeOut(CamelModel):
     waived: bool
     waived_at: str | None
     waived_reason: str | None
+    period_start: str | None  # from linked rent_schedule — which month this fee is for
+    period_end: str | None
     created_at: str
     updated_at: str
 

@@ -33,6 +33,8 @@ export interface LeaseLateFee {
   waived: boolean;
   waivedAt: string | null;
   waivedReason: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
   createdAt: string;
   updatedAt: string;
 }

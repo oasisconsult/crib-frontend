@@ -64,6 +64,9 @@ function FeeRow({
           </div>
           <p className="text-xs text-muted-foreground">
             Applied {formatDate(fee.appliedAt)}
+            {fee.periodStart && (
+              <> &middot; <span className="font-medium">{new Date(fee.periodStart).toLocaleDateString(undefined, { month: "short", year: "numeric" })} rent</span></>
+            )}
           </p>
           {fee.waived && fee.waivedAt && (
             <p className="text-xs text-muted-foreground">

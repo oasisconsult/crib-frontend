@@ -145,7 +145,7 @@ def _payment_out(
     )
 
 
-def _late_fee_out(f: LateFee) -> LateFeeOut:
+def _late_fee_out(f: LateFee, schedule: "RentSchedule | None" = None) -> LateFeeOut:
     return LateFeeOut(
         id=str(f.id),
         organisation_id=str(f.organisation_id),
@@ -157,6 +157,8 @@ def _late_fee_out(f: LateFee) -> LateFeeOut:
         waived=f.waived,
         waived_at=f.waived_at.isoformat() if f.waived_at else None,
         waived_reason=f.waived_reason,
+        period_start=schedule.period_start.isoformat() if schedule and schedule.period_start else None,
+        period_end=schedule.period_end.isoformat() if schedule and schedule.period_end else None,
         created_at=f.created_at.isoformat(),
         updated_at=f.updated_at.isoformat(),
     )
@@ -1122,13 +1124,19 @@ async def list_late_fees(
     await _get_lease_checked(lease_id, org_id, db)
     base_q = select(LateFee).where(LateFee.lease_id == lease_id)
     total = (await db.scalar(select(func.count()).select_from(base_q.subquery()))) or 0
-    result = await db.execute(
-        base_q.order_by(LateFee.applied_at.asc())
+
+    # Join rent_schedule to get period_start/period_end for display
+    rows = (await db.execute(
+        select(LateFee, RentSchedule)
+        .join(RentSchedule, RentSchedule.id == LateFee.rent_schedule_id)
+        .where(LateFee.lease_id == lease_id)
+        .order_by(LateFee.applied_at.asc())
         .offset((page - 1) * page_size)
         .limit(page_size)
-    )
+    )).all()
+
     return {
-        "data": [_late_fee_out(f) for f in result.scalars().all()],
+        "data": [_late_fee_out(f, s) for f, s in rows],
         "total": total,
         "page": page,
         "pageSize": page_size,
