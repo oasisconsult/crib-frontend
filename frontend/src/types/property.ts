@@ -54,6 +54,9 @@ export interface Property {
   geocode?: string;
   rules: PropertyRules;
   landlordId: string;
+  orgName: string | null;
+  isAgency: boolean;
+  ownerProfileId: string | null;
   coverImage?: string;
   images?: string[];
   totalUnits: number;

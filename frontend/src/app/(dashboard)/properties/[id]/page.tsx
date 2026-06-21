@@ -20,6 +20,7 @@ import {
   Loader2,
   CheckCircle2,
   ShieldCheck,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +47,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { toast } from "@/store/useUIStore";
 import { cn } from "@/utils/cn";
 import type { Property, PropertyType, PropertyStatus, WaterSource, BackupPower, InternetType, CompoundType } from "@/types";
+import { PermissionGate } from "@/components/common/PermissionGate";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -709,6 +711,56 @@ function PropertyPhotos({
   );
 }
 
+function OwnerCard({ property, onNavigate }: { property: Property; onNavigate: (path: string) => void }) {
+  const href = property.isAgency
+    ? `/admin/agencies/${property.landlordId}`
+    : property.ownerProfileId
+      ? `/admin/landlords/${property.ownerProfileId}`
+      : null;
+
+  return (
+    <Card
+      className={cn(
+        "border-dashed transition-colors",
+        href ? "cursor-pointer hover:border-primary/50 hover:bg-primary/[0.02]" : "",
+      )}
+      onClick={href ? () => onNavigate(href) : undefined}
+    >
+      <CardContent className="py-3 px-4 flex items-center gap-3">
+        <div className={cn(
+          "h-8 w-8 rounded-[6px] flex items-center justify-center shrink-0",
+          property.isAgency
+            ? "bg-violet-100 dark:bg-violet-950/30"
+            : "bg-emerald-100 dark:bg-emerald-950/30",
+        )}>
+          <Building2 className={cn(
+            "h-4 w-4",
+            property.isAgency ? "text-violet-600" : "text-emerald-600",
+          )} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium truncate">{property.orgName ?? "Unknown Organisation"}</p>
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs shrink-0",
+                property.isAgency
+                  ? "text-violet-700 border-violet-300 bg-violet-50 dark:bg-violet-950/20 dark:text-violet-300"
+                  : "text-emerald-700 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-300",
+              )}
+            >
+              {property.isAgency ? "Agency" : "Independent Owner"}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground">Owning organisation</p>
+        </div>
+        {href && <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />}
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PropertyDetailPage({ params }: Props) {
   const { id } = use(params);
   const router = useRouter();
@@ -791,6 +843,11 @@ export default function PropertyDetailPage({ params }: Props) {
               </Card>
             ))}
           </div>
+
+          {/* ── Owner (superadmin only) ───────────── */}
+          <PermissionGate role="superadmin">
+            <OwnerCard property={property} onNavigate={router.push} />
+          </PermissionGate>
 
           {/* ── Details + financials ──────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

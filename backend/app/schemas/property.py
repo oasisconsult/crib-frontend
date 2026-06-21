@@ -150,6 +150,9 @@ class PropertyOut(CamelModel):
     address: dict[str, Any]
     rules: dict[str, Any]
     landlord_id: str        # organisation_id — frontend calls it landlordId
+    org_name: str | None = None       # owning organisation display name
+    is_agency: bool = False           # True if org has an accepted AgencyInvite
+    owner_profile_id: str | None = None  # profile ID of the owner (role='owner') if independent
     description: str | None
     cover_image: str | None
     images: list[str]

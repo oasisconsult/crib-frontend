@@ -15,7 +15,10 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.agency_invite import AgencyInvite
 from app.models.landlord_invite import LandlordPropertyAccess
+from app.models.organisation import Organisation
+from app.models.profile import Profile
 from app.models.property import (
     Property, Unit,
     UnitStatus, UnitType,
@@ -56,6 +59,26 @@ async def _property_out(prop: Property, db: AsyncSession) -> PropertyOut:
 
     occupancy_rate = round((occupied / total * 100) if total else 0.0, 1)
 
+    org_name = await db.scalar(
+        select(Organisation.name).where(Organisation.id == prop.organisation_id)
+    )
+    is_agency = bool(await db.scalar(
+        select(func.count(AgencyInvite.id)).where(
+            AgencyInvite.organisation_id == prop.organisation_id,
+            AgencyInvite.status == "accepted",
+        )
+    ))
+    owner_profile_id: str | None = None
+    if not is_agency:
+        _pid = await db.scalar(
+            select(Profile.id).where(
+                Profile.organisation_id == prop.organisation_id,
+                Profile.role == "owner",
+                Profile.deleted_at.is_(None),
+            ).limit(1)
+        )
+        owner_profile_id = str(_pid) if _pid else None
+
     return PropertyOut(
         id=str(prop.id),
         name=prop.name,
@@ -64,6 +87,9 @@ async def _property_out(prop: Property, db: AsyncSession) -> PropertyOut:
         address=prop.address,
         rules=prop.rules,
         landlord_id=str(prop.organisation_id),
+        org_name=org_name,
+        is_agency=is_agency,
+        owner_profile_id=owner_profile_id,
         description=prop.description,
         cover_image=prop.cover_image,
         images=prop.images or [],
