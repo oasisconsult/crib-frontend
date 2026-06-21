@@ -30,6 +30,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.models.caretaker_invite import CaretakerInvite, CaretakerInviteStatus
 from app.models.profile import Profile
+from pydantic import Field
+
 from app.schemas.common import CamelModel
 
 log = structlog.get_logger(__name__)
@@ -95,6 +97,7 @@ class CaretakerOnboardingDetails(CamelModel):
 class CompleteCaretakerOnboardingRequest(CamelModel):
     first_name: str
     last_name:  str
+    password:   str = Field(min_length=8)
     phone:      str | None = None
 
 
@@ -365,7 +368,6 @@ async def complete_caretaker_onboarding(
     """
     from fastapi import HTTPException, status as http_status
     from app.services import logto_service
-    from app.services.logto_service import _generate_temp_password
 
     result = await db.execute(
         select(CaretakerInvite).where(CaretakerInvite.token == token)
@@ -408,7 +410,7 @@ async def complete_caretaker_onboarding(
             message="Your caretaker account is already set up. Check your email for login details."
         )
 
-    temp_password = _generate_temp_password()
+    temp_password = body.password
 
     # Create Logto user with the 'caretaker' app role so the JWT carries the
     # correct role claim.  deps.py also injects 'owner' so they can access the
@@ -485,10 +487,10 @@ async def complete_caretaker_onboarding(
             log.warning("caretaker.invalid_property_id", pid=pid_str, error=str(exc))
     await db.flush()
 
-    # Write to RBAC DB so the next JWT resolves the correct Crib role
+    # Provision RBAC DB so Phase 4 middleware returns the correct role
     from app.services.rbac_user_service import provision_crib_role
     await provision_crib_role(
-        logto_sub=logto_user_id or f"pending_{invite.id}",
+        logto_sub=profile.logto_sub,
         email=invite.email,
         role_name="caretaker",
     )
@@ -505,7 +507,6 @@ async def complete_caretaker_onboarding(
         email=invite.email,
         first_name=body.first_name,
         owner_name=owner_name,
-        temp_password=temp_password,
         frontend_url=s.frontend_url,
         db=db,
     )
@@ -686,7 +687,6 @@ async def _send_caretaker_welcome_email(
     email: str,
     first_name: str,
     owner_name: str,
-    temp_password: str,
     frontend_url: str,
     db,
 ) -> None:
@@ -696,11 +696,9 @@ async def _send_caretaker_welcome_email(
     body = (
         f"Hi {first_name},\n\n"
         f"Your caretaker account has been created on Crib. "
-        f"You can now log in to manage {owner_name}'s properties.\n\n"
-        f"Login:     {frontend_url}/login\n"
-        f"Email:     {email}\n"
-        f"Password:  {temp_password}\n\n"
-        "Please change your password after your first sign-in.\n\n"
+        f"You can now sign in to manage {owner_name}'s properties.\n\n"
+        f"Sign in:  {frontend_url}/login\n"
+        f"Email:    {email}\n\n"
         "— The Crib Team"
     )
     provider = await get_email_provider_from_db(db)

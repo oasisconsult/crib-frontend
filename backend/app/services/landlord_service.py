@@ -22,6 +22,8 @@ from app.models.landlord_invite import InviteStatus, LandlordInvite, LandlordPro
 from app.models.organisation import Organisation
 from app.models.profile import Profile
 from app.models.property import Property
+from pydantic import Field
+
 from app.schemas.common import CamelModel
 from app.services.subscription_limits import check_user_limit
 
@@ -72,6 +74,7 @@ class LandlordOnboardingDetails(CamelModel):
 class CompleteLandlordOnboardingRequest(CamelModel):
     first_name:   str
     last_name:    str
+    password:     str = Field(min_length=8)
     phone:        str | None = None
     national_id:  str | None = None
     address:      str | None = None
@@ -221,7 +224,6 @@ async def complete_onboarding(
     from fastapi import HTTPException, status as http_status
     from app.models.organisation import Plan
     from app.services import logto_service
-    from app.services.logto_service import _generate_temp_password
 
     result = await db.execute(select(LandlordInvite).where(LandlordInvite.token == token))
     invite = result.scalar_one_or_none()
@@ -233,13 +235,13 @@ async def complete_onboarding(
         await db.flush()
         raise HTTPException(status_code=http_status.HTTP_410_GONE, detail="Invite has expired")
 
-    temp_password = _generate_temp_password()
+    temp_password = body.password
     s = get_settings()
 
     # ── INDEPENDENT landlord ────────────────────────────────────────────────────
     if invite.is_independent:
         # 1. Create Logto user (no org yet — will create personal org next)
-        logto_user_id, is_new_logto_user = await logto_service.create_landlord_user(
+        logto_user_id, _ = await logto_service.create_landlord_user(
             email=invite.email,
             first_name=body.first_name,
             last_name=body.last_name,
@@ -306,36 +308,26 @@ async def complete_onboarding(
 
         await db.flush()
 
-        # Write to RBAC DB so the next JWT resolves the correct Crib role
+        # 5. Provision RBAC DB so Phase 4 middleware returns the correct role
         from app.services.rbac_user_service import provision_crib_role
         await provision_crib_role(
-            logto_sub=logto_user_id or f"pending_{invite.id}",
+            logto_sub=profile.logto_sub,
             email=invite.email,
             role_name="owner",
         )
 
-        # 5. Mark invite accepted
+        # 6. Mark invite accepted
         invite.status = InviteStatus.ACCEPTED
         invite.accepted_at = datetime.now(timezone.utc)
         await db.flush()
 
-        # 6. Welcome email — send credentials only for new accounts;
-        #    existing users (e.g. GeoBox) keep their own password.
-        if is_new_logto_user:
-            await logto_service.send_independent_landlord_welcome_email(
-                email=invite.email,
-                first_name=body.first_name,
-                temp_password=temp_password,
-                frontend_url=s.frontend_url,
-                db=db,
-            )
-        else:
-            await logto_service.send_existing_user_invite_email(
-                email=invite.email,
-                first_name=body.first_name,
-                frontend_url=s.frontend_url,
-                db=db,
-            )
+        # 7. Welcome email — sign-in link only; user set their own password on the form
+        await logto_service.send_independent_landlord_welcome_email(
+            email=invite.email,
+            first_name=body.first_name,
+            frontend_url=s.frontend_url,
+            db=db,
+        )
 
         log.info(
             "landlord.independent_onboarding_complete",
@@ -354,7 +346,7 @@ async def complete_onboarding(
     org = org_result.scalar_one_or_none()
     logto_org_id = org.logto_org_id if org else None
 
-    logto_user_id, is_new_logto_user = await logto_service.create_landlord_user(
+    logto_user_id, _ = await logto_service.create_landlord_user(
         email=invite.email,
         first_name=body.first_name,
         last_name=body.last_name,
@@ -409,10 +401,10 @@ async def complete_onboarding(
                 granted_by_profile_id=invite.invited_by_profile_id,
             ))
 
-    # Write to RBAC DB so the next JWT resolves the correct Crib role
+    # Provision RBAC DB so Phase 4 middleware returns the correct role
     from app.services.rbac_user_service import provision_crib_role
     await provision_crib_role(
-        logto_sub=logto_user_id or f"pending_{invite.id}",
+        logto_sub=profile.logto_sub,
         email=invite.email,
         role_name="landlord",
     )
@@ -421,21 +413,13 @@ async def complete_onboarding(
     invite.accepted_at = datetime.now(timezone.utc)
     await db.flush()
 
-    if is_new_logto_user:
-        await logto_service.send_landlord_welcome_email(
-            email=invite.email,
-            first_name=body.first_name,
-            temp_password=temp_password,
-            frontend_url=s.frontend_url,
-            db=db,
-        )
-    else:
-        await logto_service.send_existing_user_invite_email(
-            email=invite.email,
-            first_name=body.first_name,
-            frontend_url=s.frontend_url,
-            db=db,
-        )
+    # Sign-in link only — user set their own password on the onboarding form
+    await logto_service.send_landlord_welcome_email(
+        email=invite.email,
+        first_name=body.first_name,
+        frontend_url=s.frontend_url,
+        db=db,
+    )
 
     log.info("landlord.onboarding_complete", email=invite.email, profile_id=str(profile.id))
     return CompleteLandlordOnboardingResponse(

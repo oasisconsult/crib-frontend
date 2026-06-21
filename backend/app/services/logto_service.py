@@ -904,11 +904,10 @@ async def send_landlord_welcome_email(
     *,
     email: str,
     first_name: str,
-    temp_password: str,
     frontend_url: str,
     db,
 ) -> None:
-    """Send invited landlord their login credentials."""
+    """Send invited landlord their sign-in link. Password was set by the user on the onboarding form."""
     from app.services.settings_service import get_email_provider_from_db
 
     subject = "Welcome to Crib — your landlord dashboard is ready"
@@ -916,10 +915,8 @@ async def send_landlord_welcome_email(
         f"Hi {first_name},\n\n"
         "Your landlord account has been created. You can now sign in to view "
         "your properties, leases, and payment history.\n\n"
-        f"Login:     {frontend_url}/login\n"
-        f"Email:     {email}\n"
-        f"Password:  {temp_password}\n\n"
-        "Please change your password after your first sign-in.\n\n"
+        f"Sign in:  {frontend_url}/login\n"
+        f"Email:    {email}\n\n"
         "— The Crib Team"
     )
     provider = await get_email_provider_from_db(db)
@@ -1279,14 +1276,11 @@ async def send_independent_landlord_welcome_email(
     *,
     email: str,
     first_name: str,
-    temp_password: str,
     frontend_url: str,
     db,
 ) -> None:
     """
-    Welcome email for independent landlords (self-managing).
-    Differs from the agency-managed landlord email: emphasises that they
-    can log in and create their own properties.
+    Welcome email for independent landlords. Password was set by the user on the onboarding form.
     """
     from app.services.settings_service import get_email_provider_from_db
 
@@ -1294,11 +1288,9 @@ async def send_independent_landlord_welcome_email(
     body = (
         f"Hi {first_name},\n\n"
         "Your independent landlord account on Crib has been created.\n\n"
-        "Log in to add your properties, invite tenants, and manage leases:\n\n"
-        f"Dashboard:  {frontend_url}\n"
-        f"Email:      {email}\n"
-        f"Password:   {temp_password}\n\n"
-        "Please change your password after your first sign-in.\n\n"
+        "Sign in to add your properties, invite tenants, and manage leases:\n\n"
+        f"Sign in:  {frontend_url}/login\n"
+        f"Email:    {email}\n\n"
         "— The Crib Team"
     )
     provider = await get_email_provider_from_db(db)
