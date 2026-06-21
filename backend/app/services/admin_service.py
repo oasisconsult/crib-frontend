@@ -28,13 +28,14 @@ from datetime import datetime, timezone
 
 import structlog
 from fastapi import HTTPException, status as http_status
-from sqlalchemy import select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.agency_invite import AgencyInvite
 from app.models.landlord_invite import LandlordPropertyAccess
 from app.models.organisation import Organisation, Plan
 from app.models.profile import Profile
-from app.models.property import Property
+from app.models.property import Property, Unit
 
 log = structlog.get_logger(__name__)
 
@@ -503,4 +504,402 @@ async def assign_landlord_to_agency(
     return {
         "properties_transferred": len(properties),
         "agency_org_id": str(agency_org_id),
+    }
+
+# ── Admin portal: agency + landlord listings ──────────────────────────────────
+
+def _prop_address(addr: dict | None) -> str:
+    if not addr:
+        return ""
+    parts = [addr.get("street"), addr.get("city"), addr.get("state")]
+    return ", ".join(x for x in parts if x)
+
+
+async def list_agencies(
+    db: "AsyncSession",
+    page: int = 1,
+    page_size: int = 25,
+    search: str | None = None,
+) -> dict:
+    from app.models.agency_invite import AgencyInvite as _AgencyInvite
+    agency_ids_sq = (
+        select(_AgencyInvite.organisation_id)
+        .where(_AgencyInvite.status == "accepted", _AgencyInvite.organisation_id.isnot(None))
+        .scalar_subquery()
+    )
+    stmt = select(Organisation).where(Organisation.id.in_(agency_ids_sq))
+    if search:
+        stmt = stmt.where(Organisation.name.ilike(f"%{search}%"))
+
+    total = (await db.scalar(select(func.count()).select_from(stmt.subquery()))) or 0
+    orgs = (
+        await db.execute(
+            stmt.order_by(Organisation.deleted_at.is_(None).desc(), Organisation.name)
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).scalars().all()
+
+    org_ids = [o.id for o in orgs]
+    if not org_ids:
+        return {"data": [], "total": total, "page": page, "pageSize": page_size}
+
+    prop_rows = (await db.execute(
+        select(
+            Property.organisation_id,
+            func.count(Property.id).label("total"),
+            func.count(Property.id).filter(Property.status == "active").label("active"),
+        )
+        .where(Property.organisation_id.in_(org_ids), Property.deleted_at.is_(None))
+        .group_by(Property.organisation_id)
+    )).all()
+    prop_by_org = {r.organisation_id: r for r in prop_rows}
+
+    mgr_rows = (await db.execute(
+        select(Profile.organisation_id, func.count(Profile.id).label("cnt"))
+        .where(
+            Profile.organisation_id.in_(org_ids),
+            Profile.role.in_(["manager", "owner"]),
+            Profile.deleted_at.is_(None),
+        )
+        .group_by(Profile.organisation_id)
+    )).all()
+    mgr_by_org = {r.organisation_id: r.cnt for r in mgr_rows}
+
+    ll_rows = (await db.execute(
+        select(Profile.organisation_id, func.count(Profile.id).label("cnt"))
+        .where(
+            Profile.organisation_id.in_(org_ids),
+            Profile.role == "landlord",
+            Profile.deleted_at.is_(None),
+        )
+        .group_by(Profile.organisation_id)
+    )).all()
+    ll_by_org = {r.organisation_id: r.cnt for r in ll_rows}
+
+    def _agency_row(o: "Organisation") -> dict:
+        p = prop_by_org.get(o.id)
+        total_p = int(p.total) if p else 0
+        active_p = int(p.active) if p else 0
+        plan_val = o.plan.value if hasattr(o.plan, "value") else str(o.plan)
+        return {
+            "id": str(o.id),
+            "name": o.name,
+            "slug": o.slug,
+            "plan": plan_val,
+            "country": o.country,
+            "currency": o.currency,
+            "totalProperties": total_p,
+            "activeProperties": active_p,
+            "inactiveProperties": total_p - active_p,
+            "managerCount": mgr_by_org.get(o.id, 0),
+            "landlordCount": ll_by_org.get(o.id, 0),
+            "isArchived": o.deleted_at is not None,
+            "createdAt": o.created_at.isoformat(),
+        }
+
+    return {
+        "data": [_agency_row(o) for o in orgs],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+    }
+
+
+async def get_agency_detail(org_id: "uuid.UUID", db: "AsyncSession") -> dict:
+    org = await _get_org(org_id, db)
+
+    props = (await db.execute(
+        select(Property)
+        .where(Property.organisation_id == org_id, Property.deleted_at.is_(None))
+        .order_by(Property.status, Property.name)
+    )).scalars().all()
+
+    prop_ids = [p.id for p in props]
+    unit_counts: dict = {}
+    revenue_by_prop: dict = {}
+    if prop_ids:
+        unit_rows = (await db.execute(
+            select(
+                Unit.property_id,
+                func.count(Unit.id).label("cnt"),
+                func.sum(Unit.monthly_rent).filter(Unit.status == "occupied").label("rev"),
+            )
+            .where(Unit.property_id.in_(prop_ids), Unit.deleted_at.is_(None))
+            .group_by(Unit.property_id)
+        )).all()
+        unit_counts = {r.property_id: int(r.cnt) for r in unit_rows}
+        revenue_by_prop = {r.property_id: float(r.rev or 0) for r in unit_rows}
+
+    managers = (await db.execute(
+        select(Profile)
+        .where(
+            Profile.organisation_id == org_id,
+            Profile.role.in_(["manager", "owner"]),
+            Profile.deleted_at.is_(None),
+        )
+    )).scalars().all()
+
+    landlords = (await db.execute(
+        select(Profile)
+        .where(
+            Profile.organisation_id == org_id,
+            Profile.role == "landlord",
+            Profile.deleted_at.is_(None),
+        )
+    )).scalars().all()
+
+    ll_ids = [ll.id for ll in landlords]
+    ll_prop_counts: dict = {}
+    if ll_ids:
+        ll_count_rows = (await db.execute(
+            select(
+                LandlordPropertyAccess.landlord_profile_id,
+                func.count(LandlordPropertyAccess.property_id).label("cnt"),
+            )
+            .where(LandlordPropertyAccess.landlord_profile_id.in_(ll_ids))
+            .group_by(LandlordPropertyAccess.landlord_profile_id)
+        )).all()
+        ll_prop_counts = {r.landlord_profile_id: int(r.cnt) for r in ll_count_rows}
+
+    active_count = sum(1 for p in props if (p.status.value if hasattr(p.status, "value") else p.status) == "active")
+    total_revenue = sum(revenue_by_prop.values())
+    settings = org.settings or {}
+    plan_val = org.plan.value if hasattr(org.plan, "value") else str(org.plan)
+
+    return {
+        "id": str(org.id),
+        "name": org.name,
+        "slug": org.slug,
+        "plan": plan_val,
+        "country": org.country,
+        "currency": org.currency,
+        "contactEmail": settings.get("contact_email"),
+        "contactPhone": settings.get("contact_phone"),
+        "address": settings.get("address"),
+        "totalProperties": len(props),
+        "activeProperties": active_count,
+        "inactiveProperties": len(props) - active_count,
+        "totalMonthlyRevenue": total_revenue,
+        "managerCount": len(managers),
+        "landlordCount": len(landlords),
+        "isArchived": org.deleted_at is not None,
+        "createdAt": org.created_at.isoformat(),
+        "managers": [
+            {"id": str(m.id), "displayName": m.display_name, "email": m.email, "role": m.role}
+            for m in managers
+        ],
+        "landlords": [
+            {
+                "id": str(ll.id),
+                "displayName": ll.display_name,
+                "email": ll.email,
+                "propertyCount": ll_prop_counts.get(ll.id, 0),
+            }
+            for ll in landlords
+        ],
+        "properties": [
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "type": p.type.value if hasattr(p.type, "value") else str(p.type),
+                "status": p.status.value if hasattr(p.status, "value") else str(p.status),
+                "unitCount": unit_counts.get(p.id, 1 if p.is_single_unit else 0),
+                "monthlyRevenue": revenue_by_prop.get(p.id, 0),
+                "address": _prop_address(p.address),
+            }
+            for p in props
+        ],
+    }
+
+
+async def list_landlords(
+    db: "AsyncSession",
+    page: int = 1,
+    page_size: int = 25,
+    search: str | None = None,
+) -> dict:
+    base_where = [
+        Profile.role.in_(["landlord", "owner"]),
+        Profile.anonymised_at.is_(None),
+        Profile.deleted_at.is_(None),
+    ]
+    if search:
+        term = f"%{search}%"
+        base_where.append(or_(Profile.display_name.ilike(term), Profile.email.ilike(term)))
+
+    total = (await db.scalar(select(func.count(Profile.id)).where(*base_where))) or 0
+
+    rows = (await db.execute(
+        select(Profile, Organisation.name.label("org_name"))
+        .outerjoin(Organisation, Organisation.id == Profile.organisation_id)
+        .where(*base_where)
+        .order_by(Profile.display_name.asc().nullslast())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )).all()
+
+    profiles = [r[0] for r in rows]
+    org_names = {r[0].id: r[1] for r in rows}
+    if not profiles:
+        return {"data": [], "total": total, "page": page, "pageSize": page_size}
+
+    owner_profiles = [p for p in profiles if p.role == "owner"]
+    landlord_profiles = [p for p in profiles if p.role == "landlord"]
+
+    owner_prop_counts: dict = {}
+    if owner_profiles:
+        owner_org_ids = [p.organisation_id for p in owner_profiles if p.organisation_id]
+        if owner_org_ids:
+            o_rows = (await db.execute(
+                select(
+                    Property.organisation_id,
+                    func.count(Property.id).label("total"),
+                    func.count(Property.id).filter(Property.status == "active").label("active"),
+                )
+                .where(Property.organisation_id.in_(owner_org_ids), Property.deleted_at.is_(None))
+                .group_by(Property.organisation_id)
+            )).all()
+            org_counts = {r.organisation_id: r for r in o_rows}
+            for p in owner_profiles:
+                r = org_counts.get(p.organisation_id)
+                owner_prop_counts[p.id] = {
+                    "total": int(r.total) if r else 0,
+                    "active": int(r.active) if r else 0,
+                }
+
+    ll_prop_counts: dict = {}
+    if landlord_profiles:
+        ll_ids = [p.id for p in landlord_profiles]
+        ll_rows = (await db.execute(
+            select(
+                LandlordPropertyAccess.landlord_profile_id,
+                func.count(Property.id).label("total"),
+                func.count(Property.id).filter(Property.status == "active").label("active"),
+            )
+            .join(Property, Property.id == LandlordPropertyAccess.property_id)
+            .where(
+                LandlordPropertyAccess.landlord_profile_id.in_(ll_ids),
+                Property.deleted_at.is_(None),
+            )
+            .group_by(LandlordPropertyAccess.landlord_profile_id)
+        )).all()
+        for r in ll_rows:
+            ll_prop_counts[r.landlord_profile_id] = {
+                "total": int(r.total),
+                "active": int(r.active),
+            }
+
+    def _landlord_row(p: "Profile") -> dict:
+        is_owner = p.role == "owner"
+        counts = (owner_prop_counts if is_owner else ll_prop_counts).get(
+            p.id, {"total": 0, "active": 0}
+        )
+        return {
+            "id": str(p.id),
+            "displayName": p.display_name,
+            "email": p.email,
+            "role": p.role,
+            "isReadOnly": p.is_read_only,
+            "orgId": str(p.organisation_id) if p.organisation_id else None,
+            "orgName": org_names.get(p.id),
+            "propertyCount": counts["total"],
+            "activePropertyCount": counts["active"],
+            "type": "independent" if is_owner else "agency_managed",
+            "createdAt": p.created_at.isoformat(),
+        }
+
+    return {
+        "data": [_landlord_row(p) for p in profiles],
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+    }
+
+
+async def get_landlord_detail(profile_id: "uuid.UUID", db: "AsyncSession") -> dict:
+    row = (await db.execute(
+        select(Profile, Organisation.name.label("org_name"))
+        .outerjoin(Organisation, Organisation.id == Profile.organisation_id)
+        .where(Profile.id == profile_id, Profile.anonymised_at.is_(None))
+    )).one_or_none()
+
+    if not row:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Profile not found")
+    profile, org_name = row
+    if profile.role not in ("landlord", "owner"):
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Profile is not a landlord or owner",
+        )
+
+    if profile.role == "owner" and profile.organisation_id:
+        props = (await db.execute(
+            select(Property)
+            .where(
+                Property.organisation_id == profile.organisation_id,
+                Property.deleted_at.is_(None),
+            )
+            .order_by(Property.status, Property.name)
+        )).scalars().all()
+    else:
+        props = (await db.execute(
+            select(Property)
+            .join(LandlordPropertyAccess, LandlordPropertyAccess.property_id == Property.id)
+            .where(
+                LandlordPropertyAccess.landlord_profile_id == profile_id,
+                Property.deleted_at.is_(None),
+            )
+            .order_by(Property.status, Property.name)
+        )).scalars().all()
+
+    prop_ids = [p.id for p in props]
+    unit_counts: dict = {}
+    revenue_by_prop: dict = {}
+    if prop_ids:
+        unit_rows = (await db.execute(
+            select(
+                Unit.property_id,
+                func.count(Unit.id).label("cnt"),
+                func.sum(Unit.monthly_rent).filter(Unit.status == "occupied").label("rev"),
+            )
+            .where(Unit.property_id.in_(prop_ids), Unit.deleted_at.is_(None))
+            .group_by(Unit.property_id)
+        )).all()
+        unit_counts = {r.property_id: int(r.cnt) for r in unit_rows}
+        revenue_by_prop = {r.property_id: float(r.rev or 0) for r in unit_rows}
+
+    active_count = sum(
+        1 for p in props
+        if (p.status.value if hasattr(p.status, "value") else p.status) == "active"
+    )
+    total_revenue = sum(revenue_by_prop.values())
+
+    return {
+        "id": str(profile.id),
+        "displayName": profile.display_name,
+        "email": profile.email,
+        "phone": getattr(profile, "phone", None),
+        "role": profile.role,
+        "isReadOnly": profile.is_read_only,
+        "orgId": str(profile.organisation_id) if profile.organisation_id else None,
+        "orgName": org_name,
+        "propertyCount": len(props),
+        "activePropertyCount": active_count,
+        "inactivePropertyCount": len(props) - active_count,
+        "totalMonthlyRevenue": total_revenue,
+        "type": "independent" if profile.role == "owner" else "agency_managed",
+        "createdAt": profile.created_at.isoformat(),
+        "properties": [
+            {
+                "id": str(p.id),
+                "name": p.name,
+                "type": p.type.value if hasattr(p.type, "value") else str(p.type),
+                "status": p.status.value if hasattr(p.status, "value") else str(p.status),
+                "unitCount": unit_counts.get(p.id, 1 if p.is_single_unit else 0),
+                "monthlyRevenue": revenue_by_prop.get(p.id, 0),
+                "address": _prop_address(p.address),
+            }
+            for p in props
+        ],
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Shield,
   Users,
@@ -22,6 +23,7 @@ import {
   Loader2,
   ScrollText,
   Zap,
+  Home,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,9 +43,11 @@ import { useAdminAuditLogs } from "@/hooks/useAuditLogs";
 import { FilterBar } from "@/components/common/FilterBar";
 import { formatDate } from "@/utils/formatters";
 import type { AuditLogEntry } from "@/services/api/auditLogs";
+import type { AgencyListItem, LandlordListItem } from "@/services/api/adminOrgs";
 import { useQuery } from "@tanstack/react-query";
 import { useAgencyInvites, useCreateAgencyInvite, useRevokeAgencyInvite } from "@/hooks/useAgencyInvites";
 import { useMigrateToPersonalOrg, useAssignToAgency, useRepairLandlordOrg, useRemoveFromLogtoOrg } from "@/hooks/useAdminLandlords";
+import { useAdminAgencies, useAdminLandlords } from "@/hooks/useAdminOrgs";
 import { AdminSearchCombobox, type ComboboxOption } from "@/components/admin/AdminSearchCombobox";
 import { landlordsApi } from "@/services/api/landlords";
 import { adminApi } from "@/services/api/admin";
@@ -136,6 +140,130 @@ const ADMIN_AUDIT_COLUMNS: Column<AuditLogEntry>[] = [
 ];
 
 const ADMIN_AUDIT_PAGE_SIZE = 50;
+const ADMIN_LIST_PAGE_SIZE = 20;
+
+const AGENCY_COLUMNS: Column<AgencyListItem>[] = [
+  {
+    key: "name",
+    header: "Agency",
+    render: (ag) => (
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="h-8 w-8 rounded-[6px] bg-violet-100 dark:bg-violet-950/30 flex items-center justify-center text-xs font-bold text-violet-700 dark:text-violet-300 shrink-0">
+          {ag.name.slice(0, 2).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium truncate">{ag.name}</p>
+            {ag.isArchived && (
+              <Badge variant="outline" className="text-xs text-muted-foreground shrink-0">Archived</Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground truncate">
+            {ag.slug}{ag.country ? ` · ${ag.country}` : ""}
+          </p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: "totalProperties",
+    header: "Properties",
+    render: (ag) => (
+      <div className="flex items-center gap-1.5">
+        <Home className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-sm font-medium">{ag.totalProperties}</span>
+        <span className="text-xs text-muted-foreground">({ag.activeProperties} active)</span>
+      </div>
+    ),
+  },
+  {
+    key: "managerCount",
+    header: "Managers",
+    render: (ag) => (
+      <div className="flex items-center gap-1.5">
+        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-sm">{ag.managerCount}</span>
+      </div>
+    ),
+  },
+  {
+    key: "landlordCount",
+    header: "Landlords",
+    render: (ag) => (
+      <div className="flex items-center gap-1.5">
+        <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-sm">{ag.landlordCount}</span>
+      </div>
+    ),
+  },
+  {
+    key: "plan",
+    header: "Plan",
+    render: (ag) => (
+      <Badge variant="outline" className="text-xs capitalize">{ag.plan}</Badge>
+    ),
+  },
+];
+
+const LANDLORD_COLUMNS: Column<LandlordListItem>[] = [
+  {
+    key: "displayName",
+    header: "Landlord",
+    render: (ll) => (
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={cn(
+          "h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+          ll.type === "independent"
+            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300"
+            : "bg-sky-100 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300"
+        )}>
+          {(ll.displayName ?? ll.email ?? "?").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">{ll.displayName ?? "—"}</p>
+          <p className="text-xs text-muted-foreground truncate">{ll.email ?? "—"}</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: "orgName",
+    header: "Organisation",
+    render: (ll) => (
+      <p className="text-xs text-muted-foreground truncate max-w-[160px]">{ll.orgName ?? "—"}</p>
+    ),
+  },
+  {
+    key: "propertyCount",
+    header: "Properties",
+    render: (ll) => (
+      <div className="flex items-center gap-1.5">
+        <Home className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-sm font-medium">{ll.propertyCount}</span>
+        {ll.activePropertyCount > 0 && (
+          <span className="text-xs text-muted-foreground">({ll.activePropertyCount} active)</span>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: "type",
+    header: "Type",
+    render: (ll) => (
+      <Badge
+        variant="outline"
+        className={cn(
+          "text-xs",
+          ll.type === "independent"
+            ? "text-emerald-700 border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 dark:text-emerald-300"
+            : "text-sky-700 border-sky-300 bg-sky-50 dark:bg-sky-950/20 dark:text-sky-300"
+        )}
+      >
+        {ll.type === "independent" ? "Independent" : "Agency"}
+      </Badge>
+    ),
+  },
+];
 
 function AdminAuditLogsPanel() {
   const [page, setPage] = useState(1);
@@ -206,8 +334,24 @@ const EMPTY_INVITE_FORM = {
 };
 
 export default function AdminPage() {
+  const router = useRouter();
   const [tab, setTab] = useState("users");
   const [search, setSearch] = useState("");
+  const [agencySearch, setAgencySearch] = useState("");
+  const [landlordSearch, setLandlordSearch] = useState("");
+  const [agencyPage, setAgencyPage] = useState(1);
+  const [landlordPage, setLandlordPage] = useState(1);
+
+  const { data: agenciesData, isLoading: loadingAgencies } = useAdminAgencies({
+    page: agencyPage,
+    pageSize: 20,
+    search: agencySearch || undefined,
+  });
+  const { data: landlordsData, isLoading: loadingLandlords } = useAdminLandlords({
+    page: landlordPage,
+    pageSize: 20,
+    search: landlordSearch || undefined,
+  });
 
   // ── Real data fetching ──────────────────────────────────────────────────
   const { data: profilesPage, isLoading: loadingProfiles } = useQuery({
@@ -669,6 +813,50 @@ export default function AdminPage() {
 
           {/* ─── Agencies tab ────────────────────────────────── */}
           <TabsContent value="agencies" className="mt-4 space-y-4">
+            {/* ── All agencies list ── */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-violet-600" />
+                      All Agencies
+                      {agenciesData && (
+                        <span className="text-xs text-muted-foreground font-normal">
+                          {agenciesData.total} total
+                        </span>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Click any row to view full agency breakdown
+                    </CardDescription>
+                  </div>
+                  <FilterBar
+                    value={agencySearch}
+                    onChange={(v) => { setAgencySearch(v); setAgencyPage(1); }}
+                    placeholder="Search agencies…"
+                    className="max-w-48"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <DataTable
+                  data={agenciesData?.data ?? []}
+                  columns={AGENCY_COLUMNS}
+                  loading={loadingAgencies}
+                  rowKey={(ag) => ag.id}
+                  onRowClick={(ag) => router.push(`/admin/agencies/${ag.id}`)}
+                  totalItems={agenciesData?.total ?? 0}
+                  currentPage={agencyPage}
+                  pageSize={ADMIN_LIST_PAGE_SIZE}
+                  onPageChange={setAgencyPage}
+                  emptyTitle="No agencies yet"
+                  emptyDescription={agencySearch ? "Try a different search term" : "Invite an agency using the form below"}
+                />
+              </CardContent>
+            </Card>
+
+            {/* ── Invite management (existing) ── */}
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1018,6 +1206,50 @@ export default function AdminPage() {
 
           {/* ─── Landlords tab ───────────────────────────────── */}
           <TabsContent value="landlords" className="mt-4 space-y-4">
+            {/* ── All landlords list ── */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-sky-600" />
+                      All Landlords & Owners
+                      {landlordsData && (
+                        <span className="text-xs text-muted-foreground font-normal">
+                          {landlordsData.total} total
+                        </span>
+                      )}
+                    </CardTitle>
+                    <CardDescription>
+                      Click any row to view portfolio details
+                    </CardDescription>
+                  </div>
+                  <FilterBar
+                    value={landlordSearch}
+                    onChange={(v) => { setLandlordSearch(v); setLandlordPage(1); }}
+                    placeholder="Search landlords…"
+                    className="max-w-48"
+                  />
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <DataTable
+                  data={landlordsData?.data ?? []}
+                  columns={LANDLORD_COLUMNS}
+                  loading={loadingLandlords}
+                  rowKey={(ll) => ll.id}
+                  onRowClick={(ll) => router.push(`/admin/landlords/${ll.id}`)}
+                  totalItems={landlordsData?.total ?? 0}
+                  currentPage={landlordPage}
+                  pageSize={ADMIN_LIST_PAGE_SIZE}
+                  onPageChange={setLandlordPage}
+                  emptyTitle="No landlords yet"
+                  emptyDescription={landlordSearch ? "Try a different search term" : "Invite landlords via the Agencies tab or the Landlords page"}
+                />
+              </CardContent>
+            </Card>
+
+            {/* ── Admin tools (existing) ── */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">

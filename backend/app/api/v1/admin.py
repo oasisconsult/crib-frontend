@@ -695,6 +695,64 @@ async def admin_patch_lease_billing_rules(
     return result
 
 
+# ── Agency + Landlord directory (admin drill-down) ───────────────────────────
+
+@router.get(
+    "/agencies",
+    response_model=dict,
+    dependencies=[Depends(require_superadmin())],
+)
+async def admin_list_agencies(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
+    search: str | None = Query(None, min_length=1),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """List all agencies (organisations created via an accepted agency invite) with property counts."""
+    return await admin_service.list_agencies(db, page=page, page_size=page_size, search=search)
+
+
+@router.get(
+    "/agencies/{org_id}",
+    response_model=dict,
+    dependencies=[Depends(require_superadmin())],
+)
+async def admin_get_agency(
+    org_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Full agency detail: managers, landlords, and property list with stats."""
+    return await admin_service.get_agency_detail(org_id, db)
+
+
+@router.get(
+    "/landlords",
+    response_model=dict,
+    dependencies=[Depends(require_superadmin())],
+)
+async def admin_list_landlords(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(25, ge=1, le=100, alias="pageSize"),
+    search: str | None = Query(None, min_length=1),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """List all landlord and owner profiles across the platform with property counts."""
+    return await admin_service.list_landlords(db, page=page, page_size=page_size, search=search)
+
+
+@router.get(
+    "/landlords/{profile_id}",
+    response_model=dict,
+    dependencies=[Depends(require_superadmin())],
+)
+async def admin_get_landlord(
+    profile_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Full landlord/owner detail with property list and revenue stats."""
+    return await admin_service.get_landlord_detail(profile_id, db)
+
+
 # ── GDPR audit log ────────────────────────────────────────────────────────────
 
 @router.get(
