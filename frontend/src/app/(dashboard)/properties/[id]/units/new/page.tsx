@@ -37,6 +37,12 @@ const WATER_SOURCE_OPTIONS: { value: WaterSource | "inherit"; label: string }[] 
   { value: "multiple",  label: "Multiple Sources"       },
 ];
 
+const BATHROOM_TYPE_OPTIONS = [
+  { value: "self_contained", label: "Self-contained (private bathroom)" },
+  { value: "semi_shared",    label: "Semi-shared (own toilet, shared shower)" },
+  { value: "communal",       label: "Communal (all facilities shared)" },
+];
+
 const CURRENCIES = ["UGX", "USD", "EUR", "GBP"];
 
 interface Props { params: Promise<{ id: string }> }
@@ -67,16 +73,27 @@ export default function NewUnitPage({ params }: Props) {
   const [currency,    setCurrency]    = useState(property?.currency ?? "UGX");
   const [notes,       setNotes]       = useState("");
 
+  // Block / occupancy / bathroom
+  const [block,        setBlock]        = useState("");
+  const [maxOccupants, setMaxOccupants] = useState("1");
+  const [bathroomType, setBathroomType] = useState("self_contained");
+
   // Uganda features
-  const [sittingRooms,       setSittingRooms]       = useState("1");
-  const [toilets,            setToilets]            = useState("1");
-  const [isSelfContained,    setIsSelfContained]    = useState(true);
-  const [hasKitchen,         setHasKitchen]         = useState(true);
-  const [hasStore,           setHasStore]           = useState(false);
-  const [hasDomesticQuarters,setHasDomesticQuarters]= useState(false);
-  const [parkingSpaces,      setParkingSpaces]      = useState("0");
-  const [furnishedStatus,    setFurnishedStatus]    = useState<FurnishedStatus>("unfurnished");
-  const [waterSource,        setWaterSource]        = useState<WaterSource | "inherit">("inherit");
+  const [sittingRooms,        setSittingRooms]        = useState("1");
+  const [toilets,             setToilets]             = useState("1");
+  const [isSelfContained,     setIsSelfContained]     = useState(true);
+  const [hasKitchen,          setHasKitchen]          = useState(true);
+  const [hasStore,            setHasStore]            = useState(false);
+  const [hasDomesticQuarters, setHasDomesticQuarters] = useState(false);
+  const [parkingSpaces,       setParkingSpaces]       = useState("0");
+  const [furnishedStatus,     setFurnishedStatus]     = useState<FurnishedStatus>("unfurnished");
+  const [waterSource,         setWaterSource]         = useState<WaterSource | "inherit">("inherit");
+
+  // Keep is_self_contained in sync with bathroom_type for backwards compat
+  function handleBathroomTypeChange(v: string) {
+    setBathroomType(v);
+    setIsSelfContained(v === "self_contained");
+  }
 
   const canSubmit = !!name.trim() && !!monthlyRent && parseFloat(monthlyRent) > 0;
 
@@ -90,7 +107,7 @@ export default function NewUnitPage({ params }: Props) {
         data: {
           name:                name.trim(),
           type,
-          floor:               floor ? parseInt(floor) : undefined,
+          floor:               floor !== "" ? parseInt(floor) : undefined,
           bedrooms:            parseInt(bedrooms) || 1,
           bathrooms:           parseInt(bathrooms) || 1,
           area:                area ? parseFloat(area) : undefined,
@@ -99,6 +116,9 @@ export default function NewUnitPage({ params }: Props) {
           notes:               notes.trim() || undefined,
           amenities:           [],
           images:              [],
+          block:               block.trim() || undefined,
+          maxOccupants:        parseInt(maxOccupants) || 1,
+          bathroomType,
           sittingRooms:        parseInt(sittingRooms) || 1,
           toilets:             parseInt(toilets) || 1,
           isSelfContained,
@@ -156,7 +176,7 @@ export default function NewUnitPage({ params }: Props) {
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Unit 1A, Room 3, Studio B"
+                  placeholder="e.g. A101, Room 3, Studio B"
                   autoFocus
                 />
               </div>
@@ -170,6 +190,31 @@ export default function NewUnitPage({ params }: Props) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+
+            {/* Block + Floor */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="block">Block / Wing <span className="text-muted-foreground text-xs">optional</span></Label>
+                <Input
+                  id="block"
+                  value={block}
+                  onChange={(e) => setBlock(e.target.value)}
+                  placeholder="e.g. Block A, Block B, North Wing"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="floor">Floor <span className="text-muted-foreground text-xs">negative = basement</span></Label>
+                <Input
+                  id="floor"
+                  type="number"
+                  min="-20"
+                  max="200"
+                  value={floor}
+                  onChange={(e) => setFloor(e.target.value)}
+                  placeholder="e.g. 1, 2, -1 (basement)"
+                />
               </div>
             </div>
 
@@ -198,8 +243,34 @@ export default function NewUnitPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Bedrooms + Bathrooms + Floor */}
-            <div className="grid grid-cols-4 gap-4">
+            {/* Max occupants + Bathroom type */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="maxOccupants">Max Occupants</Label>
+                <Input
+                  id="maxOccupants"
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={maxOccupants}
+                  onChange={(e) => setMaxOccupants(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Bathroom Type</Label>
+                <Select value={bathroomType} onValueChange={handleBathroomTypeChange}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {BATHROOM_TYPE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Bedrooms + Bathrooms + Area */}
+            <div className="grid grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="bedrooms">Bedrooms</Label>
                 <Input id="bedrooms" type="number" min="0" max="20" value={bedrooms}
@@ -209,11 +280,6 @@ export default function NewUnitPage({ params }: Props) {
                 <Label htmlFor="bathrooms">Bathrooms</Label>
                 <Input id="bathrooms" type="number" min="0" max="20" value={bathrooms}
                   onChange={(e) => setBathrooms(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="floor">Floor</Label>
-                <Input id="floor" type="number" min="0" value={floor}
-                  onChange={(e) => setFloor(e.target.value)} placeholder="0" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="area">Area (m²)</Label>
@@ -287,7 +353,6 @@ export default function NewUnitPage({ params }: Props) {
 
             {/* Feature toggles */}
             <div className="flex flex-wrap gap-x-6 gap-y-2">
-              <ToggleRow label="Self-contained (own bathroom + kitchen)" checked={isSelfContained} onChange={setIsSelfContained} />
               <ToggleRow label="Separate kitchen" checked={hasKitchen} onChange={setHasKitchen} />
               <ToggleRow label="Store room" checked={hasStore} onChange={setHasStore} />
               <ToggleRow label="Domestic quarters (BQ)" checked={hasDomesticQuarters} onChange={setHasDomesticQuarters} />

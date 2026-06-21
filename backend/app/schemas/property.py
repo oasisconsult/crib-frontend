@@ -204,6 +204,13 @@ class UnitCreate(CamelModel):
     notes: str | None = None
     rules: PropertyRulesSchema | None = None
     geocode: str | None = Field(default=None, max_length=20)
+    # Block / occupancy / bathroom
+    block: str | None = Field(default=None, max_length=100)
+    max_occupants: int = Field(default=1, ge=1, le=20)
+    bathroom_type: str = Field(
+        default="self_contained",
+        pattern="^(self_contained|semi_shared|communal)$",
+    )
     # Uganda unit features
     sitting_rooms: int = Field(default=1, ge=0, le=20)
     toilets: int = Field(default=1, ge=0, le=20)
@@ -236,6 +243,13 @@ class UnitUpdate(CamelModel):
     images: list[str] | None = None
     notes: str | None = None
     geocode: str | None = Field(default=None, max_length=20)
+    # Block / occupancy / bathroom
+    block: str | None = Field(default=None, max_length=100)
+    max_occupants: int | None = Field(default=None, ge=1, le=20)
+    bathroom_type: str | None = Field(
+        default=None,
+        pattern="^(self_contained|semi_shared|communal)$",
+    )
     # Uganda unit features
     sitting_rooms: int | None = None
     toilets: int | None = None
@@ -282,6 +296,10 @@ class UnitOut(CamelModel):
     notes: str | None
     rules: dict[str, Any] | None
     geocode: str | None = None
+    # Block / occupancy / bathroom
+    block: str | None = None
+    max_occupants: int = 1
+    bathroom_type: str = "self_contained"
     # Uganda unit features
     sitting_rooms: int = 1
     toilets: int = 1

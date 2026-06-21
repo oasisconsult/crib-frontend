@@ -53,6 +53,12 @@ class UnitType(str, enum.Enum):
     four_bed_plus = "four_bed_plus"
 
 
+class BathroomType(str, enum.Enum):
+    self_contained = "self_contained"  # private bathroom inside the unit
+    semi_shared    = "semi_shared"     # own toilet, shared shower
+    communal       = "communal"        # all facilities shared
+
+
 class UnitStatus(str, enum.Enum):
     available = "available"
     occupied = "occupied"
@@ -207,6 +213,15 @@ class Unit(TimestampedBase):
 
     # Per-unit rule overrides; NULL means inherit from property
     rules: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    # Block / occupancy / bathroom classification ─────────────────────────────
+    block: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    max_occupants: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    bathroom_type: Mapped[BathroomType] = mapped_column(
+        Enum(BathroomType, name="bathroom_type_enum"),
+        nullable=False,
+        default=BathroomType.self_contained,
+    )
 
     # ── Uganda unit features ───────────────────────────────────────────────────
     sitting_rooms: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
