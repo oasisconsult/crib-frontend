@@ -454,9 +454,10 @@ async def create_caretaker_user(
       frontend's KNOWN_ROLES list includes 'caretaker', so extractRoles() will
       surface it in the roles cookie.
 
-    Returns (logto_user_id, is_new_user).
-      is_new_user=True  → fresh account, temp_password was set
-      is_new_user=False → existing account (no password change)
+    Returns (logto_user_id, credentials_set).
+      credentials_set=True  → temp_password was set (always, for both new and
+                               existing accounts) — caller should send credentials email.
+      credentials_set=False → Logto unavailable / lookup failed.
     """
     if not _is_configured():
         log.debug("logto.m2m_not_configured — skipping caretaker user creation", email=email)
@@ -480,7 +481,7 @@ async def create_caretaker_user(
             )
 
             if create_resp.status_code == 422:
-                # User already exists in Logto — link without touching password.
+                # User already exists — look them up then reset their password.
                 search = await client.get(f"{base}/users", params={"search": email}, headers=headers)
                 search.raise_for_status()
                 users = search.json()
@@ -491,23 +492,24 @@ async def create_caretaker_user(
             else:
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
-                is_new_user = True
+                log.info("logto.caretaker_user_created_new", email=email, logto_user_id=logto_user_id)
 
-                # Set temp password via dedicated PATCH endpoint.
-                pwd_resp = await client.patch(
-                    f"{base}/users/{logto_user_id}/password",
-                    json={"password": temp_password},
-                    headers=headers,
+            # Always set the temp password so the invitee has a known credential.
+            is_new_user = True
+            pwd_resp = await client.patch(
+                f"{base}/users/{logto_user_id}/password",
+                json={"password": temp_password},
+                headers=headers,
+            )
+            if not pwd_resp.is_success:
+                log.warning(
+                    "logto.caretaker_password_set_failed",
+                    user_id=logto_user_id,
+                    status=pwd_resp.status_code,
+                    response=pwd_resp.text,
                 )
-                if not pwd_resp.is_success:
-                    log.warning(
-                        "logto.caretaker_password_set_failed",
-                        user_id=logto_user_id,
-                        status=pwd_resp.status_code,
-                        response=pwd_resp.text,
-                    )
-                else:
-                    log.info("logto.caretaker_password_set", user_id=logto_user_id)
+            else:
+                log.info("logto.caretaker_password_set", user_id=logto_user_id)
 
             # Assign app-level 'caretaker' role so the JWT carries the claim.
             await _assign_app_role(client, base, logto_user_id, "caretaker", headers)
@@ -563,11 +565,15 @@ async def create_landlord_user(
     """
     Create or resolve a Logto user for an invited landlord.
 
-    Returns (logto_user_id, is_new_user).
-      is_new_user=True  → fresh account, temp_password was set, send credentials email
-      is_new_user=False → user already exists (e.g. GeoBox account), password
-                          NOT changed, caller should send a "you've been invited"
-                          email with a login link instead of credentials.
+    Returns (logto_user_id, credentials_set).
+      credentials_set=True  → temp_password was set (new account OR existing account
+                               reset), caller should send credentials email.
+      credentials_set=False → Logto unavailable or lookup failed; no account
+                               provisioned, caller should not send email.
+
+    We always set the temp_password even for pre-existing Logto accounts so that
+    the invited user always has a known credential in their invite email.  If they
+    previously had a GeoBox/Crib password they can change it again after first login.
     """
     if not _is_configured():
         log.debug("logto.m2m_not_configured — skipping landlord user creation", email=email)
@@ -591,9 +597,8 @@ async def create_landlord_user(
             )
 
             if create_resp.status_code == 422:
-                # User already exists in Logto (may be a GeoBox user or previous
-                # Crib account). Do NOT change their password — they have working
-                # credentials for their existing app. We only add them to the org.
+                # User already exists — look them up then reset their password so
+                # the invite email can include known credentials.
                 search = await client.get(f"{base}/users", params={"search": email}, headers=headers)
                 search.raise_for_status()
                 users = search.json()
@@ -604,19 +609,20 @@ async def create_landlord_user(
             else:
                 create_resp.raise_for_status()
                 logto_user_id = create_resp.json()["id"]
-                is_new_user = True
+                log.info("logto.landlord_user_created_new", email=email, logto_user_id=logto_user_id)
 
-                # New user — set temp password via dedicated PATCH endpoint.
-                # POST /users body does not accept a password field in Logto.
-                pwd_resp = await client.patch(
-                    f"{base}/users/{logto_user_id}/password",
-                    json={"password": temp_password},
-                    headers=headers,
-                )
-                if not pwd_resp.is_success:
-                    log.warning("logto.landlord_password_set_failed", user_id=logto_user_id, status=pwd_resp.status_code, response=pwd_resp.text)
-                else:
-                    log.info("logto.landlord_password_set", user_id=logto_user_id)
+            # Always set the temp password (new account or existing) so the invitee
+            # always has a known credential and receives a proper welcome email.
+            is_new_user = True
+            pwd_resp = await client.patch(
+                f"{base}/users/{logto_user_id}/password",
+                json={"password": temp_password},
+                headers=headers,
+            )
+            if not pwd_resp.is_success:
+                log.warning("logto.landlord_password_set_failed", user_id=logto_user_id, status=pwd_resp.status_code, response=pwd_resp.text)
+            else:
+                log.info("logto.landlord_password_set", user_id=logto_user_id)
 
             # Assign app-level 'landlord' role
             await _assign_app_role(client, base, logto_user_id, "landlord", headers)
