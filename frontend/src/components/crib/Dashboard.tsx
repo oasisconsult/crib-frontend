@@ -26,6 +26,7 @@ import { useDashboardStats } from "@/hooks/usePayments";
 import { usePayments } from "@/hooks/usePayments";
 import { useProperties } from "@/hooks/useProperties";
 import { useMaintenanceIssues } from "@/hooks/useInspections";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
 import { RevenueChart } from "@/components/dashboard/RevenueChart";
 import { formatCurrencyCompact, formatRelative } from "@/utils/formatters";
 import type { Property, Payment, MaintenanceIssue, DashboardStats } from "@/types";
@@ -407,12 +408,16 @@ function buildKpis(stats: DashboardStats): KpiCardProps[] {
 
 export function Dashboard() {
   /* ── Data fetching ─────────────────────────────────────────────────────── */
+  const { data: sub, isLoading: subLoading } = useCurrentSubscription();
+  const features = sub?.plan?.features as Record<string, unknown> | undefined;
+  const hasAnalytics = !subLoading && features?.analytics_advanced === true;
+
   const {
     data: stats,
     isLoading: statsLoading,
     isError: statsError,
     refetch: refetchStats,
-  } = useDashboardStats();
+  } = useDashboardStats(hasAnalytics);
 
   const {
     data: propertiesData,
@@ -478,23 +483,25 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* KPI row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {statsLoading || !kpis
-          ? Array.from({ length: 4 }).map((_, i) => (
-              <KpiCard
-                key={i}
-                label=""
-                value=""
-                sub=""
-                positive={true}
-                iconClass="bg-[hsl(var(--accent))] text-[hsl(var(--primary))]"
-                icon={<Building2 className="h-5 w-5" />}
-                loading
-              />
-            ))
-          : kpis.map((k) => <KpiCard key={k.label} {...k} />)}
-      </div>
+      {/* KPI row — only rendered when analytics plan is confirmed */}
+      {hasAnalytics && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {statsLoading || !kpis
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <KpiCard
+                  key={i}
+                  label=""
+                  value=""
+                  sub=""
+                  positive={true}
+                  iconClass="bg-[hsl(var(--accent))] text-[hsl(var(--primary))]"
+                  icon={<Building2 className="h-5 w-5" />}
+                  loading
+                />
+              ))
+            : kpis.map((k) => <KpiCard key={k.label} {...k} />)}
+        </div>
+      )}
 
       {/* Middle row: Properties + Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

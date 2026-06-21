@@ -12,6 +12,7 @@ import { FilterBar } from "@/components/common/FilterBar";
 import { FilterPanel, type ActiveFilters, type FilterField } from "@/components/common/FilterPanel";
 import { formatCurrency, formatDate } from "@/utils/formatters";
 import { usePayments, useDashboardStats, useOverdueSchedules } from "@/hooks/usePayments";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
 import type { Payment, RentSchedule, FilterConfig } from "@/types";
 
 const PAGE_SIZE = 20;
@@ -193,8 +194,12 @@ export default function PaymentsPage() {
     return `/api/v1/payments/export${qs ? `?${qs}` : ""}`;
   }, [tab, activeFilters, search, dateFrom, dateTo]);
 
+  const { data: sub, isLoading: subLoading } = useCurrentSubscription();
+  const features = sub?.plan?.features as Record<string, unknown> | undefined;
+  const hasAnalytics = !subLoading && features?.analytics_advanced === true;
+
   const { data: overdueData, isLoading: overdueLoading } = useOverdueSchedules({ page, pageSize: PAGE_SIZE });
-  const { data: stats } = useDashboardStats();
+  const { data: stats } = useDashboardStats(hasAnalytics);
 
   const handleTabChange = (t: string) => {
     setTab(t as typeof TABS[number]);

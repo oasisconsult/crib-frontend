@@ -22,13 +22,13 @@ interface OccupancyChartProps {
 }
 
 export function OccupancyChart({ data: dataProp, loading: loadingProp }: OccupancyChartProps) {
-  const { data: sub } = useCurrentSubscription();
+  const { data: sub, isLoading: subLoading } = useCurrentSubscription();
   const features = sub?.plan?.features as Record<string, unknown> | undefined;
-  const hasAnalytics = !sub || features?.analytics_advanced === true;
+  const hasAnalytics = !subLoading && features?.analytics_advanced === true;
   const { data: fetchedData, isLoading: fetchLoading } = useOccupancyData(6, hasAnalytics);
   const data = dataProp ?? fetchedData;
   const loading = loadingProp ?? fetchLoading;
-  if (sub && !hasAnalytics) return null;
+  if (!subLoading && !hasAnalytics) return null;
   return (
     <Card>
       <CardHeader className="pb-2">

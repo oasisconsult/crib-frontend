@@ -44,9 +44,9 @@ function CustomTooltip({ active, payload, label }: any) {
 }
 
 export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueChartProps) {
-  const { data: sub } = useCurrentSubscription();
+  const { data: sub, isLoading: subLoading } = useCurrentSubscription();
   const features = sub?.plan?.features as Record<string, unknown> | undefined;
-  const hasAnalytics = !sub || features?.analytics_advanced === true;
+  const hasAnalytics = !subLoading && features?.analytics_advanced === true;
   const { data: fetchedData, isLoading: fetchLoading } = useRevenueData(6, hasAnalytics);
   const [period, setPeriod] = useState<"6M" | "3M" | "1M">("6M");
 
@@ -54,7 +54,7 @@ export function RevenueChart({ data: dataProp, loading: loadingProp }: RevenueCh
   const sliced = period === "1M" ? allData.slice(-1) : period === "3M" ? allData.slice(-3) : allData;
   const loading = loadingProp ?? fetchLoading;
 
-  if (sub && !hasAnalytics) return null;
+  if (!subLoading && !hasAnalytics) return null;
 
   return (
     <Card className="overflow-hidden">
