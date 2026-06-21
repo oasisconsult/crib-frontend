@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -316,12 +316,27 @@ async def complete_onboarding(
             role_name="owner",
         )
 
-        # 6. Mark invite accepted
+        # 6. Transfer invited properties to the landlord's personal org.
+        #    The property belongs to them — moving it makes it visible under their org-wide filter.
+        for pid_str in (invite.property_ids or []):
+            try:
+                prop_uuid = uuid.UUID(pid_str)
+                await db.execute(
+                    update(Property)
+                    .where(Property.id == prop_uuid)
+                    .values(organisation_id=personal_org.id)
+                )
+            except ValueError:
+                log.warning("landlord.invalid_property_id_in_invite", pid=pid_str)
+        if invite.property_ids:
+            await db.flush()
+
+        # 7. Mark invite accepted
         invite.status = InviteStatus.ACCEPTED
         invite.accepted_at = datetime.now(timezone.utc)
         await db.flush()
 
-        # 7. Welcome email — sign-in link only; user set their own password on the form
+        # 8. Welcome email — sign-in link only; user set their own password on the form
         await logto_service.send_independent_landlord_welcome_email(
             email=invite.email,
             first_name=body.first_name,
