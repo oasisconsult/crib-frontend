@@ -210,10 +210,11 @@ export function useMobileMoneyTransactions(params?: {
 
 const queryKeys_dashboard = queryKeys.dashboard;
 
-export function useDashboardStats() {
+export function useDashboardStats(enabled = true) {
   return useQuery({
     queryKey: queryKeys_dashboard.stats(),
     queryFn: analyticsApi.getDashboardStats,
+    enabled,
   });
 }
 

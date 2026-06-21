@@ -23,17 +23,32 @@ export default function AnalyticsPage() {
   const [propertyId, setPropertyId] = useState<string>("all");
   const [months, setMonths] = useState<3 | 6 | 12>(12);
 
-  const { data: sub } = useCurrentSubscription();
+  const { data: sub, isLoading: subLoading } = useCurrentSubscription();
   const features = sub?.plan?.features as Record<string, unknown> | undefined;
-  const hasAnalytics = !sub || features?.analytics_advanced === true;
+  const hasAnalytics = features?.analytics_advanced === true;
 
-  const { data: stats } = useDashboardStats();
-  const { data: cashFlowRaw } = useCashFlowData(months, hasAnalytics);
+  // Only fire plan-gated requests once the subscription is known.
+  const analyticsReady = !subLoading && hasAnalytics;
+  const { data: stats } = useDashboardStats(analyticsReady);
+  const { data: cashFlowRaw } = useCashFlowData(months, analyticsReady);
   const { data: propertiesData } = useProperties();
 
   const properties = propertiesData?.data ?? [];
 
-  if (sub && !hasAnalytics) {
+  if (subLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <PageHeader title="Analytics" description="Portfolio performance and financial insights" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}><CardContent className="pt-4"><div className="animate-pulse bg-muted rounded h-14" /></CardContent></Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAnalytics) {
     return (
       <div className="p-6">
         <PageHeader title="Analytics" description="Portfolio performance and financial insights" />

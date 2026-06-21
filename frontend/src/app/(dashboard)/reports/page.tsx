@@ -649,10 +649,28 @@ function IncomeExpenseTab() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-  const { data: sub } = useCurrentSubscription();
+  const { data: sub, isLoading: subLoading } = useCurrentSubscription();
   const features = sub?.plan?.features as Record<string, unknown> | undefined;
 
-  if (sub && features?.analytics_advanced !== true) {
+  // Show a skeleton while the plan is loading — this prevents any tab sub-component
+  // from mounting and firing plan-gated report API calls before access is confirmed.
+  if (subLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <div className="animate-pulse bg-muted rounded h-8 w-20" />
+          <div className="animate-pulse bg-muted rounded h-4 w-72 mt-2" />
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Card key={i}><CardContent className="pt-4"><Skeleton className="h-16" /></CardContent></Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (features?.analytics_advanced !== true) {
     return (
       <div className="p-6">
         <div>
