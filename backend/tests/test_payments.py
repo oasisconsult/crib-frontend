@@ -370,7 +370,8 @@ class TestLateFees:
             headers=auth_headers("manager-1"),
         )
         assert resp.status_code == 200
-        assert len(resp.json()) == 1
+        assert resp.json()["total"] == 1
+        assert len(resp.json()["data"]) == 1
 
 
 # ── Deposit tests ─────────────────────────────────────────────────────────────

@@ -290,7 +290,7 @@ async def test_onboarding_complete(client: AsyncClient, db_session: AsyncSession
     ):
         resp = await client.post(
             f"/api/v1/landlords/onboarding/{token}/complete",
-            json={"firstName": "Complete", "lastName": "Me"},
+            json={"firstName": "Complete", "lastName": "Me", "password": "SecurePass123!"},
         )
 
     assert resp.status_code == 201, resp.text
