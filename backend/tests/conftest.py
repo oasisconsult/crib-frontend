@@ -215,6 +215,13 @@ async def test_engine():
             "maintenance": {
                 "inspection": _READ, "maintenance_request": _READ,
             },
+            # Migration 021 — landlord read-only access (matches production seed)
+            "landlord": {
+                "property": _READ, "lease": _READ, "payment": _READ,
+                "payment_allocation": _READ, "ledger": _READ, "analytics": _READ,
+                "notification": _READ, "document": _READ, "inspection": _READ,
+                "maintenance_request": _READ, "organisation": _READ, "profile": _READ,
+            },
         }
 
         for resource in _RESOURCES:

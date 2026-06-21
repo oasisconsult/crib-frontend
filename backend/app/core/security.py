@@ -114,6 +114,10 @@ DEV_USERS: dict[str, TokenClaims] = {
         sub="dev_manager1", org_id="org_dev", org_roles=["manager"], email="manager@dev.local"
     ),
     "superadmin-1": TokenClaims(sub="dev_superadmin1", org_roles=["superadmin"], email="superadmin@dev.local"),
+    # Cross-org isolation test fixtures — org_alpha and org_beta must be seeded by the test.
+    "org-a-owner": TokenClaims(sub="org_a_owner_1", org_id="org_alpha", org_roles=["owner"], email="owner@org-alpha.test"),
+    "org-b-owner": TokenClaims(sub="org_b_owner_1", org_id="org_beta",  org_roles=["owner"], email="owner@org-beta.test"),
+    "org-a-ro-landlord": TokenClaims(sub="org_a_landlord_1", org_id="org_alpha", org_roles=["landlord"], email="landlord@org-alpha.test"),
     # Landlord fixture — no org, uses app-level landlord role
     "landlord-1": TokenClaims(
         sub="dev_landlord1",
