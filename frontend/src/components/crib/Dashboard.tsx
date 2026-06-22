@@ -410,14 +410,16 @@ export function Dashboard() {
   /* ── Data fetching ─────────────────────────────────────────────────────── */
   const { data: sub, isLoading: subLoading } = useCurrentSubscription();
   const features = sub?.plan?.features as Record<string, unknown> | undefined;
-  const hasAnalytics = !subLoading && features?.analytics_advanced === true;
+  // analytics_advanced gates charts (occupancy, revenue, cashflow series).
+  // Basic KPI stats (/analytics/dashboard) are available on all plans.
+  const hasAdvancedAnalytics = !subLoading && features?.analytics_advanced === true;
 
   const {
     data: stats,
     isLoading: statsLoading,
     isError: statsError,
     refetch: refetchStats,
-  } = useDashboardStats(hasAnalytics);
+  } = useDashboardStats(!subLoading);
 
   const {
     data: propertiesData,
@@ -483,9 +485,8 @@ export function Dashboard() {
         </div>
       )}
 
-      {/* KPI row — only rendered when analytics plan is confirmed */}
-      {hasAnalytics && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      {/* KPI row — basic stats available on all plans */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {statsLoading || !kpis
             ? Array.from({ length: 4 }).map((_, i) => (
                 <KpiCard
@@ -501,7 +502,6 @@ export function Dashboard() {
               ))
             : kpis.map((k) => <KpiCard key={k.label} {...k} />)}
         </div>
-      )}
 
       {/* Middle row: Properties + Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

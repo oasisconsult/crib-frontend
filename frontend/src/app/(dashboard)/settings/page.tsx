@@ -25,6 +25,7 @@ import { CaretakerInviteModal } from "./components/CaretakerInviteModal";
 import type { ActiveCaretaker, CaretakerInvite } from "@/services/api/caretakers";
 import { efrisApi } from "@/services/api/efris";
 import type { EfrisConfig } from "@/services/api/efris";
+import { useCurrentSubscription } from "@/hooks/useSubscription";
 
 // ── Caretakers Panel ──────────────────────────────────────────────────────────
 
@@ -188,6 +189,11 @@ export default function SettingsPage() {
 
   // ── Permissions ─────────────────────────────────────────────────────────────
   const { isSuperAdmin, isManager, canManageOrg, isLandlord } = usePermissions();
+
+  // ── Subscription plan features ────────────────────────────────────────────
+  const { data: sub } = useCurrentSubscription();
+  const planFeatures = sub?.plan?.features as Record<string, unknown> | undefined;
+  const hasEfris = planFeatures?.efris === true;
 
   // ── Agency / Organisation settings ────────────────────────────────────────
   const { data: org, isLoading: loadingOrg } = useOrganisation();
@@ -360,7 +366,7 @@ export default function SettingsPage() {
   const [efrisIsActive, setEfrisIsActive] = useState(false);
 
   useEffect(() => {
-    if (!org?.id || !canManageOrg) return;
+    if (!org?.id || !canManageOrg || !hasEfris) return;
     setEfrisLoading(true);
     efrisApi.getConfig(org.id)
       .then((config) => {
@@ -376,7 +382,7 @@ export default function SettingsPage() {
       })
       .catch(() => {})
       .finally(() => setEfrisLoading(false));
-  }, [org?.id, canManageOrg]);
+  }, [org?.id, canManageOrg, hasEfris]);
 
   async function handleSaveEfris() {
     if (!org?.id) return;
@@ -484,7 +490,7 @@ export default function SettingsPage() {
                 {!isLandlord          && item("notifications", <Bell className="h-4 w-4 shrink-0" />,      "Notifications")}
                 {!isLandlord          && item("caretakers",   <Users className="h-4 w-4 shrink-0" />,     "Caretakers")}
                 {isSuperAdmin         && item("features",     <Zap className="h-4 w-4 shrink-0" />,       "Features")}
-                {canManageOrg         && item("efris",       <FileCheck className="h-4 w-4 shrink-0" />, "EFRIS")}
+                {canManageOrg && hasEfris && item("efris", <FileCheck className="h-4 w-4 shrink-0" />, "EFRIS")}
                 {item("appearance",    <Paintbrush className="h-4 w-4 shrink-0" />, "Appearance")}
                 {item("security",      <Shield className="h-4 w-4 shrink-0" />,     "Security")}
               </>
