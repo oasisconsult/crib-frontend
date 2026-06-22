@@ -40,6 +40,8 @@ from app.schemas.payment import (
     ChannelCostEstimateOut,
     DepositOut,
     DepositReturn,
+    LateFeeBulkWaive,
+    LateFeeBulkWaiveResult,
     LateFeeOut,
     LateFeeWaive,
     LedgerEntryOut,
@@ -492,6 +494,16 @@ async def waive_late_fee(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.waive_late_fee(fee_id, lease_id, get_org_id(current_user), body, db)
+
+
+@router.post("/{lease_id}/late-fees/bulk-waive", response_model=LateFeeBulkWaiveResult)
+async def bulk_waive_late_fees(
+    lease_id: uuid.UUID,
+    body: LateFeeBulkWaive,
+    current_user=_write,
+    db: AsyncSession = Depends(get_db),
+):
+    return await svc.bulk_waive_late_fees(lease_id, get_org_id(current_user), body, db)
 
 
 # ── Deposit ────────────────────────────────────────────────────────────────────

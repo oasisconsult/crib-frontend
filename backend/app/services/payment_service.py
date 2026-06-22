@@ -45,6 +45,8 @@ from app.models.payment import (
 from app.schemas.payment import (
     DepositOut,
     DepositReturn,
+    LateFeeBulkWaive,
+    LateFeeBulkWaiveResult,
     LateFeeOut,
     LateFeeWaive,
     LedgerOut,
@@ -1225,6 +1227,58 @@ async def waive_late_fee(
     await db.flush()
     await db.refresh(fee, attribute_names=["waived", "waived_at", "updated_at"])
     return _late_fee_out(fee)
+
+
+async def bulk_waive_late_fees(
+    lease_id: uuid.UUID,
+    org_id: uuid.UUID | None,
+    body: LateFeeBulkWaive,
+    db: AsyncSession,
+) -> LateFeeBulkWaiveResult:
+    await _get_lease_checked(lease_id, org_id, db)
+
+    now = datetime.now(timezone.utc)
+
+    if body.fee_ids:
+        fee_uuids = [uuid.UUID(fid) for fid in body.fee_ids]
+        fees = (await db.execute(
+            select(LateFee).where(
+                LateFee.id.in_(fee_uuids),
+                LateFee.lease_id == lease_id,
+                LateFee.waived.is_(False),
+            )
+        )).scalars().all()
+    else:
+        # No specific IDs supplied — waive every active fee on this lease
+        fees = (await db.execute(
+            select(LateFee).where(
+                LateFee.lease_id == lease_id,
+                LateFee.waived.is_(False),
+            )
+        )).scalars().all()
+
+    skipped = (len(body.fee_ids) - len(fees)) if body.fee_ids else 0
+
+    # Group fees by schedule so we can adjust schedule.late_fee_applied once per schedule
+    from collections import defaultdict
+    by_schedule: dict[uuid.UUID, list[LateFee]] = defaultdict(list)
+    for fee in fees:
+        by_schedule[fee.rent_schedule_id].append(fee)
+
+    for fee in fees:
+        fee.waived = True
+        fee.waived_at = now
+        fee.waived_reason = body.reason
+
+    # Deduct from each affected schedule
+    for schedule_id, schedule_fees in by_schedule.items():
+        schedule = await db.scalar(select(RentSchedule).where(RentSchedule.id == schedule_id))
+        if schedule:
+            total_deducted = sum(float(f.calculated_amount) for f in schedule_fees)
+            schedule.late_fee_applied = max(0.0, float(schedule.late_fee_applied) - total_deducted)
+
+    await db.flush()
+    return LateFeeBulkWaiveResult(waived=len(fees), skipped=skipped)
 
 
 # ── Deposit ────────────────────────────────────────────────────────────────────

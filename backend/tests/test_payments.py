@@ -373,6 +373,80 @@ class TestLateFees:
         assert resp.json()["total"] == 1
         assert len(resp.json()["data"]) == 1
 
+    async def test_bulk_waive_all(self, client: AsyncClient, active_lease, schedule, db_session):
+        """bulk-waive with no fee_ids waives every active fee on the lease."""
+        from app.models.payment import RentScheduleStatus
+        schedule.status = RentScheduleStatus.overdue
+        await db_session.flush()
+
+        # Apply fee
+        await client.post(
+            f"/api/v1/leases/{active_lease.id}/late-fees/{schedule.id}/apply",
+            headers=auth_headers("manager-1"),
+        )
+
+        resp = await client.post(
+            f"/api/v1/leases/{active_lease.id}/late-fees/bulk-waive",
+            json={"reason": "Goodwill gesture"},
+            headers=auth_headers("manager-1"),
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["waived"] == 1
+        assert body["skipped"] == 0
+
+        # Verify fee is now waived
+        list_resp = await client.get(
+            f"/api/v1/leases/{active_lease.id}/late-fees",
+            headers=auth_headers("manager-1"),
+        )
+        assert list_resp.json()["data"][0]["waived"] is True
+
+    async def test_bulk_waive_specific_ids(self, client: AsyncClient, active_lease, schedule, db_session):
+        """bulk-waive with explicit fee_ids waives only those fees."""
+        from app.models.payment import RentScheduleStatus
+        schedule.status = RentScheduleStatus.overdue
+        await db_session.flush()
+
+        apply_resp = await client.post(
+            f"/api/v1/leases/{active_lease.id}/late-fees/{schedule.id}/apply",
+            headers=auth_headers("manager-1"),
+        )
+        fee_id = apply_resp.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/leases/{active_lease.id}/late-fees/bulk-waive",
+            json={"fee_ids": [fee_id], "reason": "One-off waiver"},
+            headers=auth_headers("manager-1"),
+        )
+        assert resp.status_code == 200
+        assert resp.json()["waived"] == 1
+
+    async def test_bulk_waive_skips_already_waived(self, client: AsyncClient, active_lease, schedule, db_session):
+        """Re-running bulk-waive on an already-waived lease returns waived=0."""
+        from app.models.payment import RentScheduleStatus
+        schedule.status = RentScheduleStatus.overdue
+        await db_session.flush()
+
+        await client.post(
+            f"/api/v1/leases/{active_lease.id}/late-fees/{schedule.id}/apply",
+            headers=auth_headers("manager-1"),
+        )
+        # First waive
+        await client.post(
+            f"/api/v1/leases/{active_lease.id}/late-fees/bulk-waive",
+            json={"reason": "First pass"},
+            headers=auth_headers("manager-1"),
+        )
+        # Second waive — nothing left to waive
+        resp = await client.post(
+            f"/api/v1/leases/{active_lease.id}/late-fees/bulk-waive",
+            json={"reason": "Second pass"},
+            headers=auth_headers("manager-1"),
+        )
+        assert resp.status_code == 200
+        assert resp.json()["waived"] == 0
+
 
 # ── Deposit tests ─────────────────────────────────────────────────────────────
 

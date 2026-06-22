@@ -145,6 +145,19 @@ export function useWaiveLateFee(leaseId?: string) {
   });
 }
 
+export function useBulkWaiveLateFees() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ leaseId, reason, feeIds }: { leaseId: string; reason: string; feeIds?: string[] }) =>
+      paymentsApi.bulkWaiveLateFees(leaseId, reason, feeIds),
+    onSuccess: (data, vars) => {
+      qc.invalidateQueries({ queryKey: queryKeys.payments.leaseLateFees(vars.leaseId), exact: false });
+      toast.success(`${data.waived} late fee${data.waived !== 1 ? "s" : ""} waived`);
+    },
+    onError: () => toast.error("Failed to waive late fees"),
+  });
+}
+
 // ── Allocation-layer hooks ────────────────────────────────────────────────────
 
 export function useLedgerEntries(leaseId: string, page = 1, pageSize = 50) {

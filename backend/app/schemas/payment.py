@@ -202,6 +202,16 @@ class LateFeeWaive(CamelModel):
     reason: str = Field(min_length=1)
 
 
+class LateFeeBulkWaive(CamelModel):
+    fee_ids: list[str] | None = None  # None / empty = waive ALL active fees for the lease
+    reason: str = Field(min_length=1)
+
+
+class LateFeeBulkWaiveResult(CamelModel):
+    waived: int
+    skipped: int  # already waived, skipped
+
+
 # ── Deposit ────────────────────────────────────────────────────────────────────
 
 class DeductionItem(CamelModel):

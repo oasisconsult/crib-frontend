@@ -187,6 +187,14 @@ export const paymentsApi = {
   waiveLateFee: (leaseId: string, feeId: string, reason: string) =>
     apiPatch(`/leases/${leaseId}/late-fees/${feeId}/waive`, { reason }),
 
+  // Bulk waive — POST /leases/{leaseId}/late-fees/bulk-waive
+  // feeIds=undefined means waive ALL active fees on the lease
+  bulkWaiveLateFees: (leaseId: string, reason: string, feeIds?: string[]) =>
+    apiPost<{ waived: number; skipped: number }>(
+      `/leases/${leaseId}/late-fees/bulk-waive`,
+      { reason, ...(feeIds?.length ? { feeIds } : {}) },
+    ),
+
   // Mobile money reconciliation
   getMobileMoneyTransactions: (params?: {
     status?: string;

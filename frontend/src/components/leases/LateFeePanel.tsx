@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/utils/formatters";
-import { useLeaseLateFees, useWaiveLateFee } from "@/hooks/usePayments";
+import { useBulkWaiveLateFees, useLeaseLateFees, useWaiveLateFee } from "@/hooks/usePayments";
 import type { LeaseLateFee } from "@/services/api/payments";
 
 interface Props {
@@ -130,11 +130,30 @@ const PAGE_SIZE = 10;
 export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [page, setPage] = useState(1);
+  const [bulkWaiving, setBulkWaiving] = useState(false);
+  const [bulkReason, setBulkReason] = useState("");
+
   const { data, isLoading } = useLeaseLateFees(leaseId, page, PAGE_SIZE);
+  const { mutate: bulkWaive, isPending: isBulkPending } = useBulkWaiveLateFees();
 
   const fees = data?.data ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
+  const activeOnPage = fees.filter((f) => !f.waived).length;
+
+  function handleBulkWaive() {
+    if (!bulkReason.trim()) return;
+    bulkWaive(
+      { leaseId, reason: bulkReason.trim() },
+      {
+        onSuccess: () => {
+          setBulkWaiving(false);
+          setBulkReason("");
+          setPage(1);
+        },
+      },
+    );
+  }
 
   if (isLoading && !data) {
     return (
@@ -148,9 +167,6 @@ export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
 
   if (!data || total === 0) return null;
 
-  // Count active fees from the current page; total active shown in badge separately
-  const activeCount = total - fees.filter((f) => f.waived).length; // rough — server doesn't send total active
-
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -158,10 +174,22 @@ export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
           <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           Late Fees
           <span className="text-xs text-muted-foreground font-normal">{total} total</span>
+
+          {canManage && activeOnPage > 0 && !bulkWaiving && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="ml-auto h-6 px-2 text-xs text-amber-700 border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/20"
+              onClick={() => { setExpanded(true); setBulkWaiving(true); }}
+            >
+              Waive All Active
+            </Button>
+          )}
+
           <Button
             size="sm"
             variant="ghost"
-            className="ml-auto h-7 w-7 p-0"
+            className={`h-7 w-7 p-0 ${canManage && activeOnPage > 0 && !bulkWaiving ? "" : "ml-auto"}`}
             onClick={() => setExpanded((v) => !v)}
             aria-label={expanded ? "Collapse late fees" : "Expand late fees"}
           >
@@ -169,17 +197,56 @@ export function LateFeePanel({ leaseId, currency, canManage = false }: Props) {
           </Button>
         </CardTitle>
       </CardHeader>
+
       {expanded && (
-        <CardContent className="pt-0">
-          {fees.map((fee) => (
-            <FeeRow
-              key={fee.id}
-              fee={fee}
-              currency={currency}
-              canManage={canManage}
-              leaseId={leaseId}
-            />
-          ))}
+        <CardContent className="pt-0 space-y-3">
+          {bulkWaiving && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 space-y-2">
+              <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                Waive all active late fees on this lease — this action cannot be undone
+              </p>
+              <Textarea
+                placeholder="Reason for waiving all fees (required)"
+                value={bulkReason}
+                onChange={(e) => setBulkReason(e.target.value)}
+                rows={2}
+                className="text-sm resize-none bg-white dark:bg-background"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleBulkWaive}
+                  disabled={!bulkReason.trim() || isBulkPending}
+                  loading={isBulkPending}
+                  className="bg-amber-600 hover:bg-amber-700 text-white border-0"
+                >
+                  Confirm — Waive All
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setBulkWaiving(false); setBulkReason(""); }}
+                  disabled={isBulkPending}
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div>
+            {fees.map((fee) => (
+              <FeeRow
+                key={fee.id}
+                fee={fee}
+                currency={currency}
+                canManage={canManage}
+                leaseId={leaseId}
+              />
+            ))}
+          </div>
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-3 border-t border-border mt-1">
