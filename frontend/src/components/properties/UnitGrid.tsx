@@ -7,20 +7,29 @@ import {
   Plus,
   LayoutGrid,
   List,
-  ChevronRight,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
   BedDouble,
   Bath,
   Maximize2,
-  Pencil,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { BulkOperationsBar } from "./BulkOperationsBar";
 import { FilterBar } from "@/components/common/FilterBar";
 import { formatCurrency } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
-import { useUnits, useUpdateUnit } from "@/hooks/useProperties";
+import { useArchiveUnit, useUnits, useUpdateUnit } from "@/hooks/useProperties";
 import type { Unit, UnitStatus } from "@/types";
 
 const STATUS_STYLES: Record<
@@ -28,20 +37,17 @@ const STATUS_STYLES: Record<
   { badge: string; card: string; dot: string }
 > = {
   available: {
-    badge:
-      "bg-emerald-100 text-emerald-800 dark:bg-emerald-100/40 dark:text-emerald-300",
+    badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-100/40 dark:text-emerald-300",
     card: "border-emerald-200 dark:border-emerald-200 hover:border-emerald-400",
     dot: "bg-emerald-500",
   },
   occupied: {
-    badge:
-      "bg-indigo-100 text-indigo-800 dark:bg-indigo-100/40 dark:text-indigo-300",
+    badge: "bg-indigo-100 text-indigo-800 dark:bg-indigo-100/40 dark:text-indigo-300",
     card: "border-border hover:border-indigo-300",
     dot: "bg-indigo-500",
   },
   reserved: {
-    badge:
-      "bg-amber-100 text-amber-800 dark:bg-amber-100/40 dark:text-amber-300",
+    badge: "bg-amber-100 text-amber-800 dark:bg-amber-100/40 dark:text-amber-300",
     card: "border-amber-200 dark:border-amber-200 hover:border-amber-400",
     dot: "bg-amber-500",
   },
@@ -52,68 +58,112 @@ const STATUS_STYLES: Record<
   },
 };
 
-const ALL_STATUSES: UnitStatus[] = [
-  "available",
-  "occupied",
-  "reserved",
-  "maintenance",
-];
+const ALL_STATUSES: UnitStatus[] = ["available", "occupied", "reserved", "maintenance"];
 
-// ── Inline rename ─────────────────────────────────────────────────────────────
+// ── Inline rename input ───────────────────────────────────────────────────────
+// Only rendered when editing=true; the trigger lives in UnitActionsMenu.
 
-function InlineName({
+function InlineRenameInput({
   unit,
   propertyId,
-  className,
+  onDone,
 }: {
   unit: Unit;
   propertyId: string;
-  className?: string;
+  onDone: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(unit.name);
   const { mutate: updateUnit, isPending } = useUpdateUnit();
 
   function commit() {
     const trimmed = draft.trim();
-    if (!trimmed || trimmed === unit.name) {
-      setDraft(unit.name);
-      setEditing(false);
-      return;
-    }
+    if (!trimmed || trimmed === unit.name) { onDone(); return; }
     updateUnit(
       { propertyId, unitId: unit.id, data: { name: trimmed } },
-      { onSuccess: () => setEditing(false), onError: () => { setDraft(unit.name); setEditing(false); } },
-    );
-  }
-
-  if (editing) {
-    return (
-      <input
-        className={cn("border rounded px-1 py-0.5 text-sm font-semibold leading-tight bg-background outline-none focus:ring-1 focus:ring-primary w-full", className)}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") { e.preventDefault(); commit(); }
-          if (e.key === "Escape") { setDraft(unit.name); setEditing(false); }
-        }}
-        disabled={isPending}
-        autoFocus
-        onClick={(e) => e.stopPropagation()}
-      />
+      { onSuccess: onDone, onError: onDone },
     );
   }
 
   return (
-    <span
-      className={cn("group/name flex items-center gap-1 cursor-text", className)}
-      onClick={(e) => { e.stopPropagation(); setDraft(unit.name); setEditing(true); }}
-      title="Click to rename"
-    >
-      <span className="font-semibold text-sm leading-tight">{unit.name}</span>
-      <Pencil className="h-3 w-3 opacity-0 group-hover/name:opacity-40 transition-opacity shrink-0" />
-    </span>
+    <input
+      className="border border-primary rounded px-1.5 py-0.5 text-sm font-semibold leading-tight bg-background outline-none focus:ring-2 focus:ring-primary/40 w-full"
+      value={draft}
+      autoFocus
+      disabled={isPending}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") { e.preventDefault(); commit(); }
+        if (e.key === "Escape") { e.preventDefault(); onDone(); }
+      }}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+}
+
+// ── Per-unit actions menu (⋯) ─────────────────────────────────────────────────
+
+function UnitActionsMenu({
+  unit,
+  propertyId,
+  onRename,
+}: {
+  unit: Unit;
+  propertyId: string;
+  onRename: () => void;
+}) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const { mutate: archiveUnit, isPending } = useArchiveUnit();
+  const isOccupied = unit.status === "occupied";
+
+  function handleArchive() {
+    archiveUnit({ propertyId, unitId: unit.id });
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground hover:bg-muted/80"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Actions for ${unit.name}`}
+          >
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-36" onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuItem
+            onClick={(e) => { e.stopPropagation(); onRename(); }}
+            className="gap-2 cursor-pointer"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Rename
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={(e) => { e.stopPropagation(); setConfirmOpen(true); }}
+            disabled={isOccupied || isPending}
+            className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {isOccupied ? "Occupied" : "Archive"}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={`Archive ${unit.name}?`}
+        description="The unit will be hidden from active listings. It can be restored by a superadmin."
+        variant="destructive"
+        confirmLabel="Archive Unit"
+        onConfirm={() => { setConfirmOpen(false); handleArchive(); }}
+      />
+    </>
   );
 }
 
@@ -132,11 +182,13 @@ const UnitCard = React.memo(function UnitCard({
   onSelect: () => void;
   onClick: () => void;
 }) {
+  const [renaming, setRenaming] = useState(false);
   const styles = STATUS_STYLES[unit.status];
+
   return (
     <div
       className={cn(
-        "relative rounded-[6px] border-2 p-4 cursor-pointer transition-all duration-150 hover:shadow-md",
+        "relative rounded-[6px] border-2 p-4 cursor-pointer transition-all duration-150 hover:shadow-md group",
         styles.card,
         selected && "ring-2 ring-primary ring-offset-2",
       )}
@@ -145,12 +197,10 @@ const UnitCard = React.memo(function UnitCard({
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onClick()}
     >
+      {/* Checkbox — top-left */}
       <div
         className="absolute top-2 left-2"
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect();
-        }}
+        onClick={(e) => { e.stopPropagation(); onSelect(); }}
       >
         <input
           type="checkbox"
@@ -160,21 +210,33 @@ const UnitCard = React.memo(function UnitCard({
           aria-label={`Select ${unit.name}`}
         />
       </div>
-      <div className="mt-3">
-        <div className="flex items-start justify-between gap-2">
-          <InlineName unit={unit} propertyId={propertyId} />
-          <span
-            className={cn(
-              "text-xs font-medium rounded-full px-2 py-0.5 capitalize shrink-0",
-              styles.badge,
-            )}
-          >
+
+      {/* Actions menu — top-right */}
+      <div className="absolute top-1.5 right-1.5" onClick={(e) => e.stopPropagation()}>
+        <UnitActionsMenu unit={unit} propertyId={propertyId} onRename={() => setRenaming(true)} />
+      </div>
+
+      <div className="mt-4">
+        {/* Name row */}
+        <div className="flex items-start gap-2 pr-1">
+          {renaming ? (
+            <InlineRenameInput unit={unit} propertyId={propertyId} onDone={() => setRenaming(false)} />
+          ) : (
+            <h3 className="font-semibold text-sm leading-tight flex-1 min-w-0 truncate">{unit.name}</h3>
+          )}
+        </div>
+
+        {/* Status badge */}
+        <div className="mt-1">
+          <span className={cn("text-xs font-medium rounded-full px-2 py-0.5 capitalize", styles.badge)}>
             {unit.status}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+
+        <p className="text-xs text-muted-foreground mt-1 capitalize">
           {unit.type.replace(/_/g, " ")}
         </p>
+
         {/* Uganda feature chips */}
         <div className="mt-1.5 flex flex-wrap gap-1">
           {unit.isSelfContained && (
@@ -189,6 +251,7 @@ const UnitCard = React.memo(function UnitCard({
             </span>
           )}
         </div>
+
         <div className="mt-2 flex items-end justify-between">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span className="flex items-center gap-0.5">
@@ -208,9 +271,7 @@ const UnitCard = React.memo(function UnitCard({
           </div>
           <p className="text-sm font-bold">
             {formatCurrency(unit.monthlyRent, unit.currency)}
-            <span className="text-xs font-normal text-muted-foreground">
-              /mo
-            </span>
+            <span className="text-xs font-normal text-muted-foreground">/mo</span>
           </p>
         </div>
       </div>
@@ -233,19 +294,15 @@ const UnitRow = React.memo(function UnitRow({
   onSelect: () => void;
   onClick: () => void;
 }) {
+  const [renaming, setRenaming] = useState(false);
   const styles = STATUS_STYLES[unit.status];
+
   return (
     <tr
       className="group border-b last:border-0 hover:bg-primary/5 cursor-pointer transition-colors"
       onClick={onClick}
     >
-      <td
-        className="py-3 px-4 w-8"
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect();
-        }}
-      >
+      <td className="py-3 px-4 w-8" onClick={(e) => { e.stopPropagation(); onSelect(); }}>
         <input
           type="checkbox"
           checked={selected}
@@ -257,11 +314,13 @@ const UnitRow = React.memo(function UnitRow({
       <td className="py-3 px-4">
         <div className="flex items-center gap-2">
           <span className={cn("h-2 w-2 rounded-full shrink-0", styles.dot)} />
-          <InlineName unit={unit} propertyId={propertyId} />
-          {unit.floor != null && (
-            <span className="text-xs text-muted-foreground">
-              Floor {unit.floor}
-            </span>
+          {renaming ? (
+            <InlineRenameInput unit={unit} propertyId={propertyId} onDone={() => setRenaming(false)} />
+          ) : (
+            <span className="font-medium text-sm">{unit.name}</span>
+          )}
+          {!renaming && unit.floor != null && (
+            <span className="text-xs text-muted-foreground">Floor {unit.floor}</span>
           )}
         </div>
       </td>
@@ -271,36 +330,21 @@ const UnitRow = React.memo(function UnitRow({
           {unit.isSelfContained && (
             <span className="text-[10px] rounded-full bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 px-1.5 py-0.5 font-medium">SC</span>
           )}
-          {unit.hasDomesticQuarters && (
-            <span className="chip">BQ</span>
-          )}
+          {unit.hasDomesticQuarters && <span className="chip">BQ</span>}
           {unit.furnishedStatus && unit.furnishedStatus !== "unfurnished" && (
-            <span className="chip">
-              {unit.furnishedStatus === "semi_furnished" ? "Semi" : "Furn."}
-            </span>
+            <span className="chip">{unit.furnishedStatus === "semi_furnished" ? "Semi" : "Furn."}</span>
           )}
         </div>
       </td>
       <td className="py-3 px-4">
-        <span
-          className={cn(
-            "text-xs font-medium rounded-full px-2 py-0.5 capitalize",
-            styles.badge,
-          )}
-        >
+        <span className={cn("text-xs font-medium rounded-full px-2 py-0.5 capitalize", styles.badge)}>
           {unit.status}
         </span>
       </td>
       <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">
         <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <BedDouble className="h-3.5 w-3.5" />
-            {unit.bedrooms}
-          </span>
-          <span className="flex items-center gap-1">
-            <Bath className="h-3.5 w-3.5" />
-            {unit.bathrooms}
-          </span>
+          <span className="flex items-center gap-1"><BedDouble className="h-3.5 w-3.5" />{unit.bedrooms}</span>
+          <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" />{unit.bathrooms}</span>
         </div>
       </td>
       <td className="py-3 px-4 text-sm text-muted-foreground hidden lg:table-cell">
@@ -310,8 +354,8 @@ const UnitRow = React.memo(function UnitRow({
         {formatCurrency(unit.monthlyRent, unit.currency)}
         <span className="text-xs font-normal text-muted-foreground">/mo</span>
       </td>
-      <td className="py-3 px-4 w-8">
-        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+      <td className="py-3 px-4 w-10" onClick={(e) => e.stopPropagation()}>
+        <UnitActionsMenu unit={unit} propertyId={propertyId} onRename={() => setRenaming(true)} />
       </td>
     </tr>
   );
@@ -335,8 +379,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
   const units = data?.data ?? [];
 
   const filtered = units.filter((u) => {
-    const matchesSearch =
-      !search || u.name.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = !search || u.name.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "all" || u.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -379,7 +422,6 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
           className="flex-1 min-w-[180px]"
         />
 
-        {/* Status filter */}
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as UnitStatus | "all")}>
           <SelectTrigger className="w-[130px]" aria-label="Filter by status">
             <SelectValue placeholder="All statuses" />
@@ -394,7 +436,6 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
           </SelectContent>
         </Select>
 
-        {/* View toggle */}
         <div className="flex items-center gap-1 rounded-[6px] border p-1">
           <Button
             variant={viewMode === "grid" ? "default" : "ghost"}
@@ -414,10 +455,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
           </Button>
         </div>
 
-        <Button
-          size="sm"
-          onClick={() => router.push(`/properties/${propertyId}/units/new`)}
-        >
+        <Button size="sm" onClick={() => router.push(`/properties/${propertyId}/units/new`)}>
           <Plus className="h-4 w-4" />
           Add Unit
         </Button>
@@ -457,10 +495,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
       {isLoading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-[6px] border-2 border-border p-4 space-y-2 animate-pulse"
-            >
+            <div key={i} className="rounded-[6px] border-2 border-border p-4 space-y-2 animate-pulse">
               <div className="h-4 bg-muted rounded w-2/3" />
               <div className="h-3 bg-muted rounded w-1/2" />
               <div className="h-5 bg-muted rounded w-1/3 mt-3" />
@@ -471,14 +506,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
         <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
           <p className="text-sm">No units match your filters</p>
           {(search || statusFilter !== "all") && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSearch("");
-                setStatusFilter("all");
-              }}
-            >
+            <Button variant="ghost" size="sm" onClick={() => { setSearch(""); setStatusFilter("all"); }}>
               Clear filters
             </Button>
           )}
@@ -506,7 +534,6 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
           </div>
         </div>
       ) : (
-        /* List view */
         <div className="rounded-[6px] border overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -514,38 +541,22 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
                 <th className="py-2.5 px-4 w-8 text-left">
                   <input
                     type="checkbox"
-                    checked={
-                      selected.size === filtered.length && filtered.length > 0
-                    }
+                    checked={selected.size === filtered.length && filtered.length > 0}
                     ref={(el) => {
-                      if (el)
-                        el.indeterminate =
-                          selected.size > 0 && selected.size < filtered.length;
+                      if (el) el.indeterminate = selected.size > 0 && selected.size < filtered.length;
                     }}
                     onChange={toggleSelectAll}
                     className="rounded border-border"
                     aria-label="Select all"
                   />
                 </th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">
-                  Unit
-                </th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden sm:table-cell">
-                  Type
-                </th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">
-                  Status
-                </th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">
-                  Beds / Baths
-                </th>
-                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden lg:table-cell">
-                  Area
-                </th>
-                <th className="py-2.5 px-4 text-right font-medium text-muted-foreground">
-                  Rent / mo
-                </th>
-                <th className="py-2.5 px-4 w-8" />
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">Unit</th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden sm:table-cell">Type</th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground">Status</th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden md:table-cell">Beds / Baths</th>
+                <th className="py-2.5 px-4 text-left font-medium text-muted-foreground hidden lg:table-cell">Area</th>
+                <th className="py-2.5 px-4 text-right font-medium text-muted-foreground">Rent / mo</th>
+                <th className="py-2.5 px-4 w-10" />
               </tr>
             </thead>
             <tbody>
@@ -562,8 +573,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
             </tbody>
           </table>
           <div className="px-4 py-2 border-t bg-primary/5 text-xs text-muted-foreground">
-            {filtered.length} of {units.length} unit
-            {units.length !== 1 ? "s" : ""}
+            {filtered.length} of {units.length} unit{units.length !== 1 ? "s" : ""}
           </div>
         </div>
       )}
