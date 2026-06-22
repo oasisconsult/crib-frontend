@@ -61,6 +61,21 @@ export const propertiesApi = {
   bulkCreateUnits: (propertyId: string, units: Omit<Unit, "id" | "propertyId" | "createdAt" | "updatedAt">[]) =>
     apiPost<Unit[]>(`/properties/${propertyId}/units/batch`, { units }),
 
+  batchRenameUnits: (
+    propertyId: string,
+    unitIds: string[],
+    prefix: string,
+    startNumber = 1,
+    padding = 3,
+    separator = " ",
+  ) =>
+    apiPost<{ renamed: number; names: string[] }>(`/properties/${propertyId}/units/batch-rename`, {
+      unitIds, prefix, startNumber, padding, separator,
+    }),
+
+  batchDeleteUnits: (propertyId: string, unitIds: string[]) =>
+    apiPost<{ deleted: number; skippedOccupied: string[] }>(`/properties/${propertyId}/units/batch-delete`, { unitIds }),
+
   // GeoBox geocode resolution
   getGeocode: (propertyId: string) =>
     apiGet<ResolvedGeocode>(`/properties/${propertyId}/geocode`),

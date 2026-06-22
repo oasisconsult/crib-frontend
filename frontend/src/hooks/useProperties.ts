@@ -247,6 +247,49 @@ export function useBulkUpdateUnits() {
   });
 }
 
+export function useBatchRenameUnits() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      propertyId,
+      unitIds,
+      prefix,
+      startNumber,
+      padding,
+      separator,
+    }: {
+      propertyId: string;
+      unitIds: string[];
+      prefix: string;
+      startNumber?: number;
+      padding?: number;
+      separator?: string;
+    }) => propertiesApi.batchRenameUnits(propertyId, unitIds, prefix, startNumber, padding, separator),
+    onSuccess: (data, { propertyId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.properties.units(propertyId) });
+      toast.success(`${data.renamed} unit${data.renamed !== 1 ? "s" : ""} renamed`);
+    },
+    onError: () => toast.error("Failed to rename units"),
+  });
+}
+
+export function useBatchDeleteUnits() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ propertyId, unitIds }: { propertyId: string; unitIds: string[] }) =>
+      propertiesApi.batchDeleteUnits(propertyId, unitIds),
+    onSuccess: (data, { propertyId }) => {
+      qc.invalidateQueries({ queryKey: queryKeys.properties.units(propertyId) });
+      qc.invalidateQueries({ queryKey: queryKeys.properties.detail(propertyId) });
+      const msg = data.skippedOccupied.length
+        ? `${data.deleted} deleted. Skipped occupied: ${data.skippedOccupied.join(", ")}`
+        : `${data.deleted} unit${data.deleted !== 1 ? "s" : ""} deleted`;
+      toast.success(msg);
+    },
+    onError: () => toast.error("Failed to delete units"),
+  });
+}
+
 export function useVillageSearch(query: string) {
   return useQuery({
     queryKey: ["geobox", "villages", query.trim().toLowerCase()],

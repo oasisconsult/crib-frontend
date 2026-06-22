@@ -333,6 +333,82 @@ async def test_bulk_update_units(client: AsyncClient, prop, db_session):
     assert rents[str(u2.id)] == 500000
 
 
+@pytest.mark.asyncio
+async def test_batch_rename_units(client: AsyncClient, prop, db_session):
+    u1 = await make_unit(db_session, prop, name="Old-1", monthly_rent=300_000)
+    u2 = await make_unit(db_session, prop, name="Old-2", monthly_rent=300_000)
+    u3 = await make_unit(db_session, prop, name="Old-3", monthly_rent=300_000)
+
+    resp = await client.post(
+        f"/api/v1/properties/{prop.id}/units/batch-rename",
+        headers=auth_headers("manager-1"),
+        json={"unitIds": [str(u1.id), str(u2.id), str(u3.id)], "prefix": "Room", "startNumber": 1, "padding": 3},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["renamed"] == 3
+    assert body["names"] == ["Room 001", "Room 002", "Room 003"]
+
+
+@pytest.mark.asyncio
+async def test_batch_rename_custom_start_and_separator(client: AsyncClient, prop, db_session):
+    u1 = await make_unit(db_session, prop, name="X1", monthly_rent=300_000)
+    u2 = await make_unit(db_session, prop, name="X2", monthly_rent=300_000)
+
+    resp = await client.post(
+        f"/api/v1/properties/{prop.id}/units/batch-rename",
+        headers=auth_headers("manager-1"),
+        json={"unitIds": [str(u1.id), str(u2.id)], "prefix": "Unit", "startNumber": 5, "padding": 2, "separator": "-"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["names"] == ["Unit-05", "Unit-06"]
+
+
+@pytest.mark.asyncio
+async def test_batch_delete_vacant_units(client: AsyncClient, prop, db_session):
+    u1 = await make_unit(db_session, prop, name="Del-1", monthly_rent=300_000)
+    u2 = await make_unit(db_session, prop, name="Del-2", monthly_rent=300_000)
+
+    resp = await client.post(
+        f"/api/v1/properties/{prop.id}/units/batch-delete",
+        headers=auth_headers("manager-1"),
+        json={"unitIds": [str(u1.id), str(u2.id)]},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["deleted"] == 2
+    assert body["skippedOccupied"] == []
+
+    # Confirm units are soft-deleted (not returned in list)
+    list_resp = await client.get(
+        f"/api/v1/properties/{prop.id}/units",
+        headers=auth_headers("manager-1"),
+    )
+    unit_ids = [u["id"] for u in list_resp.json()["data"]]
+    assert str(u1.id) not in unit_ids
+    assert str(u2.id) not in unit_ids
+
+
+@pytest.mark.asyncio
+async def test_batch_delete_skips_occupied(client: AsyncClient, prop, db_session):
+    """Occupied units in the batch are skipped; vacant ones are deleted."""
+    from app.models.property import UnitStatus
+    vacant = await make_unit(db_session, prop, name="Vacant-1", monthly_rent=300_000)
+    occupied = await make_unit(db_session, prop, name="Occupied-1", monthly_rent=300_000)
+    occupied.status = UnitStatus.occupied
+    await db_session.flush()
+
+    resp = await client.post(
+        f"/api/v1/properties/{prop.id}/units/batch-delete",
+        headers=auth_headers("manager-1"),
+        json={"unitIds": [str(vacant.id), str(occupied.id)]},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["deleted"] == 1
+    assert "Occupied-1" in body["skippedOccupied"]
+
+
 # ── Auth / RBAC ───────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio

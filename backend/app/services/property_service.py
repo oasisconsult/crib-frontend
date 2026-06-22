@@ -26,6 +26,10 @@ from app.models.property import (
 )
 from app.utils.references import build_ref, next_seq
 from app.schemas.property import (
+    BatchDeleteResult,
+    BatchDeleteUnits,
+    BatchRenameResult,
+    BatchRenameUnits,
     BatchUnitCreate,
     BulkUnitUpdate,
     PropertyCreate,
@@ -666,6 +670,57 @@ async def bulk_update_units(
     for u in units_loaded:
         await db.refresh(u)
     return [_unit_out(u) for u in units_loaded]
+
+
+async def batch_rename_units(
+    prop_id: uuid.UUID, body: BatchRenameUnits, org_id: uuid.UUID | None, db: AsyncSession
+) -> BatchRenameResult:
+    """Rename a set of units using a sequential prefix pattern (e.g. 'Room 001', 'Room 002')."""
+    await get_property(prop_id, org_id, db)
+
+    unit_uuids = [uuid.UUID(uid) for uid in body.unit_ids]
+    units = (await db.execute(
+        select(Unit)
+        .where(Unit.id.in_(unit_uuids), Unit.property_id == prop_id, Unit.deleted_at.is_(None))
+        .order_by(Unit.created_at)
+    )).scalars().all()
+
+    generated: list[str] = []
+    for i, unit in enumerate(units):
+        num = body.start_number + i
+        name = f"{body.prefix}{body.separator}{str(num).zfill(body.padding)}"
+        unit.name = name
+        generated.append(name)
+
+    await db.flush()
+    return BatchRenameResult(renamed=len(units), names=generated)
+
+
+async def batch_delete_units(
+    prop_id: uuid.UUID, body: BatchDeleteUnits, org_id: uuid.UUID | None, db: AsyncSession
+) -> BatchDeleteResult:
+    """Soft-delete multiple units. Occupied units are skipped and reported."""
+    await get_property(prop_id, org_id, db)
+
+    unit_uuids = [uuid.UUID(uid) for uid in body.unit_ids]
+    units = (await db.execute(
+        select(Unit)
+        .where(Unit.id.in_(unit_uuids), Unit.property_id == prop_id, Unit.deleted_at.is_(None))
+    )).scalars().all()
+
+    deleted = 0
+    skipped_occupied: list[str] = []
+    now = datetime.now(timezone.utc)
+
+    for unit in units:
+        if unit.status == UnitStatus.occupied:
+            skipped_occupied.append(unit.name)
+        else:
+            unit.deleted_at = now
+            deleted += 1
+
+    await db.flush()
+    return BatchDeleteResult(deleted=deleted, skipped_occupied=skipped_occupied)
 
 
 async def delete_unit(

@@ -278,6 +278,28 @@ class BatchUnitCreate(CamelModel):
     units: list[UnitCreate]
 
 
+class BatchRenameUnits(CamelModel):
+    unit_ids: list[str]
+    prefix: str = Field(min_length=1, max_length=80)
+    start_number: int = Field(default=1, ge=1)
+    padding: int = Field(default=3, ge=1, le=5)
+    separator: str = Field(default=" ", max_length=5)
+
+
+class BatchRenameResult(CamelModel):
+    renamed: int
+    names: list[str]
+
+
+class BatchDeleteUnits(CamelModel):
+    unit_ids: list[str]
+
+
+class BatchDeleteResult(CamelModel):
+    deleted: int
+    skipped_occupied: list[str]
+
+
 class UnitOut(CamelModel):
     id: str
     reference: str | None = None

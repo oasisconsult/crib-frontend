@@ -39,6 +39,10 @@ from app.services.policy_service import require_permission
 
 from app.schemas.common import PaginatedResponse
 from app.schemas.property import (
+    BatchDeleteResult,
+    BatchDeleteUnits,
+    BatchRenameResult,
+    BatchRenameUnits,
     BatchUnitCreate,
     BulkUnitUpdate,
     PropertyCreate,
@@ -302,6 +306,59 @@ async def bulk_update_units(
     db: AsyncSession = Depends(get_db),
 ):
     return await svc.bulk_update_units(property_id, body, get_org_id(current_user), db)
+
+
+@router.post("/{property_id}/units/batch-rename", response_model=BatchRenameResult)
+async def batch_rename_units(
+    property_id: uuid.UUID,
+    body: BatchRenameUnits,
+    request: Request,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """Rename selected units using a sequential prefix pattern (e.g. 'Room 001', 'Room 002')."""
+    org_id = get_org_id(current_user)
+    result = await svc.batch_rename_units(property_id, body, org_id, db)
+    await audit_service.append(
+        db,
+        organisation_id=org_id,
+        actor_id=current_user.id,
+        actor_role=next(iter(current_user.roles), None),
+        resource_type="unit",
+        resource_id=None,
+        resource_label=f"{body.prefix} (batch rename, {result.renamed} units)",
+        action="unit.batch_renamed",
+        event_data={"property_id": str(property_id), "prefix": body.prefix, "count": result.renamed},
+        request=request,
+    )
+    return result
+
+
+@router.post("/{property_id}/units/batch-delete", response_model=BatchDeleteResult)
+async def batch_delete_units(
+    property_id: uuid.UUID,
+    body: BatchDeleteUnits,
+    request: Request,
+    current_user: CurrentUser = _write,
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-delete multiple units. Occupied units are skipped and reported."""
+    org_id = get_org_id(current_user)
+    result = await svc.batch_delete_units(property_id, body, org_id, db)
+    if result.deleted > 0:
+        await audit_service.append(
+            db,
+            organisation_id=org_id,
+            actor_id=current_user.id,
+            actor_role=next(iter(current_user.roles), None),
+            resource_type="unit",
+            resource_id=None,
+            resource_label=f"batch delete ({result.deleted} units)",
+            action="unit.batch_deleted",
+            event_data={"property_id": str(property_id), "count": result.deleted, "skipped": result.skipped_occupied},
+            request=request,
+        )
+    return result
 
 
 @router.post("/{property_id}/units", response_model=UnitOut, status_code=status.HTTP_201_CREATED)

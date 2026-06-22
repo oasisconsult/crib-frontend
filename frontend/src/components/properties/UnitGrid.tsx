@@ -11,16 +11,16 @@ import {
   BedDouble,
   Bath,
   Maximize2,
+  Pencil,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BulkOperationsBar } from "./BulkOperationsBar";
 import { FilterBar } from "@/components/common/FilterBar";
 import { formatCurrency } from "@/utils/formatters";
 import { cn } from "@/utils/cn";
-import { useUnits } from "@/hooks/useProperties";
+import { useUnits, useUpdateUnit } from "@/hooks/useProperties";
 import type { Unit, UnitStatus } from "@/types";
 
 const STATUS_STYLES: Record<
@@ -59,15 +59,75 @@ const ALL_STATUSES: UnitStatus[] = [
   "maintenance",
 ];
 
+// ── Inline rename ─────────────────────────────────────────────────────────────
+
+function InlineName({
+  unit,
+  propertyId,
+  className,
+}: {
+  unit: Unit;
+  propertyId: string;
+  className?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(unit.name);
+  const { mutate: updateUnit, isPending } = useUpdateUnit();
+
+  function commit() {
+    const trimmed = draft.trim();
+    if (!trimmed || trimmed === unit.name) {
+      setDraft(unit.name);
+      setEditing(false);
+      return;
+    }
+    updateUnit(
+      { propertyId, unitId: unit.id, data: { name: trimmed } },
+      { onSuccess: () => setEditing(false), onError: () => { setDraft(unit.name); setEditing(false); } },
+    );
+  }
+
+  if (editing) {
+    return (
+      <input
+        className={cn("border rounded px-1 py-0.5 text-sm font-semibold leading-tight bg-background outline-none focus:ring-1 focus:ring-primary w-full", className)}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); commit(); }
+          if (e.key === "Escape") { setDraft(unit.name); setEditing(false); }
+        }}
+        disabled={isPending}
+        autoFocus
+        onClick={(e) => e.stopPropagation()}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={cn("group/name flex items-center gap-1 cursor-text", className)}
+      onClick={(e) => { e.stopPropagation(); setDraft(unit.name); setEditing(true); }}
+      title="Click to rename"
+    >
+      <span className="font-semibold text-sm leading-tight">{unit.name}</span>
+      <Pencil className="h-3 w-3 opacity-0 group-hover/name:opacity-40 transition-opacity shrink-0" />
+    </span>
+  );
+}
+
 // ── Grid card ─────────────────────────────────────────────────────────────────
 
 const UnitCard = React.memo(function UnitCard({
   unit,
+  propertyId,
   selected,
   onSelect,
   onClick,
 }: {
   unit: Unit;
+  propertyId: string;
   selected: boolean;
   onSelect: () => void;
   onClick: () => void;
@@ -102,7 +162,7 @@ const UnitCard = React.memo(function UnitCard({
       </div>
       <div className="mt-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-sm leading-tight">{unit.name}</h3>
+          <InlineName unit={unit} propertyId={propertyId} />
           <span
             className={cn(
               "text-xs font-medium rounded-full px-2 py-0.5 capitalize shrink-0",
@@ -162,11 +222,13 @@ const UnitCard = React.memo(function UnitCard({
 
 const UnitRow = React.memo(function UnitRow({
   unit,
+  propertyId,
   selected,
   onSelect,
   onClick,
 }: {
   unit: Unit;
+  propertyId: string;
   selected: boolean;
   onSelect: () => void;
   onClick: () => void;
@@ -195,7 +257,7 @@ const UnitRow = React.memo(function UnitRow({
       <td className="py-3 px-4">
         <div className="flex items-center gap-2">
           <span className={cn("h-2 w-2 rounded-full shrink-0", styles.dot)} />
-          <span className="font-medium text-sm">{unit.name}</span>
+          <InlineName unit={unit} propertyId={propertyId} />
           {unit.floor != null && (
             <span className="text-xs text-muted-foreground">
               Floor {unit.floor}
@@ -435,6 +497,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
               <UnitCard
                 key={unit.id}
                 unit={unit}
+                propertyId={propertyId}
                 selected={selected.has(unit.id)}
                 onSelect={() => toggleSelect(unit.id)}
                 onClick={() => navigateTo(unit.id)}
@@ -490,6 +553,7 @@ export function UnitGrid({ propertyId }: UnitGridProps) {
                 <UnitRow
                   key={unit.id}
                   unit={unit}
+                  propertyId={propertyId}
                   selected={selected.has(unit.id)}
                   onSelect={() => toggleSelect(unit.id)}
                   onClick={() => navigateTo(unit.id)}
