@@ -144,14 +144,14 @@ async def _advance_payment_months(
 ) -> int:
     """Effective advance months: lease override → unit rules → property rules → system setting."""
     if lease is not None and lease.advance_months is not None:
-        return max(1, lease.advance_months)
+        return max(0, lease.advance_months)
     rules = unit.rules or prop.rules or {}
     # Check both legacy key and the key used by PropertyRulesSchema
     for key in ("advanceRentMonths", "advancePaymentMonths", "advance_rent_months"):
         if key in rules:
-            return max(1, int(rules[key]))
+            return max(0, int(rules[key]))
     val = await _get_setting("payments.advance_payment_months", "1", db)
-    return max(1, int(val))
+    return max(0, int(val))
 
 
 # ── Snapshot builder ──────────────────────────────────────────────────────────

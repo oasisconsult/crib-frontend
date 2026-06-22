@@ -27,7 +27,7 @@ const rulesSchema = z.object({
   lateFeeValue: z.number().min(0),
   lateFeeCapAmount: z.number().optional(),
   depositMonths: z.number().min(0).max(6),
-  advanceRentMonths: z.number().min(1).max(6),
+  advanceRentMonths: z.number().min(0).max(6),
   minimumLeaseMonths: z.number().min(1).max(60),
   maxOccupants: z.number().min(1).max(20),
   noticePeriodDays: z.number().min(7).max(180),

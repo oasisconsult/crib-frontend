@@ -37,8 +37,8 @@ class PropertyRulesSchema(CamelModel):
     late_fee_value: float = Field(default=50.0, ge=0)
     late_fee_cap_amount: float | None = None
     deposit_months: int = Field(default=1, ge=0, le=6)
-    advance_rent_months: int = Field(default=1, ge=1, le=6)
-    minimum_lease_months: int = Field(default=6, ge=1, le=60)
+    advance_rent_months: int = Field(default=0, ge=0, le=6)  # 0 = no advance required
+    minimum_lease_months: int = Field(default=1, ge=1, le=60)
     max_occupants: int = Field(default=2, ge=1, le=20)
     notice_period_days: int = Field(default=30, ge=7, le=180)
     allow_subletting: bool = False

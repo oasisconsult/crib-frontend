@@ -263,9 +263,8 @@ async def get_lease(lease_id: uuid.UUID, org_id: uuid.UUID | None, db: AsyncSess
                     rules = getattr(u, "rules", None) or {}
                 if not rules:
                     rules = p.rules or {}
-                effective_advance_months = int(
-                    rules.get("advanceRentMonths") or rules.get("advance_rent_months") or 1
-                )
+                _adv = rules.get("advanceRentMonths", rules.get("advance_rent_months"))
+                effective_advance_months = int(_adv) if _adv is not None else 0
 
     return _lease_out(
         lease,

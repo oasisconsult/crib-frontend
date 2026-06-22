@@ -116,13 +116,13 @@ async def resolve_advance_months(
     specific unit (e.g. a premium unit requiring more upfront).
     """
     if lease.advance_months is not None:
-        return max(1, lease.advance_months)
+        return max(0, lease.advance_months)
     rules = (unit.rules if unit else None) or (prop.rules if prop else None) or {}
     for key in ("advanceRentMonths", "advancePaymentMonths", "advance_rent_months"):
         if key in rules:
-            return max(1, int(rules[key]))
+            return max(0, int(rules[key]))
     val = await _get_setting("payments.advance_payment_months", "1", db)
-    return max(1, int(val))
+    return max(0, int(val))
 
 
 # ── Anchor / paid-through computation ─────────────────────────────────────────
