@@ -18,7 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_superadmin
 from app.core.database import get_db
 from app.models.profile import Profile
-from app.models.rbac import RoleModel
 from app.schemas.common import CamelModel
 
 router = APIRouter(prefix="/admin/user-roles", tags=["admin"])
@@ -79,12 +78,10 @@ def _profile_to_out(p: Profile) -> AdminUserOut:
     response_model=list[str],
     dependencies=[Depends(require_superadmin())],
 )
-async def list_available_roles(db: AsyncSession = Depends(get_db)) -> list[str]:
+async def list_available_roles() -> list[str]:
     """Return all Crib role names in priority order."""
-    rows = await db.execute(
-        select(RoleModel.name).order_by(RoleModel.priority)
-    )
-    return [row[0] for row in rows]
+    from app.services.rbac_admin_service import list_role_names_ordered
+    return await list_role_names_ordered()
 
 
 @router.get(
@@ -180,11 +177,9 @@ async def assign_role(
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    # Validate that the role exists in the Crib roles table
-    role_exists = await db.scalar(
-        select(RoleModel.id).where(RoleModel.name == body.role_name)
-    )
-    if not role_exists:
+    # Validate that the role exists in the shared RBAC DB
+    from app.services.rbac_admin_service import is_valid_crib_role
+    if not await is_valid_crib_role(body.role_name):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Role '{body.role_name}' is not a valid Crib role",

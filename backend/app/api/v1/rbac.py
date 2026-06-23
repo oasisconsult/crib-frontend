@@ -1,33 +1,43 @@
 """
 RBAC admin endpoints — superadmin only.
 
-Manage roles, resources, and permission assignments at runtime without
-requiring code deploys.
+All role and permission data is read from and written to the shared RBAC
+database (rbac_roles, rbac_resources, rbac_permissions, rbac_role_permissions)
+via the geobox-rbac RoleService.  The local `roles`/`resources`/`permissions`
+tables remain in place but are no longer authoritative.
 
 Endpoints:
-  GET  /admin/rbac/roles                        — list all roles with their permission sets
+  GET  /admin/rbac/roles                        — list all roles
   POST /admin/rbac/roles                        — create a new role
-  GET  /admin/rbac/roles/{role_id}              — single role detail
+  GET  /admin/rbac/roles/{role_id}              — single role detail with permissions
   DELETE /admin/rbac/roles/{role_id}            — delete a custom role
-  GET  /admin/rbac/roles/{role_id}/permissions  — list permissions for a role
+  GET  /admin/rbac/roles/{role_id}/permissions  — permissions for a role
   PUT  /admin/rbac/roles/{role_id}/permissions  — replace full permission set (bulk)
   POST /admin/rbac/roles/{role_id}/permissions  — grant a single permission
-  DELETE /admin/rbac/roles/{role_id}/permissions/{perm_id} — revoke a single permission
-  GET  /admin/rbac/resources                    — list all resources + available actions
+  DELETE /admin/rbac/roles/{role_id}/permissions/{perm_id} — revoke a permission
+  GET  /admin/rbac/resources                    — list resources + available actions
   POST /admin/rbac/resources                    — register a new resource
 """
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
-from sqlalchemy import delete, select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from rbac.models.role import Permission, Resource, Role, RolePermission
+from rbac.services.role_service import RoleService
+
 from app.api.deps import CurrentUser, require_superadmin
-from app.core.database import get_db
-from app.models.rbac import Permission, Resource, RoleModel, RolePermission
-from app.services.policy_service import invalidate_role_cache
+from app.services.rbac_admin_service import (
+    get_role_service,
+    invalidate_priority_cache,
+    list_resources_rbac,
+    permission_detail_rbac,
+)
 
 router = APIRouter(prefix="/admin/rbac", tags=["admin"])
 _super = Depends(require_superadmin())
@@ -38,25 +48,35 @@ _super = Depends(require_superadmin())
 
 class RoleCreate(BaseModel):
     name: str = Field(..., max_length=50)
+    display_name: str | None = Field(None, max_length=100)
     description: str | None = None
     priority: int = Field(99, ge=0, le=999)
 
 
 class RoleOut(BaseModel):
-    id: int
+    id: str           # UUID string from shared RBAC DB
     name: str
+    display_name: str | None
     description: str | None
     priority: int
+    is_system: bool
 
-    model_config = {"from_attributes": True}
+    @classmethod
+    def from_role(cls, r: Role) -> "RoleOut":
+        return cls(
+            id=str(r.id),
+            name=r.name,
+            display_name=r.display_name,
+            description=r.description,
+            priority=r.priority,
+            is_system=r.is_system,
+        )
 
 
 class PermissionOut(BaseModel):
-    id: int
+    id: str           # UUID string
     resource: str
     action: str
-
-    model_config = {"from_attributes": True}
 
 
 class RoleDetailOut(RoleOut):
@@ -64,17 +84,14 @@ class RoleDetailOut(RoleOut):
 
 
 class PermissionRef(BaseModel):
-    """Lightweight permission descriptor — id + action, no resource name repetition."""
-    id: int
+    id: str           # UUID string
     action: str
 
 
 class ResourceOut(BaseModel):
-    id: int
+    id: str           # UUID string
     name: str
-    permissions: list[PermissionRef]  # id+action pairs for each available action
-
-    model_config = {"from_attributes": True}
+    permissions: list[PermissionRef]
 
 
 class ResourceCreate(BaseModel):
@@ -83,38 +100,36 @@ class ResourceCreate(BaseModel):
 
 class BulkPermissionSet(BaseModel):
     """Replace all permissions for a role with this exact set."""
-    permissions: list[int] = Field(..., description="List of permission IDs to grant")
+    permissions: list[str] = Field(..., description="Permission UUID strings to grant")
 
 
 class GrantPermission(BaseModel):
-    permission_id: int
+    permission_id: str   # UUID string
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-async def _get_role_or_404(role_id: int, db: AsyncSession) -> RoleModel:
-    result = await db.execute(select(RoleModel).where(RoleModel.id == role_id))
-    role = result.scalar_one_or_none()
+def _uuid(value: str, label: str = "ID") -> UUID:
+    try:
+        return UUID(value)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid {label}: '{value}' is not a valid UUID",
+        )
+
+
+async def _get_role_or_404(role_id: str, svc: RoleService) -> Role:
+    role = await svc.get_role(_uuid(role_id, "role_id"))
     if role is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role not found")
     return role
 
 
-async def _permission_detail(
-    db: AsyncSession, role: RoleModel
-) -> list[PermissionOut]:
-    result = await db.execute(
-        select(Resource.name, Permission.action, Permission.id)
-        .join(Permission, Permission.resource_id == Resource.id)
-        .join(RolePermission, RolePermission.permission_id == Permission.id)
-        .where(RolePermission.role_id == role.id)
-        .order_by(Resource.name, Permission.action)
-    )
-    return [
-        PermissionOut(id=row.id, resource=row.name, action=row.action)
-        for row in result
-    ]
+async def _permission_out(svc: RoleService, role_id: UUID) -> list[PermissionOut]:
+    rows = await permission_detail_rbac(svc.db, role_id)
+    return [PermissionOut(id=perm_id, resource=resource, action=action) for resource, action, perm_id in rows]
 
 
 # ── Roles ─────────────────────────────────────────────────────────────────────
@@ -123,70 +138,68 @@ async def _permission_detail(
 @router.get("/roles", response_model=list[RoleOut])
 async def list_roles(
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    """List all roles ordered by priority."""
-    result = await db.execute(select(RoleModel).order_by(RoleModel.priority))
-    return [RoleOut.model_validate(r) for r in result.scalars()]
+    roles = await svc.list_roles()
+    return [RoleOut.from_role(r) for r in roles]
 
 
 @router.post("/roles", response_model=RoleOut, status_code=status.HTTP_201_CREATED)
 async def create_role(
     body: RoleCreate,
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    """Create a new role. The role has no permissions until assigned."""
-    existing = await db.execute(select(RoleModel).where(RoleModel.name == body.name))
-    if existing.scalar_one_or_none():
+    # Check for name collision
+    existing = await svc.db.scalar(
+        select(Role).where(Role.app_id == svc.app_id, Role.name == body.name)
+    )
+    if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Role '{body.name}' already exists",
         )
-    role = RoleModel(name=body.name, description=body.description, priority=body.priority)
-    db.add(role)
-    await db.flush()
-    await db.refresh(role)
-    return RoleOut.model_validate(role)
+    role = await svc.create_role(
+        name=body.name,
+        display_name=body.display_name,
+        description=body.description,
+        priority=body.priority,
+    )
+    invalidate_priority_cache()
+    return RoleOut.from_role(role)
 
 
 @router.get("/roles/{role_id}", response_model=RoleDetailOut)
 async def get_role(
-    role_id: int,
+    role_id: str,
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    """Return a role with its full permission list."""
-    role = await _get_role_or_404(role_id, db)
-    perms = await _permission_detail(db, role)
+    role = await _get_role_or_404(role_id, svc)
+    perms = await _permission_out(svc, role.id)
     return RoleDetailOut(
-        id=role.id,
+        id=str(role.id),
         name=role.name,
+        display_name=role.display_name,
         description=role.description,
         priority=role.priority,
+        is_system=role.is_system,
         permissions=perms,
     )
 
 
 @router.delete("/roles/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_role(
-    role_id: int,
+    role_id: str,
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    """
-    Delete a role and all its permission assignments.
-    Built-in roles (superadmin, owner, manager, tenant, maintenance) cannot be deleted.
-    """
-    role = await _get_role_or_404(role_id, db)
-    _BUILTIN = {"superadmin", "owner", "manager", "tenant", "maintenance"}
-    if role.name in _BUILTIN:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Built-in role '{role.name}' cannot be deleted",
-        )
-    invalidate_role_cache(role.name)
-    await db.delete(role)
+    role = await _get_role_or_404(role_id, svc)
+    try:
+        await svc.delete_role(role)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    invalidate_priority_cache()
 
 
 # ── Role permissions ──────────────────────────────────────────────────────────
@@ -194,49 +207,44 @@ async def delete_role(
 
 @router.get("/roles/{role_id}/permissions", response_model=list[PermissionOut])
 async def list_role_permissions(
-    role_id: int,
+    role_id: str,
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    role = await _get_role_or_404(role_id, db)
-    return await _permission_detail(db, role)
+    role = await _get_role_or_404(role_id, svc)
+    return await _permission_out(svc, role.id)
 
 
 @router.put("/roles/{role_id}/permissions", response_model=list[PermissionOut])
 async def replace_role_permissions(
-    role_id: int,
+    role_id: str,
     body: BulkPermissionSet,
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    """
-    Replace the full permission set for a role atomically.
-    Any permissions not in the list are revoked; any new ones are granted.
-    """
-    role = await _get_role_or_404(role_id, db)
+    """Atomically replace a role's full permission set."""
+    role = await _get_role_or_404(role_id, svc)
 
-    # Verify all permission IDs exist
-    perm_result = await db.execute(
-        select(Permission.id).where(Permission.id.in_(body.permissions))
-    )
-    found_ids = {row.id for row in perm_result}
-    missing = set(body.permissions) - found_ids
-    if missing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unknown permission IDs: {sorted(missing)}",
+    perm_uuids = [_uuid(p, "permission_id") for p in body.permissions]
+
+    # Verify all permission IDs belong to this app
+    if perm_uuids:
+        found = await svc.db.execute(
+            select(Permission.id).where(
+                Permission.id.in_(perm_uuids),
+                Permission.app_id == svc.app_id,
+            )
         )
+        found_ids = {row.id for row in found}
+        missing = set(perm_uuids) - found_ids
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Unknown permission IDs: {[str(m) for m in missing]}",
+            )
 
-    # Delete all existing assignments for this role
-    await db.execute(delete(RolePermission).where(RolePermission.role_id == role_id))
-
-    # Insert new assignments
-    for perm_id in body.permissions:
-        db.add(RolePermission(role_id=role_id, permission_id=perm_id))
-
-    await db.flush()
-    invalidate_role_cache(role.name)
-    return await _permission_detail(db, role)
+    await svc.replace_role_permissions(role, perm_uuids)
+    return await _permission_out(svc, role.id)
 
 
 @router.post(
@@ -245,38 +253,27 @@ async def replace_role_permissions(
     status_code=status.HTTP_201_CREATED,
 )
 async def grant_permission(
-    role_id: int,
+    role_id: str,
     body: GrantPermission,
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    """Grant a single permission to a role."""
-    role = await _get_role_or_404(role_id, db)
+    role = await _get_role_or_404(role_id, svc)
 
-    perm_result = await db.execute(
-        select(Permission, Resource.name.label("resource_name"))
+    perm = await svc.db.scalar(
+        select(Permission)
         .join(Resource, Resource.id == Permission.resource_id)
-        .where(Permission.id == body.permission_id)
+        .where(Permission.id == _uuid(body.permission_id, "permission_id"), Permission.app_id == svc.app_id)
     )
-    row = perm_result.one_or_none()
-    if row is None:
+    if perm is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Permission not found")
 
-    perm, resource_name = row
+    await svc.grant_permission(role, perm)
 
-    # Idempotent — don't error on duplicate
-    existing = await db.execute(
-        select(RolePermission).where(
-            RolePermission.role_id == role_id,
-            RolePermission.permission_id == body.permission_id,
-        )
+    resource_name = await svc.db.scalar(
+        select(Resource.name).where(Resource.id == perm.resource_id)
     )
-    if not existing.scalar_one_or_none():
-        db.add(RolePermission(role_id=role_id, permission_id=body.permission_id))
-        await db.flush()
-
-    invalidate_role_cache(role.name)
-    return PermissionOut(id=perm.id, resource=resource_name, action=perm.action)
+    return PermissionOut(id=str(perm.id), resource=resource_name or "", action=perm.action)
 
 
 @router.delete(
@@ -284,20 +281,23 @@ async def grant_permission(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def revoke_permission(
-    role_id: int,
-    permission_id: int,
+    role_id: str,
+    permission_id: str,
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    """Revoke a single permission from a role."""
-    role = await _get_role_or_404(role_id, db)
-    await db.execute(
-        delete(RolePermission).where(
-            RolePermission.role_id == role_id,
-            RolePermission.permission_id == permission_id,
+    role = await _get_role_or_404(role_id, svc)
+
+    perm = await svc.db.scalar(
+        select(Permission).where(
+            Permission.id == _uuid(permission_id, "permission_id"),
+            Permission.app_id == svc.app_id,
         )
     )
-    invalidate_role_cache(role.name)
+    if perm is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Permission not found")
+
+    await svc.revoke_permission(role, perm)
 
 
 # ── Resources ─────────────────────────────────────────────────────────────────
@@ -306,60 +306,46 @@ async def revoke_permission(
 @router.get("/resources", response_model=list[ResourceOut])
 async def list_resources(
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    """List all resources with their available actions and permission IDs."""
-    result = await db.execute(
-        select(Resource.id, Resource.name, Permission.id.label("perm_id"), Permission.action)
-        .join(Permission, Permission.resource_id == Resource.id)
-        .order_by(Resource.name, Permission.action)
-    )
-    resources: dict[int, ResourceOut] = {}
-    for row in result:
-        if row.id not in resources:
-            resources[row.id] = ResourceOut(id=row.id, name=row.name, permissions=[])
-        resources[row.id].permissions.append(PermissionRef(id=row.perm_id, action=row.action))
-    return list(resources.values())
+    rows = await list_resources_rbac(svc.db, svc.app_id)
+    return [
+        ResourceOut(
+            id=r["id"],
+            name=r["name"],
+            permissions=[PermissionRef(id=p["id"], action=p["action"]) for p in r["permissions"]],
+        )
+        for r in rows
+    ]
 
 
 @router.post("/resources", response_model=ResourceOut, status_code=status.HTTP_201_CREATED)
 async def create_resource(
     body: ResourceCreate,
     _: CurrentUser = _super,
-    db: AsyncSession = Depends(get_db),
+    svc: RoleService = Depends(get_role_service),
 ):
-    """
-    Register a new resource and auto-generate CRUD permissions for it.
-    The superadmin role is automatically granted all four actions.
-    """
-    existing = await db.execute(select(Resource).where(Resource.name == body.name))
-    if existing.scalar_one_or_none():
+    """Register a new resource with auto-generated CRUD permissions."""
+    existing = await svc.db.scalar(
+        select(Resource).where(Resource.app_id == svc.app_id, Resource.name == body.name)
+    )
+    if existing:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Resource '{body.name}' already exists",
         )
 
-    resource = Resource(name=body.name)
-    db.add(resource)
-    await db.flush()
-    await db.refresh(resource)
+    resource = await svc.register_resource(name=body.name, auto_create_crud=True)
+    await svc.db.flush()
 
-    # Auto-create CRUD permissions
-    perms: list[Permission] = []
-    for action in ("create", "read", "update", "delete"):
-        p = Permission(resource_id=resource.id, action=action)
-        db.add(p)
-        perms.append(p)
-    await db.flush()
+    rows = await list_resources_rbac(svc.db, svc.app_id)
+    for r in rows:
+        if r["id"] == str(resource.id):
+            return ResourceOut(
+                id=r["id"],
+                name=r["name"],
+                permissions=[PermissionRef(id=p["id"], action=p["action"]) for p in r["permissions"]],
+            )
 
-    # Grant all four to superadmin
-    sa_result = await db.execute(select(RoleModel).where(RoleModel.name == "superadmin"))
-    superadmin = sa_result.scalar_one_or_none()
-    if superadmin:
-        for p in perms:
-            await db.refresh(p)
-            db.add(RolePermission(role_id=superadmin.id, permission_id=p.id))
-        await db.flush()
-        invalidate_role_cache("superadmin")
-
-    return ResourceOut(id=resource.id, name=resource.name, actions=["create", "read", "update", "delete"])
+    # Fallback if not yet visible (flush timing)
+    return ResourceOut(id=str(resource.id), name=resource.name, permissions=[])

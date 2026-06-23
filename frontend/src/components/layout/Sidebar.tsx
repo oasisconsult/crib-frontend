@@ -90,6 +90,7 @@ const ADMIN_SETTINGS_CHILDREN: SubNavItem[] = [
   { href: "/admin/platform",       label: "Platform & Agency",icon: Globe,       roles: ["superadmin"] },
   { href: "/admin/integrations",   label: "Integrations",     icon: Plug,        roles: ["superadmin"] },
   { href: "/admin/features",       label: "Feature Flags",    icon: ToggleLeft,  roles: ["superadmin"] },
+  { href: "/admin/roles",           label: "Roles & Perms",    icon: Shield,      roles: ["superadmin"] },
   { href: "/admin/user-roles",     label: "User Roles",       icon: Shield,      roles: ["superadmin"] },
 ];
 

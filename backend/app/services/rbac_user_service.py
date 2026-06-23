@@ -29,6 +29,11 @@ _crib_app_id: str | None = None
 _crib_role_map: dict[str, str] = {}   # role_name → role_id UUID string
 
 
+def get_rbac_factory():
+    """Public accessor for the lazy RBAC DB session factory (shared with rbac_admin_service)."""
+    return _get_factory()
+
+
 def _get_factory():
     """Return a lazily-created RBAC async session factory, or None if unconfigured."""
     global _rbac_engine, _rbac_factory

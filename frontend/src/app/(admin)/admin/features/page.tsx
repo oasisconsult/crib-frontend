@@ -122,10 +122,10 @@ const ACTIONS = ["create", "read", "update", "delete"] as const;
 type Action = typeof ACTIONS[number];
 
 // Maps "resourceName:action" → permissionId for quick lookup
-type PermMatrix = Map<string, number>;
+type PermMatrix = Map<string, string>;
 
 function buildPermMatrix(resources: ResourceOut[]): PermMatrix {
-  const map = new Map<string, number>();
+  const map = new Map<string, string>();
   for (const r of resources) {
     for (const p of r.permissions) {
       map.set(`${r.name}:${p.action}`, p.id);
@@ -138,8 +138,8 @@ function RolesPermissionsTab() {
   const [roles, setRoles] = useState<RoleOut[]>([]);
   const [resources, setResources] = useState<ResourceOut[]>([]);
   const [selectedRoleId, setSelectedRoleId] = useState<string>("");
-  const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
-  const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [loadingRole, setLoadingRole] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -160,7 +160,7 @@ function RolesPermissionsTab() {
   useEffect(() => {
     if (!selectedRoleId) return;
     setLoadingRole(true);
-    rbacApi.listRolePermissions(Number(selectedRoleId))
+    rbacApi.listRolePermissions(selectedRoleId)
       .then(perms => {
         const ids = new Set(perms.map(p => p.id));
         setSavedIds(ids);
@@ -176,7 +176,7 @@ function RolesPermissionsTab() {
   const hasChanges = !isSuperadmin && [...pendingIds].some(id => !savedIds.has(id)) ||
     [...savedIds].some(id => !pendingIds.has(id));
 
-  const toggle = useCallback((permId: number, checked: boolean) => {
+  const toggle = useCallback((permId: string, checked: boolean) => {
     setPendingIds(prev => {
       const next = new Set(prev);
       if (checked) next.add(permId); else next.delete(permId);
@@ -188,7 +188,7 @@ function RolesPermissionsTab() {
     if (!selectedRoleId) return;
     setSaving(true);
     try {
-      await rbacApi.replaceRolePermissions(Number(selectedRoleId), [...pendingIds]);
+      await rbacApi.replaceRolePermissions(selectedRoleId, [...pendingIds]);
       setSavedIds(new Set(pendingIds));
       toast.success(`Permissions updated for ${selectedRole?.name}`);
     } catch {

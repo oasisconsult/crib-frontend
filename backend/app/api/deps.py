@@ -25,9 +25,10 @@ because the RBAC DB is read on every request via the middleware.
 
 Role ordering
 -------------
-Priority is stored in the `roles` table (migration 011) as an integer column.
-Lower value = higher privilege (superadmin=0, tenant=40).  The list is cached
-in-process for 5 minutes so every request doesn't hit the DB.
+Priority is sourced from the shared RBAC DB (rbac_roles.priority) via
+rbac_admin_service.get_role_priority_map(), with a 5-minute in-process TTL.
+Falls back to a hardcoded map when RBAC_DATABASE_URL is not set.
+Lower value = higher privilege (superadmin=0, tenant=40).
 
 Profile.role stores the *highest-priority* role name purely as a display/
 notification convenience and is re-synced on every authenticated request.
@@ -35,8 +36,6 @@ notification convenience and is re-synced on every authenticated request.
 
 from __future__ import annotations
 
-import asyncio
-import time
 import uuid
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable
@@ -52,59 +51,6 @@ from app.core.database import get_db
 from app.core.security import TokenClaims, extract_token_claims
 from app.models.organisation import Organisation
 from app.models.profile import Profile
-from app.models.rbac import RoleModel
-
-
-# ── Role priority cache ───────────────────────────────────────────────────────
-# Loaded from the `roles` table, refreshed every 5 minutes.
-# Format: { "rolename": priority_int } — lower = higher privilege.
-
-_priority_cache: dict[str, int] = {}
-_priority_cache_at: float = 0.0
-_PRIORITY_TTL = 300.0   # seconds
-_PRIORITY_LOCK = asyncio.Lock()
-
-# Fallback order used only when the DB is unreachable on first load.
-_FALLBACK_PRIORITY: dict[str, int] = {
-    "superadmin":  0,
-    "owner":      10,
-    "caretaker":  15,   # delegated property manager — scoped to specific properties
-    "manager":    20,
-    "landlord":   25,
-    "maintenance": 30,
-    "tenant":     40,
-}
-
-
-async def _get_priority_map(db: AsyncSession) -> dict[str, int]:
-    """Return a role-name → priority mapping, refreshing from DB as needed."""
-    global _priority_cache, _priority_cache_at
-
-    now = time.monotonic()
-    if _priority_cache and (now - _priority_cache_at) < _PRIORITY_TTL:
-        return _priority_cache
-
-    async with _PRIORITY_LOCK:
-        # Double-check after acquiring lock
-        if _priority_cache and (time.monotonic() - _priority_cache_at) < _PRIORITY_TTL:
-            return _priority_cache
-        try:
-            result = await db.execute(
-                select(RoleModel.name, RoleModel.priority).order_by(RoleModel.priority)
-            )
-            _priority_cache = {row.name: row.priority for row in result}
-            _priority_cache_at = time.monotonic()
-        except Exception:
-            # DB unavailable — use fallback so the service stays up
-            if not _priority_cache:
-                _priority_cache = dict(_FALLBACK_PRIORITY)
-    return _priority_cache
-
-
-def invalidate_priority_cache() -> None:
-    """Call after modifying roles table so the next request re-reads from DB."""
-    global _priority_cache_at
-    _priority_cache_at = 0.0
 
 
 # ── Role extraction from JWT ──────────────────────────────────────────────────
@@ -135,10 +81,10 @@ def _roles_from_claims(claims: TokenClaims) -> list[str]:
     return result if result else ["tenant"]
 
 
-async def _primary_role(roles: list[str], db: AsyncSession) -> str:
+async def _primary_role(roles: list[str]) -> str:
     """Return the single highest-priority role from a list (lowest priority int)."""
-    priority_map = await _get_priority_map(db)
-    # Sort by priority value; unknown roles get a high fallback so they sort last
+    from app.services.rbac_admin_service import get_role_priority_map
+    priority_map = await get_role_priority_map()
     sorted_roles = sorted(roles, key=lambda r: priority_map.get(r, 9999))
     return sorted_roles[0] if sorted_roles else "tenant"
 
@@ -205,12 +151,13 @@ async def _upsert_profile(
     # Phase 4: prefer RBAC DB roles over JWT-derived roles for profile.role display
     # Guard: rbac_roles=[] (empty list, falsy) differs from rbac_roles=None (not set).
     effective_roles = rbac_roles if rbac_roles is not None else _roles_from_claims(claims)
-    primary = await _primary_role(effective_roles, db)
+    primary = await _primary_role(effective_roles)
 
     # Only sync profile.role when the resolved primary is a recognised Crib role.
-    # Unknown or foreign roles — e.g. GeoBox"s "resident" auto-assigned by the shared
+    # Unknown or foreign roles — e.g. GeoBox's "resident" auto-assigned by the shared
     # Logto instance — are ignored so they cannot corrupt onboarding-set roles.
-    priority_map = await _get_priority_map(db)
+    from app.services.rbac_admin_service import get_role_priority_map
+    priority_map = await get_role_priority_map()
     primary_is_crib_role = primary in priority_map
 
     if profile is None:

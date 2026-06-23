@@ -6,7 +6,7 @@ import {
   ArrowLeft,
   Search,
   Shield,
-  UserCog,
+  Users,
   Loader2,
   Plus,
   Trash2,
@@ -378,7 +378,7 @@ export default function UserRolesPage() {
   }, []);
 
   return (
-    <PermissionGate roles={["superadmin"]}>
+    <PermissionGate role={["superadmin"]}>
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
         <div className="flex items-center gap-3">
           <Link href="/admin">
@@ -386,10 +386,10 @@ export default function UserRolesPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
+          <Users className="h-5 w-5 text-muted-foreground shrink-0" />
           <PageHeader
             title="User Role Assignments"
             description="Manage Crib role assignments for platform users"
-            icon={<UserCog className="h-5 w-5" />}
           />
         </div>
 
