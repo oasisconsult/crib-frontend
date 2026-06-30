@@ -1498,7 +1498,7 @@ sqlalchemy = "^2.0"
 type = "git"
 url = "https://github.com/oasisconsult/geobox-rbac.git"
 reference = "HEAD"
-resolved_reference = "bd865682652553b2876e7a961c4ce42f3116eb3e"
+resolved_reference = "d8f96b0265c8cf458f9bf507abf60d6c87b10de8"
 
 [[package]]
 name = "geobox-sdk"
