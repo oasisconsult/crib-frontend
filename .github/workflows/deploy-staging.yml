@@ -9,30 +9,31 @@ on:
   # Keep manual trigger for hotfix deploys that bypass the CI gate
   workflow_dispatch:
 
+# Self-hosted runner runs directly on the staging VPS — no inbound SSH from GitHub.
+# Git uses a read-only SSH deploy key pre-configured on the runner (no GH_PAT).
+#
+# One-time runner setup (run on the staging VPS):
+#   ssh-keygen -t ed25519 -C "crib-staging-deploy" -f /home/runner/.ssh/crib_deploy
+#   # Add public key to GitHub: Settings → Deploy Keys (read-only)
+#   git -C /srv/apps/crib remote set-url origin git@github.com:oasisconsult/crib.git
+#   # Add to /home/runner/.ssh/config:
+#   #   Host github.com
+#   #     IdentityFile /home/runner/.ssh/crib_deploy
+#   #     StrictHostKeyChecking accept-new
 jobs:
   deploy:
-    # Skip if triggered by a failed CI run
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
-    runs-on: self-hosted   # self-hosted runner on the staging VPS — no SSH needed
+    runs-on: self-hosted
     environment: staging
 
     steps:
       - name: Pull latest code
-        env:
-          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          sudo chown -R "$(whoami):$(whoami)" /srv/apps/crib 2>/dev/null || true
-          REPO_URL="https://x-access-token:${GH_PAT}@github.com/oasisconsult/crib.git"
-          if [ ! -d /srv/apps/crib/.git ]; then
-            echo "First deploy — cloning repo..."
-            git clone -b main "$REPO_URL" /srv/apps/crib
-          else
-            cd /srv/apps/crib
-            git fetch "$REPO_URL" main
-            git reset --hard FETCH_HEAD
-          fi
+          cd /srv/apps/crib
+          git fetch origin main
+          git reset --hard origin/main
 
       - name: Sync geobox-rbac vendor
         run: |
@@ -56,7 +57,7 @@ jobs:
         run: |
           sleep 30
           curl -sf https://crib.staging.geoboxafrica.com/api/health \
-            && echo "Health check passed" \
+            && echo "Frontend health check passed" \
             || echo "::warning::Frontend not yet responding — verify manually"
           curl -sf https://api-crib.staging.geoboxafrica.com/v1/health \
             && echo "API health check passed" \
