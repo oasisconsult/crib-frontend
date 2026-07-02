@@ -91,6 +91,11 @@ services:
       CORS_ORIGINS: "${CORS_ORIGINS}"
       ENVIRONMENT: production
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
     networks:
       - crib-prod
       - geobox-network    # attach to GeoBox network to reach shared services
@@ -145,6 +150,11 @@ services:
       SETTINGS_ENCRYPTION_KEY: "${SETTINGS_ENCRYPTION_KEY}"
       ENVIRONMENT: production
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
     networks:
       - crib-prod
       - geobox-network
@@ -193,6 +203,11 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 30s

@@ -2,11 +2,13 @@ import { type NextRequest, NextResponse } from "next/server";
 
 // ── Route classification ──────────────────────────────────────────────────────
 
+// Use trailing slash/segment boundaries to avoid prefix collision.
+// e.g. "/api/auth" must not match "/api/auth-bypass-anything"
 const PUBLIC_PREFIXES = [
   "/login",
   "/signup",
-  "/api/auth",
-  "/api/logto",
+  "/api/auth/",
+  "/api/logto/",
   "/_next",
   "/favicon.ico",
   // Inspector portal — token in URL is the credential; inspector has no account

@@ -50,6 +50,13 @@ async function proxyLocalUpload(
   request: NextRequest,
   key: string[],
 ): Promise<NextResponse> {
+  // Dev-only route. In production, storage presign URLs point directly to
+  // S3/R2/MinIO — this proxy is never legitimately called. Block it explicitly
+  // because the backend /upload/local/* endpoint has no access control.
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
+
   const upstreamUrl = `${BACKEND_URL}/api/v1/upload/local/${key.join("/")}`;
 
   const headers = new Headers();
